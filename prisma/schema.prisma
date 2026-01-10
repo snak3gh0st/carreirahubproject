@@ -1,0 +1,628 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_PRISMA_URL")
+  directUrl = env("POSTGRES_URL_NON_POOLING")
+}
+
+// ENUMS para Regras de Negócio Rígidas
+enum UserRole {
+  ADMIN
+  SALES
+  SDR
+  FINANCE
+  SUPPORT
+  OPERATIONAL
+  COMMERCIAL
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+  HOLD
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+  PARTIALLY_PAID
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT_FOR_SIGNATURE
+  VIEWED
+  SIGNED
+  DECLINED
+  VOIDED
+  EXPIRED
+}
+
+enum LeadStatus {
+  NEW
+  QUALIFYING
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  WHATSAPP
+  REFERRAL
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum ConversationStatus {
+  ACTIVE
+  RESOLVED
+  ESCALATED
+  CLOSED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ImportStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum NotificationType {
+  INVOICE_APPROVAL_REQUEST
+  INVOICE_APPROVED
+  INVOICE_REJECTED
+  CONTRACT_SENT
+  CONTRACT_REMINDER
+  CONTRACT_SIGNED
+  CONTRACT_EXPIRED
+  PAYMENT_LINK_SENT
+  PAYMENT_REMINDER
+  PAYMENT_RECEIVED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
+}
+
+enum CollectionCallStatus {
+  PENDING      // Scheduled, not yet called
+  IN_PROGRESS  // Call active
+  COMPLETED    // Call finished
+  NO_ANSWER    // Customer didn't answer
+  BUSY         // Line busy
+  FAILED       // Technical failure
+  CANCELLED    // Cancelled before calling
+}
+
+enum CollectionCallOutcome {
+  PAYMENT_PROMISED   // Customer promised to pay
+  PAYMENT_MADE       // Paid during/after call
+  DISPUTE            // Customer disputes the invoice
+  CALLBACK_REQUESTED // Customer asked to be called back
+  NO_COMMITMENT      // No clear outcome
+  WRONG_NUMBER       // Phone number incorrect
+}
+
+// USERS: Equipe Interna com RBAC
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(SALES)
+  active    Boolean  @default(true)
+  
+  // Relações
+  sales     Deal[]
+  qualifiedLeads        Lead[]              @relation("QualifiedLeads")
+  escalatedConversations Conversation[]     @relation("EscalatedConversations")
+  leadQualifications    LeadQualification[] @relation("LeadQualifications")
+  approvedInvoices      Invoice[]           @relation("InvoiceApprovals")
+  bulkImports           BulkImport[]        @relation("BulkImports")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("users")
+}
+
+// CUSTOMERS: O "Mapeador de Identidade" (SSOT)
+// Centraliza IDs de todos os SaaS externos para evitar duplicidade
+model Customer {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  name          String
+  phone         String?
+  document      String?  // CPF ou TaxID
+  phoneVerified Boolean  @default(false)
+  preferredLanguage String? @default("pt-BR")
+
+  // IDs Externos
+  pipedrive_id  Int?     @unique
+  quickbooks_id String?  @unique
+  stripe_id     String?  @unique
+  trello_id     String?  @unique
+  cloudtalk_id  String?
+  google_contact_id String?
+
+  deals            Deal[]
+  invoices         Invoice[]
+  contracts        Contract[]
+  notifications    Notification[]
+  collectionCalls  CollectionCall[]
+  payments         Payment[]
+
+  metadata  Json?
+
+  // Financial summary (synced from QuickBooks)
+  qbBalance           Decimal?  @db.Decimal(10, 2)  // Current balance in QB
+  qbTotalInvoiced     Decimal?  @db.Decimal(10, 2)  // Total invoiced amount
+  qbTotalPaid         Decimal?  @db.Decimal(10, 2)  // Total paid amount
+  lastQbBalanceSync   DateTime?                      // When balance was last synced
+
+  // Sync timestamps for conflict resolution
+  lastPipedriveSyncAt  DateTime?
+  lastQuickbooksSyncAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([pipedrive_id])
+  @@map("customers")
+}
+
+// LEAD: Prospect inicial antes de se tornar Customer
+model Lead {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  name          String
+  phone         String?
+  source        LeadSource  @default(WEBSITE)
+  status        LeadStatus  @default(NEW)
+  
+  // IDs Externos
+  pipedrive_person_id Int?  @unique
+  
+  // Qualificação SDR
+  qualificationScore  Int?  @default(0) // 0-100
+  qualificationData    Json? // Dados coletados na qualificação
+  qualifiedAt          DateTime?
+  qualifiedById        String?
+  qualifiedBy          User? @relation("QualifiedLeads", fields: [qualifiedById], references: [id])
+  
+  // Conversões
+  convertedToDealId    String? @unique
+  convertedToDeal      Deal?   @relation("ConvertedLead", fields: [convertedToDealId], references: [id])
+  convertedAt          DateTime?
+  
+  // Relações
+  conversations        Conversation[]
+  messages             Message[]
+  qualifications       LeadQualification[]
+  
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  @@index([email])
+  @@index([status])
+  @@index([pipedrive_person_id])
+  @@map("leads")
+}
+
+// CONVERSATION: Sessão de chat (Customer Service AI)
+model Conversation {
+  id              String            @id @default(uuid())
+  leadId          String
+  lead            Lead              @relation(fields: [leadId], references: [id])
+  status          ConversationStatus @default(ACTIVE)
+  title           String?           // Título gerado automaticamente
+  summary         String?           // Resumo da conversa (gerado por AI)
+  
+  // Escalação
+  escalatedAt     DateTime?
+  escalatedToId  String?
+  escalatedTo    User?             @relation("EscalatedConversations", fields: [escalatedToId], references: [id])
+  
+  messages        Message[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([leadId])
+  @@index([status])
+  @@map("conversations")
+}
+
+// MESSAGE: Mensagem individual na conversa
+model Message {
+  id              String      @id @default(uuid())
+  conversationId String
+  conversation    Conversation @relation(fields: [conversationId], references: [id])
+  leadId          String
+  lead            Lead        @relation(fields: [leadId], references: [id])
+  role            MessageRole
+  content         String      @db.Text
+  metadata        Json?       // Sentimento, intenção, etc.
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([conversationId])
+  @@index([leadId])
+  @@map("messages")
+}
+
+// LEAD_QUALIFICATION: Histórico de qualificações (auditoria)
+model LeadQualification {
+  id              String   @id @default(uuid())
+  leadId          String
+  lead            Lead     @relation(fields: [leadId], references: [id])
+  score           Int      // 0-100
+  criteria        Json     // Critérios avaliados
+  qualifiedById   String?
+  qualifiedBy     User?    @relation("LeadQualifications", fields: [qualifiedById], references: [id])
+  notes           String?  @db.Text
+  
+  createdAt       DateTime @default(now())
+  
+  @@index([leadId])
+  @@map("lead_qualifications")
+}
+
+// DEALS: Espelho do Pipedrive com Vínculo Financeiro
+model Deal {
+  id           String     @id @default(uuid())
+  title        String
+  value        Decimal    @db.Decimal(10, 2)
+  currency     String     @default("USD")
+  status       DealStatus @default(OPEN)
+  
+  pipedrive_deal_id Int @unique
+  
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  ownerId    String?
+  owner      User?    @relation(fields: [ownerId], references: [id])
+  
+  // Conversão de Lead
+  convertedFromLeadId String? @unique
+  convertedFromLead   Lead?   @relation("ConvertedLead")
+  
+  invoices   Invoice[]
+  contracts  Contract[]
+
+  // Sync timestamp for conflict resolution
+  lastPipedriveSyncAt DateTime?
+
+  createdAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("deals")
+}
+
+// INVOICES: Motor Financeiro Proprietário
+// Substitui cálculos manuais e erros do Typebot
+model Invoice {
+  id              String        @id @default(uuid())
+  invoiceNumber   String?       @unique
+  amount          Decimal       @db.Decimal(10, 2)
+  dueDate         DateTime
+  status          InvoiceStatus @default(DRAFT)
+
+  // Approval workflow
+  approvalStatus  ApprovalStatus @default(PENDING)
+  approvedBy      String?
+  approver        User?          @relation("InvoiceApprovals", fields: [approvedBy], references: [id])
+  approvedAt      DateTime?
+  rejectedReason  String?        @db.Text
+
+  // Contract tracking
+  contractId      String?        @unique
+  contract        Contract?      @relation(fields: [contractId], references: [id])
+
+  // External IDs
+  quickbooks_invoice_id String? @unique
+  stripe_invoice_id     String? @unique
+
+  // Payment tracking
+  stripePaymentIntentId String? @unique
+  stripePaymentLinkId   String? @unique
+  stripePaymentLinkUrl  String? @db.Text // NEW: Store actual payment link URL from Stripe
+  paymentMethod         String?
+  paidAt                DateTime?
+  amountPaid            Decimal? @db.Decimal(10, 2)
+  amountRefunded        Decimal? @db.Decimal(10, 2) @default(0) // NEW: Track refunded amount
+  lastPaymentReminderAt DateTime?
+  paymentReminderCount  Int      @default(0)
+
+  // Collection call tracking
+  markedOverdueAt       DateTime?
+  lastCollectionCallAt  DateTime?
+  collectionCallCount   Int      @default(0)
+
+  dealId     String
+  deal       Deal     @relation(fields: [dealId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  notifications    Notification[]
+  collectionCalls  CollectionCall[]
+
+  pdfUrl     String?
+  installments Json? // Lógica de parcelamento complexa armazenada aqui
+
+  payments   Payment[]
+
+  createdAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@map("invoices")
+}
+
+// PAYMENTS: Track individual payments from all sources
+// Synced from QuickBooks, Stripe, and manual entries
+model Payment {
+  id              String   @id @default(uuid())
+  amount          Decimal  @db.Decimal(10, 2)
+  currency        String   @default("USD")
+  paymentDate     DateTime
+  paymentMethod   String?  // "stripe", "quickbooks", "manual", "bank_transfer", etc.
+  referenceNumber String?  // Transaction reference
+
+  // External IDs
+  quickbooks_payment_id String? @unique
+  stripe_payment_id     String? @unique
+
+  // Relations
+  invoiceId  String
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  // Sync tracking
+  syncedFromQb    Boolean  @default(false)
+  syncedToQb      Boolean  @default(false)
+  lastSyncAt      DateTime?
+
+  notes      String?  @db.Text
+  metadata   Json?
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([quickbooks_payment_id])
+  @@map("payments")
+}
+
+// CONTRACTS: Gestão Jurídica (DocuSign)
+model Contract {
+  id              String         @id @default(uuid())
+  docusign_env_id String?        @unique
+  status          ContractStatus @default(DRAFT)
+  signedUrl       String?        @db.Text
+
+  // Signature tracking
+  sentAt          DateTime?
+  signedAt        DateTime?
+  declinedAt      DateTime?
+  voidedAt        DateTime?
+  expiresAt       DateTime?
+  lastReminderAt  DateTime?
+  reminderCount   Int            @default(0)
+  signerEmail     String
+  signerName      String
+
+  // Relations
+  dealId     String
+  deal       Deal     @relation(fields: [dealId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  invoiceId  String?  @unique
+  invoice    Invoice?
+
+  notifications Notification[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  @@map("contracts")
+}
+
+// INTEGRATION LOGS: Governança & Debug
+// Essencial para substituir o N8N: Rastreabilidade de falhas e Retries
+model IntegrationLog {
+  id          String   @id @default(uuid())
+  service     String   // Ex: "PIPEDRIVE", "QUICKBOOKS", "AI_SERVICE"
+  action      String   // Ex: "WEBHOOK_RECEIVED", "INVOICE_CREATED", "LEAD_QUALIFIED"
+  status      String   // "SUCCESS", "ERROR"
+  payload     Json?
+  error       String?
+  retryCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  @@index([status])
+  @@index([service])
+  @@map("integration_logs")
+}
+
+// SYSTEM CONFIG: Armazena credenciais e configurações do sistema
+// Substitui variáveis de ambiente para tokens que precisam ser atualizados
+model SystemConfig {
+  id                           String    @id @default("system")
+
+  // QuickBooks OAuth Tokens
+  quickbooks_access_token      String?   @db.Text
+  quickbooks_refresh_token     String?   @db.Text
+  quickbooks_token_expires_at  DateTime?
+  quickbooks_company_id        String?
+  quickbooks_is_authenticated  Boolean   @default(false)
+
+  // Webhook Secrets
+  quickbooks_webhook_secret    String?
+  pipedrive_webhook_secret     String?
+  cron_secret                  String?
+
+  // Sincronização
+  last_qb_sync                 DateTime?
+  last_pipedrive_sync          DateTime?
+
+  metadata                     Json?
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  @@map("system_config")
+}
+
+// NOTIFICATION: Email notification tracking
+model Notification {
+  id           String             @id @default(uuid())
+  type         NotificationType
+  status       NotificationStatus @default(PENDING)
+  recipient    String             // email address
+  subject      String
+  templateId   String?            // email template used
+  sentAt       DateTime?
+  failedAt     DateTime?
+  errorMessage String?            @db.Text
+
+  // Entity relationships
+  invoiceId    String?
+  invoice      Invoice?   @relation(fields: [invoiceId], references: [id])
+  contractId   String?
+  contract     Contract?  @relation(fields: [contractId], references: [id])
+  customerId   String?
+  customer     Customer?  @relation(fields: [customerId], references: [id])
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([invoiceId])
+  @@index([contractId])
+  @@index([status])
+  @@map("notifications")
+}
+
+// BULK IMPORT: Track bulk import operations
+model BulkImport {
+  id               String       @id @default(uuid())
+  source           String       // "PIPEDRIVE" | "QUICKBOOKS"
+  type             String       // "CUSTOMERS" | "DEALS" | "INVOICES"
+  status           ImportStatus @default(RUNNING)
+  totalRecords     Int          @default(0)
+  processedRecords Int          @default(0)
+  successCount     Int          @default(0)
+  errorCount       Int          @default(0)
+  errors           Json?        // Array of error details
+  startedAt        DateTime     @default(now())
+  completedAt      DateTime?
+  startedBy        String?
+  initiator        User?        @relation("BulkImports", fields: [startedBy], references: [id])
+
+  @@index([status])
+  @@index([source])
+  @@map("bulk_imports")
+}
+
+// QUICKBOOKS ITEMS: Service items and products from QuickBooks
+model QuickBooksItem {
+  id          String   @id @default(cuid())
+  qbId        String   @unique
+  name        String
+  description String?
+  unitPrice   Decimal? @db.Decimal(10, 2)
+  type        String   // Service, NonInventory, Inventory, etc.
+  active      Boolean  @default(true)
+
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([qbId])
+  @@map("quickbooks_items")
+}
+
+// COLLECTION CALLS: AI-powered phone calls for overdue payments
+model CollectionCall {
+  id              String   @id @default(uuid())
+  invoiceId       String
+  invoice         Invoice  @relation(fields: [invoiceId], references: [id])
+  customerId      String
+  customer        Customer @relation(fields: [customerId], references: [id])
+
+  // Call details
+  phoneNumber     String
+  provider        String   // "RETELL" or "ELEVENLABS"
+  externalCallId  String?  // RetellAI call_id or Twilio call SID
+  status          CollectionCallStatus @default(PENDING)
+
+  // Results
+  duration        Int?     // seconds
+  transcript      String?  @db.Text
+  outcome         CollectionCallOutcome?
+  paymentPromised Boolean  @default(false)
+  promisedDate    DateTime?
+  notes           String?  @db.Text
+
+  // Timestamps
+  scheduledAt     DateTime?
+  startedAt       DateTime?
+  endedAt         DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Tracking
+  initiatedBy     String?  // User ID if manual, "SYSTEM" if automatic
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([status])
+  @@map("collection_calls")
+}
+
+// WEBHOOK EVENTS: Webhook reliability and dead letter queue
+// Ensures zero lost webhooks through automatic retry with exponential backoff
+model WebhookEvent {
+  id            String    @id @default(cuid())
+  service       String    // e.g., "pipedrive", "quickbooks", "stripe", "docusign", "twilio", "retellai"
+  event_type    String    // e.g., "person.created", "invoice.updated", "payment.succeeded"
+  event_id      String    // external event ID from webhook payload for deduplication
+  payload       Json      // raw webhook payload
+  headers       Json      // relevant headers like signature
+  status        String    // "pending", "processing", "success", "failed", "dead_letter"
+  retry_count   Int       @default(0)
+  max_retries   Int       @default(5)
+  next_retry_at DateTime? // when to retry next
+  last_error    String?   @db.Text // most recent error message
+  processed_at  DateTime? // when successfully processed
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  @@index([service, event_id])
+  @@index([status, next_retry_at])
+  @@index([created_at])
+  @@map("webhook_events")
+}
+
