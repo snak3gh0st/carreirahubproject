@@ -25,6 +25,12 @@ export interface WebhookHandlerResult {
   error?: string;
 }
 
+export interface WebhookRetryResult {
+  status: "success" | "duplicate" | "error";
+  httpStatus: number;
+  message: string;
+}
+
 export type WebhookHandler = (
   payload: any,
   headers: any
@@ -47,7 +53,7 @@ export type WebhookHandler = (
  * @param payload Raw webhook payload
  * @param headers Relevant headers (including signature)
  * @param handler Async function that processes the webhook
- * @returns Response object with 200 OK status
+ * @returns Response object with status, message, and HTTP status code
  */
 export async function handleWebhookWithRetry(
   service: string,
@@ -56,35 +62,68 @@ export async function handleWebhookWithRetry(
   payload: any,
   headers: any,
   handler: WebhookHandler
-): Promise<{ status: number; message: string }> {
+): Promise<WebhookRetryResult> {
   try {
     // Step 1: Check for duplicate webhook (idempotency)
     const existingEvent = await prisma.webhookEvent.findFirst({
       where: {
         service,
         event_id: eventId,
-        status: {
-          in: ["success", "processing"],
-        },
+      },
+      select: {
+        id: true,
+        status: true,
+        processed_at: true,
       },
     });
 
     if (existingEvent) {
-      await integrationLogger.logSuccess(
-        "WEBHOOK_RETRY",
-        "DUPLICATE_DETECTED",
-        {
-          service,
-          eventType,
-          eventId,
-          existingEventId: existingEvent.id,
-        }
-      );
+      // If already successfully processed, skip
+      if (existingEvent.status === "success" && existingEvent.processed_at) {
+        await integrationLogger.logSuccess(
+          "WEBHOOK_RETRY",
+          "DUPLICATE_DETECTED",
+          {
+            service,
+            eventType,
+            eventId,
+            existingEventId: existingEvent.id,
+            existingStatus: existingEvent.status,
+            message: "Event already processed",
+          }
+        );
 
-      return {
-        status: 200,
-        message: "Webhook already processed (duplicate detected)",
-      };
+        return {
+          status: "duplicate" as const,
+          httpStatus: 200,
+          message: "Event already processed",
+        };
+      }
+
+      // If currently processing or pending, skip to avoid concurrent processing
+      if (existingEvent.status === "processing" || existingEvent.status === "pending") {
+        await integrationLogger.logSuccess(
+          "WEBHOOK_RETRY",
+          "DUPLICATE_DETECTED",
+          {
+            service,
+            eventType,
+            eventId,
+            existingEventId: existingEvent.id,
+            existingStatus: existingEvent.status,
+            message: "Event currently being processed",
+          }
+        );
+
+        return {
+          status: "duplicate" as const,
+          httpStatus: 200,
+          message: "Event currently being processed",
+        };
+      }
+
+      // If failed or dead_letter, continue with retry logic (legitimate retry)
+      // This allows for manual reprocessing and automatic retries
     }
 
     // Step 2: Persist webhook to database
@@ -138,7 +177,8 @@ export async function handleWebhookWithRetry(
         );
 
         return {
-          status: 200,
+          status: "success" as const,
+          httpStatus: 200,
           message: "Webhook processed successfully",
         };
       } else {
@@ -215,7 +255,8 @@ export async function handleWebhookWithRetry(
 
       // Always return 200 OK to webhook sender
       return {
-        status: 200,
+        status: "error" as const,
+        httpStatus: 200,
         message: "Webhook received and queued for retry",
       };
     }
@@ -240,7 +281,8 @@ export async function handleWebhookWithRetry(
 
     // Still return 200 OK to prevent webhook sender from retrying
     return {
-      status: 200,
+      status: "error" as const,
+      httpStatus: 200,
       message: "Webhook received but system error occurred",
     };
   }
