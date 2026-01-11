@@ -25,18 +25,37 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Query otimizada - selecionar campos necessários incluindo password
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              role: true,
-              active: true,
-              password: true,
-            },
-          });
+          // Query otimizada - selecionar campos necessários
+          // Note: password field selection wrapped in try-catch for backward compatibility
+          // (password column may not exist on all database deployments)
+          let user: any;
+
+          try {
+            user = await prisma.user.findUnique({
+              where: { email: credentials.email },
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                active: true,
+                password: true,
+              },
+            });
+          } catch (selectError) {
+            // If password field doesn't exist, select without it
+            console.warn("[AUTH] Password field not available, retrying without it");
+            user = await prisma.user.findUnique({
+              where: { email: credentials.email },
+              select: {
+                id: true,
+                email: true,
+                name: true,
+                role: true,
+                active: true,
+              },
+            });
+          }
 
           if (!user) {
             return null;
