@@ -458,13 +458,23 @@ model IntegrationLog {
   id          String   @id @default(uuid())
   service     String   // Ex: "PIPEDRIVE", "QUICKBOOKS", "AI_SERVICE"
   action      String   // Ex: "WEBHOOK_RECEIVED", "INVOICE_CREATED", "LEAD_QUALIFIED"
-  status      String   // "SUCCESS", "ERROR"
+  status      String   // "SUCCESS", "ERROR", "PARTIAL"
   payload     Json?
   error       String?
   retryCount  Int      @default(0)
+
+  // Structured error fields for better debugging and operator visibility
+  errorCode   String?  // e.g., "EXTERNAL_TIMEOUT", "AUTH_FAILED", "RATE_LIMITED", "INVALID_REQUEST"
+  errorCategory String? // e.g., "transient", "permanent", "auth", "validation", "unknown"
+  errorSeverity String? // e.g., "info", "warning", "error", "critical"
+  recoveryAction String? // e.g., "retry", "manual_intervention", "contact_support", "check_circuit"
+  metadata    Json?    // Arbitrary structured data: {statusCode, retryAfter, circuitState, etc}
+  durationMs  Int?     // API call duration for performance tracking
+
   createdAt   DateTime @default(now())
   @@index([status])
   @@index([service])
+  @@index([errorCategory])
   @@map("integration_logs")
 }
 
