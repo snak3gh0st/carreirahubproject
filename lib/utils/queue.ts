@@ -297,7 +297,18 @@ export async function addBulkImportJob(data: {
 /**
  * Inicializar workers (deve ser chamado em um processo separado ou no servidor)
  *
- * Nota: Em produção, workers devem rodar em processos separados ou usar Vercel Cron Jobs
+ * NOTE: Workers don't run on Vercel serverless!
+ * =============================================
+ * This function creates BullMQ workers, which require persistent processes.
+ * Vercel functions timeout after 10 seconds, making workers non-functional
+ * in production.
+ *
+ * SOLUTION: Queue processing handled by /api/cron/process-queue
+ * This cron endpoint runs every 5 minutes and uses lib/utils/queue-processor.ts
+ * to safely process jobs within the 10-second timeout limit.
+ *
+ * IN DEVELOPMENT: Workers can be useful for local testing with npm run dev
+ * IN PRODUCTION: All job processing is via the cron endpoint
  */
 export function initializeWorkers() {
   const connectionOptions = getConnectionOptions();
