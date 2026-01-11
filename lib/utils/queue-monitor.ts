@@ -318,6 +318,68 @@ async function logMonitoringIssue(details: {
 }
 
 /**
+ * Monitor QuickBooks token health
+ * Checks if token is expiring within 7 days and logs warning
+ */
+async function monitorQuickBooksTokenHealth(): Promise<void> {
+  try {
+    const config = await prisma.systemConfig.findUnique({
+      where: { id: "system" },
+    });
+
+    if (!config?.quickbooks_token_expires_at) {
+      return; // Token not configured, nothing to monitor
+    }
+
+    const expiresAt = config.quickbooks_token_expires_at;
+    const now = new Date();
+    const millisecondsUntilExpiry = expiresAt.getTime() - now.getTime();
+    const daysUntilExpiry = millisecondsUntilExpiry / (24 * 60 * 60 * 1000);
+
+    // Check if token will expire within 7 days
+    if (daysUntilExpiry < 7 && daysUntilExpiry > 0) {
+      await prisma.integrationLog.create({
+        data: {
+          service: "QUICKBOOKS",
+          action: "TOKEN_HEALTH_CHECK",
+          status: "WARNING",
+          errorCategory: "QB_TOKEN_HEALTH",
+          errorSeverity: "warning",
+          metadata: {
+            message: `QuickBooks token expiring soon`,
+            expiresAt: expiresAt.toISOString(),
+            daysUntilExpiry: Math.ceil(daysUntilExpiry),
+            hoursUntilExpiry: Math.ceil(daysUntilExpiry * 24),
+          },
+        },
+      });
+
+      console.warn(
+        `[QUEUE_MONITOR] QuickBooks token expiring in ${Math.ceil(daysUntilExpiry)} days`
+      );
+    } else if (daysUntilExpiry <= 0) {
+      await prisma.integrationLog.create({
+        data: {
+          service: "QUICKBOOKS",
+          action: "TOKEN_HEALTH_CHECK",
+          status: "ERROR",
+          errorCategory: "QB_TOKEN_HEALTH",
+          errorSeverity: "error",
+          metadata: {
+            message: "QuickBooks token has expired",
+            expiresAt: expiresAt.toISOString(),
+          },
+        },
+      });
+
+      console.error("[QUEUE_MONITOR] QuickBooks token has expired!");
+    }
+  } catch (error) {
+    console.error("[QUEUE_MONITOR] Error checking QuickBooks token health:", error);
+  }
+}
+
+/**
  * Monitor all queues in parallel
  *
  * @param queueNames - List of queue names to monitor
@@ -326,6 +388,8 @@ async function logMonitoringIssue(details: {
  *
  * Used by the monitoring cron endpoint to check all queues at once.
  * Returns summary per queue for dashboarding.
+ *
+ * Also performs QuickBooks token health check (expiring within 7 days).
  */
 export async function monitorAllQueues(
   queueNames: string[],
@@ -369,6 +433,9 @@ export async function monitorAllQueues(
   });
 
   await Promise.all(monitorPromises);
+
+  // Check QuickBooks token health as part of overall monitoring
+  await monitorQuickBooksTokenHealth();
 
   const totalIssuesAcrossQueues =
     totalStaleJobs + totalDeadJobs + totalStuckJobs;
