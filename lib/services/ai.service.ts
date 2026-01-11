@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { CUSTOMER_SERVICE_SYSTEM_PROMPT, CUSTOMER_SERVICE_USER_CONTEXT } from "@/lib/prompts/customer-service";
 import { LEAD_QUALIFICATION_PROMPT, LEAD_QUALIFICATION_DATA_FORMAT } from "@/lib/prompts/lead-qualification";
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db";
 
 const openai = new OpenAI({
@@ -54,10 +55,25 @@ export class AIService {
       conversationHistory: ChatMessage[];
     }
   ): Promise<ChatResponse> {
+    const startTime = Date.now();
     try {
       // Verificar se API key está configurada
       if (!process.env.OPENAI_API_KEY) {
         console.warn("[AI] OPENAI_API_KEY not configured, returning default response");
+        const structured: StructuredErrorData = {
+          errorCode: "CLIENT_NOT_CONFIGURED",
+          category: "auth",
+          severity: "error",
+          recovery: "check_circuit",
+          metadata: { email: leadContext.email },
+        };
+        await integrationLogger.logError(
+          "openai",
+          "chatWithLead",
+          "OpenAI API key not configured",
+          structured,
+          { email: leadContext.email }
+        );
         return {
           response: "Desculpe, nosso sistema de chat está temporariamente indisponível. Por favor, entre em contato conosco por email ou telefone.",
           shouldEscalate: true,
@@ -109,17 +125,24 @@ export class AIService {
 
       return result;
     } catch (error: any) {
+      const durationMs = Date.now() - startTime;
+
       if (error instanceof CircuitOpenError) {
-        console.warn(`[AI] Circuit breaker open: ${error.message}`);
-        await prisma.integrationLog.create({
-          data: {
-            service: "openai",
-            action: "chatWithLead",
-            status: "CIRCUIT_OPEN",
-            payload: { email: leadContext.email },
-            error: error.message,
-          },
-        }).catch(err => console.error("[AI] Failed to log circuit open:", err));
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: { email: leadContext.email },
+        };
+
+        await integrationLogger.logError(
+          "openai",
+          "chatWithLead",
+          error,
+          structured,
+          { email: leadContext.email }
+        );
         return {
           response: "Desculpe, nosso sistema de chat está temporariamente indisponível. Por favor, entre em contato conosco por email ou telefone.",
           shouldEscalate: true,
@@ -129,6 +152,25 @@ export class AIService {
       }
 
       console.error("Error in chatWithLead:", error);
+
+      // Log other errors
+      const structured: StructuredErrorData = {
+        errorCode: (error?.code) || "UNKNOWN_ERROR",
+        category: this.categorizeError(error),
+        metadata: {
+          status: error?.status,
+          message: error?.message,
+          email: leadContext.email,
+        },
+      };
+
+      await integrationLogger.logError(
+        "openai",
+        "chatWithLead",
+        error,
+        structured,
+        { email: leadContext.email }
+      );
 
       // Se for erro de autenticação, retornar resposta padrão
       if (error?.status === 401 || error?.message?.includes("API key")) {
@@ -143,6 +185,25 @@ export class AIService {
 
       throw new Error("Failed to process chat message");
     }
+  }
+
+  private categorizeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const status = error?.status;
+    const message = error?.message || "";
+
+    if (status === 429 || status === 503 || message.includes("timeout")) {
+      return "transient";
+    }
+    if (status === 401 || message.includes("unauthorized") || message.includes("API key")) {
+      return "auth";
+    }
+    if (status === 400) {
+      return "validation";
+    }
+    if (status === 403 || status === 404) {
+      return "permanent";
+    }
+    return "unknown";
   }
 
   /**

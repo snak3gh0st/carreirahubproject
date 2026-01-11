@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { prisma } from '@/lib/db';
 import { quickbooksService } from './quickbooks.service';
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 
 interface Invoice {
   id: string;
@@ -82,18 +83,23 @@ export class StripeService {
       });
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
-        await prisma.integrationLog.create({
-          data: {
-            service: "stripe",
-            action: "getOrCreateCustomer",
-            status: "CIRCUIT_OPEN",
-            payload: { email: data.email },
-            error: error.message,
-          },
-        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: { email: data.email },
+        };
+        await integrationLogger.logError(
+          "stripe",
+          "getOrCreateCustomer",
+          error,
+          structured,
+          { email: data.email }
+        );
         return null;
       }
+      await this.logStripeError("getOrCreateCustomer", error, { email: data.email });
       throw error;
     }
   }
@@ -134,18 +140,23 @@ export class StripeService {
       });
     } catch (error) {
       if (error instanceof CircuitOpenError) {
-        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
-        await prisma.integrationLog.create({
-          data: {
-            service: "stripe",
-            action: "createInvoice",
-            status: "CIRCUIT_OPEN",
-            payload: { customerId: data.customerId, amount: data.amount },
-            error: error.message,
-          },
-        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: { customerId: data.customerId, amount: data.amount },
+        };
+        await integrationLogger.logError(
+          "stripe",
+          "createInvoice",
+          error,
+          structured,
+          { customerId: data.customerId, amount: data.amount }
+        );
         return null;
       }
+      await this.logStripeError("createInvoice", error, { customerId: data.customerId, amount: data.amount });
       throw error;
     }
   }
@@ -603,6 +614,65 @@ export class StripeService {
       type: 'card',
     });
     return paymentMethods.data;
+  }
+
+  private async logStripeError(
+    action: string,
+    error: any,
+    context?: Record<string, any>
+  ): Promise<void> {
+    const structured: StructuredErrorData = {
+      errorCode: this.extractStripeErrorCode(error),
+      category: this.categorizeStripeError(error),
+      metadata: {
+        statusCode: error?.statusCode,
+        code: error?.code,
+        message: error?.message,
+        type: error?.type,
+        ...context,
+      },
+    };
+
+    await integrationLogger.logError(
+      "stripe",
+      action,
+      error,
+      structured,
+      context
+    );
+  }
+
+  private extractStripeErrorCode(error: any): string {
+    if (error?.code) return error.code;
+    if (error?.statusCode === 401) return "AUTH_FAILED";
+    if (error?.statusCode === 429) return "RATE_LIMITED";
+    if (error?.statusCode === 503) return "SERVICE_UNAVAILABLE";
+    return `HTTP_${error?.statusCode || 500}`;
+  }
+
+  private categorizeStripeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const status = error?.statusCode;
+    const message = error?.message || "";
+
+    if (status === 429 || status === 503 || message.includes("timeout")) {
+      return "transient";
+    }
+    if (status === 401) {
+      return "auth";
+    }
+    if (error?.code === "authentication_error") {
+      return "auth";
+    }
+    if (error?.code === "rate_limit_error") {
+      return "transient";
+    }
+    if (status === 400) {
+      return "validation";
+    }
+    if (status === 403 || status === 404) {
+      return "permanent";
+    }
+    return "unknown";
   }
 }
 

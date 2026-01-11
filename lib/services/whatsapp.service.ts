@@ -1,5 +1,6 @@
 import twilio from "twilio";
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -26,9 +27,24 @@ export class WhatsAppService {
   async sendMessage(to: string, message: string): Promise<{ success: boolean; messageId?: string; error?: string }> {
     if (!client) {
       console.warn("Twilio client not configured");
+      const structured: StructuredErrorData = {
+        errorCode: "CLIENT_NOT_CONFIGURED",
+        category: "auth",
+        severity: "error",
+        recovery: "check_circuit",
+        metadata: { to, messageLength: message.length },
+      };
+      await integrationLogger.logError(
+        "whatsapp",
+        "sendMessage",
+        "Twilio client not configured",
+        structured,
+        { to, messageLength: message.length }
+      );
       return { success: false, error: "WhatsApp service not configured" };
     }
 
+    const startTime = Date.now();
     try {
       // Garantir formato correto do número (whatsapp:+5511999999999)
       const formattedTo = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
@@ -46,25 +62,67 @@ export class WhatsAppService {
         messageId: result.sid,
       };
     } catch (error) {
+      const durationMs = Date.now() - startTime;
+
       if (error instanceof CircuitOpenError) {
-        console.warn(`[WhatsApp] Circuit breaker open: ${error.message}`);
-        await prisma.integrationLog.create({
-          data: {
-            service: "whatsapp",
-            action: "sendMessage",
-            status: "CIRCUIT_OPEN",
-            payload: { to, messageLength: message.length },
-            error: error.message,
-          },
-        }).catch(err => console.error("[WhatsApp] Failed to log circuit open:", err));
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: { to, messageLength: message.length },
+        };
+
+        await integrationLogger.logError(
+          "whatsapp",
+          "sendMessage",
+          error,
+          structured,
+          { to, messageLength: message.length }
+        );
         return { success: false, error: "WhatsApp service temporarily unavailable, message queued for retry" };
       }
+
+      // Log other errors
+      const structured: StructuredErrorData = {
+        errorCode: (error as any)?.code || "UNKNOWN_ERROR",
+        category: this.categorizeError(error),
+        metadata: {
+          message: (error as any)?.message,
+          to,
+          messageLength: message.length,
+        },
+      };
+
+      await integrationLogger.logError(
+        "whatsapp",
+        "sendMessage",
+        error as any,
+        structured,
+        { to, messageLength: message.length }
+      );
+
       console.error("Error sending WhatsApp message:", error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
+  }
+
+  private categorizeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const message = error?.message || "";
+
+    if (message.includes("timeout") || message.includes("temporarily unavailable")) {
+      return "transient";
+    }
+    if (message.includes("unauthorized") || message.includes("authentication")) {
+      return "auth";
+    }
+    if (message.includes("invalid") || message.includes("malformed")) {
+      return "validation";
+    }
+    return "unknown";
   }
 
   /**

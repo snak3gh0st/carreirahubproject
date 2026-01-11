@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 
 /**
  * Quickbooks Service
@@ -88,14 +89,19 @@ export class QuickbooksService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<any> {
+    const startTime = Date.now();
     try {
       return await this.circuitBreaker.execute(async () => {
         if (!this.accessToken) {
-          throw new Error("Quickbooks access token not configured");
+          const error: any = new Error("Quickbooks access token not configured");
+          error.status = 401;
+          throw error;
         }
 
         if (!this.companyId || this.companyId.trim() === "") {
-          throw new Error("Quickbooks company ID not configured");
+          const error: any = new Error("Quickbooks company ID not configured");
+          error.status = 400;
+          throw error;
         }
 
         const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
@@ -134,29 +140,90 @@ export class QuickbooksService {
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
-          throw new Error(`Quickbooks API error (${response.status}): ${response.statusText} - ${errorText}`);
+          const error: any = new Error(`Quickbooks API error (${response.status}): ${response.statusText}`);
+          error.status = response.status;
+          error.responseText = errorText;
+          throw error;
         }
 
         return response.json();
       });
     } catch (error) {
+      const durationMs = Date.now() - startTime;
+
       if (error instanceof CircuitOpenError) {
-        // Circuit is open - return null/fallback
-        console.warn(`[QuickBooks] Circuit breaker open: ${error.message}`);
-        // Log to integration log
-        await prisma.integrationLog.create({
-          data: {
-            service: "quickbooks",
-            action: endpoint,
-            status: "CIRCUIT_OPEN",
-            payload: { endpoint, method: options.method || "GET" },
-            error: error.message,
+        // Circuit is open - log and return null/fallback
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: {
+            endpoint,
+            method: options.method || "GET",
           },
-        }).catch(err => console.error("[QuickBooks] Failed to log circuit open:", err));
+        };
+
+        await integrationLogger.logError(
+          "quickbooks",
+          endpoint,
+          error,
+          structured,
+          { endpoint, method: options.method || "GET" }
+        );
         return null;
       }
+
+      // Log other errors with structured context
+      const structured: StructuredErrorData = {
+        errorCode: this.extractErrorCode(error),
+        category: this.categorizeError(error),
+        metadata: {
+          statusCode: (error as any)?.status,
+          message: (error as any)?.message,
+          responseText: (error as any)?.responseText,
+        },
+      };
+
+      await integrationLogger.logError(
+        "quickbooks",
+        endpoint,
+        error as any,
+        structured,
+        { endpoint, method: options.method || "GET" },
+        0
+      );
+
       throw error;
     }
+  }
+
+  private extractErrorCode(error: any): string {
+    const status = error?.status;
+    if (status === 401) return "AUTH_FAILED";
+    if (status === 400) return "INVALID_REQUEST";
+    if (status === 429) return "RATE_LIMITED";
+    if (status === 503) return "SERVICE_UNAVAILABLE";
+    return `HTTP_${status || 500}`;
+  }
+
+  private categorizeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const status = error?.status;
+    const message = error?.message || "";
+
+    if (status === 429 || status === 503 || message.includes("timeout")) {
+      return "transient";
+    }
+    if (status === 401 || message.includes("token") || message.includes("unauthorized")) {
+      return "auth";
+    }
+    if (status === 400) {
+      return "validation";
+    }
+    if (status === 403 || status === 404) {
+      return "permanent";
+    }
+    return "unknown";
   }
 
   /**

@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { prisma } from '@/lib/db';
 import { NotificationType, NotificationStatus } from '@prisma/client';
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 
 // Lazy initialize Resend to avoid build errors when API key is not set
 let resend: Resend | null = null;
@@ -259,12 +260,29 @@ export class NotificationService {
       customerId?: string;
     }
   ): Promise<void> {
+    const startTime = Date.now();
     try {
       const client = getResendClient();
 
       if (!client) {
         // Log but don't throw - gracefully skip when Resend is not configured
         console.log(`[NOTIFICATION] Resend not configured, skipping email to ${to}: ${subject}`);
+
+        const structured: StructuredErrorData = {
+          errorCode: "CLIENT_NOT_CONFIGURED",
+          category: "auth",
+          severity: "error",
+          recovery: "check_circuit",
+          metadata: { to, type },
+        };
+
+        await integrationLogger.logError(
+          "email",
+          "sendEmail",
+          "Resend client not configured",
+          structured,
+          { to, type }
+        );
 
         // Still track the notification as pending
         await prisma.notification.create({
@@ -312,7 +330,25 @@ export class NotificationService {
         },
       });
     } catch (error) {
+      const durationMs = Date.now() - startTime;
+
       if (error instanceof CircuitOpenError) {
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: { to, type },
+        };
+
+        await integrationLogger.logError(
+          "email",
+          "sendEmail",
+          error,
+          structured,
+          { to, type }
+        );
+
         console.warn(`[NOTIFICATION] Circuit breaker open for email service: ${error.message}`);
         // Track as pending for retry - circuit will eventually close and allow retries
         await prisma.notification.create({
@@ -330,6 +366,25 @@ export class NotificationService {
         });
         return; // Don't throw - allow graceful degradation
       }
+
+      // Log other errors
+      const structured: StructuredErrorData = {
+        errorCode: (error as any)?.code || "UNKNOWN_ERROR",
+        category: this.categorizeError(error),
+        metadata: {
+          message: (error as any)?.message,
+          to,
+          type,
+        },
+      };
+
+      await integrationLogger.logError(
+        "email",
+        "sendEmail",
+        error as any,
+        structured,
+        { to, type }
+      );
 
       console.error(`[NOTIFICATION_ERROR] Failed to send email to ${to}:`, error);
 
@@ -351,6 +406,21 @@ export class NotificationService {
 
       throw error;
     }
+  }
+
+  private categorizeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const message = error?.message || "";
+
+    if (message.includes("timeout") || message.includes("temporarily unavailable")) {
+      return "transient";
+    }
+    if (message.includes("unauthorized") || message.includes("authentication")) {
+      return "auth";
+    }
+    if (message.includes("invalid") || message.includes("malformed")) {
+      return "validation";
+    }
+    return "unknown";
   }
 
   // Email Template Generators

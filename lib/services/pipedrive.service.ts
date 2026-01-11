@@ -4,6 +4,7 @@
  * Responsabilidade: Integração com Pipedrive API
  */
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db";
 
 export class PipedriveService {
@@ -20,6 +21,7 @@ export class PipedriveService {
   }
 
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
+    const startTime = Date.now();
     try {
       return await this.circuitBreaker.execute(async () => {
         const url = `${this.baseUrl}${endpoint}?api_token=${this.apiToken}`;
@@ -33,30 +35,80 @@ export class PipedriveService {
         });
 
         if (!response.ok) {
-          throw new Error(`Pipedrive API error: ${response.statusText}`);
+          const error: any = new Error(`Pipedrive API error: ${response.statusText}`);
+          error.status = response.status;
+          throw error;
         }
 
         const data = await response.json();
         return data.data || data;
       });
     } catch (error) {
+      const durationMs = Date.now() - startTime;
+
       if (error instanceof CircuitOpenError) {
-        // Circuit is open - return null/fallback
-        console.warn(`[Pipedrive] Circuit breaker open: ${error.message}`);
-        // Log to integration log
-        await prisma.integrationLog.create({
-          data: {
-            service: "pipedrive",
-            action: endpoint,
-            status: "CIRCUIT_OPEN",
-            payload: { endpoint, method: options.method || "GET" },
-            error: error.message,
+        // Circuit is open - log and return null/fallback
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: {
+            endpoint,
+            method: options.method || "GET",
           },
-        }).catch(err => console.error("[Pipedrive] Failed to log circuit open:", err));
+        };
+
+        await integrationLogger.logError(
+          "pipedrive",
+          endpoint,
+          error,
+          structured,
+          { endpoint, method: options.method || "GET" }
+        );
         return null;
       }
+
+      // Log other errors with structured context
+      const structured: StructuredErrorData = {
+        errorCode: (error as any)?.code || `HTTP_${(error as any)?.status || 500}`,
+        category: this.categorizeError(error),
+        metadata: {
+          statusCode: (error as any)?.status,
+          message: (error as any)?.message,
+        },
+      };
+
+      await integrationLogger.logError(
+        "pipedrive",
+        endpoint,
+        error as any,
+        structured,
+        { endpoint, method: options.method || "GET" },
+        0
+      );
+
       throw error;
     }
+  }
+
+  private categorizeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const status = error?.status;
+    const message = error?.message || "";
+
+    if (status === 429 || status === 503 || message.includes("timeout")) {
+      return "transient";
+    }
+    if (status === 401 || message.includes("unauthorized")) {
+      return "auth";
+    }
+    if (status === 400) {
+      return "validation";
+    }
+    if (status === 403 || status === 404) {
+      return "permanent";
+    }
+    return "unknown";
   }
 
   /**

@@ -1,6 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as crypto from 'crypto';
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db";
 
 interface Invoice {
@@ -135,6 +136,7 @@ export class DocuSignService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<any> {
+    const startTime = Date.now();
     try {
       return await this.circuitBreaker.execute(async () => {
         const token = await this.getAccessToken();
@@ -152,7 +154,10 @@ export class DocuSignService {
 
         if (!response.ok) {
           const errorText = await response.text();
-          throw new Error(`DocuSign API error: ${response.status} ${response.statusText} - ${errorText}`);
+          const error: any = new Error(`DocuSign API error: ${response.status} ${response.statusText}`);
+          error.status = response.status;
+          error.responseText = errorText;
+          throw error;
         }
 
         const contentType = response.headers.get('content-type');
@@ -163,21 +168,71 @@ export class DocuSignService {
         return response.arrayBuffer();
       });
     } catch (error) {
+      const durationMs = Date.now() - startTime;
+
       if (error instanceof CircuitOpenError) {
-        console.warn(`[DocuSign] Circuit breaker open: ${error.message}`);
-        await prisma.integrationLog.create({
-          data: {
-            service: "docusign",
-            action: endpoint,
-            status: "CIRCUIT_OPEN",
-            payload: { endpoint, method: options.method || "GET" },
-            error: error.message,
+        const structured: StructuredErrorData = {
+          errorCode: "CIRCUIT_OPEN",
+          category: "transient",
+          severity: "error",
+          recovery: "wait",
+          metadata: {
+            endpoint,
+            method: options.method || "GET",
           },
-        }).catch(err => console.error("[DocuSign] Failed to log circuit open:", err));
+        };
+
+        await integrationLogger.logError(
+          "docusign",
+          endpoint,
+          error,
+          structured,
+          { endpoint, method: options.method || "GET" }
+        );
         return null;
       }
+
+      // Log other errors with structured context
+      const structured: StructuredErrorData = {
+        errorCode: (error as any)?.code || `HTTP_${(error as any)?.status || 500}`,
+        category: this.categorizeError(error),
+        metadata: {
+          statusCode: (error as any)?.status,
+          message: (error as any)?.message,
+          responseText: (error as any)?.responseText,
+        },
+      };
+
+      await integrationLogger.logError(
+        "docusign",
+        endpoint,
+        error as any,
+        structured,
+        { endpoint, method: options.method || "GET" },
+        0
+      );
+
       throw error;
     }
+  }
+
+  private categorizeError(error: any): "transient" | "permanent" | "auth" | "validation" | "unknown" {
+    const status = error?.status;
+    const message = error?.message || "";
+
+    if (status === 429 || status === 503 || message.includes("timeout")) {
+      return "transient";
+    }
+    if (status === 401 || message.includes("unauthorized")) {
+      return "auth";
+    }
+    if (status === 400) {
+      return "validation";
+    }
+    if (status === 403 || status === 404) {
+      return "permanent";
+    }
+    return "unknown";
   }
 
   /**
