@@ -746,6 +746,15 @@ export class QuickbooksService {
     const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
     return result.QueryResponse?.Invoice || [];
   }
+
+  /**
+   * Public method to refresh QuickBooks access token
+   * Used by cron jobs and manual refresh endpoints
+   * Throws if refresh fails - caller should handle errors
+   */
+  async refreshAccessTokenDirect(): Promise<void> {
+    return this.refreshAccessToken();
+  }
 }
 
 export const quickbooksService = new QuickbooksService();
