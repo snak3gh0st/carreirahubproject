@@ -136,7 +136,9 @@ model User {
   name      String?
   role      UserRole @default(SALES)
   active    Boolean  @default(true)
-  
+  password  String?  // Optional for backward compatibility, required for login
+  passwordHashedAt DateTime? // Tracks when password was last set/updated
+
   // Relações
   sales     Deal[]
   qualifiedLeads        Lead[]              @relation("QualifiedLeads")
@@ -147,6 +149,7 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  @@index([id])
   @@map("users")
 }
 
