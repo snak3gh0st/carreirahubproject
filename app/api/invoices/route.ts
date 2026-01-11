@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { InvoiceStatus } from "@prisma/client";
+import { z } from "zod";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * GET /api/invoices
+ * Listar invoices com filtros opcionais
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get("status") as InvoiceStatus | null;
+    const customerId = searchParams.get("customerId");
+    const dealId = searchParams.get("dealId");
+    const limit = parseInt(searchParams.get("limit") || "50");
+    const offset = parseInt(searchParams.get("offset") || "0");
+
+    const where: any = {};
+    if (status) where.status = status;
+    if (customerId) where.customerId = customerId;
+    if (dealId) where.dealId = dealId;
+
+    const invoices = await prisma.invoice.findMany({
+      where,
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        deal: {
+          select: {
+            id: true,
+            title: true,
+            value: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      skip: offset,
+    });
+
+    return NextResponse.json({
+      invoices,
+      pagination: {
+        limit,
+        offset,
+        total: invoices.length,
+      },
+    });
+  } catch (error) {
+    console.error("Error listing invoices:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
