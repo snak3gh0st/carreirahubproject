@@ -215,7 +215,7 @@ export class InvoiceWorkflowService {
     });
 
     // Atualizar customer com Stripe ID
-    if (!customer.stripe_id) {
+    if (stripeCustomer && !customer.stripe_id) {
       await prisma.customer.update({
         where: { id: customerId },
         data: { stripe_id: stripeCustomer.id },
@@ -226,6 +226,22 @@ export class InvoiceWorkflowService {
     const invoiceNumber = financeService.generateInvoiceNumber("INV");
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30); // 30 dias para pagamento
+
+    if (!stripeCustomer) {
+      // Circuit breaker is open, create invoice without Stripe integration
+      console.warn("[InvoiceWorkflow] Stripe circuit breaker is open, creating invoice without Stripe");
+      const invoice = await prisma.invoice.create({
+        data: {
+          dealId,
+          customerId,
+          invoiceNumber,
+          amount,
+          dueDate,
+          status: InvoiceStatus.DRAFT,
+        },
+      });
+      return invoice.id;
+    }
 
     const stripeInvoice = await stripeService.createInvoice({
       customerId: stripeCustomer.id,
@@ -248,12 +264,14 @@ export class InvoiceWorkflowService {
         amount,
         dueDate,
         status: InvoiceStatus.SENT,
-        stripe_invoice_id: stripeInvoice.id,
+        stripe_invoice_id: stripeInvoice?.id || undefined,
       },
     });
 
     // Enviar invoice por email
-    await stripeService.sendInvoice(stripeInvoice.id);
+    if (stripeInvoice) {
+      await stripeService.sendInvoice(stripeInvoice.id);
+    }
 
     return invoice.id;
   }

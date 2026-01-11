@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { prisma } from '@/lib/db';
 import { quickbooksService } from './quickbooks.service';
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 
 interface Invoice {
   id: string;
@@ -34,6 +35,7 @@ export class StripeService {
   private stripe: Stripe;
   private readonly successUrl: string;
   private readonly cancelUrl: string;
+  private circuitBreaker: CircuitBreaker;
 
   constructor() {
     const apiKey = process.env.STRIPE_SECRET_KEY;
@@ -43,6 +45,7 @@ export class StripeService {
     this.stripe = new Stripe(apiKey, {
       apiVersion: "2023-10-16",
     });
+    this.circuitBreaker = new CircuitBreaker("stripe");
 
     this.successUrl = process.env.STRIPE_PAYMENT_SUCCESS_URL || `${process.env.NEXT_PUBLIC_APP_URL}/payment/success`;
     this.cancelUrl = process.env.STRIPE_PAYMENT_CANCEL_URL || `${process.env.NEXT_PUBLIC_APP_URL}/payment/cancel`;
@@ -56,24 +59,43 @@ export class StripeService {
     name: string;
     phone?: string;
     metadata?: Record<string, string>;
-  }): Promise<Stripe.Customer> {
-    // Search for existing customer by email
-    const existingCustomers = await this.stripe.customers.list({
-      email: data.email,
-      limit: 1,
-    });
+  }): Promise<Stripe.Customer | null> {
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        // Search for existing customer by email
+        const existingCustomers = await this.stripe.customers.list({
+          email: data.email,
+          limit: 1,
+        });
 
-    if (existingCustomers.data.length > 0) {
-      return existingCustomers.data[0];
+        if (existingCustomers.data.length > 0) {
+          return existingCustomers.data[0];
+        }
+
+        // Create new customer
+        return this.stripe.customers.create({
+          email: data.email,
+          name: data.name,
+          phone: data.phone,
+          metadata: data.metadata || {},
+        });
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "stripe",
+            action: "getOrCreateCustomer",
+            status: "CIRCUIT_OPEN",
+            payload: { email: data.email },
+            error: error.message,
+          },
+        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
     }
-
-    // Create new customer
-    return this.stripe.customers.create({
-      email: data.email,
-      name: data.name,
-      phone: data.phone,
-      metadata: data.metadata || {},
-    });
   }
 
   /**
@@ -86,41 +108,98 @@ export class StripeService {
     description?: string;
     dueDate?: Date;
     metadata?: Record<string, string>;
-  }): Promise<Stripe.Invoice> {
-    // Create invoice item
-    const invoiceItem = await this.stripe.invoiceItems.create({
-      customer: data.customerId,
-      amount: Math.round(data.amount * 100), // Stripe uses cents
-      currency: data.currency || "usd",
-      description: data.description || "Invoice",
-    });
+  }): Promise<Stripe.Invoice | null> {
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        // Create invoice item
+        const invoiceItem = await this.stripe.invoiceItems.create({
+          customer: data.customerId,
+          amount: Math.round(data.amount * 100), // Stripe uses cents
+          currency: data.currency || "usd",
+          description: data.description || "Invoice",
+        });
 
-    // Create invoice
-    const invoice = await this.stripe.invoices.create({
-      customer: data.customerId,
-      collection_method: "send_invoice",
-      days_until_due: data.dueDate
-        ? Math.ceil((data.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-        : 30,
-      metadata: data.metadata || {},
-    });
+        // Create invoice
+        const invoice = await this.stripe.invoices.create({
+          customer: data.customerId,
+          collection_method: "send_invoice",
+          days_until_due: data.dueDate
+            ? Math.ceil((data.dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : 30,
+          metadata: data.metadata || {},
+        });
 
-    // Finalize invoice
-    return this.stripe.invoices.finalizeInvoice(invoice.id);
+        // Finalize invoice
+        return this.stripe.invoices.finalizeInvoice(invoice.id);
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "stripe",
+            action: "createInvoice",
+            status: "CIRCUIT_OPEN",
+            payload: { customerId: data.customerId, amount: data.amount },
+            error: error.message,
+          },
+        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
    * Send Invoice by email
    */
-  async sendInvoice(invoiceId: string): Promise<Stripe.Invoice> {
-    return this.stripe.invoices.sendInvoice(invoiceId);
+  async sendInvoice(invoiceId: string): Promise<Stripe.Invoice | null> {
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        return this.stripe.invoices.sendInvoice(invoiceId);
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "stripe",
+            action: "sendInvoice",
+            status: "CIRCUIT_OPEN",
+            payload: { invoiceId },
+            error: error.message,
+          },
+        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
    * Get Invoice by ID
    */
-  async getInvoice(invoiceId: string): Promise<Stripe.Invoice> {
-    return this.stripe.invoices.retrieve(invoiceId);
+  async getInvoice(invoiceId: string): Promise<Stripe.Invoice | null> {
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        return this.stripe.invoices.retrieve(invoiceId);
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "stripe",
+            action: "getInvoice",
+            status: "CIRCUIT_OPEN",
+            payload: { invoiceId },
+            error: error.message,
+          },
+        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -131,16 +210,35 @@ export class StripeService {
     amount: number;
     currency?: string;
     metadata?: Record<string, string>;
-  }): Promise<Stripe.PaymentIntent> {
-    return this.stripe.paymentIntents.create({
-      customer: data.customerId,
-      amount: Math.round(data.amount * 100),
-      currency: data.currency || "usd",
-      metadata: data.metadata || {},
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
+  }): Promise<Stripe.PaymentIntent | null> {
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        return this.stripe.paymentIntents.create({
+          customer: data.customerId,
+          amount: Math.round(data.amount * 100),
+          currency: data.currency || "usd",
+          metadata: data.metadata || {},
+          automatic_payment_methods: {
+            enabled: true,
+          },
+        });
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[Stripe] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "stripe",
+            action: "createPaymentIntent",
+            status: "CIRCUIT_OPEN",
+            payload: { customerId: data.customerId, amount: data.amount },
+            error: error.message,
+          },
+        }).catch(err => console.error("[Stripe] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
+    }
   }
 
   /**
@@ -162,6 +260,11 @@ export class StripeService {
             hub_customer_id: customer.id,
           },
         });
+
+        if (!stripeCustomer) {
+          throw new Error("Stripe service unavailable (circuit breaker open)");
+        }
+
         stripeCustomerId = stripeCustomer.id;
 
         // Update customer with Stripe ID
@@ -265,6 +368,11 @@ export class StripeService {
             hub_customer_id: customer.id,
           },
         });
+
+        if (!stripeCustomer) {
+          throw new Error("Stripe service unavailable (circuit breaker open)");
+        }
+
         stripeCustomerId = stripeCustomer.id;
 
         // Update customer with Stripe ID

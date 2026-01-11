@@ -1,4 +1,6 @@
 import twilio from "twilio";
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { prisma } from "@/lib/db";
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -8,10 +10,16 @@ const client = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
 /**
  * WhatsApp Service
- * 
+ *
  * Responsabilidade: Enviar mensagens via WhatsApp Business API (Twilio)
  */
 export class WhatsAppService {
+  private circuitBreaker: CircuitBreaker;
+
+  constructor() {
+    this.circuitBreaker = new CircuitBreaker("whatsapp");
+  }
+
   /**
    * Enviar mensagem via WhatsApp
    */
@@ -25,10 +33,12 @@ export class WhatsAppService {
       // Garantir formato correto do número (whatsapp:+5511999999999)
       const formattedTo = to.startsWith("whatsapp:") ? to : `whatsapp:${to}`;
 
-      const result = await client.messages.create({
-        from: whatsappNumber,
-        to: formattedTo,
-        body: message,
+      const result = await this.circuitBreaker.execute(async () => {
+        return await client.messages.create({
+          from: whatsappNumber,
+          to: formattedTo,
+          body: message,
+        });
       });
 
       return {
@@ -36,6 +46,19 @@ export class WhatsAppService {
         messageId: result.sid,
       };
     } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[WhatsApp] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "whatsapp",
+            action: "sendMessage",
+            status: "CIRCUIT_OPEN",
+            payload: { to, messageLength: message.length },
+            error: error.message,
+          },
+        }).catch(err => console.error("[WhatsApp] Failed to log circuit open:", err));
+        return { success: false, error: "WhatsApp service temporarily unavailable, message queued for retry" };
+      }
       console.error("Error sending WhatsApp message:", error);
       return {
         success: false,
@@ -76,4 +99,3 @@ Qualquer dúvida, estamos à disposição!`;
 }
 
 export const whatsappService = new WhatsAppService();
-

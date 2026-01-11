@@ -626,3 +626,25 @@ model WebhookEvent {
   @@map("webhook_events")
 }
 
+// CIRCUIT BREAKER STATE: Tracks circuit breaker status for all external integrations
+// Implements circuit breaker pattern: CLOSED -> OPEN -> HALF_OPEN -> CLOSED
+// Prevents cascading failures when external APIs are temporarily unavailable
+model CircuitBreakerState {
+  id                    String    @id @default(cuid())
+  serviceName           String    @unique // e.g., "pipedrive", "quickbooks", "stripe", "docusign", "whatsapp", "retell", "openai", "email"
+  state                 String    @default("CLOSED") // CLOSED | OPEN | HALF_OPEN
+  failureCount          Int       @default(0) // consecutive failures
+  successCount          Int       @default(0) // consecutive successes (used for recovery)
+  lastStateChangeAt     DateTime  @default(now()) // timestamp of last state transition
+  lastErrorMessage      String?   @db.Text // most recent error that triggered state change
+  thresholdFailures     Int       @default(5) // failures needed to open circuit
+  thresholdSuccesses    Int       @default(2) // successes needed to close circuit from HALF_OPEN
+  timeoutMs             Int       @default(60000) // 60 seconds - how long until OPEN -> HALF_OPEN
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([serviceName])
+  @@index([state])
+  @@map("circuit_breaker_states")
+}
+

@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import { prisma } from '@/lib/db';
 import { NotificationType, NotificationStatus } from '@prisma/client';
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 
 // Lazy initialize Resend to avoid build errors when API key is not set
 let resend: Resend | null = null;
@@ -61,6 +62,12 @@ interface User {
 }
 
 export class NotificationService {
+  private circuitBreaker: CircuitBreaker;
+
+  constructor() {
+    this.circuitBreaker = new CircuitBreaker("email");
+  }
+
   /**
    * Send invoice approval request to FINANCE team
    */
@@ -276,12 +283,14 @@ export class NotificationService {
         return;
       }
 
-      // Send email via Resend
-      const { data, error } = await client.emails.send({
-        from: EMAIL_FROM,
-        to: [to],
-        subject,
-        html,
+      // Send email via Resend with circuit breaker protection
+      const { data, error } = await this.circuitBreaker.execute(async () => {
+        return await client.emails.send({
+          from: EMAIL_FROM,
+          to: [to],
+          subject,
+          html,
+        });
       });
 
       if (error) {
@@ -303,6 +312,25 @@ export class NotificationService {
         },
       });
     } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[NOTIFICATION] Circuit breaker open for email service: ${error.message}`);
+        // Track as pending for retry - circuit will eventually close and allow retries
+        await prisma.notification.create({
+          data: {
+            type,
+            status: NotificationStatus.PENDING,
+            recipient: to,
+            subject,
+            templateId: type,
+            errorMessage: `Circuit breaker open: ${error.message}. Email will be retried when service recovers.`,
+            invoiceId: relations.invoiceId,
+            contractId: relations.contractId,
+            customerId: relations.customerId,
+          },
+        });
+        return; // Don't throw - allow graceful degradation
+      }
+
       console.error(`[NOTIFICATION_ERROR] Failed to send email to ${to}:`, error);
 
       // Track failed notification

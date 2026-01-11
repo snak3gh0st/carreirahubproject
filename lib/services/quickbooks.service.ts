@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 
 /**
  * Quickbooks Service
@@ -19,6 +20,7 @@ export class QuickbooksService {
   private refreshToken: string | null;
   private companyId: string;
   private baseUrl: string;
+  private circuitBreaker: CircuitBreaker;
 
   constructor() {
     this.clientId = process.env.QUICKBOOKS_CLIENT_ID || "";
@@ -27,6 +29,7 @@ export class QuickbooksService {
     this.accessToken = null;
     this.refreshToken = null;
     this.companyId = "";
+    this.circuitBreaker = new CircuitBreaker("quickbooks");
 
     // Quickbooks Sandbox: https://sandbox-quickbooks.api.intuit.com
     // Quickbooks Production: https://quickbooks.api.intuit.com
@@ -85,54 +88,75 @@ export class QuickbooksService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<any> {
-    if (!this.accessToken) {
-      throw new Error("Quickbooks access token not configured");
-    }
-
-    if (!this.companyId || this.companyId.trim() === "") {
-      throw new Error("Quickbooks company ID not configured");
-    }
-
-    const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
-
-    console.log(`[QuickBooks] Requesting: ${url}`);
-
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Authorization": `Bearer ${this.accessToken}`,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
-
-    if (response.status === 401) {
-      const errorText = await response.text();
-      console.error(`[QuickBooks] 401 Unauthorized: ${errorText}`);
-      
-      // Token expirado, tentar refresh se refresh token estiver configurado
-      if (this.refreshToken) {
-        try {
-          console.log("[QuickBooks] Attempting to refresh access token...");
-          await this.refreshAccessToken();
-          return this.request(endpoint, options);
-        } catch (error) {
-          // Se refresh falhar, lançar erro informando que precisa de novo token
-          throw new Error(`Quickbooks access token expired. Please update QUICKBOOKS_ACCESS_TOKEN in .env. Error: ${error instanceof Error ? error.message : String(error)}`);
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        if (!this.accessToken) {
+          throw new Error("Quickbooks access token not configured");
         }
-      } else {
-        throw new Error(`Quickbooks access token expired or invalid. Status: 401. Response: ${errorText}`);
+
+        if (!this.companyId || this.companyId.trim() === "") {
+          throw new Error("Quickbooks company ID not configured");
+        }
+
+        const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
+
+        console.log(`[QuickBooks] Requesting: ${url}`);
+
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            "Authorization": `Bearer ${this.accessToken}`,
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            ...options.headers,
+          },
+        });
+
+        if (response.status === 401) {
+          const errorText = await response.text();
+          console.error(`[QuickBooks] 401 Unauthorized: ${errorText}`);
+
+          // Token expirado, tentar refresh se refresh token estiver configurado
+          if (this.refreshToken) {
+            try {
+              console.log("[QuickBooks] Attempting to refresh access token...");
+              await this.refreshAccessToken();
+              return this.request(endpoint, options);
+            } catch (error) {
+              // Se refresh falhar, lançar erro informando que precisa de novo token
+              throw new Error(`Quickbooks access token expired. Please update QUICKBOOKS_ACCESS_TOKEN in .env. Error: ${error instanceof Error ? error.message : String(error)}`);
+            }
+          } else {
+            throw new Error(`Quickbooks access token expired or invalid. Status: 401. Response: ${errorText}`);
+          }
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
+          throw new Error(`Quickbooks API error (${response.status}): ${response.statusText} - ${errorText}`);
+        }
+
+        return response.json();
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        // Circuit is open - return null/fallback
+        console.warn(`[QuickBooks] Circuit breaker open: ${error.message}`);
+        // Log to integration log
+        await prisma.integrationLog.create({
+          data: {
+            service: "quickbooks",
+            action: endpoint,
+            status: "CIRCUIT_OPEN",
+            payload: { endpoint, method: options.method || "GET" },
+            error: error.message,
+          },
+        }).catch(err => console.error("[QuickBooks] Failed to log circuit open:", err));
+        return null;
       }
+      throw error;
     }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
-      throw new Error(`Quickbooks API error (${response.status}): ${response.statusText} - ${errorText}`);
-    }
-
-    return response.json();
   }
 
   /**

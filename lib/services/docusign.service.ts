@@ -1,5 +1,7 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import * as crypto from 'crypto';
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { prisma } from "@/lib/db";
 
 interface Invoice {
   id: string;
@@ -32,6 +34,7 @@ export class DocuSignService {
   private privateKey: string;
   private accessToken: string | null = null;
   private tokenExpiresAt: number | null = null;
+  private circuitBreaker: CircuitBreaker;
 
   constructor() {
     this.integrationKey = process.env.DOCUSIGN_INTEGRATION_KEY || "";
@@ -39,6 +42,7 @@ export class DocuSignService {
     this.accountId = process.env.DOCUSIGN_ACCOUNT_ID || "";
     this.baseUrl = process.env.DOCUSIGN_BASE_URL || "https://demo.docusign.net";
     this.privateKey = process.env.DOCUSIGN_PRIVATE_KEY || "";
+    this.circuitBreaker = new CircuitBreaker("docusign");
   }
 
   /**
@@ -131,30 +135,49 @@ export class DocuSignService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<any> {
-    const token = await this.getAccessToken();
-    const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}${endpoint}`;
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        const token = await this.getAccessToken();
+        const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}${endpoint}`;
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...options.headers,
-      },
-    });
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            ...options.headers,
+          },
+        });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`DocuSign API error: ${response.status} ${response.statusText} - ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`DocuSign API error: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          return response.json();
+        }
+
+        return response.arrayBuffer();
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[DocuSign] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "docusign",
+            action: endpoint,
+            status: "CIRCUIT_OPEN",
+            payload: { endpoint, method: options.method || "GET" },
+            error: error.message,
+          },
+        }).catch(err => console.error("[DocuSign] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
     }
-
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      return response.json();
-    }
-
-    return response.arrayBuffer();
   }
 
   /**

@@ -1,6 +1,8 @@
 import OpenAI from "openai";
 import { CUSTOMER_SERVICE_SYSTEM_PROMPT, CUSTOMER_SERVICE_USER_CONTEXT } from "@/lib/prompts/customer-service";
 import { LEAD_QUALIFICATION_PROMPT, LEAD_QUALIFICATION_DATA_FORMAT } from "@/lib/prompts/lead-qualification";
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { prisma } from "@/lib/db";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -35,6 +37,12 @@ export interface QualificationResult {
 }
 
 export class AIService {
+  private circuitBreaker: CircuitBreaker;
+
+  constructor() {
+    this.circuitBreaker = new CircuitBreaker("openai");
+  }
+
   /**
    * Processa mensagem do lead no chatbot e retorna resposta contextual
    */
@@ -58,47 +66,70 @@ export class AIService {
         };
       }
 
-      const systemPrompt = CUSTOMER_SERVICE_SYSTEM_PROMPT;
-      const userContext = CUSTOMER_SERVICE_USER_CONTEXT(
-        leadContext.name,
-        leadContext.email,
-        this.formatConversationHistory(leadContext.conversationHistory)
-      );
+      const result = await this.circuitBreaker.execute(async () => {
+        const systemPrompt = CUSTOMER_SERVICE_SYSTEM_PROMPT;
+        const userContext = CUSTOMER_SERVICE_USER_CONTEXT(
+          leadContext.name,
+          leadContext.email,
+          this.formatConversationHistory(leadContext.conversationHistory)
+        );
 
-      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-        { role: "system", content: systemPrompt },
-        { role: "system", content: userContext },
-        ...leadContext.conversationHistory.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })) as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-        { role: "user", content: message },
-      ];
+        const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+          { role: "system", content: systemPrompt },
+          { role: "system", content: userContext },
+          ...leadContext.conversationHistory.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })) as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+          { role: "user", content: message },
+        ];
 
-      const completion = await openai.chat.completions.create({
-        model: AI_MODEL,
-        messages,
-        temperature: AI_TEMPERATURE,
-        max_tokens: 500,
+        const completion = await openai.chat.completions.create({
+          model: AI_MODEL,
+          messages,
+          temperature: AI_TEMPERATURE,
+          max_tokens: 500,
+        });
+
+        const response = completion.choices[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+
+        // Analisar se deve escalar
+        const shouldEscalate = await this.shouldEscalate(message, response, leadContext.conversationHistory);
+
+        // Extrair intenção
+        const intent = await this.extractIntent(message);
+
+        return {
+          response,
+          shouldEscalate,
+          intent,
+          sentiment: this.analyzeSentiment(message),
+        };
       });
 
-      const response = completion.choices[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
-
-      // Analisar se deve escalar
-      const shouldEscalate = await this.shouldEscalate(message, response, leadContext.conversationHistory);
-      
-      // Extrair intenção
-      const intent = await this.extractIntent(message);
-
-      return {
-        response,
-        shouldEscalate,
-        intent,
-        sentiment: this.analyzeSentiment(message),
-      };
+      return result;
     } catch (error: any) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[AI] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "openai",
+            action: "chatWithLead",
+            status: "CIRCUIT_OPEN",
+            payload: { email: leadContext.email },
+            error: error.message,
+          },
+        }).catch(err => console.error("[AI] Failed to log circuit open:", err));
+        return {
+          response: "Desculpe, nosso sistema de chat está temporariamente indisponível. Por favor, entre em contato conosco por email ou telefone.",
+          shouldEscalate: true,
+          intent: "support_needed",
+          sentiment: "neutral",
+        };
+      }
+
       console.error("Error in chatWithLead:", error);
-      
+
       // Se for erro de autenticação, retornar resposta padrão
       if (error?.status === 401 || error?.message?.includes("API key")) {
         console.warn("[AI] OpenAI API key invalid or missing");
@@ -109,7 +140,7 @@ export class AIService {
           sentiment: "neutral",
         };
       }
-      
+
       throw new Error("Failed to process chat message");
     }
   }

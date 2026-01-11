@@ -1,36 +1,62 @@
 /**
  * Pipedrive Service
- * 
+ *
  * Responsabilidade: Integração com Pipedrive API
  */
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { prisma } from "@/lib/db";
+
 export class PipedriveService {
   private apiToken: string;
   private companyDomain: string;
   private baseUrl: string;
+  private circuitBreaker: CircuitBreaker;
 
   constructor() {
     this.apiToken = process.env.PIPEDRIVE_API_TOKEN || "";
     this.companyDomain = process.env.PIPEDRIVE_COMPANY_DOMAIN || "";
     this.baseUrl = `https://${this.companyDomain}.pipedrive.com/api/v1`;
+    this.circuitBreaker = new CircuitBreaker("pipedrive");
   }
 
   private async request(endpoint: string, options: RequestInit = {}): Promise<any> {
-    const url = `${this.baseUrl}${endpoint}?api_token=${this.apiToken}`;
-    
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-    });
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        const url = `${this.baseUrl}${endpoint}?api_token=${this.apiToken}`;
 
-    if (!response.ok) {
-      throw new Error(`Pipedrive API error: ${response.statusText}`);
+        const response = await fetch(url, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            ...options.headers,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Pipedrive API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.data || data;
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        // Circuit is open - return null/fallback
+        console.warn(`[Pipedrive] Circuit breaker open: ${error.message}`);
+        // Log to integration log
+        await prisma.integrationLog.create({
+          data: {
+            service: "pipedrive",
+            action: endpoint,
+            status: "CIRCUIT_OPEN",
+            payload: { endpoint, method: options.method || "GET" },
+            error: error.message,
+          },
+        }).catch(err => console.error("[Pipedrive] Failed to log circuit open:", err));
+        return null;
+      }
+      throw error;
     }
-
-    const data = await response.json();
-    return data.data || data;
   }
 
   /**

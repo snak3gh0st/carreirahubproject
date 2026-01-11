@@ -4,6 +4,8 @@
  * Handles RetellAI API integration for AI-powered collection calls
  * Documentation: https://docs.retellai.com/
  */
+import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
+import { prisma } from "@/lib/db";
 
 export interface RetellCallParams {
   phoneNumber: string;
@@ -63,10 +65,12 @@ export class RetellService {
   private apiKey: string;
   private agentId: string;
   private baseUrl = "https://api.retellai.com";
+  private circuitBreaker: CircuitBreaker;
 
   constructor() {
     this.apiKey = process.env.RETELL_API_KEY || "";
     this.agentId = process.env.RETELL_AGENT_ID || "";
+    this.circuitBreaker = new CircuitBreaker("retell");
   }
 
   /**
@@ -83,25 +87,44 @@ export class RetellService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    if (!this.isConfigured()) {
-      throw new Error("RetellAI is not configured. Missing API key or agent ID.");
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        if (!this.isConfigured()) {
+          throw new Error("RetellAI is not configured. Missing API key or agent ID.");
+        }
+
+        const response = await fetch(`${this.baseUrl}${endpoint}`, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+            ...options.headers,
+          },
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`RetellAI API error: ${response.status} - ${errorText}`);
+        }
+
+        return response.json();
+      });
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        console.warn(`[RetellAI] Circuit breaker open: ${error.message}`);
+        await prisma.integrationLog.create({
+          data: {
+            service: "retell",
+            action: endpoint,
+            status: "CIRCUIT_OPEN",
+            payload: { endpoint, method: options.method || "GET" },
+            error: error.message,
+          },
+        }).catch(err => console.error("[RetellAI] Failed to log circuit open:", err));
+        throw error; // Re-throw as the caller handles fallback
+      }
+      throw error;
     }
-
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.apiKey}`,
-        ...options.headers,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`RetellAI API error: ${response.status} - ${errorText}`);
-    }
-
-    return response.json();
   }
 
   /**
