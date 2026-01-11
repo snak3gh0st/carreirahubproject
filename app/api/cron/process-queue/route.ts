@@ -1,128 +1,116 @@
 import { NextRequest, NextResponse } from "next/server";
+import { processAllQueues } from "@/lib/utils/queue-processor";
 import { prisma } from "@/lib/db";
-import { pipedriveSyncService } from "@/lib/services/pipedrive-sync.service";
-import { quickbooksSyncService } from "@/lib/services/quickbooks-sync.service";
 
 /**
- * POST /api/cron/process-queue
+ * GET /api/cron/process-queue
  *
- * Processes pending bulk import jobs
- * This should be called by a cron job (e.g., Vercel Cron)
+ * Processes all BullMQ queues (leadQualification, whatsappMessages, etc.)
+ * with per-queue job limits and automatic timeout handling.
  *
- * In vercel.json, add:
- * {
- *   "crons": [{
- *     "path": "/api/cron/process-queue",
- *     "schedule": "every 5 minutes"
- *   }]
- * }
+ * Called by Vercel Cron every 5 minutes (configured in vercel.json).
+ * See .planning/docs/QUEUE_PROCESSING.md for full architecture documentation.
+ *
+ * Vercel configuration: path "/api/cron/process-queue", schedule every 5 minutes
+ *
+ * Execution constraints:
+ * - Vercel timeout: 10 seconds
+ * - Endpoint max execution: 8 seconds (2s buffer)
+ * - Job timeout per job: 5 seconds
+ *
+ * Queue processing order (by priority):
+ * 1. whatsappMessages (5 max) - lightweight, high priority
+ * 2. invoiceApproval (3 max) - moderate weight
+ * 3. pipedriveReverseSync (2 max) - API calls
+ * 4. pipedriveSync (3 max) - API calls
+ * 5. leadQualification (2 max) - AI heavy
+ * 6. invoiceGeneration (2 max) - heavyweight
+ * 7. contractGeneration (2 max) - heavyweight
+ * 8. quickbooksSync (1 max) - VERY heavy
+ * 9. bulkImport (1 max) - EXTREMELY heavy
+ *
+ * Returns 200 even if jobs fail (cron healthcheck success is endpoint success).
+ * Metrics logged to IntegrationLog table for monitoring.
+ * Job failures logged with full context for debugging.
  */
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
-    // Verify cron secret if configured
-    const cronSecret = process.env.CRON_SECRET;
+    // Validate Vercel cron secret if configured
+    const cronSecret = process.env.VERCEL_CRON_SECRET;
     if (cronSecret) {
       const authHeader = request.headers.get("authorization");
       if (authHeader !== `Bearer ${cronSecret}`) {
+        console.warn("[CRON] Unauthorized cron request");
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
     }
 
-    console.log("[CRON] Processing queue...");
+    console.log("[CRON] Starting queue processing");
 
-    // Find pending bulk imports
-    const pendingImports = await prisma.bulkImport.findMany({
-      where: {
-        status: "RUNNING",
+    // Process all queues (built-in 8-second safety limit)
+    const result = await processAllQueues();
+
+    const totalExecutionTimeMs = Date.now() - startTime;
+
+    console.log(
+      `[CRON] Complete: ${result.totalJobsProcessed} jobs processed, ` +
+        `${result.totalJobsFailed} failed, ${result.queuesProcessed} queues, ` +
+        `${totalExecutionTimeMs}ms`
+    );
+
+    // Always return 200 for cron healthcheck
+    // Job failures are captured in IntegrationLog for monitoring
+    return NextResponse.json(
+      {
+        success: result.totalJobsFailed === 0,
+        queuesProcessed: result.queuesProcessed,
+        totalJobsProcessed: result.totalJobsProcessed,
+        totalFailures: result.totalJobsFailed,
+        executionTimeMs: result.totalExecutionTimeMs,
+        details: result.queueResults,
       },
-      orderBy: {
-        startedAt: "asc",
-      },
-      take: 5, // Process up to 5 at a time
-    });
-
-    console.log(`[CRON] Found ${pendingImports.length} pending imports`);
-
-    const results = [];
-
-    for (const bulkImport of pendingImports) {
-      try {
-        console.log(`[CRON] Processing import ${bulkImport.id} (${bulkImport.source} - ${bulkImport.type})`);
-
-        if (bulkImport.source === "PIPEDRIVE") {
-          const typeParts = bulkImport.type.split("_AND_");
-
-          if (typeParts.includes("PERSONS")) {
-            await pipedriveSyncService.importAllPersons(bulkImport.id);
-          }
-
-          if (typeParts.includes("DEALS")) {
-            await pipedriveSyncService.importAllDeals(bulkImport.id);
-          }
-        } else if (bulkImport.source === "QUICKBOOKS") {
-          const typeParts = bulkImport.type.split("_AND_");
-
-          if (typeParts.includes("CUSTOMERS")) {
-            await quickbooksSyncService.importAllCustomers(bulkImport.id);
-          }
-
-          if (typeParts.includes("INVOICES")) {
-            await quickbooksSyncService.importAllInvoices(bulkImport.id);
-          }
-
-          // Mark as completed
-          await prisma.bulkImport.update({
-            where: { id: bulkImport.id },
-            data: {
-              status: "COMPLETED",
-              completedAt: new Date(),
-            },
-          });
-        }
-
-        results.push({
-          importId: bulkImport.id,
-          status: "processed",
-        });
-      } catch (error) {
-        console.error(`[CRON] Error processing import ${bulkImport.id}:`, error);
-
-        // Mark as failed
-        await prisma.bulkImport.update({
-          where: { id: bulkImport.id },
-          data: {
-            status: "FAILED",
-            completedAt: new Date(),
-          },
-        });
-
-        results.push({
-          importId: bulkImport.id,
-          status: "failed",
-          error: error instanceof Error ? error.message : "Unknown error",
-        });
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      processed: results.length,
-      results,
-    });
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[CRON] Error in process-queue:", error);
 
+    // Log error but still return 200
+    try {
+      await prisma.integrationLog.create({
+        data: {
+          service: "QUEUE_PROCESSING",
+          action: "process_all_queues",
+          status: "ERROR",
+          error:
+            error instanceof Error ? error.message : "Unknown error",
+          errorCategory: "permanent",
+          errorSeverity: "critical",
+          metadata: {
+            errorName:
+              error instanceof Error ? error.name : typeof error,
+          },
+        },
+      });
+    } catch (logError) {
+      console.error("[CRON] Failed to log error:", logError);
+    }
+
+    // Return 200 even on error (cron should see this as success)
+    // Details in IntegrationLog table for debugging
     return NextResponse.json(
       {
-        error: "Failed to process queue",
-        message: error instanceof Error ? error.message : "Unknown error",
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        executionTimeMs: Date.now() - startTime,
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
 
-// Also allow GET for testing
-export async function GET(request: NextRequest) {
-  return POST(request);
+// Also support POST for compatibility
+export async function POST(request: NextRequest) {
+  return GET(request);
 }
