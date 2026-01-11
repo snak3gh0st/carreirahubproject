@@ -16,18 +16,26 @@ export default async function DashboardLayout({
 }) {
   let session;
   try {
+    console.log("[DashboardLayout] Getting session...");
     session = await getServerSession(authOptions);
+    console.log("[DashboardLayout] Session retrieved successfully");
   } catch (error) {
-    console.error("[DashboardLayout] Session error:", error);
+    console.error("[DashboardLayout] Session error:", {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     // Redirect to signin on session error instead of 500
     redirect("/auth/signin");
   }
 
   if (!session) {
+    console.log("[DashboardLayout] No session found, redirecting to signin");
     redirect("/auth/signin");
   }
 
   const userRole = (session.user as any).role;
+  console.log("[DashboardLayout] User role:", userRole);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
