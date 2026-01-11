@@ -51,7 +51,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Circuit breaker pattern for external API calls (Pipedrive, QuickBooks, Stripe, DocuSign, Twilio, OpenAI)
+- [ ] 02-01: Circuit breaker pattern for external API calls (Pipedrive, QuickBooks, Stripe, DocuSign, Twilio, RetellAI, OpenAI, Resend)
 - [ ] 02-02: Graceful degradation and improved error logging with structured context
 
 ### Phase 3: Queue Processing
