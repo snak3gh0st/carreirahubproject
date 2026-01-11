@@ -1,3 +1,48 @@
+---
+phase: 01-webhook-reliability
+plan: 03
+subsystem: monitoring
+tags: [health-check, dashboard, observability, webhooks, monitoring]
+requires:
+  - phase: 01-01
+    provides: webhook-retry-middleware
+  - phase: 01-02
+    provides: event-deduplication
+provides:
+  - webhook-health-endpoint
+  - monitoring-dashboard
+  - webhook-statistics-calculation
+affects:
+  - operations
+  - incident-response
+  - webhook-reliability-visibility
+tech-stack:
+  added: []
+  patterns:
+    - public-health-endpoint for uptime monitoring
+    - protected-dashboard with NextAuth
+    - per-service-statistics aggregation
+key-files:
+  created:
+    - app/api/webhooks/health/route.ts
+    - lib/utils/webhook-health.ts
+    - app/dashboard/webhooks/page.tsx
+    - components/webhook-stats-card.tsx
+  modified: []
+key-decisions:
+  - Public health endpoint (no auth) for uptime monitoring tools
+  - 24-hour analysis window for recent error calculation
+  - Health thresholds: healthy ≥0.95, degraded 0.80-0.95, unhealthy <0.80
+  - Dashboard protected by NextAuth middleware
+patterns-established:
+  - Health check endpoints return per-service statistics
+  - Status calculation from WebhookEvent table aggregations
+  - Client component with useState/useEffect for real-time updates
+issues-created: []
+duration: 42 min
+completed: 2026-01-11
+---
+
 # Phase 1 Plan 3: Webhook Health Monitoring Summary
 
 **Implemented real-time webhook health monitoring with public health check endpoint and protected dashboard for proactive issue detection.**
