@@ -352,6 +352,12 @@ const queueHandlers: {
  * 3. Job completion is atomic: marked as complete ONLY after handler returns
  * 4. Failed jobs are moved to retry queue with exponential backoff
  * 5. All errors are logged to IntegrationLog for debugging
+ *
+ * MONITORING: Queue health monitoring (stale jobs, stuck jobs, dead jobs)
+ * is handled by /api/cron/monitor-queues endpoint which runs every 4 hours.
+ * See lib/utils/queue-monitor.ts and .planning/docs/QUEUE_MONITORING.md
+ * for full architecture. This keeps queue processing and monitoring separate
+ * to avoid timeout conflicts.
  */
 export async function processQueue(
   queueName: string,

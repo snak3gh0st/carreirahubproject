@@ -9,6 +9,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/monitor-queues",
+      "schedule": "0 */4 * * *"
+    },
+    {
       "path": "/api/cron/contract-reminders",
       "schedule": "0 9 * * *"
     },
