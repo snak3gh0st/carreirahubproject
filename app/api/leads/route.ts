@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { leadService } from "@/lib/services/lead.service";
+import { createUserFallbackResponse, categorizeByStatusCode } from "@/lib/utils/error-fallback";
 import { z } from "zod";
 import { LeadSource, LeadStatus } from "@prisma/client";
 
@@ -71,10 +72,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("Error creating lead:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+
+    // Provide graceful fallback for integration errors
+    const errorCategory = categorizeByStatusCode((error as any)?.status);
+    const fallback = createUserFallbackResponse("pipedrive", "create_lead", errorCategory);
+
+    // Return appropriate status code based on error type
+    const statusCode = errorCategory === "transient" ? 202 : 500;
+    return NextResponse.json(fallback, { status: statusCode });
   }
 }
 
