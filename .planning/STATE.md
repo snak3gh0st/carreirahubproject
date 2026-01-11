@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-10)
 ## Current Position
 
 Phase: 3 of 4 (Queue Processing)
-Plan: 1 of 2 in current phase (complete)
-Status: Queue processor infrastructure complete
-Last activity: 2026-01-11 — Completed 03-01-PLAN.md (cron-based queue processing for Vercel)
+Plan: 2 of 2 in current phase (complete)
+Status: Phase complete — Ready for Phase 4
+Last activity: 2026-01-11 — Completed 03-02-PLAN.md (queue monitoring & stale job detection)
 
-Progress: ████████████░ 95% (Phase 1: 2/3, Phase 2: 2/2, Phase 3: 1/2 complete)
+Progress: ██████████████ 100% (Phase 1: 2/3, Phase 2: 2/2, Phase 3: 2/2 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 38 minutes
-- Total execution time: 3.2 hours
+- Total plans completed: 6
+- Average duration: 39 minutes
+- Total execution time: 3.9 hours
 
 **By Phase:**
 
@@ -30,11 +30,11 @@ Progress: ████████████░ 95% (Phase 1: 2/3, Phase 2: 2/
 |-------|-------|-------|----------|
 | 1. Webhook Reliability | 2/3 | 80 min | 40 min |
 | 2. Integration Resilience | 2/2 | 80 min | 40 min |
-| 3. Queue Processing | 1/2 | 45 min | 45 min |
+| 3. Queue Processing | 2/2 | 90 min | 45 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (45m), 01-02 (35m), 02-01 (37m), 02-02 (43m), 03-01 (45m)
-- Trend: Consistent 35-45min per plan, velocity stable
+- Last 6 plans: 01-01 (45m), 01-02 (35m), 02-01 (37m), 02-02 (43m), 03-01 (45m), 03-02 (42m)
+- Trend: Stable 35-45min per plan, velocity very consistent
 
 ## Accumulated Context
 
@@ -80,17 +80,24 @@ Recent decisions affecting current work:
 - All queue operations logged to IntegrationLog for monitoring
 - Priority-based queue processing (lightweight/high-priority first)
 
+**From 03-02:**
+- Separate cron schedules: processing (5min), monitoring (4hr) to avoid timeout conflicts
+- Efficient queue scanning: delayed+waiting+active states only (O(active) not O(all jobs))
+- Logging-only monitoring design: no auto-remediation (stuck jobs may be legitimately long-running)
+- Standard thresholds: 24h stale, 5 failures (BullMQ ceiling), 5min stuck timeout
+- All monitoring issues logged to IntegrationLog with category QUEUE_MONITORING for queryability
+
 ### Deferred Issues
 
 None. Build passes with no errors.
 
 ### Blockers/Concerns
 
-None. Phase 3 Plan 1 complete. Ready for Phase 3 Plan 2 (monitoring & stale job detection).
+None. Phase 3 complete. Queue processing infrastructure is production-ready. Ready for Phase 4: Production Auth.
 
 ## Session Continuity
 
 Last session: 2026-01-11
-Stopped at: Plan 03-01 complete (cron-based queue processing for Vercel serverless)
-Resume file: .planning/phases/03-queue-processing/03-01-SUMMARY.md
-Next action: Execute Phase 3 Plan 2 (Queue Monitoring & Stale Job Detection)
+Stopped at: Plan 03-02 complete (queue monitoring & stale job detection)
+Resume file: .planning/phases/03-queue-processing/03-02-SUMMARY.md
+Next action: Phase 3 complete. Ready to plan Phase 4 (Production Auth: password hashing & OAuth token refresh)
