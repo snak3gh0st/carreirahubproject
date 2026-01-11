@@ -1,6 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "./db";
+import { authService } from "./services/auth.service";
 
 import { UserRole } from "@prisma/client";
 
@@ -24,7 +25,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Query otimizada - selecionar apenas campos necessários
+          // Query otimizada - selecionar campos necessários incluindo password
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
             select: {
@@ -33,6 +34,7 @@ export const authOptions: NextAuthOptions = {
               name: true,
               role: true,
               active: true,
+              password: true,
             },
           });
 
@@ -44,9 +46,21 @@ export const authOptions: NextAuthOptions = {
             return null;
           }
 
-          // TODO: Implementar verificação de senha (precisa adicionar campo password ao User)
-          // Por enquanto, permitir login sem senha em desenvolvimento
-          // Em produção, implementar verificação de senha com bcrypt
+          // Check if user has a password set
+          if (!user.password) {
+            console.log("[AUTH] User has no password set, please set password first");
+            return null;
+          }
+
+          // Verify password with bcrypt
+          const passwordValid = await authService.verifyPassword(
+            credentials.password,
+            user.password
+          );
+
+          if (!passwordValid) {
+            return null;
+          }
 
           return {
             id: user.id,
