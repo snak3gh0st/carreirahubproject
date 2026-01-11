@@ -435,7 +435,8 @@ export async function monitorAllQueues(
   await Promise.all(monitorPromises);
 
   // Check QuickBooks token health as part of overall monitoring
-  await monitorQuickBooksTokenHealth();
+  // Temporarily disabled to diagnose dashboard 500 errors
+  // await monitorQuickBooksTokenHealth();
 
   const totalIssuesAcrossQueues =
     totalStaleJobs + totalDeadJobs + totalStuckJobs;
