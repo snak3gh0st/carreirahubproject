@@ -79,7 +79,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Implement password hashing with bcrypt and remove development bypass
+- [x] 04-01: Implement password hashing with bcrypt and remove development bypass (completed 2026-01-11, 38min)
 - [ ] 04-02: QuickBooks OAuth token refresh UI and automated token refresh
 
 ## Progress
@@ -89,7 +89,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Webhook Reliability | 2/3 | In progress | - |
+| 1. Webhook Reliability | 3/3 | Complete | 2026-01-11 |
 | 2. Integration Resilience | 2/2 | Complete | 2026-01-11 |
 | 3. Queue Processing | 2/2 | Complete | 2026-01-11 |
-| 4. Production Auth | 0/2 | Not started | - |
+| 4. Production Auth | 1/2 | In progress | - |
