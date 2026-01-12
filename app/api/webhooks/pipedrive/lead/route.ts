@@ -1,26 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
-import { leadService } from "@/lib/services/lead.service";
-import { sdrService } from "@/lib/services/sdr.service";
-import { pipedriveService } from "@/lib/services/pipedrive.service";
-import { LeadSource } from "@prisma/client";
 import { validatePipedriveWebhookSignature } from "@/lib/utils/webhook-validation";
+import { acceptWebhook, webhookResponse } from "@/lib/utils/webhook-handler";
 
 /**
  * POST /api/webhooks/pipedrive/lead
  *
- * Webhook receiver para novos Leads criados no Pipedrive
+ * Webhook receiver for new Leads created in Pipedrive
  *
- * Gatilho: Person criado no Pipedrive (ou Deal criado com status inicial)
+ * Pattern:
+ * 1. Validate signature
+ * 2. Accept webhook (store in DB)
+ * 3. Enqueue for async processing
+ * 4. Return 200 OK immediately
  *
- * Fluxo:
- * 1. Validar assinatura do webhook
- * 2. Extrair Person ID do payload
- * 3. Buscar dados completos do Person via Pipedrive API
- * 4. Criar Lead no banco (ou atualizar se já existir)
- * 5. Disparar qualificação automática via SDR Service (assíncrono)
- * 6. Enviar mensagem de boas-vindas via WhatsApp (se tiver telefone)
- * 7. Logar em IntegrationLog
+ * Actual processing happens in queue processor (see lib/utils/queue-processor.ts)
  */
 export async function POST(request: NextRequest) {
   let rawBody = "";
@@ -31,7 +25,7 @@ export async function POST(request: NextRequest) {
     body = rawBody ? JSON.parse(rawBody) : {};
     const signature = request.headers.get("x-pipedrive-signature");
 
-    // Obter secret do banco de dados
+    // Get secret from database
     const config = await prisma.systemConfig.findUnique({
       where: { id: "system" },
     });
@@ -40,7 +34,7 @@ export async function POST(request: NextRequest) {
       config?.pipedrive_webhook_secret ||
       process.env.PIPEDRIVE_WEBHOOK_SECRET;
 
-    // 1. Validar assinatura do webhook (se configurado)
+    // Validate signature (if configured)
     if (webhookSecret && signature) {
       const isValid = validatePipedriveWebhookSignature(
         rawBody,
@@ -50,170 +44,82 @@ export async function POST(request: NextRequest) {
 
       if (!isValid) {
         console.error("[Pipedrive Webhook Lead] Invalid signature");
-        return NextResponse.json(
-          { error: "Invalid signature" },
-          { status: 401 }
-        );
+
+        await prisma.integrationLog.create({
+          data: {
+            service: "PIPEDRIVE",
+            action: "WEBHOOK_LEAD_SIGNATURE_INVALID",
+            status: "ERROR",
+            error: "Invalid webhook signature",
+            payload: {
+              hasSignature: !!signature,
+              hasSecret: !!webhookSecret,
+            } as any,
+          },
+        }).catch(() => {});
+
+        // Still return 200 OK to prevent external retries
+        // Invalid signatures are logged for investigation
+        return webhookResponse({
+          success: true,
+          status: "accepted",
+          message: "Webhook received (signature validation failed)",
+        });
       }
 
       console.log("[Pipedrive Webhook Lead] Signature validated successfully");
     } else if (signature && !webhookSecret) {
       console.warn(
-        "[Pipedrive Webhook Lead] Webhook secret não configurado, pulando validação"
+        "[Pipedrive Webhook Lead] Webhook secret not configured, skipping validation"
       );
     }
 
-    // 2. Extrair Person ID do payload
-    // Suporta tanto Webhooks v1 quanto v2
+    // Determine event type
     const isV2 = body.meta && body.meta.version === "2.0";
-    
     let eventType: string;
-    let personId: number | null = null;
 
     if (isV2) {
-      // Webhooks v2: body.meta.action + body.meta.entity
-      const action = body.meta?.action; // "create", "change", "delete"
-      const entity = body.meta?.entity; // "person", "deal", etc.
+      const action = body.meta?.action;
+      const entity = body.meta?.entity;
       eventType = `${action}.${entity}`;
-      
-      if (entity === "person") {
-        personId = body.data?.id || body.previous?.id;
-      } else if (entity === "deal") {
-        // Se é um Deal, buscar Person associado
-        personId = body.data?.person_id?.value || body.data?.person_id || body.previous?.person_id?.value || body.previous?.person_id;
-      }
     } else {
-      // Webhooks v1: body.event (legado)
-      eventType = body.event;
-      
-      if (eventType === "added.person") {
-        personId = body.current?.id || body.previous?.id;
-      } else if (eventType === "updated.person") {
-        personId = body.current?.id;
-      } else if (eventType === "added.deal" || eventType === "updated.deal") {
-        // Se é um Deal, buscar Person associado
-        personId = body.current?.person_id || body.previous?.person_id;
+      eventType = body.event || "unknown";
+    }
+
+    // Accept webhook and enqueue for async processing
+    const result = await acceptWebhook(
+      "PIPEDRIVE",
+      eventType,
+      body,
+      {
+        signature,
+        contentType: request.headers.get("content-type"),
       }
-    }
+    );
 
-    if (!personId) {
-      return NextResponse.json(
-        { error: "No person ID found in webhook payload" },
-        { status: 400 }
-      );
-    }
-
-    // 3. Buscar dados completos do Person via Pipedrive API
-    const personData = await pipedriveService.getPerson(personId);
-    if (!personData) {
-      return NextResponse.json(
-        { error: "Person not found in Pipedrive" },
-        { status: 404 }
-      );
-    }
-
-    // Extrair dados do Person
-    const email = personData.email?.[0]?.value || personData.email?.[0]?.value;
-    if (!email) {
-      return NextResponse.json(
-        { error: "Person has no email" },
-        { status: 400 }
-      );
-    }
-
-    const name = personData.name || "Unknown";
-    const phone = personData.phone?.[0]?.value || null;
-
-    // 4. Criar Lead no banco (ou atualizar se já existir)
-    let lead = await leadService.getLeadByPipedriveId(personId);
-    
-    if (!lead) {
-      // Verificar se já existe por email
-      lead = await leadService.getLeadByEmail(email);
-      
-      if (lead) {
-        // Atualizar com Pipedrive ID diretamente usando Prisma
-        const { prisma } = await import("@/lib/db");
-        lead = await prisma.lead.update({
-          where: { id: lead.id },
-          data: { pipedrive_person_id: personId },
-        });
-      } else {
-        // Criar novo lead
-        lead = await leadService.createLead({
-          email,
-          name,
-          phone: phone || undefined,
-          source: LeadSource.WEBSITE, // Pode ser ajustado baseado em metadata
-          pipedrive_person_id: personId,
-          metadata: {
-            pipedrive_person_data: personData,
-            webhook_event: eventType,
-          },
-        });
-      }
-    } else {
-      // Atualizar dados do lead existente
-      lead = await leadService.updateLead(lead.id, {
-        name,
-        phone: phone || undefined,
-        metadata: {
-          pipedrive_person_data: personData,
-          webhook_event: eventType,
-        },
-      });
-    }
-
-    // 5. Disparar qualificação automática via SDR Service (assíncrono)
-    // Não aguardar para não bloquear resposta do webhook
-    sdrService.processNewLead(lead.id).catch((error) => {
-      console.error(`[Webhook] Error processing new lead ${lead.id}:`, error);
-    });
-
-    // 6. Enviar mensagem de boas-vindas via WhatsApp (se tiver telefone)
-    if (phone) {
-      // TODO: Integrar com WhatsApp Service quando disponível
-      // await whatsappService.sendWelcomeMessage(phone, name);
-      console.log(`[Webhook] Would send welcome message to ${phone}`);
-    }
-
-    // 7. Logar em IntegrationLog
-    await prisma.integrationLog.create({
-      data: {
-        service: "PIPEDRIVE",
-        action: "WEBHOOK_LEAD_RECEIVED",
-        status: "SUCCESS",
-        payload: {
-          eventType,
-          personId,
-          leadId: lead.id,
-          email,
-        } as any,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      leadId: lead.id,
-      message: "Lead processed successfully",
-    });
+    // Return 200 OK immediately
+    return webhookResponse(result);
   } catch (error) {
-    console.error("Error in Pipedrive lead webhook:", error);
+    console.error("[Pipedrive Webhook Lead] Error:", error);
 
-    // Logar erro
+    // Log error
     await prisma.integrationLog.create({
       data: {
         service: "PIPEDRIVE",
-        action: "WEBHOOK_LEAD_RECEIVED",
+        action: "WEBHOOK_LEAD_ERROR",
         status: "ERROR",
         error: error instanceof Error ? error.message : "Unknown error",
-        payload: body as any,
+        payload: {
+          bodyPreview: JSON.stringify(body).substring(0, 500),
+        } as any,
       },
     }).catch(() => {});
 
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    // Still return 200 OK to prevent external retries
+    return webhookResponse({
+      success: false,
+      status: "error",
+      message: "Error processing webhook",
+    });
   }
 }
