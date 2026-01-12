@@ -185,7 +185,10 @@ const QUEUE_CONFIG: QueueConfig = {
  */
 function getConnectionOptions() {
   if (!process.env.REDIS_URL) {
-    return { host: "localhost", port: 6379, maxRetriesPerRequest: null };
+    throw new Error(
+      "REDIS_URL environment variable not set. Queue processing requires Redis configuration. " +
+      "Set REDIS_URL to your Redis instance (e.g., redis://user:password@host:port)"
+    );
   }
 
   try {
@@ -195,8 +198,11 @@ function getConnectionOptions() {
       port: parseInt(url.port || "6379"),
       maxRetriesPerRequest: null,
     };
-  } catch {
-    return { host: "localhost", port: 6379, maxRetriesPerRequest: null };
+  } catch (error) {
+    throw new Error(
+      `Invalid REDIS_URL format: ${process.env.REDIS_URL}. ` +
+      `Expected format: redis://[user:password@]host[:port]`
+    );
   }
 }
 
