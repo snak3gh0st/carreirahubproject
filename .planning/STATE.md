@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-01-10)
 
 ## Current Position
 
-Phase: 4 of 4 (Production Auth)
-Plan: 2 of 2 in current phase
-Status: Complete
-Last activity: 2026-01-11 — Completed 04-02-PLAN.md (QuickBooks token refresh automation)
+Phase: 4.1 of 5 (User Deployment - Dashboard & QuickBooks Data Validation) [INSERTED]
+Plan: 0 (not yet planned)
+Status: Ready for planning
+Last activity: 2026-01-12 — Inserted Phase 4.1 for urgent user deployment work
 
-Progress: ████████████████ 100% (All 4 phases complete, 9/9 plans finished)
+Progress: ████████████░░ 80% (4/5 phases complete, 9/9 planned plans finished + 1 urgent insertion)
 
 ## Performance Metrics
 
@@ -103,9 +103,17 @@ Recent decisions affecting current work:
 - Public `refreshAccessTokenDirect()` method on QuickbooksService for external callers
 - Token health monitoring integrated into queue monitoring cron (every 4 hours)
 
+### Roadmap Evolution
+
+**2026-01-12:**
+- Phase 4.1 inserted after Phase 4: "User Deployment - Dashboard & QuickBooks Data Validation" (URGENT)
+- Reason: System needs dashboard UX improvements and QuickBooks data completeness validation before deploying to users
+- Scope: Audit dashboard layout, verify all QB data fields captured (Finance), ensure Admin access, validate Commercial visibility
+- Departments affected: Finance (data validation), Admin (configuration), Commercial (sales visibility)
+
 ### Deferred Issues
 
-None. Build passes with no errors.
+None. Build passes with no errors. Phase 4.1 work identified for pre-deployment.
 
 ### Blockers/Concerns
 

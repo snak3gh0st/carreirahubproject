@@ -82,10 +82,34 @@ Plans:
 - [x] 04-01: Implement password hashing with bcrypt and remove development bypass (completed 2026-01-11, 38min)
 - [x] 04-02: QuickBooks OAuth token refresh UI and automated token refresh (completed 2026-01-11, 28min)
 
+### Phase 4.1: User Deployment - Dashboard & QuickBooks Data Validation (INSERTED)
+
+**Goal**: Prepare system for user deployment by improving dashboard layout/UX and validating all required QuickBooks data fields are captured and displayed for Commercial, Admin, and Finance departments.
+
+**Depends on**: Phase 4
+
+**Research**: Likely (audit QuickBooks sync completeness, review dashboard data requirements by department)
+
+**Research topics**: QuickBooks field completeness, multi-department dashboard requirements, layout and UX improvements, data validation for critical fields
+
+**Plans**: To be determined — run `/gsd:plan-phase 4.1` to break down
+
+Plans:
+- [ ] TBD (run `/gsd:plan-phase 4.1` to break down work)
+
+**Details:**
+- Review current dashboard layout and UX
+- Audit QuickBooks data sync: verify all required fields are captured (customers, invoices, payments, accounts, etc.)
+- Validate data completeness for Finance department workflows
+- Ensure Admin department has access to configuration and monitoring
+- Ensure Commercial department has proper sales/deal visibility
+- Design improved layout for multi-department access
+- Deploy-ready validation checklist
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 4.1
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -93,5 +117,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Integration Resilience | 2/2 | Complete | 2026-01-11 |
 | 3. Queue Processing | 2/2 | Complete | 2026-01-11 |
 | 4. Production Auth | 2/2 | Complete | 2026-01-11 |
+| 4.1. User Deployment (INSERTED) | 0/? | Not planned | — |
 
-**🎉 MILESTONE COMPLETE - All 4 phases finished, 9/9 plans executed successfully**
+**Status:** 4 phases complete, 1 urgent insertion for user deployment readiness
