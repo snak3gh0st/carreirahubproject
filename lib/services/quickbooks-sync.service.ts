@@ -546,7 +546,33 @@ export class QuickBooksSyncService {
     incremental: boolean
   ): Promise<SyncResult["customers"]> {
     try {
-      const qbCustomers = await quickbooksService.getAllCustomers(maxResults);
+      // Fetch ALL customers with pagination (QB API limits to 1000 per request)
+      let allCustomers: any[] = [];
+      let startPosition = 1;
+      let hasMore = true;
+      let pageCount = 0;
+
+      console.log("[QuickBooks Sync] Starting customer sync with pagination");
+
+      while (hasMore && allCustomers.length < maxResults) {
+        const result = await quickbooksService.getAllCustomersPaginated({ startPosition });
+        allCustomers = allCustomers.concat(result.customers);
+        hasMore = result.hasMore;
+        startPosition = result.nextPosition;
+        pageCount++;
+
+        console.log(`[QuickBooks Sync] Page ${pageCount}: fetched ${result.customers.length} customers, total: ${allCustomers.length}, hasMore: ${hasMore}`);
+
+        // Stop if we've reached maxResults
+        if (allCustomers.length >= maxResults) {
+          allCustomers = allCustomers.slice(0, maxResults);
+          break;
+        }
+      }
+
+      console.log(`[QuickBooks Sync] Completed fetching customers: ${allCustomers.length} total across ${pageCount} pages`);
+
+      const qbCustomers = allCustomers;
 
       const synced: string[] = [];
       const updated: string[] = [];
@@ -645,8 +671,33 @@ export class QuickBooksSyncService {
     incremental: boolean
   ): Promise<SyncResult["invoices"]> {
     try {
-      const result = await quickbooksService.getAllInvoices(maxResults);
-      const qbInvoices = result.invoices;
+      // Fetch ALL invoices with pagination (QB API limits to 1000 per request)
+      let allInvoices: any[] = [];
+      let startPosition = 1;
+      let hasMore = true;
+      let pageCount = 0;
+
+      console.log("[QuickBooks Sync] Starting invoice sync with pagination");
+
+      while (hasMore && allInvoices.length < maxResults) {
+        const result = await quickbooksService.getAllInvoicesPaginated({ startPosition });
+        allInvoices = allInvoices.concat(result.invoices);
+        hasMore = result.hasMore;
+        startPosition = result.nextPosition;
+        pageCount++;
+
+        console.log(`[QuickBooks Sync] Page ${pageCount}: fetched ${result.invoices.length} invoices, total: ${allInvoices.length}, hasMore: ${hasMore}`);
+
+        // Stop if we've reached maxResults
+        if (allInvoices.length >= maxResults) {
+          allInvoices = allInvoices.slice(0, maxResults);
+          break;
+        }
+      }
+
+      console.log(`[QuickBooks Sync] Completed fetching invoices: ${allInvoices.length} total across ${pageCount} pages`);
+
+      const qbInvoices = allInvoices;
 
       const synced: string[] = [];
       const updated: string[] = [];
