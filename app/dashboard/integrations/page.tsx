@@ -131,9 +131,9 @@ export default async function IntegrationsPage() {
       <div className="mt-8 bg-white rounded-lg shadow p-6">
         <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link
+          <a
             href="/api/quickbooks/auth/connect"
-            className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 transition"
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 transition block"
           >
             <div className="flex items-center justify-between">
               <div>
@@ -154,7 +154,7 @@ export default async function IntegrationsPage() {
                 />
               </svg>
             </div>
-          </Link>
+          </a>
 
           <Link
             href="/dashboard/integrations/bulk-import"
