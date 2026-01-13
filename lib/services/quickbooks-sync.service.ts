@@ -746,18 +746,25 @@ export class QuickBooksSyncService {
             where: { quickbooks_invoice_id: qbInvoiceId },
           });
 
-          // Buscar o deal mais recente do customer
-          const latestDeal = await prisma.deal.findFirst({
+          // Get or create a default deal for this customer
+          let latestDeal = await prisma.deal.findFirst({
             where: { customerId: customer.id },
             orderBy: { createdAt: "desc" },
           });
 
           if (!latestDeal) {
-            errors.push({
-              invoiceId: qbInvoiceId,
-              error: "Nenhum deal encontrado para o customer",
+            // Create default deal for QB-imported invoices (like syncSingleInvoice does)
+            latestDeal = await prisma.deal.create({
+              data: {
+                customerId: customer.id,
+                title: "QuickBooks Import",
+                value: totalAmount,
+                currency: "USD",
+                status: "OPEN",
+                pipedrive_deal_id: 0, // Placeholder for QB-only deals
+              },
             });
-            continue;
+            console.log(`[QuickBooks Sync] Created default deal for customer ${customer.id}: ${latestDeal.id}`);
           }
 
             // Nota: Invoice não tem campo metadata, então salvamos dados extras no installments (Json)
