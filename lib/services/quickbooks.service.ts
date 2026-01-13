@@ -518,13 +518,24 @@ export class QuickbooksService {
     const startPosition = options?.startPosition || 1;
 
     const query = `SELECT * FROM Customer WHERE Active = true STARTPOSITION ${startPosition} MAXRESULTS ${maxResults}`;
-    console.log(`[QuickBooks] Executando query com paginação: ${query}`);
+    console.log(`[QuickBooks API] Query: ${query}`);
+    console.log(`[QuickBooks API] Requesting from position ${startPosition}, max ${maxResults} results`);
+
     const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+
+    // Log the raw response structure
+    console.log(`[QuickBooks API] Response keys:`, Object.keys(result.QueryResponse || {}));
+    console.log(`[QuickBooks API] Raw response metadata:`, JSON.stringify({
+      maxResults: result.QueryResponse?.maxResults,
+      startPosition: result.QueryResponse?.startPosition,
+      totalCount: result.QueryResponse?.totalCount,
+    }));
 
     let customers = result.QueryResponse?.Customer || [];
 
     // Se não houver customers no array, pode ser que venha como objeto único
     if (!Array.isArray(customers) && customers.Id) {
+      console.log(`[QuickBooks API] Single customer returned (not array), converting to array`);
       customers = [customers];
     }
 
@@ -532,7 +543,12 @@ export class QuickbooksService {
     const hasMore = count === maxResults; // If we got exactly maxResults, there might be more
     const nextPosition = startPosition + count;
 
-    console.log(`[QuickBooks] Customers: ${count} encontrados, hasMore: ${hasMore}, nextPosition: ${nextPosition}`);
+    console.log(`[QuickBooks API] ━━━ Pagination Result ━━━`);
+    console.log(`[QuickBooks API] → Customers returned: ${count}`);
+    console.log(`[QuickBooks API] → Has more pages: ${hasMore} (${count} === ${maxResults})`);
+    console.log(`[QuickBooks API] → Next position: ${nextPosition}`);
+    console.log(`[QuickBooks API] → First customer ID: ${customers[0]?.Id || 'N/A'}`);
+    console.log(`[QuickBooks API] → Last customer ID: ${customers[count - 1]?.Id || 'N/A'}`);
 
     return {
       customers,
@@ -584,13 +600,24 @@ export class QuickbooksService {
     const startPosition = options?.startPosition || 1;
 
     const query = `SELECT * FROM Invoice STARTPOSITION ${startPosition} MAXRESULTS ${maxResults}`;
-    console.log(`[QuickBooks] Executando query com paginação: ${query}`);
+    console.log(`[QuickBooks API] Query: ${query}`);
+    console.log(`[QuickBooks API] Requesting from position ${startPosition}, max ${maxResults} results`);
+
     const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+
+    // Log the raw response structure
+    console.log(`[QuickBooks API] Response keys:`, Object.keys(result.QueryResponse || {}));
+    console.log(`[QuickBooks API] Raw response metadata:`, JSON.stringify({
+      maxResults: result.QueryResponse?.maxResults,
+      startPosition: result.QueryResponse?.startPosition,
+      totalCount: result.QueryResponse?.totalCount,
+    }));
 
     let invoices = result.QueryResponse?.Invoice || [];
 
     // Se não houver invoices no array, pode ser que venha como objeto único
     if (!Array.isArray(invoices) && invoices.Id) {
+      console.log(`[QuickBooks API] Single invoice returned (not array), converting to array`);
       invoices = [invoices];
     }
 
@@ -598,7 +625,12 @@ export class QuickbooksService {
     const hasMore = count === maxResults; // If we got exactly maxResults, there might be more
     const nextPosition = startPosition + count;
 
-    console.log(`[QuickBooks] Invoices: ${count} encontradas, hasMore: ${hasMore}, nextPosition: ${nextPosition}`);
+    console.log(`[QuickBooks API] ━━━ Pagination Result ━━━`);
+    console.log(`[QuickBooks API] → Invoices returned: ${count}`);
+    console.log(`[QuickBooks API] → Has more pages: ${hasMore} (${count} === ${maxResults})`);
+    console.log(`[QuickBooks API] → Next position: ${nextPosition}`);
+    console.log(`[QuickBooks API] → First invoice ID: ${invoices[0]?.Id || 'N/A'}`);
+    console.log(`[QuickBooks API] → Last invoice ID: ${invoices[count - 1]?.Id || 'N/A'}`);
 
     return {
       invoices,

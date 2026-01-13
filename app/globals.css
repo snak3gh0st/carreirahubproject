@@ -96,9 +96,7 @@
   select:focus,
   button:focus {
     @apply outline-none ring-2 ring-offset-2 ring-blue-500 ring-offset-white dark:ring-offset-slate-900;
-  }
-
-  /* Ensure links are keyboard accessible */
+  }  /* Ensure links are keyboard accessible */
   a:focus-visible {
     @apply outline-none ring-2 ring-offset-2 ring-blue-500;
   }
