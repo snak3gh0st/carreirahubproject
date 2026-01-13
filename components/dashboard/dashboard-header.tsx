@@ -122,7 +122,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
 
                     {/* Mobile Logout Button */}
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => {
                         setMobileOpen(false)
