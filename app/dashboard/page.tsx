@@ -207,7 +207,7 @@ export default async function DashboardPage() {
         {/* Ações Rápidas */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Ações Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <Link
               href="/dashboard/leads"
               className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center"
@@ -235,6 +235,13 @@ export default async function DashboardPage() {
             >
               <p className="font-medium text-gray-900">Ver / Add Customer</p>
               <p className="text-sm text-gray-600 mt-1">Gerenciar clientes</p>
+            </Link>
+            <Link
+              href="/dashboard/integrations"
+              className="p-4 border-2 border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition text-center"
+            >
+              <p className="font-medium text-gray-900">Integrations</p>
+              <p className="text-sm text-gray-600 mt-1">QuickBooks & Pipedrive</p>
             </Link>
           </div>
         </div>
