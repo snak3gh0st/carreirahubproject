@@ -4,6 +4,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { integrationLogger } from "@/lib/utils/logger";
 
+// Force dynamic rendering (uses getServerSession which reads headers)
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/webhooks/dead-letter
  *
