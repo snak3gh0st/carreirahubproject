@@ -3,7 +3,8 @@
 import * as React from "react"
 import Link from "next/link"
 import { Session } from "next-auth"
-import { Menu, X } from "lucide-react"
+import { signOut } from "next-auth/react"
+import { Menu, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ThemeToggle } from "@/components/theme-toggle"
@@ -76,6 +77,17 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
               {session?.user?.email}
             </span>
 
+            {/* Logout Button - Desktop Only */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+              className="hidden lg:flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            >
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm">Logout</span>
+            </Button>
+
             {/* Mobile Menu Button - Only visible on tablet and below */}
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild className="lg:hidden">
@@ -104,9 +116,23 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
 
                   {/* Mobile User Info */}
                   <div className="pt-4 mt-4 border-t dark:border-slate-700">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 break-all">
+                    <p className="text-xs text-gray-600 dark:text-gray-400 break-all mb-4">
                       {session?.user?.email}
                     </p>
+
+                    {/* Mobile Logout Button */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setMobileOpen(false)
+                        signOut({ callbackUrl: "/auth/signin" })
+                      }}
+                      className="w-full flex items-center justify-center gap-2"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Logout</span>
+                    </Button>
                   </div>
                 </div>
               </SheetContent>

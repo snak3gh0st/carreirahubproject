@@ -105,6 +105,12 @@ Recent decisions affecting current work:
 
 ### Roadmap Evolution
 
+**2026-01-13:**
+- Phase 1.1 inserted after Phase 1: "Make QuickBooks Work" (URGENT)
+- Reason: QuickBooks OAuth flow broken (CORS error), blocking authentication and sync validation
+- Scope: Fix OAuth CORS issue, configure webhook verifier token, test end-to-end flow, validate sync completeness
+- Impact: Phase 2 now depends on 1.1 completion instead of Phase 1
+
 **2026-01-12:**
 - Phase 4.1 inserted after Phase 4: "User Deployment - Dashboard & QuickBooks Data Validation" (URGENT)
 - Reason: System needs dashboard UX improvements and QuickBooks data completeness validation before deploying to users

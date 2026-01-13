@@ -17,6 +17,7 @@ None
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Webhook Reliability** - Zero lost webhooks with retry and recovery
+- [ ] **Phase 1.1: Make QuickBooks Work (INSERTED)** - Fix OAuth and sync validation
 - [x] **Phase 2: Integration Resilience** - Circuit breakers and graceful degradation
 - [x] **Phase 3: Queue Processing** - Fix BullMQ in Vercel with robust cron processing
 - [x] **Phase 4: Production Auth** - Password hashing and OAuth token management
@@ -39,10 +40,30 @@ Plans:
 - [x] 01-02: Webhook event deduplication to prevent duplicate processing (completed 2026-01-10, 35min)
 - [x] 01-03: Webhook health monitoring dashboard and alerting system (completed 2026-01-11, 42min)
 
+### Phase 1.1: Make QuickBooks Work (INSERTED)
+
+**Goal**: Fix QuickBooks OAuth flow and ensure complete data synchronization works end-to-end.
+
+**Depends on**: Phase 1
+
+**Research**: Unlikely (OAuth CORS fix and validation)
+
+**Plans**: 0 plans
+
+Plans:
+- [ ] TBD (run `/gsd:plan-phase 1.1` to break down)
+
+**Details:**
+- Fix OAuth CORS error blocking authentication flow
+- Verify webhook verifier token configuration
+- Test complete OAuth flow end-to-end
+- Validate data sync completeness
+- Ensure all Finance-critical fields captured
+
 ### Phase 2: Integration Resilience
 **Goal**: Implement circuit breaker pattern and graceful degradation for all external API calls to prevent cascading failures when integrations are temporarily down.
 
-**Depends on**: Phase 1
+**Depends on**: Phase 1.1
 
 **Research**: Likely (circuit breaker implementation for external APIs)
 
@@ -109,14 +130,15 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 4.1
+Phases execute in numeric order: 1 → 1.1 → 2 → 3 → 4 → 4.1
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Webhook Reliability | 3/3 | Complete | 2026-01-11 |
+| 1.1. Make QuickBooks Work (INSERTED) | 0/? | Not planned | — |
 | 2. Integration Resilience | 2/2 | Complete | 2026-01-11 |
 | 3. Queue Processing | 2/2 | Complete | 2026-01-11 |
 | 4. Production Auth | 2/2 | Complete | 2026-01-11 |
 | 4.1. User Deployment (INSERTED) | 0/? | Not planned | — |
 
-**Status:** 4 phases complete, 1 urgent insertion for user deployment readiness
+**Status:** 4 phases complete, 2 urgent insertions (QuickBooks OAuth fix + user deployment readiness)

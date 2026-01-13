@@ -18,19 +18,42 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => ({}));
-    const { maxResults = 1000, status } = body;
+    const { maxResults = 5000, status } = body;
 
     // Buscar invoices do QuickBooks
     let qbInvoices: any[] = [];
-    
+
     if (status) {
       qbInvoices = await quickbooksService.getInvoicesByStatus(
         status as "Draft" | "Pending" | "Paid" | "Void",
         maxResults
       );
     } else {
-      const result = await quickbooksService.getAllInvoices(maxResults);
-      qbInvoices = result.invoices;
+      // Use pagination to fetch all invoices (not limited to 1000)
+      let hasMore = true;
+      let startPosition = 1;
+      let pageCount = 0;
+
+      console.log(`[Invoice Sync] Starting pagination to fetch up to ${maxResults} invoices`);
+
+      while (hasMore && qbInvoices.length < maxResults) {
+        const result = await quickbooksService.getAllInvoicesPaginated({ startPosition });
+        qbInvoices = qbInvoices.concat(result.invoices);
+        hasMore = result.hasMore;
+        startPosition = result.nextPosition;
+        pageCount++;
+
+        console.log(`[Invoice Sync] Page ${pageCount}: Fetched ${result.invoices.length} invoices, Total: ${qbInvoices.length}, hasMore: ${hasMore}`);
+
+        // Break if we've reached maxResults
+        if (qbInvoices.length >= maxResults) {
+          console.log(`[Invoice Sync] Reached maxResults limit of ${maxResults}`);
+          qbInvoices = qbInvoices.slice(0, maxResults);
+          break;
+        }
+      }
+
+      console.log(`[Invoice Sync] Pagination complete: ${qbInvoices.length} invoices fetched in ${pageCount} pages`);
     }
 
     const synced: string[] = [];
@@ -170,18 +193,31 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const maxResults = parseInt(searchParams.get("maxResults") || "100");
+    const maxResults = parseInt(searchParams.get("maxResults") || "1000");
 
     let invoices: any[] = [];
-    
+
     if (status) {
       invoices = await quickbooksService.getInvoicesByStatus(
         status as "Draft" | "Pending" | "Paid" | "Void",
         maxResults
       );
     } else {
-      const result = await quickbooksService.getAllInvoices(maxResults);
-      invoices = result.invoices;
+      // Use pagination to fetch all invoices
+      let hasMore = true;
+      let startPosition = 1;
+
+      while (hasMore && invoices.length < maxResults) {
+        const result = await quickbooksService.getAllInvoicesPaginated({ startPosition });
+        invoices = invoices.concat(result.invoices);
+        hasMore = result.hasMore;
+        startPosition = result.nextPosition;
+
+        if (invoices.length >= maxResults) {
+          invoices = invoices.slice(0, maxResults);
+          break;
+        }
+      }
     }
 
     return NextResponse.json({
