@@ -46,6 +46,8 @@ export default function SyncStatusPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
 
   const fetchSyncStatus = async () => {
     try {
@@ -63,6 +65,49 @@ export default function SyncStatusPage() {
       console.error("Error fetching sync status:", err);
       setError(err instanceof Error ? err.message : "Failed to fetch sync status");
       setIsLoading(false);
+    }
+  };
+
+  const triggerQuickBooksSync = async () => {
+    setIsSyncing(true);
+    setSyncResult(null);
+
+    try {
+      const response = await fetch("/api/quickbooks/sync", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          syncCustomers: true,
+          syncInvoices: true,
+          syncPayments: false,
+          maxResults: 5000, // Fetch up to 5000 records
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Sync failed");
+      }
+
+      const customersCount = data.results?.customers?.total || 0;
+      const invoicesCount = data.results?.invoices?.total || 0;
+
+      setSyncResult(
+        `✓ Sync completed! Synced ${customersCount} customers and ${invoicesCount} invoices in ${Math.round(data.duration / 1000)}s`
+      );
+
+      // Refresh status after sync
+      setTimeout(() => fetchSyncStatus(), 2000);
+    } catch (err) {
+      console.error("Error triggering sync:", err);
+      setSyncResult(
+        `✗ Sync failed: ${err instanceof Error ? err.message : "Unknown error"}`
+      );
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -167,11 +212,95 @@ export default function SyncStatusPage() {
             </svg>
             Refresh
           </Button>
-          <Link href="/dashboard/integrations/bulk-import">
-            <Button variant="primary">Start Bulk Import</Button>
-          </Link>
+          <Button
+            variant="primary"
+            onClick={triggerQuickBooksSync}
+            disabled={isSyncing}
+          >
+            {isSyncing ? (
+              <>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
+                </svg>
+                Syncing...
+              </>
+            ) : (
+              <>
+                <svg
+                  className="w-4 h-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
+                </svg>
+                Sync Now
+              </>
+            )}
+          </Button>
         </div>
       </div>
+
+      {/* Sync Result Notification */}
+      {syncResult && (
+        <div
+          className={`rounded-lg p-4 mb-6 ${
+            syncResult.startsWith("✓")
+              ? "bg-green-50 border border-green-200"
+              : "bg-red-50 border border-red-200"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <p
+              className={`font-medium ${
+                syncResult.startsWith("✓") ? "text-green-900" : "text-red-900"
+              }`}
+            >
+              {syncResult}
+            </p>
+            <button
+              onClick={() => setSyncResult(null)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Overall Health Status */}
       <div
