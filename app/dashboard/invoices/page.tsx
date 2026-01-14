@@ -25,6 +25,11 @@ export default async function InvoicesPage({
     source?: string;
     sortBy?: string;
     sortOrder?: string;
+    dueDateFrom?: string;
+    dueDateTo?: string;
+    minAmount?: string;
+    maxAmount?: string;
+    paymentMethod?: string;
   };
 }) {
   const session = await getServerSession(authOptions);
@@ -70,6 +75,39 @@ export default async function InvoicesPage({
       { customer: { name: { contains: search, mode: "insensitive" } } },
       { customer: { email: { contains: search, mode: "insensitive" } } },
     ];
+  }
+
+  // Advanced filters
+  if (searchParams.dueDateFrom) {
+    whereClause.dueDate = {
+      ...whereClause.dueDate,
+      gte: new Date(searchParams.dueDateFrom),
+    };
+  }
+
+  if (searchParams.dueDateTo) {
+    whereClause.dueDate = {
+      ...whereClause.dueDate,
+      lte: new Date(searchParams.dueDateTo),
+    };
+  }
+
+  if (searchParams.minAmount) {
+    whereClause.amount = {
+      ...whereClause.amount,
+      gte: parseFloat(searchParams.minAmount),
+    };
+  }
+
+  if (searchParams.maxAmount) {
+    whereClause.amount = {
+      ...whereClause.amount,
+      lte: parseFloat(searchParams.maxAmount),
+    };
+  }
+
+  if (searchParams.paymentMethod) {
+    whereClause.paymentMethod = searchParams.paymentMethod;
   }
 
   // Get total count
@@ -157,6 +195,21 @@ export default async function InvoicesPage({
   if (searchParams.status) paginationParams.status = searchParams.status;
   if (sortBy !== "createdAt") paginationParams.sortBy = sortBy;
   if (sortOrder !== "desc") paginationParams.sortOrder = sortOrder;
+  if (searchParams.dueDateFrom) paginationParams.dueDateFrom = searchParams.dueDateFrom;
+  if (searchParams.dueDateTo) paginationParams.dueDateTo = searchParams.dueDateTo;
+  if (searchParams.minAmount) paginationParams.minAmount = searchParams.minAmount;
+  if (searchParams.maxAmount) paginationParams.maxAmount = searchParams.maxAmount;
+  if (searchParams.paymentMethod) paginationParams.paymentMethod = searchParams.paymentMethod;
+
+  // Count active filters
+  const activeFilterCount = [
+    searchParams.dueDateFrom,
+    searchParams.dueDateTo,
+    searchParams.minAmount,
+    searchParams.maxAmount,
+    searchParams.paymentMethod,
+    searchParams.approvalStatus,
+  ].filter(Boolean).length;
 
   // Helper function to build sort URL
   const buildSortUrl = (field: string) => {
@@ -341,7 +394,7 @@ export default async function InvoicesPage({
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
           {/* Search */}
           <form method="GET" className="flex-1 min-w-[200px]">
             {searchParams.approvalStatus && (
@@ -408,6 +461,131 @@ export default async function InvoicesPage({
             </Link>
           </div>
         </div>
+
+        {/* Advanced Filters */}
+        <details className="border-t pt-4">
+          <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+            <span>Advanced Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </summary>
+          <form method="GET" className="mt-4">
+            {/* Preserve existing filters */}
+            {search && <input type="hidden" name="search" value={search} />}
+            {source && <input type="hidden" name="source" value={source} />}
+            {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
+            {sortBy !== "createdAt" && <input type="hidden" name="sortBy" value={sortBy} />}
+            {sortOrder !== "desc" && <input type="hidden" name="sortOrder" value={sortOrder} />}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Date Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Due Date From
+                </label>
+                <input
+                  type="date"
+                  name="dueDateFrom"
+                  defaultValue={searchParams.dueDateFrom}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Due Date To
+                </label>
+                <input
+                  type="date"
+                  name="dueDateTo"
+                  defaultValue={searchParams.dueDateTo}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Amount Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Amount ($)
+                </label>
+                <input
+                  type="number"
+                  name="minAmount"
+                  defaultValue={searchParams.minAmount}
+                  placeholder="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Amount ($)
+                </label>
+                <input
+                  type="number"
+                  name="maxAmount"
+                  defaultValue={searchParams.maxAmount}
+                  placeholder="Unlimited"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Payment Method
+                </label>
+                <select
+                  name="paymentMethod"
+                  defaultValue={searchParams.paymentMethod || ""}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All</option>
+                  <option value="CARD">Card</option>
+                  <option value="BANK_TRANSFER">Bank Transfer</option>
+                  <option value="CASH">Cash</option>
+                  <option value="OTHER">Other</option>
+                </select>
+              </div>
+
+              {/* Approval Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Approval Status
+                </label>
+                <select
+                  name="approvalStatus"
+                  defaultValue={searchParams.approvalStatus || ""}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
+              >
+                Apply Filters
+              </button>
+              <Link
+                href="/dashboard/invoices"
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition"
+              >
+                Clear Filters
+              </Link>
+            </div>
+          </form>
+        </details>
       </div>
 
       {/* Status Filter Tabs */}
