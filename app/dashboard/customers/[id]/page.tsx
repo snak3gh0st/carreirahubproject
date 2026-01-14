@@ -101,35 +101,47 @@ export default async function CustomerDetailPage({
     });
   };
 
-  // Status badge helper
+  // Status badge helper with colored dots and days overdue
   const getStatusBadge = (status: InvoiceStatus, dueDate: Date) => {
     const isOverdue =
       status !== InvoiceStatus.PAID &&
       status !== InvoiceStatus.VOID &&
       new Date(dueDate) < today;
 
+    // Calculate days overdue
+    const daysOverdue = isOverdue
+      ? Math.floor((today.getTime() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24))
+      : 0;
+
     if (isOverdue && status !== InvoiceStatus.OVERDUE) {
       return (
-        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-          OVERDUE
+        <span className="px-2 py-1 text-xs rounded-full bg-red-600 text-white font-medium flex items-center gap-1">
+          <span className="inline-block">•</span>
+          OVERDUE ({daysOverdue} days)
         </span>
       );
     }
 
-    const colorMap: Record<InvoiceStatus, string> = {
-      PAID: "bg-green-100 text-green-800",
-      SENT: "bg-blue-100 text-blue-800",
-      OVERDUE: "bg-red-100 text-red-800",
-      DRAFT: "bg-gray-100 text-gray-800",
-      PARTIALLY_PAID: "bg-yellow-100 text-yellow-800",
-      VOID: "bg-gray-100 text-gray-800 line-through",
-      REFUNDED: "bg-purple-100 text-purple-800",
-      PARTIALLY_REFUNDED: "bg-purple-100 text-purple-800",
+    const colorMap: Record<InvoiceStatus, { bg: string; text: string; dot: string }> = {
+      PAID: { bg: "bg-green-100", text: "text-green-800", dot: "text-green-600" },
+      SENT: { bg: "bg-blue-100", text: "text-blue-800", dot: "text-blue-600" },
+      OVERDUE: { bg: "bg-red-600", text: "text-white", dot: "text-white" },
+      DRAFT: { bg: "bg-gray-100", text: "text-gray-800", dot: "text-gray-600" },
+      PARTIALLY_PAID: { bg: "bg-yellow-100", text: "text-yellow-800", dot: "text-yellow-600" },
+      VOID: { bg: "bg-gray-100", text: "text-gray-800 line-through", dot: "text-gray-600" },
+      REFUNDED: { bg: "bg-purple-100", text: "text-purple-800", dot: "text-purple-600" },
+      PARTIALLY_REFUNDED: { bg: "bg-purple-100", text: "text-purple-800", dot: "text-purple-600" },
     };
 
+    const colors = colorMap[status];
+    const displayStatus = status === InvoiceStatus.OVERDUE && daysOverdue > 0
+      ? `OVERDUE (${daysOverdue} days)`
+      : status;
+
     return (
-      <span className={`px-2 py-1 text-xs rounded-full ${colorMap[status]}`}>
-        {status}
+      <span className={`px-2 py-1 text-xs rounded-full ${colors.bg} ${colors.text} ${status === InvoiceStatus.OVERDUE ? 'font-medium' : ''} flex items-center gap-1`}>
+        <span className={`inline-block ${colors.dot}`}>•</span>
+        {displayStatus}
       </span>
     );
   };
@@ -261,20 +273,103 @@ export default async function CustomerDetailPage({
         </div>
       </div>
 
-      {/* Installment Plan Summary */}
+      {/* Installment Plan Summary with Visual Indicators */}
       <div className={`p-6 rounded-lg shadow mb-6 ${
         overdueCount > 0
           ? 'bg-gradient-to-r from-red-50 to-white border-2 border-red-200'
           : 'bg-white border border-gray-200'
       }`}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Installment Plan Summary</h2>
-          {overdueCount > 0 && (
-            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-              ⚠️ {overdueCount} Overdue
-            </span>
-          )}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          <div>
+            <h2 className="text-xl font-bold">Installment Plan Summary</h2>
+            {overdueCount > 0 && (
+              <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                ⚠️ {overdueCount} Overdue
+              </span>
+            )}
+          </div>
+
+          {/* Payment Status Pie Chart */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex items-center justify-center">
+              <div
+                className="w-28 h-28 rounded-full"
+                style={{
+                  background: `conic-gradient(
+                    #16a34a 0% ${totalInvoices > 0 ? (paidCount / totalInvoices) * 100 : 0}%,
+                    #dc2626 ${totalInvoices > 0 ? (paidCount / totalInvoices) * 100 : 0}% 100%
+                  )`,
+                }}
+              >
+                <div className="absolute inset-2 bg-white rounded-full flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-gray-900">
+                    {totalInvoices > 0 ? Math.round((paidCount / totalInvoices) * 100) : 0}%
+                  </span>
+                  <span className="text-xs text-gray-500">Paid</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-sm space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-600 rounded-full"></div>
+                <span className="text-gray-600">{paidCount} Paid</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-red-600 rounded-full"></div>
+                <span className="text-gray-600">{totalInvoices - paidCount} Unpaid</span>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Installment Progress Bar */}
+        <div className="mb-6">
+          <div className="flex w-full h-6 rounded-lg overflow-hidden">
+            {(() => {
+              const paidPercent = totalInvoices > 0 ? (paidCount / totalInvoices) * 100 : 0;
+              const remainingPercent = totalInvoices > 0 ? ((remainingCount - overdueCount) / totalInvoices) * 100 : 0;
+              const overduePercent = totalInvoices > 0 ? (overdueCount / totalInvoices) * 100 : 0;
+
+              return (
+                <>
+                  {paidPercent > 0 && (
+                    <div
+                      className="bg-green-500 flex items-center justify-center text-white text-xs font-medium"
+                      style={{ width: `${paidPercent}%` }}
+                      title={`${paidCount} paid`}
+                    >
+                      {paidPercent > 15 && `${paidCount} paid`}
+                    </div>
+                  )}
+                  {remainingPercent > 0 && (
+                    <div
+                      className="bg-yellow-400 flex items-center justify-center text-white text-xs font-medium"
+                      style={{ width: `${remainingPercent}%` }}
+                      title={`${remainingCount - overdueCount} remaining`}
+                    >
+                      {remainingPercent > 15 && `${remainingCount - overdueCount} left`}
+                    </div>
+                  )}
+                  {overduePercent > 0 && (
+                    <div
+                      className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
+                      style={{ width: `${overduePercent}%` }}
+                      title={`${overdueCount} overdue`}
+                    >
+                      {overduePercent > 15 && `${overdueCount} overdue`}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-gray-600">
+            <span>{paidCount} paid</span>
+            <span>{remainingCount - overdueCount} remaining</span>
+            <span>{overdueCount} overdue</span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <p className="text-sm font-medium text-gray-500 mb-1">Total Installments</p>
