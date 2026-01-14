@@ -62,14 +62,22 @@ export async function POST(request: Request) {
       });
     }
 
-    // Test password
+    // Test password with bcrypt directly
     console.log("[DEBUG AUTH] Testing password...");
+    console.log("[DEBUG AUTH] Password to test:", password);
+    console.log("[DEBUG AUTH] Hash from DB:", user.password.substring(0, 30) + "...");
+
+    // Test with bcrypt directly
+    const bcrypt = await import("bcrypt");
+    const passwordValidDirect = await bcrypt.default.compare(password, user.password);
+    console.log("[DEBUG AUTH] Bcrypt direct test:", passwordValidDirect);
+
+    // Test with authService
     const passwordValid = await authService.verifyPassword(
       password,
       user.password
     );
-
-    console.log("[DEBUG AUTH] Password valid:", passwordValid);
+    console.log("[DEBUG AUTH] AuthService test:", passwordValid);
 
     if (!passwordValid) {
       return NextResponse.json({
