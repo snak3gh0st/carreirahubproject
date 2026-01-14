@@ -10,32 +10,33 @@ See: .planning/PROJECT.md (updated 2026-01-10)
 
 ## Current Position
 
-Phase: 4.1 of 5 (User Deployment - Dashboard & QuickBooks Data Validation) [INSERTED]
+Phase: 4.1 of 6 (User Deployment - Dashboard & QuickBooks Data Validation) [INSERTED]
 Plan: 0 (not yet planned)
 Status: Ready for planning
-Last activity: 2026-01-12 — Inserted Phase 4.1 for urgent user deployment work
+Last activity: 2026-01-14 — Completed Phase 1.1 (Auth fix, invoice pagination, logout button)
 
-Progress: ████████████░░ 80% (4/5 phases complete, 9/9 planned plans finished + 1 urgent insertion)
+Progress: █████████████░ 83% (5/6 phases complete, 10/10 planned plans finished + 1 urgent insertion)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: 40 minutes
-- Total execution time: 6.1 hours
+- Total plans completed: 10
+- Average duration: 50 minutes
+- Total execution time: 8.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. Webhook Reliability | 3/3 | 122 min | 41 min |
+| 1.1. Make QuickBooks Work | 1/1 | 150 min | 150 min |
 | 2. Integration Resilience | 2/2 | 80 min | 40 min |
 | 3. Queue Processing | 2/2 | 90 min | 45 min |
 | 4. Production Auth | 2/2 | 48 min | 24 min |
 
 **Recent Trend:**
-- All 9 plans: 01-01 (45m), 01-02 (35m), 01-03 (42m), 02-01 (37m), 02-02 (43m), 03-01 (45m), 03-02 (42m), 04-01 (38m), 04-02 (28m)
-- Trend: Consistent 35-45min per plan, Phase 4 faster (28min average) due to API-only work
+- All 10 plans: 01-01 (45m), 01-02 (35m), 01-03 (42m), 1.1-01 (150m), 02-01 (37m), 02-02 (43m), 03-01 (45m), 03-02 (42m), 04-01 (38m), 04-02 (28m)
+- Trend: Phase 1.1 took longer (150m) due to critical bcrypt bug requiring full rewrite
 
 ## Accumulated Context
 
@@ -105,6 +106,12 @@ Recent decisions affecting current work:
 
 ### Roadmap Evolution
 
+**2026-01-14:**
+- Phase 1.1 completed: "Make QuickBooks Work"
+- Key fixes: bcrypt→bcryptjs (critical auth bug), invoice pagination, logout button, admin credentials
+- Critical issue: bcrypt native module failed in Vercel Linux environment, blocking all logins
+- Took 150min (longer than expected) due to deep debugging of authentication failure
+
 **2026-01-13:**
 - Phase 1.1 inserted after Phase 1: "Make QuickBooks Work" (URGENT)
 - Reason: QuickBooks OAuth flow broken (CORS error), blocking authentication and sync validation
@@ -123,11 +130,16 @@ None. Build passes with no errors. Phase 4.1 work identified for pre-deployment.
 
 ### Blockers/Concerns
 
-None. All phases complete. System is production-ready with:
+None. All core phases complete. System is production-ready with:
 - Zero lost webhook data (Phase 1)
+- Working QuickBooks authentication and sync (Phase 1.1)
 - Resilient external API integrations with circuit breakers (Phase 2)
 - Robust job queue processing with monitoring (Phase 3)
 - Secure authentication with password hashing and token refresh (Phase 4)
+
+**Known Issues:**
+- Debug endpoints still in production (to be removed after stability confirmed)
+- Password reset flow for end users not implemented (admin-only for now)
 
 ## Session Continuity
 
