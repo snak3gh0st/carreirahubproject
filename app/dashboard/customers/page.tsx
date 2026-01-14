@@ -21,6 +21,13 @@ export default async function CustomersPage({
     source?: string;
     sortBy?: string;
     sortOrder?: string;
+    balanceStatus?: string;
+    minInvoices?: string;
+    maxInvoices?: string;
+    minTotalInvoiced?: string;
+    maxTotalInvoiced?: string;
+    createdFrom?: string;
+    createdTo?: string;
   };
 }) {
   const session = await getServerSession(authOptions);
@@ -56,15 +63,47 @@ export default async function CustomersPage({
     whereClause.pipedrive_id = { not: null };
   }
 
-  // Get total count
-  const totalCustomers = await prisma.customer.count({ where: whereClause });
-  const totalPages = Math.ceil(totalCustomers / ITEMS_PER_PAGE);
+  // Advanced filters
+  if (searchParams.balanceStatus === "no-balance") {
+    whereClause.OR = [
+      { qbBalance: { equals: 0 } },
+      { qbBalance: null },
+    ];
+  } else if (searchParams.balanceStatus === "has-balance") {
+    whereClause.qbBalance = { gt: 0 };
+  }
+
+  if (searchParams.minTotalInvoiced) {
+    whereClause.qbTotalInvoiced = {
+      ...whereClause.qbTotalInvoiced,
+      gte: parseFloat(searchParams.minTotalInvoiced),
+    };
+  }
+
+  if (searchParams.maxTotalInvoiced) {
+    whereClause.qbTotalInvoiced = {
+      ...whereClause.qbTotalInvoiced,
+      lte: parseFloat(searchParams.maxTotalInvoiced),
+    };
+  }
+
+  if (searchParams.createdFrom) {
+    whereClause.createdAt = {
+      ...whereClause.createdAt,
+      gte: new Date(searchParams.createdFrom),
+    };
+  }
+
+  if (searchParams.createdTo) {
+    whereClause.createdAt = {
+      ...whereClause.createdAt,
+      lte: new Date(searchParams.createdTo),
+    };
+  }
 
   // Buscar customers with pagination and sorting
-  const customers = await prisma.customer.findMany({
+  let customers = await prisma.customer.findMany({
     where: whereClause,
-    skip: (currentPage - 1) * ITEMS_PER_PAGE,
-    take: ITEMS_PER_PAGE,
     orderBy: { [actualSortBy]: sortOrder },
     include: {
       deals: {
@@ -82,6 +121,39 @@ export default async function CustomersPage({
       },
     },
   });
+
+  // Apply filters that require in-memory filtering
+  const today = new Date();
+
+  // Filter by overdue balance (requires checking invoices)
+  if (searchParams.balanceStatus === "overdue-balance") {
+    customers = customers.filter((customer) =>
+      customer.invoices.some(
+        (invoice) =>
+          invoice.status !== "PAID" &&
+          invoice.status !== "VOID" &&
+          new Date(invoice.dueDate) < today
+      )
+    );
+  }
+
+  // Filter by invoice count
+  if (searchParams.minInvoices || searchParams.maxInvoices) {
+    customers = customers.filter((customer) => {
+      const count = customer.invoices.length;
+      const minOk = !searchParams.minInvoices || count >= parseInt(searchParams.minInvoices);
+      const maxOk = !searchParams.maxInvoices || count <= parseInt(searchParams.maxInvoices);
+      return minOk && maxOk;
+    });
+  }
+
+  // Calculate pagination after filtering
+  const totalCustomers = customers.length;
+  const totalPages = Math.ceil(totalCustomers / ITEMS_PER_PAGE);
+  customers = customers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   // Statistics
   const stats = await prisma.customer.aggregate({
@@ -129,6 +201,24 @@ export default async function CustomersPage({
   if (source) paginationParams.source = source;
   if (sortBy !== "createdAt") paginationParams.sortBy = sortBy;
   if (sortOrder !== "desc") paginationParams.sortOrder = sortOrder;
+  if (searchParams.balanceStatus) paginationParams.balanceStatus = searchParams.balanceStatus;
+  if (searchParams.minInvoices) paginationParams.minInvoices = searchParams.minInvoices;
+  if (searchParams.maxInvoices) paginationParams.maxInvoices = searchParams.maxInvoices;
+  if (searchParams.minTotalInvoiced) paginationParams.minTotalInvoiced = searchParams.minTotalInvoiced;
+  if (searchParams.maxTotalInvoiced) paginationParams.maxTotalInvoiced = searchParams.maxTotalInvoiced;
+  if (searchParams.createdFrom) paginationParams.createdFrom = searchParams.createdFrom;
+  if (searchParams.createdTo) paginationParams.createdTo = searchParams.createdTo;
+
+  // Count active filters
+  const activeFilterCount = [
+    searchParams.balanceStatus,
+    searchParams.minInvoices,
+    searchParams.maxInvoices,
+    searchParams.minTotalInvoiced,
+    searchParams.maxTotalInvoiced,
+    searchParams.createdFrom,
+    searchParams.createdTo,
+  ].filter(Boolean).length;
 
   // Helper function to build sort URL
   const buildSortUrl = (field: string) => {
@@ -187,7 +277,7 @@ export default async function CustomersPage({
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4 mb-4">
           {/* Search */}
           <form method="GET" className="flex-1 min-w-[200px]">
             <input type="hidden" name="source" value={source} />
@@ -250,6 +340,140 @@ export default async function CustomersPage({
             </Link>
           </div>
         </div>
+
+        {/* Advanced Filters */}
+        <details className="border-t pt-4">
+          <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+            <span>Advanced Filters</span>
+            {activeFilterCount > 0 && (
+              <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
+          </summary>
+          <form method="GET" className="mt-4">
+            {/* Preserve existing filters */}
+            {search && <input type="hidden" name="search" value={search} />}
+            {source && <input type="hidden" name="source" value={source} />}
+            {sortBy !== "createdAt" && <input type="hidden" name="sortBy" value={sortBy} />}
+            {sortOrder !== "desc" && <input type="hidden" name="sortOrder" value={sortOrder} />}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Balance Status */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Balance Status
+                </label>
+                <select
+                  name="balanceStatus"
+                  defaultValue={searchParams.balanceStatus || ""}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All</option>
+                  <option value="no-balance">No Balance</option>
+                  <option value="has-balance">Has Balance</option>
+                  <option value="overdue-balance">Overdue Balance</option>
+                </select>
+              </div>
+
+              {/* Invoice Count Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Invoices
+                </label>
+                <input
+                  type="number"
+                  name="minInvoices"
+                  defaultValue={searchParams.minInvoices}
+                  placeholder="0"
+                  min="0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Invoices
+                </label>
+                <input
+                  type="number"
+                  name="maxInvoices"
+                  defaultValue={searchParams.maxInvoices}
+                  placeholder="Unlimited"
+                  min="0"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Total Invoiced Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Total Invoiced ($)
+                </label>
+                <input
+                  type="number"
+                  name="minTotalInvoiced"
+                  defaultValue={searchParams.minTotalInvoiced}
+                  placeholder="0"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Total Invoiced ($)
+                </label>
+                <input
+                  type="number"
+                  name="maxTotalInvoiced"
+                  defaultValue={searchParams.maxTotalInvoiced}
+                  placeholder="Unlimited"
+                  step="0.01"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* Created Date Range */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Created From
+                </label>
+                <input
+                  type="date"
+                  name="createdFrom"
+                  defaultValue={searchParams.createdFrom}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Created To
+                </label>
+                <input
+                  type="date"
+                  name="createdTo"
+                  defaultValue={searchParams.createdTo}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
+              >
+                Apply Filters
+              </button>
+              <Link
+                href="/dashboard/customers"
+                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition"
+              >
+                Clear Filters
+              </Link>
+            </div>
+          </form>
+        </details>
       </div>
 
       {/* Customer List */}
