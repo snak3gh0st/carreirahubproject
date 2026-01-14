@@ -199,6 +199,69 @@ export default async function InvoicesPage({
         </div>
       </div>
 
+      {/* Status Distribution Bar Chart */}
+      <div className="bg-white p-6 rounded-lg shadow mb-6">
+        <h3 className="text-sm font-medium text-gray-500 mb-3">
+          Invoice Status Distribution
+        </h3>
+        <div className="flex w-full h-8 rounded-lg overflow-hidden">
+          {(() => {
+            const totalCount = Object.values(statsMap).reduce((s, v) => s + v.count, 0);
+            const draftPercent = ((statsMap.DRAFT?.count || 0) / totalCount) * 100;
+            const sentPercent = ((statsMap.SENT?.count || 0) / totalCount) * 100;
+            const paidPercent = ((statsMap.PAID?.count || 0) / totalCount) * 100;
+            const overduePercent = ((statsMap.OVERDUE?.count || 0) / totalCount) * 100;
+
+            return (
+              <>
+                {draftPercent > 0 && (
+                  <div
+                    className="bg-gray-400 flex items-center justify-center text-white text-xs font-medium"
+                    style={{ width: `${draftPercent}%` }}
+                    title={`Draft: ${statsMap.DRAFT?.count || 0} (${draftPercent.toFixed(1)}%)`}
+                  >
+                    {draftPercent > 10 && `${draftPercent.toFixed(0)}%`}
+                  </div>
+                )}
+                {sentPercent > 0 && (
+                  <div
+                    className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
+                    style={{ width: `${sentPercent}%` }}
+                    title={`Sent: ${statsMap.SENT?.count || 0} (${sentPercent.toFixed(1)}%)`}
+                  >
+                    {sentPercent > 10 && `${sentPercent.toFixed(0)}%`}
+                  </div>
+                )}
+                {paidPercent > 0 && (
+                  <div
+                    className="bg-green-500 flex items-center justify-center text-white text-xs font-medium"
+                    style={{ width: `${paidPercent}%` }}
+                    title={`Paid: ${statsMap.PAID?.count || 0} (${paidPercent.toFixed(1)}%)`}
+                  >
+                    {paidPercent > 10 && `${paidPercent.toFixed(0)}%`}
+                  </div>
+                )}
+                {overduePercent > 0 && (
+                  <div
+                    className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
+                    style={{ width: `${overduePercent}%` }}
+                    title={`Overdue: ${statsMap.OVERDUE?.count || 0} (${overduePercent.toFixed(1)}%)`}
+                  >
+                    {overduePercent > 10 && `${overduePercent.toFixed(0)}%`}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+        </div>
+        <div className="flex justify-between mt-2 text-xs text-gray-600">
+          <span>Draft: {statsMap.DRAFT?.count || 0}</span>
+          <span>Sent: {statsMap.SENT?.count || 0}</span>
+          <span>Paid: {statsMap.PAID?.count || 0}</span>
+          <span>Overdue: {statsMap.OVERDUE?.count || 0}</span>
+        </div>
+      </div>
+
       {/* Summary Stats */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <div className="bg-white p-6 rounded-lg shadow">
@@ -215,6 +278,7 @@ export default async function InvoicesPage({
           <p className="text-3xl font-bold mt-2">
             ${totalAmount.toLocaleString()}
           </p>
+          {/* TODO: Add trend indicators when historical snapshots available */}
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Paid</h3>
@@ -224,6 +288,16 @@ export default async function InvoicesPage({
           <p className="text-sm text-green-600 mt-1">
             {statsMap.PAID?.count || 0} invoices
           </p>
+          {/* Progress bar showing paid proportion */}
+          <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+            <div
+              className="bg-green-600 h-1 rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, (paidAmount / totalAmount) * 100)}%`,
+              }}
+              title={`${((paidAmount / totalAmount) * 100).toFixed(1)}% of total value`}
+            ></div>
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Pending</h3>
@@ -233,6 +307,16 @@ export default async function InvoicesPage({
           <p className="text-sm text-yellow-600 mt-1">
             {(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} invoices
           </p>
+          {/* Progress bar showing pending proportion */}
+          <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+            <div
+              className="bg-yellow-500 h-1 rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, (pendingAmount / totalAmount) * 100)}%`,
+              }}
+              title={`${((pendingAmount / totalAmount) * 100).toFixed(1)}% of total value`}
+            ></div>
+          </div>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Overdue</h3>
@@ -242,6 +326,16 @@ export default async function InvoicesPage({
           <p className="text-sm text-red-600 mt-1">
             {statsMap.OVERDUE?.count || 0} invoices
           </p>
+          {/* Progress bar showing overdue proportion */}
+          <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+            <div
+              className="bg-red-600 h-1 rounded-full transition-all"
+              style={{
+                width: `${Math.min(100, (overdueAmount / totalAmount) * 100)}%`,
+              }}
+              title={`${((overdueAmount / totalAmount) * 100).toFixed(1)}% of total value`}
+            ></div>
+          </div>
         </div>
       </div>
 
