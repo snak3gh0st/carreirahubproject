@@ -22,6 +22,7 @@ Build rock-solid Finance department workflows by integrating QuickBooks (account
 
 Sprint 1 Phases:
 - [x] **Phase 1: QuickBooks Foundation** - OAuth, customer sync, invoice sync, payment tracking
+- [ ] **Phase 1.1: Invoice & Customer Dashboard Enhancement (INSERTED)** - Enhanced UI, graphics, filtering, installment tracking
 - [ ] **Phase 2: Stripe Integration** - Payment processing, subscriptions, QB sync
 - [ ] **Phase 3: DocuSign Integration** - Contract generation, signature workflow, document storage
 - [ ] **Phase 4: Finance Workflow Automation** - End-to-end Deal → Invoice → Payment → Contract
@@ -57,6 +58,80 @@ Plans:
 - bcryptjs instead of bcrypt (serverless compatibility)
 - Invoice pagination loop for >1000 invoices
 - maxResults default: 5000 (configurable)
+
+---
+
+### Phase 1.1: Invoice & Customer Dashboard Enhancement (INSERTED)
+
+**Goal**: Enhance invoice and customer pages with comprehensive financial information, improved UI/UX with visual graphics, advanced filtering, and complete installment tracking.
+
+**Status**: ⏳ In progress (1 of 4 plans complete)
+
+**Depends on**: Phase 1 (QuickBooks Foundation)
+
+**Research**: Unlikely (UI/UX enhancement of existing functionality)
+
+**Plans**: 4 plans
+
+Plans:
+- [x] 1.1-01: Customer detail page with financial summary and installment tracking (completed 2026-01-14, 14 min)
+- [ ] 1.1-02: Invoice page enhancement with customer details
+- [ ] 1.1-03: Advanced filtering for invoices and customers
+- [ ] 1.1-04: Dashboard graphics and visualizations
+
+**Scope:**
+- **Invoice Page Enhancements**
+  - Display complete invoice information with customer details
+  - Show all related customer data (name, email, phone, balance)
+  - Link invoices to customer profile
+  - Add visual status indicators and graphics
+  - Improve layout for better readability
+
+- **Customer Page Enhancements**
+  - Display customer financial summary
+  - Show installment invoices breakdown:
+    - Total invoices
+    - Paid invoices (count and amount)
+    - Invoices left to pay (count and amount)
+    - Overdue invoices (count and amount)
+  - List all customer invoices with status
+  - Add payment history timeline
+  - Visual graphics for payment status
+
+- **Dashboard Graphics & Visualizations**
+  - Invoice status distribution charts
+  - Payment trends over time
+  - Overdue invoices alerts with visual indicators
+  - Customer balance summary cards
+  - Revenue metrics with graphs
+
+- **Advanced Filtering**
+  - Invoice filtering:
+    - By status (Paid, Sent, Overdue, etc.)
+    - By customer
+    - By date range
+    - By amount range
+    - By payment method
+  - Customer filtering:
+    - By balance status
+    - By payment history
+    - By overdue invoices
+    - By total invoiced amount
+  - Search functionality across all fields
+
+- **System Integration**
+  - Wire up installment tracking with QuickBooks data
+  - Real-time balance calculations
+  - Sync payment status across all views
+  - Update customer financial metrics automatically
+
+**Success Criteria:**
+- Finance team can view complete customer financial picture in one page
+- Invoice page shows all relevant customer information
+- Dashboard displays visual graphics for quick insights
+- Advanced filtering works across invoices and customers
+- Customer page tracks all installments (paid, pending, overdue)
+- System automatically updates all financial metrics
 
 ---
 
@@ -297,13 +372,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. QuickBooks Foundation | 1/1 | ✅ Complete | 2026-01-14 |
+| 1.1. Invoice & Customer Dashboard (INSERTED) | 1/4 | ⏳ In progress | — |
 | 2. Stripe Integration | 0/? | Not planned | — |
 | 3. DocuSign Integration | 0/? | Not planned | — |
 | 4. Finance Workflow Automation | 0/? | Not planned | — |
 
-**Status:** 1 of 4 phases complete (25% done)
+**Status:** 1 of 5 phases complete, 2 of 6+ plans executed (25% done)
 
-**Next Action:** Plan Phase 2 (Stripe Integration) - run `/gsd:plan-phase 2`
+**Next Action:** Execute Phase 1.1 Plan 2 - run `/gsd:execute-plan .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-02-PLAN.md`
 
 ---
 
