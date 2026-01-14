@@ -218,27 +218,29 @@ export default async function CustomerDetailPage({
       </div>
 
       {/* Financial Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Invoiced */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
           <h3 className="text-sm font-medium text-gray-500 mb-2">
             Total Invoiced
           </h3>
-          <p className="text-3xl font-bold">{formatCurrency(totalInvoiced)}</p>
+          <p className="text-3xl font-bold text-blue-600">{formatCurrency(totalInvoiced)}</p>
           <p className="text-sm text-gray-500 mt-1">{totalInvoices} invoices</p>
         </div>
 
         {/* Paid */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Paid</h3>
           <p className="text-3xl font-bold text-green-600">
             {formatCurrency(paidAmount)}
           </p>
-          <p className="text-sm text-green-600 mt-1">{paidCount} invoices</p>
+          <p className="text-sm text-green-600 mt-1">
+            {paidCount} invoices ({totalInvoices > 0 ? Math.round((paidCount / totalInvoices) * 100) : 0}%)
+          </p>
         </div>
 
         {/* Pending */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Pending</h3>
           <p className="text-3xl font-bold text-yellow-600">
             {formatCurrency(pendingAmount)}
@@ -247,43 +249,55 @@ export default async function CustomerDetailPage({
         </div>
 
         {/* Overdue */}
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className={`bg-white p-6 rounded-lg shadow border-l-4 ${overdueCount > 0 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}>
           <h3 className="text-sm font-medium text-gray-500 mb-2">Overdue</h3>
           <p className="text-3xl font-bold text-red-600">
             {formatCurrency(overdueAmount)}
           </p>
-          <p className="text-sm text-red-600 mt-1">{overdueCount} invoices</p>
+          <p className="text-sm text-red-600 mt-1">
+            {overdueCount} invoices
+            {overdueCount > 0 && <span className="ml-2">⚠️</span>}
+          </p>
         </div>
       </div>
 
       {/* Installment Plan Summary */}
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <h2 className="text-xl font-bold mb-4">Installment Plan Summary</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Total Installments</p>
-            <p className="text-2xl font-bold">{totalInvoices} invoices</p>
+      <div className={`p-6 rounded-lg shadow mb-6 ${
+        overdueCount > 0
+          ? 'bg-gradient-to-r from-red-50 to-white border-2 border-red-200'
+          : 'bg-white border border-gray-200'
+      }`}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold">Installment Plan Summary</h2>
+          {overdueCount > 0 && (
+            <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+              ⚠️ {overdueCount} Overdue
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white p-4 rounded-lg border border-gray-200">
+            <p className="text-sm font-medium text-gray-500 mb-1">Total Installments</p>
+            <p className="text-2xl font-bold text-gray-900">{totalInvoices}</p>
+            <p className="text-xs text-gray-500 mt-1">Total invoices</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Paid</p>
-            <p className="text-2xl font-bold text-green-600">
-              {paidCount} invoices ({formatCurrency(paidAmount)})
+          <div className="bg-white p-4 rounded-lg border border-green-200">
+            <p className="text-sm font-medium text-gray-500 mb-1">Paid</p>
+            <p className="text-2xl font-bold text-green-600">{paidCount}</p>
+            <p className="text-xs text-green-600 mt-1">{formatCurrency(paidAmount)}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg border border-blue-200">
+            <p className="text-sm font-medium text-gray-500 mb-1">Remaining</p>
+            <p className="text-2xl font-bold text-blue-600">{remainingCount}</p>
+            <p className="text-xs text-blue-600 mt-1">{formatCurrency(remainingAmount)}</p>
+          </div>
+          <div className={`bg-white p-4 rounded-lg border ${overdueCount > 0 ? 'border-red-300 bg-red-50' : 'border-gray-200'}`}>
+            <p className="text-sm font-medium text-gray-500 mb-1">Overdue</p>
+            <p className={`text-2xl font-bold ${overdueCount > 0 ? 'text-red-600' : 'text-gray-400'}`}>
+              {overdueCount}
             </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Remaining</p>
-            <p className="text-2xl font-bold text-blue-600">
-              {remainingCount} invoices ({formatCurrency(remainingAmount)})
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-gray-500">Overdue</p>
-            <p
-              className={`text-2xl font-bold ${
-                overdueCount > 0 ? "text-red-600" : "text-gray-400"
-              }`}
-            >
-              {overdueCount} invoices ({formatCurrency(overdueAmount)})
+            <p className={`text-xs mt-1 ${overdueCount > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+              {formatCurrency(overdueAmount)}
             </p>
           </div>
         </div>

@@ -39,15 +39,36 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-    // Get invoice status distribution
-    const invoicesByStatus = await prisma.invoice.groupBy({
-      by: ["status"],
-      _count: true,
+    // Get invoice status distribution with overdue calculation
+    const allInvoices = await prisma.invoice.findMany({
+      select: {
+        status: true,
+        dueDate: true,
+        amount: true,
+      },
     });
 
-    const invoiceStatusData = invoicesByStatus.map((item) => ({
-      name: item.status,
-      value: item._count,
+    const today = new Date();
+    const statusCounts: Record<string, number> = {};
+    const statusAmounts: Record<string, number> = {};
+
+    allInvoices.forEach((invoice) => {
+      // Calculate if overdue (not paid/void and past due date)
+      const isOverdue =
+        invoice.status !== "PAID" &&
+        invoice.status !== "VOID" &&
+        new Date(invoice.dueDate) < today;
+
+      const status = isOverdue ? "OVERDUE" : invoice.status;
+
+      statusCounts[status] = (statusCounts[status] || 0) + 1;
+      statusAmounts[status] = (statusAmounts[status] || 0) + Number(invoice.amount);
+    });
+
+    const invoiceStatusData = Object.entries(statusCounts).map(([name, value]) => ({
+      name,
+      value,
+      amount: statusAmounts[name] || 0,
     }));
 
     // Get lead conversion funnel

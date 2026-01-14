@@ -72,12 +72,12 @@ export default async function CustomersPage({
         orderBy: { createdAt: "desc" },
       },
       invoices: {
-        take: 3,
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
           status: true,
           amount: true,
+          dueDate: true,
         },
       },
     },
@@ -99,6 +99,29 @@ export default async function CustomersPage({
   const customersWithInvoices = await prisma.customer.count({
     where: { invoices: { some: {} } },
   });
+
+  // Calculate customers with overdue invoices
+  const allCustomersWithInvoices = await prisma.customer.findMany({
+    where: { invoices: { some: {} } },
+    include: {
+      invoices: {
+        select: {
+          status: true,
+          dueDate: true,
+        },
+      },
+    },
+  });
+
+  const today = new Date();
+  const customersWithOverdue = allCustomersWithInvoices.filter((customer) =>
+    customer.invoices.some(
+      (invoice) =>
+        invoice.status !== "PAID" &&
+        invoice.status !== "VOID" &&
+        new Date(invoice.dueDate) < today
+    )
+  ).length;
 
   // Build search params for pagination
   const paginationParams: Record<string, string> = {};
@@ -136,22 +159,29 @@ export default async function CustomersPage({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
           <h3 className="text-sm font-medium text-gray-500">Total Customers</h3>
           <p className="text-3xl font-bold mt-2">{stats._count.id}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
           <h3 className="text-sm font-medium text-gray-500">From QuickBooks</h3>
           <p className="text-3xl font-bold mt-2 text-green-600">{qbCustomers}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
           <h3 className="text-sm font-medium text-gray-500">From Pipedrive</h3>
           <p className="text-3xl font-bold mt-2 text-blue-600">{pipedriveCustomers}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-purple-500">
           <h3 className="text-sm font-medium text-gray-500">With Invoices</h3>
-          <p className="text-3xl font-bold mt-2">{customersWithInvoices}</p>
+          <p className="text-3xl font-bold mt-2 text-purple-600">{customersWithInvoices}</p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
+          <h3 className="text-sm font-medium text-gray-500">With Overdue</h3>
+          <p className="text-3xl font-bold mt-2 text-red-600">{customersWithOverdue}</p>
+          {customersWithOverdue > 0 && (
+            <p className="text-xs text-red-600 mt-1">⚠️ Needs attention</p>
+          )}
         </div>
       </div>
 
@@ -282,6 +312,20 @@ export default async function CustomersPage({
                   .filter((i) => i.status !== "PAID" && i.status !== "VOID")
                   .reduce((sum, i) => sum + Number(i.amount), 0);
 
+                // Calculate overdue invoices
+                const today = new Date();
+                const overdueInvoices = customer.invoices.filter(
+                  (i) =>
+                    i.status !== "PAID" &&
+                    i.status !== "VOID" &&
+                    new Date(i.dueDate) < today
+                );
+                const overdueCount = overdueInvoices.length;
+                const overdueAmount = overdueInvoices.reduce(
+                  (sum, i) => sum + Number(i.amount),
+                  0
+                );
+
                 return (
                   <tr key={customer.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -318,19 +362,34 @@ export default async function CustomersPage({
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className="text-gray-900">
-                        {paidInvoices}/{totalInvoices}
-                      </span>
-                      <span className="text-gray-500 ml-1">paid</span>
+                      <div className="flex flex-col">
+                        <span className="text-gray-900">
+                          {paidInvoices}/{totalInvoices} <span className="text-gray-500">paid</span>
+                        </span>
+                        {overdueCount > 0 && (
+                          <span className="text-red-600 text-xs font-medium mt-1">
+                            ⚠️ {overdueCount} overdue
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {totalBalance > 0 ? (
-                        <span className="text-red-600 font-medium">
-                          ${totalBalance.toLocaleString()}
-                        </span>
-                      ) : (
-                        <span className="text-green-600">$0</span>
-                      )}
+                      <div className="flex flex-col">
+                        {totalBalance > 0 ? (
+                          <>
+                            <span className="text-red-600 font-medium">
+                              ${totalBalance.toLocaleString()}
+                            </span>
+                            {overdueAmount > 0 && (
+                              <span className="text-red-700 text-xs font-bold mt-1">
+                                ${overdueAmount.toLocaleString()} overdue
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-green-600">$0</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(customer.createdAt).toLocaleDateString()}

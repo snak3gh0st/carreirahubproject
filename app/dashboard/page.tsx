@@ -25,19 +25,35 @@ export default async function DashboardPage() {
     totalDeals,
     wonDeals,
     totalInvoices,
-    overdueInvoices,
+    allInvoices,
   ] = await Promise.all([
     prisma.lead.count(),
     prisma.lead.count({ where: { status: LeadStatus.QUALIFIED } }),
     prisma.deal.count(),
     prisma.deal.count({ where: { status: DealStatus.WON } }),
     prisma.invoice.count(),
-    prisma.invoice.count({
-      where: {
-        status: InvoiceStatus.OVERDUE,
+    prisma.invoice.findMany({
+      select: {
+        status: true,
+        dueDate: true,
+        amount: true,
       },
     }),
   ]);
+
+  // Calculate overdue invoices dynamically
+  const today = new Date();
+  const overdueInvoices = allInvoices.filter(
+    (inv) =>
+      inv.status !== InvoiceStatus.PAID &&
+      inv.status !== InvoiceStatus.VOID &&
+      new Date(inv.dueDate) < today
+  );
+  const overdueCount = overdueInvoices.length;
+  const overdueAmount = overdueInvoices.reduce(
+    (sum, inv) => sum + Number(inv.amount),
+    0
+  );
 
   const conversionRate =
     totalLeads > 0 ? ((wonDeals / totalLeads) * 100).toFixed(1) : "0.0";
@@ -189,11 +205,19 @@ export default async function DashboardPage() {
               <p className="text-4xl font-bold text-gray-900">{totalInvoices}</p>
               <p className="text-sm text-gray-600 ml-2 mb-1">total</p>
             </div>
-            {overdueInvoices > 0 && (
+            {overdueCount > 0 && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm font-medium text-red-800">
-                  ⚠️ {overdueInvoices} invoice(s) vencida(s)
-                </p>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium text-red-800">
+                    ⚠️ {overdueCount} invoice(s) overdue
+                  </p>
+                  <p className="text-lg font-bold text-red-900 mt-1">
+                    ${overdueAmount.toLocaleString("en-US", {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </p>
+                </div>
               </div>
             )}
           </div>
