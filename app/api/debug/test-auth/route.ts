@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     console.log("[DEBUG AUTH] Hash from DB:", user.password.substring(0, 30) + "...");
 
     // Test with bcrypt directly
-    const bcrypt = await import("bcrypt");
+    const bcrypt = await import("bcryptjs");
     const passwordValidDirect = await bcrypt.default.compare(password, user.password);
     console.log("[DEBUG AUTH] Bcrypt direct test:", passwordValidDirect);
 
