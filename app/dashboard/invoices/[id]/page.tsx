@@ -253,12 +253,12 @@ export default async function InvoiceDetailPage({
         <WorkflowTimeline steps={workflowSteps} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Informações Principais */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Status e Valor */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Invoice Information</h2>
+      {/* Main Content: Two-Column Layout (Invoice Details + Customer Info) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Left Column: Invoice Details */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold mb-4">Invoice Information</h2>
+          <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-gray-600">Status</p>
@@ -290,6 +290,11 @@ export default async function InvoiceDetailPage({
                 <p className="text-sm text-gray-600">Due Date</p>
                 <p className={`mt-1 ${isOverdue && invoice.status !== InvoiceStatus.PAID ? "text-red-600 font-semibold" : ""}`}>
                   {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}
+                  {isOverdue && invoice.status !== InvoiceStatus.PAID && (
+                    <span className="block text-xs text-red-600 font-semibold mt-1">
+                      Overdue
+                    </span>
+                  )}
                 </p>
               </div>
               <div>
@@ -299,33 +304,176 @@ export default async function InvoiceDetailPage({
                 </p>
               </div>
             </div>
-          </div>
 
-          {/* Cliente */}
-          {invoice.customer && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Customer</h2>
-              <div className="space-y-2">
-                <p>
-                  <span className="font-medium">Name:</span>{" "}
-                  <Link
-                    href={`/dashboard/customers/${invoice.customer.id}`}
-                    className="text-blue-600 hover:underline"
-                  >
-                    {invoice.customer.name}
-                  </Link>
+            {/* Payment Info */}
+            {invoice.paidAt && (
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600">Payment Date</p>
+                <p className="mt-1 text-green-600 font-medium">
+                  {new Date(invoice.paidAt).toLocaleDateString("pt-BR")}
                 </p>
-                <p>
-                  <span className="font-medium">Email:</span> {invoice.customer.email}
-                </p>
-                {invoice.customer.phone && (
-                  <p>
-                    <span className="font-medium">Phone:</span> {invoice.customer.phone}
+                {invoice.paymentMethod && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Via {invoice.paymentMethod}
                   </p>
                 )}
               </div>
+            )}
+
+            {/* External IDs */}
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-sm text-gray-600 mb-2">External IDs</p>
+              <div className="space-y-1 text-sm">
+                {invoice.quickbooks_invoice_id && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">QuickBooks:</span> {invoice.quickbooks_invoice_id}
+                  </p>
+                )}
+                {invoice.stripe_invoice_id && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Stripe Invoice:</span> {invoice.stripe_invoice_id}
+                  </p>
+                )}
+                {invoice.stripePaymentIntentId && (
+                  <p className="text-gray-700">
+                    <span className="font-medium">Stripe Payment:</span> {invoice.stripePaymentIntentId}
+                  </p>
+                )}
+                {!invoice.quickbooks_invoice_id &&
+                  !invoice.stripe_invoice_id &&
+                  !invoice.stripePaymentIntentId && (
+                    <p className="text-gray-400 text-sm">No external IDs yet</p>
+                  )}
+              </div>
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* Right Column: Customer Information */}
+        {invoice.customer && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Customer Information</h2>
+            <div className="space-y-4">
+              {/* Customer Name with Link */}
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Name</p>
+                <Link
+                  href={`/dashboard/customers/${invoice.customer.id}`}
+                  className="text-lg font-semibold text-blue-600 hover:underline"
+                >
+                  {invoice.customer.name}
+                </Link>
+              </div>
+
+              {/* Contact Info */}
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm text-gray-600">Email</p>
+                  <p className="text-gray-900">{invoice.customer.email}</p>
+                </div>
+                {invoice.customer.phone && (
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="text-gray-900">{invoice.customer.phone}</p>
+                  </div>
+                )}
+                {!invoice.customer.phone && (
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="text-gray-400 text-sm">Not provided</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Source Badges */}
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 mb-2">Data Sources</p>
+                <div className="flex flex-wrap gap-2">
+                  {invoice.customer.quickbooks_id && (
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                      QuickBooks
+                    </span>
+                  )}
+                  {invoice.customer.pipedrive_id && (
+                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                      Pipedrive
+                    </span>
+                  )}
+                  {!invoice.customer.quickbooks_id && !invoice.customer.pipedrive_id && (
+                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium">
+                      Manual Entry
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Customer Financial Summary */}
+              <div className="pt-4 border-t border-gray-200">
+                <p className="text-sm text-gray-600 mb-3">Financial Summary</p>
+                <div className="space-y-2">
+                  {invoice.customer.qbBalance !== null && invoice.customer.qbBalance !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-700">Current Balance:</span>
+                      <span className={`font-semibold ${Number(invoice.customer.qbBalance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        {Number(invoice.customer.qbBalance).toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {invoice.customer.qbTotalInvoiced !== null && invoice.customer.qbTotalInvoiced !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-700">Total Invoiced:</span>
+                      <span className="font-medium text-gray-900">
+                        {Number(invoice.customer.qbTotalInvoiced).toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {invoice.customer.qbTotalPaid !== null && invoice.customer.qbTotalPaid !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-700">Total Paid:</span>
+                      <span className="font-medium text-green-600">
+                        {Number(invoice.customer.qbTotalPaid).toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  {(!invoice.customer.qbBalance && !invoice.customer.qbTotalInvoiced && !invoice.customer.qbTotalPaid) && (
+                    <p className="text-sm text-gray-400">
+                      No financial data synced yet
+                    </p>
+                  )}
+                </div>
+                {invoice.customer.lastQbBalanceSync && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    Last synced: {new Date(invoice.customer.lastQbBalanceSync).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
+              </div>
+
+              {/* Link to View All Customer Invoices */}
+              <div className="pt-4">
+                <Link
+                  href={`/dashboard/customers/${invoice.customer.id}`}
+                  className="inline-flex items-center text-sm text-blue-600 hover:underline"
+                >
+                  View All Customer Invoices →
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Additional Sections in Full Width */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
 
           {/* Deal */}
           {invoice.deal && (
@@ -351,39 +499,6 @@ export default async function InvoiceDetailPage({
               </div>
             </div>
           )}
-
-          {/* IDs Externos */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">External IDs</h2>
-            <div className="space-y-2 text-sm">
-              {invoice.quickbooks_invoice_id && (
-                <p>
-                  <span className="font-medium">QuickBooks:</span> {invoice.quickbooks_invoice_id}
-                </p>
-              )}
-              {invoice.stripe_invoice_id && (
-                <p>
-                  <span className="font-medium">Stripe Invoice:</span> {invoice.stripe_invoice_id}
-                </p>
-              )}
-              {invoice.stripePaymentIntentId && (
-                <p>
-                  <span className="font-medium">Stripe Payment:</span> {invoice.stripePaymentIntentId}
-                </p>
-              )}
-              {invoice.contract?.docusign_env_id && (
-                <p>
-                  <span className="font-medium">DocuSign:</span> {invoice.contract.docusign_env_id}
-                </p>
-              )}
-              {!invoice.quickbooks_invoice_id &&
-                !invoice.stripe_invoice_id &&
-                !invoice.stripePaymentIntentId &&
-                !invoice.contract?.docusign_env_id && (
-                  <p className="text-gray-500">No external IDs configured yet</p>
-                )}
-            </div>
-          </div>
 
           {/* PDF */}
           {invoice.pdfUrl && (
