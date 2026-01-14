@@ -1,131 +1,142 @@
-# Carreira AI Hub - Reliability & Stability Enhancement
+# Carreira AI Hub - Finance Integration Sprint
 
 ## What This Is
 
-Carreira AI Hub is a proprietary middleware system that replaces expensive No-Code/SaaS tools for Carreira U.S.A. The system centralizes lead management, sales, and operations into a single source of truth (SSOT), integrating Pipedrive (CRM), QuickBooks (Finance), Stripe (Payments), DocuSign (Contracts), Twilio (WhatsApp), and OpenAI (AI) into one reliable automation platform. This project focuses on making the existing system rock-solid through comprehensive reliability and stability improvements.
+Carreira AI Hub is a proprietary middleware system that replaces expensive No-Code/SaaS tools for Carreira U.S.A. This Sprint 1 focuses exclusively on building rock-solid Finance department workflows by integrating QuickBooks (accounting), Stripe (payments), and DocuSign (contracts) into one unified, reliable automation platform.
 
 ## Core Value
 
-Zero lost webhooks — every Pipedrive, QuickBooks, Stripe, DocuSign, and Twilio event must be captured and processed reliably with proper retry, recovery, and monitoring.
+Complete Finance workflow automation — seamless integration between QuickBooks, Stripe, and DocuSign to handle invoicing, payments, and contracts without manual data entry or lost transactions.
 
 ## Requirements
 
 ### Validated
 
-<!-- Existing capabilities inferred from codebase -->
+<!-- Existing Finance capabilities -->
 
-- ✓ Webhook-driven automation (Pipedrive, QuickBooks, Stripe, DocuSign, Twilio) — existing
-- ✓ Identity Mapper pattern for customer deduplication across all systems — existing
-- ✓ Service layer architecture with 17+ domain services — existing
-- ✓ BullMQ queue system for async processing (6 queues: leadQualification, whatsappMessages, pipedriveSync, invoiceGeneration, contractGeneration, quickbooksSync) — existing
+- ✓ QuickBooks OAuth integration — working (Phase 1.1 complete)
+- ✓ QuickBooks invoice sync (up to 5000 invoices) — working
+- ✓ QuickBooks customer sync — working
+- ✓ Authentication system with password hashing (bcryptjs) — working
+- ✓ Logout functionality in dashboard — working
+- ✓ Service layer architecture with finance services — existing
+- ✓ BullMQ queue system for async processing — existing
 - ✓ Integration logging system (IntegrationLog table) — existing
-- ✓ NextAuth.js authentication with RBAC (7 roles: ADMIN, SALES, SDR, FINANCE, SUPPORT, OPERATIONAL, COMMERCIAL) — existing
-- ✓ AI chatbot for customer service with automatic escalation — existing
-- ✓ AI-powered lead qualification (0-100 scoring) — existing
+- ✓ NextAuth.js authentication with RBAC (FINANCE role) — existing
 - ✓ API-first design with REST endpoints — existing
 - ✓ Webhook signature validation for security — existing
 
 ### Active
 
-<!-- Current scope: reliability and stability improvements -->
+<!-- Sprint 1: Finance Integration Foundation -->
 
-- [ ] Webhook failure prevention and recovery
-  - Implement webhook retry logic with exponential backoff
-  - Add dead letter queue for failed webhooks
-  - Implement webhook event deduplication
-  - Add webhook health monitoring and alerting
+- [x] QuickBooks Integration (Phase 1 - Complete)
+  - QuickBooks OAuth flow working
+  - Invoice sync with pagination (5000 invoices)
+  - Customer sync working
+  - Payment sync capability
+  - Authentication system with bcryptjs
+  - Admin dashboard with logout
 
-- [ ] Integration error handling improvements
-  - Implement circuit breaker pattern for external API calls
-  - Add graceful degradation when external services are down
-  - Improve error logging with structured context
-  - Add automatic retry with backoff for transient failures
+- [ ] Stripe Integration (Phase 2)
+  - Stripe API authentication and setup
+  - Customer creation and sync with QuickBooks
+  - Payment processing (one-time and recurring)
+  - Webhook handling for payment events
+  - Payment → QuickBooks invoice sync
+  - Subscription management
+  - Failed payment handling and retry logic
 
-- [ ] Queue processing reliability in Vercel environment
-  - Fix BullMQ worker compatibility with Vercel serverless
-  - Implement robust cron-based queue processing
-  - Add queue monitoring and stale job detection
-  - Implement job timeout handling and cleanup
+- [ ] DocuSign Integration (Phase 3)
+  - DocuSign API authentication (JWT/OAuth)
+  - Contract template setup and management
+  - Contract generation from deal data
+  - Signature workflow automation
+  - Document storage and retrieval
+  - Webhook handling for signature events
+  - Contract signed → QuickBooks update
 
-- [ ] Production-ready authentication
-  - Implement password hashing with bcrypt
-  - Remove development password bypass
-  - Add QuickBooks OAuth token refresh UI
-  - Implement session expiration handling
-  - Add OAuth token refresh automation
+- [ ] Finance Workflow Automation (Phase 4)
+  - End-to-end Deal → Invoice → Payment → Contract flow
+  - Customer data consistency across all 3 systems
+  - Automated invoice generation when deal is won
+  - Contract generation upon payment received
+  - Payment tracking and QuickBooks sync
+  - Finance department dashboard for monitoring
+  - Error handling and manual intervention UI
 
-- [ ] Monitoring and observability
-  - Add health check endpoints for all critical systems
-  - Implement webhook delivery status dashboard
-  - Add integration error rate tracking
-  - Create alerting for system failures
+### Out of Scope (Sprint 1)
 
-- [ ] Performance and UX improvements
-  - Optimize database queries with indexes
-  - Improve API response times
-  - Enhance error messages for user-facing endpoints
-  - Add loading states and graceful error handling
-
-### Out of Scope
-
-- New external integrations (focus on existing Pipedrive, QuickBooks, Stripe, DocuSign, Twilio) — strengthen what exists first
-- Major UI/dashboard overhaul (minimal dashboard is acceptable) — API reliability is priority
+- Pipedrive CRM integration — deferred to Sprint 2
+- Twilio WhatsApp integration — deferred to Sprint 2
+- OpenAI chatbot and lead qualification — deferred to Sprint 2
+- Sales and SDR workflows — Sprint 1 is Finance-only
+- Major UI/dashboard overhaul — minimal Finance dashboard is acceptable
 - Migration away from Vercel (must work within serverless constraints) — constraint
-- Real-time features or WebSocket implementation — not critical for reliability
+- Real-time features or WebSocket implementation — not critical for Finance workflows
 - Multi-tenant architecture — single tenant system for Carreira U.S.A.
 
 ## Context
 
-**Problem:** The existing middleware system has foundational reliability issues that risk data loss and operational disruptions:
-- Webhooks can fail without retry, causing lost leads/deals/payments
-- External API errors can cascade and break workflows
-- BullMQ workers don't run properly on Vercel serverless
-- Authentication has development shortcuts that aren't production-ready
-- No monitoring or alerting when critical systems fail
+**Problem:** The Finance department currently handles invoicing, payments, and contracts manually across three separate systems (QuickBooks, Stripe, DocuSign). This causes:
+- Manual data entry leading to errors and delays
+- Customer data inconsistency across systems
+- Lost or delayed payments due to lack of automation
+- Contract generation bottleneck for signed deals
+- No unified view of customer financial status
 
-**Business Impact:** Each lost webhook represents a lost lead, deal, payment, or customer record. Unreliable integrations mean manual data entry, duplicate customers, and "data blindness" that the system was built to eliminate. Current OPEX savings of $17.6k/month are at risk if the system isn't reliable.
+**Business Impact:** Manual Finance workflows waste time, delay revenue collection, and create data inconsistencies. Automating QuickBooks, Stripe, and DocuSign integration will:
+- Eliminate manual invoice/contract creation (save ~10 hours/week)
+- Accelerate payment collection with automated follow-up
+- Ensure customer data consistency across financial systems
+- Provide real-time financial visibility for decision making
+
+**Sprint 1 Goal:** Build the foundation for automated Finance workflows by connecting QuickBooks, Stripe, and DocuSign into one seamless system.
 
 **Technical Environment:**
 - Next.js 14+ with App Router on Vercel serverless
 - PostgreSQL (Neon) with Prisma ORM
 - Redis for BullMQ queue backend
-- 6 external integrations with webhooks
-- Webhook-driven architecture (not polling)
+- 3 Finance integrations: QuickBooks (accounting), Stripe (payments), DocuSign (contracts)
+- Webhook-driven architecture for real-time sync
 - Stateless serverless functions (10s timeout)
 
-**Known Technical Debt:**
-- Password authentication bypasses validation in development (CLAUDE.md:138)
-- Some queue workers have placeholder implementations (CLAUDE.md:333)
-- BullMQ workers don't run on Vercel (CLAUDE.md:334)
-- QuickBooks OAuth tokens need manual refresh (CLAUDE.md:335)
-- No structured monitoring or alerting system
-- Integration error logging exists but no analysis or alerting
+**Current Status:**
+- ✅ QuickBooks OAuth working
+- ✅ QuickBooks invoice sync (up to 5000 invoices)
+- ✅ Authentication system operational
+- ⏳ Stripe integration not started
+- ⏳ DocuSign integration not started
+- ⏳ End-to-end Finance workflow not automated
 
-**Current Reliability Mechanisms:**
+**Technical Foundation:**
 - Webhook signature validation prevents unauthorized events
 - Integration logging captures all external API calls
-- Prisma transactions for data consistency
-- Queue jobs have retry configuration (needs verification)
+- Service layer architecture for business logic
+- Queue system for async processing with retry logic
+- Identity Mapper pattern for customer deduplication
 
 ## Constraints
 
 - **Platform**: Must stay on Vercel serverless — no long-running workers, 10s function timeout, stateless functions
 - **Tech Stack**: Keep existing Next.js, Prisma, BullMQ, Redis stack — no major architectural rewrites
-- **Backward Compatibility**: Existing webhooks and integrations must keep working during improvements — zero downtime
-- **Budget**: No new paid services for monitoring (use existing or open-source) — cost-conscious
-- **Timeline**: No specific deadline, but stability is blocking production confidence — ship incrementally
+- **Backward Compatibility**: QuickBooks integration must keep working during Stripe/DocuSign additions — zero downtime
+- **Budget**: No new paid services — use existing Stripe/DocuSign/QuickBooks plans only
+- **Timeline**: Sprint 1 completion target — 4 phases to production-ready Finance automation
+- **Scope**: Finance department only — no CRM, Sales, or SDR features in Sprint 1
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Core value is "zero lost webhooks" | Every webhook represents business-critical data (leads, deals, payments) that cannot be lost | — Pending |
-| Focus on reliability before performance | System must be stable before optimizing speed | — Pending |
-| Work within Vercel serverless constraints | Existing hosting platform, no migration budget | — Pending |
-| Implement webhook retry and dead letter queue | Critical pattern for zero data loss | — Pending |
-| Add circuit breaker pattern for external APIs | Prevent cascading failures when integrations are down | — Pending |
-| Fix BullMQ in Vercel via cron-based processing | Workers don't run in serverless, need polling workaround | — Pending |
-| Implement password hashing before production | Security requirement, remove dev shortcuts | — Pending |
+| Focus Sprint 1 on Finance only (QuickBooks, Stripe, DocuSign) | Finance automation delivers immediate ROI, smaller scope reduces risk | ✅ Approved 2026-01-14 |
+| QuickBooks as foundation (Phase 1) | Already working, provides customer/invoice base for other integrations | ✅ Complete |
+| Stripe second (Phase 2) | Payment processing is highest priority after invoicing | — Pending |
+| DocuSign third (Phase 3) | Contracts follow payment, less time-critical than payment collection | — Pending |
+| End-to-end workflow last (Phase 4) | Integrate all 3 systems after each works individually | — Pending |
+| Use bcryptjs instead of bcrypt | Vercel serverless compatibility (no native modules) | ✅ Implemented Phase 1.1 |
+| Work within Vercel serverless constraints | Existing hosting platform, no migration budget | ✅ Ongoing |
+| Customer deduplication via email across all 3 systems | Email is universal identifier for Finance workflows | — Pending |
 
 ---
-*Last updated: 2026-01-10 after initialization*
+*Last updated: 2026-01-14 — Sprint 1 scope defined (Finance focus)*

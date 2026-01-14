@@ -2,41 +2,46 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-10)
+See: .planning/PROJECT.md (updated 2026-01-14)
 
-**Core value:** Zero lost webhooks — every Pipedrive, QuickBooks, Stripe, DocuSign, and Twilio event must be captured and processed reliably with proper retry, recovery, and monitoring.
+**Core value:** Complete Finance workflow automation — seamless integration between QuickBooks, Stripe, and DocuSign to handle invoicing, payments, and contracts without manual data entry or lost transactions.
 
-**Current focus:** Phase 1 — Webhook Reliability
+**Current focus:** Sprint 1 — Finance Integration Foundation (QuickBooks, Stripe, DocuSign)
 
 ## Current Position
 
-Phase: 4.1 of 6 (User Deployment - Dashboard & QuickBooks Data Validation) [INSERTED]
+Phase: 2 of 4 (Stripe Integration)
 Plan: 0 (not yet planned)
 Status: Ready for planning
-Last activity: 2026-01-14 — Completed Phase 1.1 (Auth fix, invoice pagination, logout button)
+Last activity: 2026-01-14 — Completed Phase 1 (QuickBooks Foundation)
 
-Progress: █████████████░ 83% (5/6 phases complete, 10/10 planned plans finished + 1 urgent insertion)
+Progress: ██████░░░░░░░░░░ 25% (1/4 phases complete, 1 plan executed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 50 minutes
-- Total execution time: 8.6 hours
+- Total plans completed: 1
+- Average duration: 150 minutes
+- Total execution time: 2.5 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 1. Webhook Reliability | 3/3 | 122 min | 41 min |
-| 1.1. Make QuickBooks Work | 1/1 | 150 min | 150 min |
-| 2. Integration Resilience | 2/2 | 80 min | 40 min |
-| 3. Queue Processing | 2/2 | 90 min | 45 min |
-| 4. Production Auth | 2/2 | 48 min | 24 min |
+| 1. QuickBooks Foundation | 1/1 | 150 min | 150 min |
 
 **Recent Trend:**
-- All 10 plans: 01-01 (45m), 01-02 (35m), 01-03 (42m), 1.1-01 (150m), 02-01 (37m), 02-02 (43m), 03-01 (45m), 03-02 (42m), 04-01 (38m), 04-02 (28m)
-- Trend: Phase 1.1 took longer (150m) due to critical bcrypt bug requiring full rewrite
+- Phase 1: 1.1-01 (150 min) — Authentication fix, invoice pagination, logout button, admin credentials
+
+## Sprint 1 Roadmap
+
+**Sprint Goal:** Enable Finance department to manage complete customer financial lifecycle (invoicing → payment → contract) without manual data entry.
+
+**Sprint Structure:**
+- Phase 1: QuickBooks Foundation ✅ Complete
+- Phase 2: Stripe Integration ⏳ Next
+- Phase 3: DocuSign Integration 📋 Planned
+- Phase 4: Finance Workflow Automation 📋 Planned
 
 ## Accumulated Context
 
@@ -45,105 +50,113 @@ Progress: █████████████░ 83% (5/6 phases complete, 1
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-**From 01-01:**
-- Always return 200 OK to webhook senders (prevents external retry storms)
-- Exponential backoff with 5 max retries (1m, 2m, 4m, 8m, 16m, 32m)
-- Dead letter queue for permanent failures requiring manual recovery
-- Retry processing via cron jobs (Phase 3 implementation)
+**From Phase 1 (QuickBooks Foundation):**
+- Use bcryptjs instead of bcrypt for Vercel serverless compatibility (no native modules)
+- Invoice pagination implemented with maxResults default of 5000 (handles large QB accounts)
+- Email as universal customer identifier across all systems (Identity Mapper pattern)
+- Full page navigation for QuickBooks OAuth (eliminates CORS issues)
+- Admin credentials: admin@carreirausa.com (authenticated via bcryptjs hashing)
 
-**From 01-02:**
-- Use (service, event_id) unique constraint for deduplication (leverages existing index)
-- Skip processing for success/processing/pending statuses (prevents concurrent processing)
-- Allow retries for failed/dead_letter statuses (enables manual recovery)
-- Generate SHA-256 hash fallback for unknown providers (ensures universal deduplication)
-- Return structured status ("success" | "duplicate" | "error") for better observability
-
-**From 02-01:**
-- Lightweight circuit breaker implementation (no external packages) for transparent, reliable performance
-- Database-persisted state via Prisma for serverless stateless environment compatibility
-- Atomic upsert pattern for circuit state updates (prevents race conditions)
-- Per-service fallback strategies (null return, fallback message, queue retry) per integration requirements
-- 60-second recovery timeout balances fast recovery with preventing thundering herd
-- Thresholds: 5 failures to open, 2 successes to close (minimize false positives)
-
-**From 02-02:**
-- Structured error logging with 5 categories (transient/permanent/auth/validation/unknown) for intelligent recovery strategies
-- JSON metadata field for flexible service-specific error context without schema migrations
-- User-friendly fallback responses with actionable recovery guidance (no internal details exposed)
-- HTTP status code semantics: 202 for transient, 401 for auth, 400 for validation, 500 for permanent
-- Provider-specific error code extraction for cross-service consistency and searchability
-- Sensitive data filtering (redaction of tokens/credentials) at logging layer
-
-**From 03-01:**
-- Cron-based polling instead of workers (serverless constraint: 10s timeout)
-- ExecutionTimer for safe 8-second boundary exit (2s Vercel buffer)
-- Per-queue job limits based on processing weight (leadQualification: 2, whatsappMessages: 5, etc.)
-- 5-second timeout per job prevents hanging on stuck external APIs
-- All queue operations logged to IntegrationLog for monitoring
-- Priority-based queue processing (lightweight/high-priority first)
-
-**From 03-02:**
-- Separate cron schedules: processing (5min), monitoring (4hr) to avoid timeout conflicts
-- Efficient queue scanning: delayed+waiting+active states only (O(active) not O(all jobs))
-- Logging-only monitoring design: no auto-remediation (stuck jobs may be legitimately long-running)
-- Standard thresholds: 24h stale, 5 failures (BullMQ ceiling), 5min stuck timeout
-- All monitoring issues logged to IntegrationLog with category QUEUE_MONITORING for queryability
-
-**From 04-01:**
-- 12-round bcrypt salt for password hashing (balance security with ~100ms hash time)
-- Optional password field for backward compatibility with existing users
-- Users without passwords rejected at login (forces password migration)
-- ADMIN-only user creation endpoint with 403 Forbidden for non-admin roles
-- Separate AuthService for password operations (reusable, testable, isolated)
-
-**From 04-02:**
-- Daily token refresh via cron at 2 AM UTC (prevents expiration surprises for 60-day tokens)
-- ADMIN-only token status and manual refresh endpoints (token info is sensitive)
-- Logging all refresh attempts to IntegrationLog (enables monitoring and alerting)
-- Graceful degradation on refresh failure (cron/endpoint return 200, details in logs)
-- Public `refreshAccessTokenDirect()` method on QuickbooksService for external callers
-- Token health monitoring integrated into queue monitoring cron (every 4 hours)
+**Strategic Decisions:**
+- Focus Sprint 1 exclusively on Finance (QuickBooks, Stripe, DocuSign only)
+- Defer Pipedrive, Twilio, OpenAI to Sprint 2
+- Build integrations sequentially: QB → Stripe → DocuSign → Workflow
+- Each phase delivers working integration before moving to next
 
 ### Roadmap Evolution
 
-**2026-01-14:**
-- Phase 1.1 completed: "Make QuickBooks Work"
-- Key fixes: bcrypt→bcryptjs (critical auth bug), invoice pagination, logout button, admin credentials
-- Critical issue: bcrypt native module failed in Vercel Linux environment, blocking all logins
-- Took 150min (longer than expected) due to deep debugging of authentication failure
+**2026-01-14 — Sprint 1 Scope Defined:**
+- Pivoted from multi-department, multi-integration roadmap to Finance-only focus
+- New sprint structure: 4 phases covering QuickBooks, Stripe, DocuSign, Workflow
+- Phase 1 (QuickBooks) already complete and working in production
+- Deferred: Pipedrive CRM, Twilio WhatsApp, OpenAI chatbot (Sprint 2)
 
-**2026-01-13:**
-- Phase 1.1 inserted after Phase 1: "Make QuickBooks Work" (URGENT)
-- Reason: QuickBooks OAuth flow broken (CORS error), blocking authentication and sync validation
-- Scope: Fix OAuth CORS issue, configure webhook verifier token, test end-to-end flow, validate sync completeness
-- Impact: Phase 2 now depends on 1.1 completion instead of Phase 1
+**Phase 1 Complete (2026-01-14):**
+- QuickBooks OAuth flow working (CORS fix via full page navigation)
+- Invoice sync with pagination (up to 5000 invoices)
+- Customer sync working
+- Authentication system converted from bcrypt → bcryptjs
+- Admin credentials created and tested
+- Logout functionality added to dashboard (desktop + mobile)
+- Webhook verifier token configured
 
-**2026-01-12:**
-- Phase 4.1 inserted after Phase 4: "User Deployment - Dashboard & QuickBooks Data Validation" (URGENT)
-- Reason: System needs dashboard UX improvements and QuickBooks data completeness validation before deploying to users
-- Scope: Audit dashboard layout, verify all QB data fields captured (Finance), ensure Admin access, validate Commercial visibility
-- Departments affected: Finance (data validation), Admin (configuration), Commercial (sales visibility)
+**Key Technical Accomplishments:**
+- Fixed critical bcrypt native module failure in Vercel serverless environment
+- Implemented proper invoice pagination for QB accounts with >1000 invoices
+- Created debug endpoints for production troubleshooting
+- Reset admin password in production database (Neon)
+
+### Phase 1 Technical Details
+
+**Files Modified:**
+- `lib/services/auth.service.ts` — bcrypt → bcryptjs migration
+- `app/api/quickbooks/sync/invoices/route.ts` — pagination fix
+- `components/dashboard/dashboard-header.tsx` — logout button added
+- `package.json` — dependency swap (bcrypt → bcryptjs)
+
+**Key Issues Resolved:**
+1. bcrypt native module failure (Error: No native build for platform=linux)
+   - Solution: Replaced with bcryptjs (pure JavaScript implementation)
+2. Invoice sync limited to 1000 invoices
+   - Solution: Pagination loop using `getAllInvoicesPaginated()`
+3. Local vs production database confusion
+   - Solution: Created production-specific reset script
+4. JSON escaping in curl commands
+   - Solution: Used JSON files instead of inline strings
+
+**Production Status:**
+- Deployment: carreirausa-c7o4e0dqv
+- URL: https://carreirausa.sigmaintel.io
+- Status: ✅ Working (login, QB OAuth, invoice sync all operational)
 
 ### Deferred Issues
 
-None. Build passes with no errors. Phase 4.1 work identified for pre-deployment.
+None. Phase 1 is complete with no blocking issues.
+
+**Optional Cleanup (low priority):**
+- Remove debug endpoints after stability confirmed
+- Document password policy for users
+- Implement password reset flow for end users
 
 ### Blockers/Concerns
 
-None. All core phases complete. System is production-ready with:
-- Zero lost webhook data (Phase 1)
-- Working QuickBooks authentication and sync (Phase 1.1)
-- Resilient external API integrations with circuit breakers (Phase 2)
-- Robust job queue processing with monitoring (Phase 3)
-- Secure authentication with password hashing and token refresh (Phase 4)
+None. Phase 1 (QuickBooks Foundation) complete and working in production.
 
-**Known Issues:**
-- Debug endpoints still in production (to be removed after stability confirmed)
-- Password reset flow for end users not implemented (admin-only for now)
+**Ready for Phase 2 (Stripe Integration):**
+- QuickBooks provides customer/invoice foundation
+- Authentication system operational
+- Admin dashboard with logout functional
+- Integration logging ready for Stripe API calls
+
+**Next Steps:**
+1. Run `/gsd:plan-phase 2` to plan Stripe integration
+2. Research Stripe API patterns (Payment Intents, webhooks, subscriptions)
+3. Design Stripe ↔ QuickBooks sync architecture
+4. Plan webhook handling for payment events
 
 ## Session Continuity
 
-Last session: 2026-01-11
-Stopped at: Plan 04-02 complete (QuickBooks token refresh automation)
-Resume file: .planning/phases/04-production-auth/04-02-SUMMARY.md
-Next action: Milestone complete - All development phases finished
+Last session: 2026-01-14
+Stopped at: Phase 1 complete, planning documents updated
+Resume file: .planning/phases/1.1-make-quickbooks-work/1.1-01-SUMMARY.md
+Next action: Plan Phase 2 (Stripe Integration) - run `/gsd:plan-phase 2`
+
+## Sprint 1 Success Criteria
+
+**Business Outcomes (Sprint 1 Complete):**
+- Finance team saves 10+ hours/week on manual data entry
+- Payment collection time reduced by 50% (automation + reminders)
+- Customer data consistency: 100% (zero duplicate customers)
+- Contract turnaround time: <2 days (from payment to signed)
+
+**Technical Outcomes:**
+- Zero lost payments (all Stripe webhooks processed)
+- Zero lost contracts (all DocuSign webhooks processed)
+- Customer data synced across all 3 systems within 1 minute
+- Workflow error recovery: Finance team can retry any failed step
+
+**Quality Metrics:**
+- Integration test coverage: >80% for all Finance workflows
+- API error rate: <1% (excluding expected errors like failed payments)
+- Webhook processing: <5 seconds (95th percentile)
+- System uptime: >99.5% (Vercel + integrations)
