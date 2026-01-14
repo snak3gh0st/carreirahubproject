@@ -45,6 +45,7 @@ Progress: █████░░░░░░░░░░░ 25% (1/5 phases compl
 - Phase 2: Stripe Integration 📋 Planned
 - Phase 3: DocuSign Integration 📋 Planned
 - Phase 4: Finance Workflow Automation 📋 Planned
+- Phase 5: Insights (BI & Analytics) 📋 Planned
 
 ## Accumulated Context
 
@@ -67,6 +68,13 @@ Recent decisions affecting current work:
 - Each phase delivers working integration before moving to next
 
 ### Roadmap Evolution
+
+**2026-01-14 — Phase 5 Added (Business Intelligence):**
+- Phase 5 added to end of current milestone: Insights (BI & Analytics)
+- Reason: Need comprehensive BI dashboard with KPIs, charts, and analytics for complete financial visibility
+- Scope: Financial KPIs, invoice analytics, customer analytics, payment analytics, workflow performance metrics, interactive charts
+- Depends on: All previous phases (1-4) to have complete data from QuickBooks, Stripe, DocuSign
+- Will provide data-driven decision making capabilities for Finance team
 
 **2026-01-14 — Phase 1.1 Inserted (URGENT):**
 - Phase 1.1 inserted after Phase 1: Invoice & Customer Dashboard Enhancement

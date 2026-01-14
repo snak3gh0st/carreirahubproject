@@ -26,6 +26,7 @@ Sprint 1 Phases:
 - [ ] **Phase 2: Stripe Integration** - Payment processing, subscriptions, QB sync
 - [ ] **Phase 3: DocuSign Integration** - Contract generation, signature workflow, document storage
 - [ ] **Phase 4: Finance Workflow Automation** - End-to-end Deal → Invoice → Payment → Contract
+- [ ] **Phase 5: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, and analytics for invoices and customers
 
 ## Phase Details
 
@@ -364,10 +365,118 @@ Plans:
 
 ---
 
+### Phase 5: Insights (BI & Analytics)
+
+**Goal**: Create comprehensive Business Intelligence dashboard with KPIs, charts, and analytics for complete financial visibility and data-driven decision making.
+
+**Depends on**: Phases 1-4 (needs data from QuickBooks, Stripe, DocuSign, and automated workflows)
+
+**Research**: Likely (charting libraries, BI best practices, data visualization patterns)
+
+**Research topics**:
+- Chart libraries (Chart.js, Recharts, D3.js, Apache ECharts)
+- Data aggregation and caching strategies
+- Real-time vs batch analytics
+- Dashboard performance optimization
+- KPI calculation methodologies
+- Financial reporting standards
+
+**Plans**: To be determined — run `/gsd:plan-phase 5` to break down
+
+Plans:
+- [ ] TBD (run `/gsd:plan-phase 5` to break down work)
+
+**Scope:**
+
+- **Financial KPIs Dashboard**
+  - Revenue metrics (MRR, ARR, growth rate)
+  - Payment analytics (collection rate, average payment time)
+  - Invoice metrics (outstanding balance, overdue rate, average invoice value)
+  - Customer lifetime value (LTV)
+  - Payment method distribution
+  - Revenue by customer segment
+  - Cash flow projections
+
+- **Invoice Analytics**
+  - Invoice status distribution charts
+  - Payment timeline analysis (days to payment)
+  - Overdue invoice trends over time
+  - Invoice volume trends (daily, weekly, monthly)
+  - Seasonal patterns in invoicing
+  - Top customers by invoice volume/value
+  - Invoice aging report with buckets (0-30, 31-60, 61-90, 90+ days)
+
+- **Customer Analytics**
+  - Customer acquisition trends
+  - Customer churn analysis
+  - Customer payment behavior segments
+  - Top paying customers
+  - Customer geographic distribution
+  - Customer by source (QuickBooks, Pipedrive)
+  - New vs returning customer revenue
+
+- **Payment Analytics**
+  - Payment success/failure rates
+  - Payment method preferences
+  - Average days to payment by customer
+  - Late payment patterns
+  - Refund and dispute tracking
+  - Stripe vs QuickBooks payment reconciliation
+
+- **Workflow Performance**
+  - Deal → Invoice → Payment → Contract funnel
+  - Time metrics for each workflow stage
+  - Bottleneck identification
+  - Automation success rates
+  - Error rates by integration
+  - Webhook processing performance
+
+- **Interactive Charts & Visualizations**
+  - Line charts (revenue trends, invoice volume)
+  - Bar charts (payment methods, customer segments)
+  - Pie charts (invoice status distribution)
+  - Heatmaps (payment patterns by day/time)
+  - Funnel charts (conversion workflows)
+  - Gauge charts (KPI targets vs actuals)
+  - Area charts (cumulative revenue)
+
+- **Filters & Date Ranges**
+  - Date range selector (last 7/30/90 days, custom range)
+  - Customer filters
+  - Invoice status filters
+  - Payment method filters
+  - Source system filters (QB, Stripe, PD)
+  - Export to CSV/PDF
+
+- **Real-time Updates**
+  - Live KPI counters
+  - Auto-refresh dashboards
+  - Webhook-triggered chart updates
+  - Real-time alerts for anomalies
+
+- **Reports**
+  - Executive summary report
+  - Financial period reports (monthly, quarterly)
+  - Customer account statements
+  - Overdue invoice reports
+  - Payment collection reports
+  - Revenue forecasting reports
+
+**Success Criteria:**
+- Finance team has complete visibility into financial metrics
+- Charts load in <2 seconds
+- All KPIs update automatically when data changes
+- Ability to drill down from high-level metrics to individual transactions
+- Export functionality works for all reports
+- Mobile-responsive dashboard
+- Real-time updates without page refresh
+
+---
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 1.1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -376,8 +485,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Stripe Integration | 0/? | Not planned | — |
 | 3. DocuSign Integration | 0/? | Not planned | — |
 | 4. Finance Workflow Automation | 0/? | Not planned | — |
+| 5. Insights (BI & Analytics) | 0/? | Not planned | — |
 
-**Status:** 1 of 5 phases complete, 2 of 6+ plans executed (25% done)
+**Status:** 1 of 6 phases complete, 2 of 6+ plans executed (~17% done)
 
 **Next Action:** Execute Phase 1.1 Plan 2 - run `/gsd:execute-plan .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-02-PLAN.md`
 
