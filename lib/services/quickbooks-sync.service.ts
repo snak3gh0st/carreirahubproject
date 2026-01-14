@@ -208,6 +208,10 @@ export class QuickBooksSyncService {
       });
 
       if (!deal) {
+        // Generate a unique negative ID for QB-only deals using customer's QB ID
+        // This avoids conflicts while keeping pipedrive_deal_id unique
+        const qbDealId = -Math.abs(parseInt(customerRef));
+
         deal = await prisma.deal.create({
           data: {
             customerId: customer.id,
@@ -215,7 +219,7 @@ export class QuickBooksSyncService {
             value: totalAmt,
             currency: "USD",
             status: "OPEN",
-            pipedrive_deal_id: 0, // Placeholder for QB-only deals
+            pipedrive_deal_id: qbDealId, // Unique negative ID for QB-only deals
           },
         });
       }
@@ -753,6 +757,9 @@ export class QuickBooksSyncService {
           });
 
           if (!latestDeal) {
+            // Generate a unique negative ID for QB-only deals using customer's QB ID
+            const qbDealId = -Math.abs(parseInt(customerRef));
+
             // Create default deal for QB-imported invoices (like syncSingleInvoice does)
             latestDeal = await prisma.deal.create({
               data: {
@@ -761,7 +768,7 @@ export class QuickBooksSyncService {
                 value: totalAmount,
                 currency: "USD",
                 status: "OPEN",
-                pipedrive_deal_id: 0, // Placeholder for QB-only deals
+                pipedrive_deal_id: qbDealId, // Unique negative ID for QB-only deals
               },
             });
             console.log(`[QuickBooks Sync] Created default deal for customer ${customer.id}: ${latestDeal.id}`);
@@ -1309,6 +1316,9 @@ export class QuickBooksSyncService {
             });
 
             if (!deal) {
+              // Generate a unique negative ID for QB-only deals using customer's QB ID
+              const qbDealId = -Math.abs(parseInt(customer.quickbooks_id || "0"));
+
               deal = await prisma.deal.create({
                 data: {
                   customerId: customer.id,
@@ -1316,7 +1326,7 @@ export class QuickBooksSyncService {
                   value: 0,
                   currency: "USD",
                   status: "OPEN",
-                  pipedrive_deal_id: 0, // Placeholder for QB-only deals
+                  pipedrive_deal_id: qbDealId, // Unique negative ID for QB-only deals
                 },
               });
             }
