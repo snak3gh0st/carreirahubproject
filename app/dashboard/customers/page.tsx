@@ -476,6 +476,90 @@ export default async function CustomersPage({
         </details>
       </div>
 
+      {/* Quick Filter Chips */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(() => {
+            const today = new Date();
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+
+            const isOverdueActive = searchParams.balanceStatus === "overdue-balance";
+            const isHighBalanceActive = searchParams.minTotalInvoiced === "5000";
+            const isNoInvoicesActive = searchParams.maxInvoices === "0";
+            const isActiveThisMonthActive = searchParams.createdFrom === monthStart && searchParams.createdTo === monthEnd;
+            const isFromQBOnlyActive = source === "quickbooks";
+
+            return (
+              <>
+                {/* Has Overdue Invoices */}
+                <Link
+                  href={isOverdueActive ? "/dashboard/customers" : `/dashboard/customers?balanceStatus=overdue-balance`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isOverdueActive
+                      ? "bg-red-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Has Overdue Invoices
+                </Link>
+
+                {/* High Balance */}
+                <Link
+                  href={isHighBalanceActive ? "/dashboard/customers" : `/dashboard/customers?minTotalInvoiced=5000`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isHighBalanceActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  High Balance (&gt;$5k)
+                </Link>
+
+                {/* No Invoices */}
+                <Link
+                  href={isNoInvoicesActive ? "/dashboard/customers" : `/dashboard/customers?maxInvoices=0`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isNoInvoicesActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  No Invoices
+                </Link>
+
+                {/* Active This Month */}
+                <Link
+                  href={isActiveThisMonthActive ? "/dashboard/customers" : `/dashboard/customers?createdFrom=${monthStart}&createdTo=${monthEnd}`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isActiveThisMonthActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Active This Month
+                </Link>
+
+                {/* From QuickBooks Only */}
+                <Link
+                  href={isFromQBOnlyActive ? "/dashboard/customers" : `/dashboard/customers?source=quickbooks`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isFromQBOnlyActive
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  From QuickBooks Only
+                </Link>
+              </>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* Customer List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">

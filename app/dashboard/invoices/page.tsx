@@ -628,6 +628,106 @@ export default async function InvoicesPage({
         </div>
       </div>
 
+      {/* Quick Filter Chips */}
+      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(() => {
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+            const weekFromNowStr = weekFromNow.toISOString().split('T')[0];
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+
+            const isOverdueActive = searchParams.status === "OVERDUE";
+            const isDueThisWeekActive = searchParams.dueDateFrom === todayStr && searchParams.dueDateTo === weekFromNowStr;
+            const isDueThisMonthActive = searchParams.dueDateFrom === monthStart && searchParams.dueDateTo === monthEnd;
+            const isHighValueActive = searchParams.minAmount === "10000";
+            const isPendingApprovalActive = searchParams.approvalStatus === "PENDING";
+            const isFromQBActive = source === "quickbooks";
+
+            return (
+              <>
+                {/* Overdue */}
+                <Link
+                  href={isOverdueActive ? "/dashboard/invoices" : `/dashboard/invoices?status=OVERDUE`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isOverdueActive
+                      ? "bg-red-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Overdue
+                </Link>
+
+                {/* Due This Week */}
+                <Link
+                  href={isDueThisWeekActive ? "/dashboard/invoices" : `/dashboard/invoices?dueDateFrom=${todayStr}&dueDateTo=${weekFromNowStr}`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isDueThisWeekActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Due This Week
+                </Link>
+
+                {/* Due This Month */}
+                <Link
+                  href={isDueThisMonthActive ? "/dashboard/invoices" : `/dashboard/invoices?dueDateFrom=${monthStart}&dueDateTo=${monthEnd}`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isDueThisMonthActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Due This Month
+                </Link>
+
+                {/* High Value */}
+                <Link
+                  href={isHighValueActive ? "/dashboard/invoices" : `/dashboard/invoices?minAmount=10000`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isHighValueActive
+                      ? "bg-blue-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  High Value (&gt;$10k)
+                </Link>
+
+                {/* Pending Approval */}
+                <Link
+                  href={isPendingApprovalActive ? "/dashboard/invoices" : `/dashboard/invoices?approvalStatus=PENDING`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isPendingApprovalActive
+                      ? "bg-orange-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  Pending Approval
+                </Link>
+
+                {/* From QuickBooks */}
+                <Link
+                  href={isFromQBActive ? "/dashboard/invoices" : `/dashboard/invoices?source=quickbooks`}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                    isFromQBActive
+                      ? "bg-green-600 text-white"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  From QuickBooks
+                </Link>
+              </>
+            );
+          })()}
+        </div>
+      </div>
+
       {/* Invoice List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
