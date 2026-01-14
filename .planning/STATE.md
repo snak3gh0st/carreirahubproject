@@ -11,29 +11,30 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 ## Current Position
 
 Phase: 1.1 of 5 (Invoice & Customer Dashboard Enhancement - INSERTED)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-14 — Completed 1.1-01-PLAN.md
+Last activity: 2026-01-14 — Completed 1.1-02-PLAN.md
 
-Progress: █████░░░░░░░░░░░ 25% (1/5 phases complete, 2 plans executed)
+Progress: █████░░░░░░░░░░░ 25% (1/5 phases complete, 3 plans executed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 82 minutes
-- Total execution time: 2.73 hours
+- Total plans completed: 3
+- Average duration: 60 minutes
+- Total execution time: 3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1. QuickBooks Foundation | 1/1 | 150 min | 150 min |
-| 1.1. Dashboard Enhancement | 1/4 | 14 min | 14 min |
+| 1.1. Dashboard Enhancement | 2/4 | 30 min | 15 min |
 
 **Recent Trend:**
 - Phase 1: 1.1-01 (150 min) — Authentication fix, invoice pagination, logout button, admin credentials
 - Phase 1.1: 1.1-01 (14 min) — Customer detail page with financial summary and installment tracking
+- Phase 1.1: 1.1-02 (16 min) — Invoice detail page enhancement with customer information card
 
 ## Sprint 1 Roadmap
 
@@ -120,12 +121,20 @@ Recent decisions affecting current work:
 **Files Modified (1.1-01):**
 - `lib/services/quickbooks-sync.service.ts` — Fixed TypeScript error (undefined variable)
 
+**Files Modified (1.1-02):**
+- `app/dashboard/invoices/[id]/page.tsx` — Enhanced invoice detail page with customer information card and two-column responsive layout
+
 **Key Features Delivered:**
-- Financial summary cards (Total Invoiced, Paid, Pending, Overdue)
-- Installment plan summary section
-- Complete invoice table with status badges
-- Overdue detection and indicators
-- Navigation to invoice details
+- **1.1-01:** Financial summary cards (Total Invoiced, Paid, Pending, Overdue)
+- **1.1-01:** Installment plan summary section
+- **1.1-01:** Complete invoice table with status badges
+- **1.1-01:** Overdue detection and indicators
+- **1.1-01:** Navigation to invoice details
+- **1.1-02:** Customer information card on invoice detail page
+- **1.1-02:** Customer financial summary (QB balance, total invoiced, total paid)
+- **1.1-02:** Data source badges (QuickBooks, Pipedrive, Manual)
+- **1.1-02:** Responsive two-column layout (desktop) / stacked (mobile)
+- **1.1-02:** Navigation links between invoice and customer pages
 
 **Key Issues Resolved:**
 1. bcrypt native module failure (Error: No native build for platform=linux)
@@ -177,9 +186,9 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 ## Session Continuity
 
 Last session: 2026-01-14
-Stopped at: Completed 1.1-01-PLAN.md (Customer Financial Summary & Installment Tracking)
-Resume file: .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-01-SUMMARY.md
-Next action: Execute next plan (1.1-02) - run `/gsd:execute-plan .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-02-PLAN.md`
+Stopped at: Completed 1.1-02-PLAN.md (Invoice Detail Page Enhancement with Customer Information)
+Resume file: .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-02-SUMMARY.md
+Next action: Execute next plan (1.1-03) - run `/gsd:execute-plan .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-03-PLAN.md`
 
 ## Sprint 1 Success Criteria
 
