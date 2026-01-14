@@ -1,10 +1,9 @@
+import bcrypt from 'bcryptjs';
+
 /**
  * AuthService handles password hashing and verification
- * Uses bcrypt with 12 salt rounds for a good balance between security and performance
+ * Uses bcryptjs (serverless-compatible) with 12 salt rounds for security and performance
  * ~100ms hash time, prevents brute force attacks while remaining fast enough for real-time login
- *
- * NOTE: bcrypt is imported lazily to avoid loading native binaries on every request
- * (dashboard pages import auth.ts which used to load bcrypt at top level)
  */
 export class AuthService {
   private saltRounds = 12; // 12 rounds = ~100ms hash time, strong security
@@ -25,9 +24,7 @@ export class AuthService {
       throw new Error('Password must be at least 8 characters long');
     }
 
-    // Lazy import - only load bcrypt when password hashing is needed
-    const bcrypt = await import('bcrypt');
-    return bcrypt.default.hash(password, this.saltRounds);
+    return await bcrypt.hash(password, this.saltRounds);
   }
 
   /**
@@ -41,9 +38,7 @@ export class AuthService {
    */
   async verifyPassword(password: string, hash: string): Promise<boolean> {
     try {
-      // Lazy import - only load bcrypt when password verification is needed
-      const bcrypt = await import('bcrypt');
-      return await bcrypt.default.compare(password, hash);
+      return await bcrypt.compare(password, hash);
     } catch (error) {
       // Return false instead of throwing - prevents info leakage about hash format
       return false;
