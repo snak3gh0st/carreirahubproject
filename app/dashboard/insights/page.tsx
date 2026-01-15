@@ -1,10 +1,12 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { InvoiceStatusChart } from "@/components/dashboard/charts/invoice-status-chart";
 import { RevenueTrendChart } from "@/components/dashboard/charts/revenue-trend-chart";
 import { TopCustomersChart } from "@/components/dashboard/charts/top-customers-chart";
+import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +53,14 @@ const formatInteger = (value: number): string => {
 };
 
 export default function InsightsPage() {
-  // Fetch financial analytics data
+  const searchParams = useSearchParams();
+
+  // Get filter params from URL
+  const dateRange = searchParams.get("dateRange");
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+
+  // Fetch financial analytics data with filters
   const {
     data,
     isLoading,
@@ -59,9 +68,16 @@ export default function InsightsPage() {
     error,
     refetch,
   } = useQuery<FinancialAnalytics>({
-    queryKey: ["financial-analytics"],
+    queryKey: ["financial-analytics", dateRange, from, to],
     queryFn: async () => {
-      const response = await fetch("/api/analytics/financial");
+      const params = new URLSearchParams();
+      if (dateRange) params.set("dateRange", dateRange);
+      if (from) params.set("from", from);
+      if (to) params.set("to", to);
+
+      const url = `/api/analytics/financial${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(url);
+
       if (!response.ok) {
         throw new Error("Failed to fetch financial analytics");
       }
@@ -81,12 +97,8 @@ export default function InsightsPage() {
         </p>
       </div>
 
-      {/* Date Range Filter Placeholder */}
-      <div className="mb-6 p-4 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Date Range Filter (Coming Soon)
-        </p>
-      </div>
+      {/* Date Range Filter */}
+      <DateRangeFilter onFilterChange={() => refetch()} />
 
       {/* Error State */}
       {isError && (

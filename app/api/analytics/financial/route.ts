@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { startOfMonth, subMonths, format } from "date-fns";
+import { startOfMonth, subMonths, subDays, startOfYear, format } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,11 @@ export const dynamic = "force-dynamic";
  * - Invoice status distribution
  * - Revenue trend (last 12 months)
  * - Top 10 customers by revenue
+ *
+ * Query Parameters:
+ * - dateRange: last7 | last30 | last90 | thisYear | allTime | custom
+ * - from: ISO date string (for custom range)
+ * - to: ISO date string (for custom range)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,12 +31,63 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Calculate date 90 days ago for active customers
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    // Parse date range filters from query params
+    const { searchParams } = new URL(request.url);
+    const dateRange = searchParams.get("dateRange");
+    const fromParam = searchParams.get("from");
+    const toParam = searchParams.get("to");
 
-    // Calculate date 12 months ago for revenue trend
-    const twelveMonthsAgo = subMonths(startOfMonth(new Date()), 12);
+    // Calculate date filter based on query params
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
+
+    const now = new Date();
+
+    if (dateRange === "custom" && fromParam && toParam) {
+      startDate = new Date(fromParam);
+      endDate = new Date(toParam);
+    } else {
+      switch (dateRange) {
+        case "last7":
+          startDate = subDays(now, 7);
+          endDate = now;
+          break;
+        case "last30":
+          startDate = subDays(now, 30);
+          endDate = now;
+          break;
+        case "last90":
+          startDate = subDays(now, 90);
+          endDate = now;
+          break;
+        case "thisYear":
+          startDate = startOfYear(now);
+          endDate = now;
+          break;
+        case "allTime":
+        default:
+          // No date filter - show all time
+          startDate = null;
+          endDate = null;
+          break;
+      }
+    }
+
+    // Build date filter for Prisma queries
+    const dateFilter = startDate && endDate
+      ? {
+          gte: startDate,
+          lte: endDate,
+        }
+      : undefined;
+
+    // Calculate date 90 days ago for active customers (or use date filter)
+    const activeCustomersDateFilter = dateFilter || {
+      gte: subDays(now, 90),
+    };
+
+    // Calculate date 12 months ago for revenue trend (or use date filter)
+    const revenueTrendStartDate = startDate || subMonths(startOfMonth(now), 12);
 
     // Parallel queries for better performance
     const [
@@ -57,56 +113,66 @@ export async function GET(request: NextRequest) {
       // Top 10 Customers by Revenue
       topCustomersByRevenue,
     ] = await Promise.all([
-      // Total Revenue
+      // Total Revenue - filter by paidAt date
       prisma.invoice.aggregate({
         where: {
           status: "PAID",
+          ...(dateFilter && {
+            paidAt: dateFilter,
+          }),
         },
         _sum: {
           amountPaid: true,
         },
       }),
 
-      // Overdue Amount
+      // Overdue Amount - filter by createdAt
       prisma.invoice.aggregate({
         where: {
           status: "OVERDUE",
+          ...(dateFilter && {
+            createdAt: dateFilter,
+          }),
         },
         _sum: {
           amount: true,
         },
       }),
 
-      // Total Invoiced (for collection rate)
+      // Total Invoiced (for collection rate) - filter by createdAt
       prisma.invoice.aggregate({
         where: {
           status: {
             notIn: ["DRAFT", "VOID"], // Exclude drafts and voids from calculation
           },
+          ...(dateFilter && {
+            createdAt: dateFilter,
+          }),
         },
         _sum: {
           amount: true,
         },
       }),
 
-      // Total Paid (for collection rate)
+      // Total Paid (for collection rate) - filter by paidAt
       prisma.invoice.aggregate({
         where: {
           status: {
             notIn: ["DRAFT", "VOID"],
           },
+          ...(dateFilter && {
+            paidAt: dateFilter,
+          }),
         },
         _sum: {
           amountPaid: true,
         },
       }),
 
-      // Active Customers (distinct customers with invoices in last 90 days)
+      // Active Customers (distinct customers with invoices in date range)
       prisma.invoice.findMany({
         where: {
-          createdAt: {
-            gte: ninetyDaysAgo,
-          },
+          createdAt: activeCustomersDateFilter,
         },
         distinct: ["customerId"],
         select: {
@@ -114,9 +180,14 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Invoice Status Distribution (grouped by status)
+      // Invoice Status Distribution (grouped by status) - filter by createdAt
       prisma.invoice.groupBy({
         by: ["status"],
+        where: dateFilter
+          ? {
+              createdAt: dateFilter,
+            }
+          : undefined,
         _count: {
           id: true,
         },
@@ -125,11 +196,12 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Revenue by month - using payments for accuracy
+      // Revenue by month - using payments for accuracy - filter by paymentDate
       prisma.payment.findMany({
         where: {
           paymentDate: {
-            gte: twelveMonthsAgo,
+            gte: revenueTrendStartDate,
+            ...(endDate && { lte: endDate }),
           },
         },
         select: {
@@ -141,24 +213,50 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Top Customers by Revenue - using Customer.qbTotalPaid from QB sync
-      prisma.customer.findMany({
-        where: {
-          qbTotalPaid: {
-            gt: 0,
-          },
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          qbTotalPaid: true,
-        },
-        orderBy: {
-          qbTotalPaid: "desc",
-        },
-        take: 10,
-      }),
+      // Top Customers by Revenue - filter invoices by date range then aggregate
+      dateFilter
+        ? prisma.customer.findMany({
+            where: {
+              invoices: {
+                some: {
+                  status: "PAID",
+                  paidAt: dateFilter,
+                },
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              invoices: {
+                where: {
+                  status: "PAID",
+                  paidAt: dateFilter,
+                },
+                select: {
+                  amountPaid: true,
+                },
+              },
+            },
+            take: 100, // Get more than 10 to calculate totals
+          })
+        : prisma.customer.findMany({
+            where: {
+              qbTotalPaid: {
+                gt: 0,
+              },
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              qbTotalPaid: true,
+            },
+            orderBy: {
+              qbTotalPaid: "desc",
+            },
+            take: 10,
+          }),
     ]);
 
     // Calculate KPIs
@@ -203,12 +301,28 @@ export async function GET(request: NextRequest) {
       }));
 
     // Format top customers
-    const topCustomers = topCustomersByRevenue.map((customer) => ({
-      id: customer.id,
-      name: customer.name,
-      email: customer.email,
-      totalPaid: Number(customer.qbTotalPaid || 0),
-    }));
+    const topCustomers = dateFilter
+      ? topCustomersByRevenue
+          .map((customer) => {
+            const totalPaid = customer.invoices.reduce(
+              (sum, inv) => sum + Number(inv.amountPaid || 0),
+              0
+            );
+            return {
+              id: customer.id,
+              name: customer.name,
+              email: customer.email,
+              totalPaid,
+            };
+          })
+          .sort((a, b) => b.totalPaid - a.totalPaid)
+          .slice(0, 10)
+      : topCustomersByRevenue.map((customer) => ({
+          id: customer.id,
+          name: customer.name,
+          email: customer.email,
+          totalPaid: Number(customer.qbTotalPaid || 0),
+        }));
 
     // Return complete analytics response
     return NextResponse.json({
