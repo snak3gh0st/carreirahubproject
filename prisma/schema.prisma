@@ -319,6 +319,14 @@ model Deal {
   invoices   Invoice[]
   contracts  Contract[]
 
+  // Workflow status tracking (Phase 3 - Finance Workflow Automation)
+  workflowStatus       String?   // PENDING | IN_PROGRESS | COMPLETED | FAILED
+  workflowStartedAt    DateTime?
+  workflowCompletedAt  DateTime?
+  workflowError        String?   @db.Text
+  invoiceCreatedAt     DateTime?
+  contractSentAt       DateTime?
+
   // Sync timestamp for conflict resolution
   lastPipedriveSyncAt DateTime?
 

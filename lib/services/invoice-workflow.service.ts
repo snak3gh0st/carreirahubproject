@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { quickbooksService } from "./quickbooks.service";
 import { docusignService } from "./docusign.service";
 import { identityMapper } from "./identity-mapper";
+import { workflowStatusService } from "./workflow-status.service";
+import { financeService } from "./finance.service";
 import { integrationLogger } from "@/lib/utils/logger";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
 
@@ -28,6 +30,12 @@ export class InvoiceWorkflowService {
         "WORKFLOW",
         "PROCESS_DEAL_WON_START",
         { dealId }
+      );
+
+      // Set workflow status to IN_PROGRESS
+      await workflowStatusService.updateWorkflowStatus(
+        dealId,
+        "IN_PROGRESS"
       );
 
       // 1. Buscar Deal e Customer
@@ -96,6 +104,10 @@ export class InvoiceWorkflowService {
             "INVOICE_CREATED",
             { dealId, invoiceId: qbInvoiceId, attempt }
           );
+
+          // Mark invoice as created
+          await workflowStatusService.markInvoiceCreated(dealId);
+
           break; // Success, exit retry loop
         } catch (error) {
           const isLastAttempt = attempt === maxRetries;
@@ -128,6 +140,9 @@ export class InvoiceWorkflowService {
           "CONTRACT_SENT",
           { dealId, contractId }
         );
+
+        // Mark contract as sent
+        await workflowStatusService.markContractSent(dealId);
       } catch (error) {
         await integrationLogger.logError(
           "WORKFLOW",
@@ -149,18 +164,32 @@ export class InvoiceWorkflowService {
         }
       );
 
+      // Mark workflow as complete
+      await workflowStatusService.updateWorkflowStatus(dealId, "COMPLETED");
+
       return {
         contractId,
         invoiceIds,
         success: invoiceIds.length > 0 || !!contractId,
       };
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+
       await integrationLogger.logError(
         "WORKFLOW",
         "PROCESS_DEAL_WON_FAILED",
         error instanceof Error ? error : new Error(String(error)),
         { dealId }
       );
+
+      // Mark workflow as failed
+      await workflowStatusService.updateWorkflowStatus(
+        dealId,
+        "FAILED",
+        errorMessage
+      );
+
       throw error;
     }
   }
