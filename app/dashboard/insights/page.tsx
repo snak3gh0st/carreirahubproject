@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -7,6 +8,7 @@ import { InvoiceStatusChart } from "@/components/dashboard/charts/invoice-status
 import { RevenueTrendChart } from "@/components/dashboard/charts/revenue-trend-chart";
 import { TopCustomersChart } from "@/components/dashboard/charts/top-customers-chart";
 import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
+import { exportToCSV, getDateStamp } from "@/lib/utils/export-csv";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,7 @@ const formatInteger = (value: number): string => {
 
 export default function InsightsPage() {
   const searchParams = useSearchParams();
+  const [isExporting, setIsExporting] = useState(false);
 
   // Get filter params from URL
   const dateRange = searchParams.get("dateRange");
@@ -84,6 +87,71 @@ export default function InsightsPage() {
       return response.json();
     },
   });
+
+  // Export all data as CSV files
+  const handleExportAll = () => {
+    if (!data) {
+      alert("No data to export");
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const dateStamp = getDateStamp();
+
+      // 1. Export KPIs CSV
+      const kpisData = [
+        {
+          "Total Revenue": formatCurrency(data.kpis.totalRevenue),
+          "Overdue Amount": formatCurrency(data.kpis.overdueAmount),
+          "Collection Rate": formatPercentage(data.kpis.collectionRate),
+          "Active Customers": data.kpis.activeCustomers,
+        },
+      ];
+      exportToCSV(kpisData, `financial-kpis-${dateStamp}.csv`);
+
+      // Small delay between downloads to avoid browser blocking
+      setTimeout(() => {
+        // 2. Export Invoice Status CSV
+        const invoiceStatusData = data.invoiceStatusDistribution.map((item) => ({
+          Status: item.status,
+          Count: item.count,
+          "Total Value": formatCurrency(item.value),
+        }));
+        exportToCSV(invoiceStatusData, `invoice-status-${dateStamp}.csv`);
+      }, 100);
+
+      setTimeout(() => {
+        // 3. Export Revenue Trend CSV
+        const revenueTrendData = data.revenueTrend.map((item) => ({
+          Month: item.month,
+          Revenue: formatCurrency(item.revenue),
+        }));
+        exportToCSV(revenueTrendData, `revenue-trend-${dateStamp}.csv`);
+      }, 200);
+
+      setTimeout(() => {
+        // 4. Export Top Customers CSV
+        const topCustomersData = data.topCustomers.map((customer) => ({
+          Name: customer.name,
+          Email: customer.email,
+          "Total Paid": formatCurrency(customer.totalPaid),
+        }));
+        exportToCSV(topCustomersData, `top-customers-${dateStamp}.csv`);
+
+        // Show success message after all exports complete
+        setTimeout(() => {
+          alert("Successfully exported 4 CSV files!");
+          setIsExporting(false);
+        }, 100);
+      }, 300);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      alert("Error exporting data. Please try again.");
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -289,13 +357,55 @@ export default function InsightsPage() {
         )}
       </div>
 
-      {/* Export Button Placeholder */}
+      {/* Export Button */}
       <div className="flex justify-end">
         <button
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled
+          onClick={handleExportAll}
+          disabled={isLoading || isExporting || !data}
+          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          Export Report (Coming Soon)
+          {isExporting ? (
+            <>
+              <svg
+                className="animate-spin h-5 w-5"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              Exporting...
+            </>
+          ) : (
+            <>
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+              Export All Data
+            </>
+          )}
         </button>
       </div>
     </div>
