@@ -2,6 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { KpiCard } from "@/components/dashboard/kpi-card";
+import { InvoiceStatusChart } from "@/components/dashboard/charts/invoice-status-chart";
+import { RevenueTrendChart } from "@/components/dashboard/charts/revenue-trend-chart";
+import { TopCustomersChart } from "@/components/dashboard/charts/top-customers-chart";
 
 export const dynamic = "force-dynamic";
 
@@ -218,36 +221,60 @@ export default function InsightsPage() {
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
             Invoice Status Distribution
           </h3>
-          <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded">
-            <p className="text-gray-500 dark:text-gray-400">
-              Chart placeholder
-            </p>
-          </div>
+          {isLoading ? (
+            <div className="h-[400px] flex items-center justify-center">
+              <div className="animate-pulse text-gray-500 dark:text-gray-400">
+                Loading chart...
+              </div>
+            </div>
+          ) : data ? (
+            <InvoiceStatusChart data={data.invoiceStatusDistribution} />
+          ) : (
+            <div className="h-[400px] flex items-center justify-center text-gray-500 dark:text-gray-400">
+              No data available
+            </div>
+          )}
         </div>
 
         {/* Revenue Trend Chart */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Revenue Trend
+            Revenue Trend (Last 12 Months)
           </h3>
-          <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded">
-            <p className="text-gray-500 dark:text-gray-400">
-              Chart placeholder
-            </p>
-          </div>
+          {isLoading ? (
+            <div className="h-[400px] flex items-center justify-center">
+              <div className="animate-pulse text-gray-500 dark:text-gray-400">
+                Loading chart...
+              </div>
+            </div>
+          ) : data ? (
+            <RevenueTrendChart data={data.revenueTrend} />
+          ) : (
+            <div className="h-[400px] flex items-center justify-center text-gray-500 dark:text-gray-400">
+              No data available
+            </div>
+          )}
         </div>
       </div>
 
       {/* Top Customers Chart */}
       <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 mb-8">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Top Customers by Revenue
+          Top 10 Customers by Revenue
         </h3>
-        <div className="h-64 flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-700 rounded">
-          <p className="text-gray-500 dark:text-gray-400">
-            Chart placeholder
-          </p>
-        </div>
+        {isLoading ? (
+          <div className="h-[400px] flex items-center justify-center">
+            <div className="animate-pulse text-gray-500 dark:text-gray-400">
+              Loading chart...
+            </div>
+          </div>
+        ) : data ? (
+          <TopCustomersChart data={data.topCustomers} />
+        ) : (
+          <div className="h-[400px] flex items-center justify-center text-gray-500 dark:text-gray-400">
+            No data available
+          </div>
+        )}
       </div>
 
       {/* Export Button Placeholder */}
