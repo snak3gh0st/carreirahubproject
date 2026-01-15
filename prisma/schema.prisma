@@ -168,6 +168,7 @@ model Customer {
   pipedrive_id  Int?     @unique
   quickbooks_id String?  @unique
   stripe_id     String?  @unique
+  docusign_id   String?  @unique
   trello_id     String?  @unique
   cloudtalk_id  String?
   google_contact_id String?
@@ -190,6 +191,7 @@ model Customer {
   // Sync timestamps for conflict resolution
   lastPipedriveSyncAt  DateTime?
   lastQuickbooksSyncAt DateTime?
+  lastDocusignSyncAt   DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

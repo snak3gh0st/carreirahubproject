@@ -85,6 +85,20 @@ export async function POST(request: NextRequest) {
         // Contract signed!
         console.log(`[DOCUSIGN_WEBHOOK] Envelope completed for contract ${contract.id}`);
 
+        // Reconcile customer with Identity Mapper
+        if (contract.customer) {
+          const { identityMapper } = await import('@/lib/services/identity-mapper');
+          await identityMapper.reconcileCustomer({
+            email: contract.customer.email,
+            name: contract.customer.name,
+            phone: contract.customer.phone || undefined,
+            externalIds: {
+              docusign_id: envelopeId, // Use envelope ID as DocuSign contact ID
+            },
+          });
+          console.log(`[DOCUSIGN_WEBHOOK] Reconciled customer ${contract.customer.id} with DocuSign ID ${envelopeId}`);
+        }
+
         // Handle signed contract
         await contractWorkflowService.handleContractSigned(contract.id);
 

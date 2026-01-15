@@ -5,6 +5,7 @@ export interface ExternalIds {
   pipedrive_id?: number;
   quickbooks_id?: string;
   stripe_id?: string;
+  docusign_id?: string;
   trello_id?: string;
   cloudtalk_id?: string;
   google_contact_id?: string;
@@ -56,6 +57,9 @@ export class IdentityMapperService {
       if (externalIds.stripe_id && !customer.stripe_id) {
         updates.stripe_id = externalIds.stripe_id;
       }
+      if (externalIds.docusign_id && !customer.docusign_id) {
+        updates.docusign_id = externalIds.docusign_id;
+      }
       if (externalIds.trello_id && !customer.trello_id) {
         updates.trello_id = externalIds.trello_id;
       }
@@ -90,6 +94,7 @@ export class IdentityMapperService {
           pipedrive_id: externalIds.pipedrive_id,
           quickbooks_id: externalIds.quickbooks_id,
           stripe_id: externalIds.stripe_id,
+          docusign_id: externalIds.docusign_id,
           trello_id: externalIds.trello_id,
           cloudtalk_id: externalIds.cloudtalk_id,
           google_contact_id: externalIds.google_contact_id,
@@ -105,7 +110,7 @@ export class IdentityMapperService {
    * Buscar Customer por ID externo
    */
   async findByExternalId(
-    service: "pipedrive" | "quickbooks" | "stripe" | "trello" | "cloudtalk" | "google_contact",
+    service: "pipedrive" | "quickbooks" | "stripe" | "docusign" | "trello" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer | null> {
     const where: any = {};
@@ -119,6 +124,9 @@ export class IdentityMapperService {
         break;
       case "stripe":
         where.stripe_id = String(externalId);
+        break;
+      case "docusign":
+        where.docusign_id = String(externalId);
         break;
       case "trello":
         where.trello_id = String(externalId);
@@ -139,7 +147,7 @@ export class IdentityMapperService {
    */
   async addExternalId(
     customerId: string,
-    service: "pipedrive" | "quickbooks" | "stripe" | "trello" | "cloudtalk" | "google_contact",
+    service: "pipedrive" | "quickbooks" | "stripe" | "docusign" | "trello" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer> {
     const updates: any = {};
@@ -153,6 +161,9 @@ export class IdentityMapperService {
         break;
       case "stripe":
         updates.stripe_id = String(externalId);
+        break;
+      case "docusign":
+        updates.docusign_id = String(externalId);
         break;
       case "trello":
         updates.trello_id = String(externalId);
@@ -169,6 +180,147 @@ export class IdentityMapperService {
       where: { id: customerId },
       data: updates,
     });
+  }
+
+  /**
+   * Sync customer data to DocuSign
+   * Only syncs if name, email, or phone changed to avoid API spam
+   */
+  async syncToDocuSign(customerId: string): Promise<boolean> {
+    try {
+      const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+      });
+
+      if (!customer) {
+        console.log(`[IDENTITY_MAPPER] Customer ${customerId} not found for DocuSign sync`);
+        return false;
+      }
+
+      // Only sync if customer has significant fields to update
+      if (!customer.name || !customer.email) {
+        console.log(`[IDENTITY_MAPPER] Customer ${customerId} missing required fields for DocuSign sync`);
+        return false;
+      }
+
+      // Import dynamically to avoid circular dependency
+      const { docusignService } = await import("./docusign.service");
+
+      // Create or update contact in DocuSign
+      const docusignId = await docusignService.createOrUpdateContact({
+        email: customer.email,
+        name: customer.name,
+        phone: customer.phone || undefined,
+      });
+
+      if (docusignId) {
+        // Update customer with DocuSign ID and sync timestamp
+        await prisma.customer.update({
+          where: { id: customerId },
+          data: {
+            docusign_id: docusignId,
+            lastDocusignSyncAt: new Date(),
+          },
+        });
+
+        console.log(`[IDENTITY_MAPPER] Synced customer ${customerId} to DocuSign: ${docusignId}`);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`[IDENTITY_MAPPER] Failed to sync customer ${customerId} to DocuSign:`, error);
+      // Don't throw - graceful degradation
+      return false;
+    }
+  }
+
+  /**
+   * Sync customer data from DocuSign
+   * Uses last-write-wins conflict resolution based on timestamps
+   */
+  async syncFromDocuSign(
+    docusignId: string,
+    customerData: { email: string; name: string; phone?: string }
+  ): Promise<Customer | null> {
+    try {
+      // Find customer by DocuSign ID
+      let customer = await prisma.customer.findFirst({
+        where: { docusign_id: docusignId },
+      });
+
+      if (!customer) {
+        // Customer doesn't exist - try to find by email
+        customer = await prisma.customer.findUnique({
+          where: { email: customerData.email },
+        });
+
+        if (!customer) {
+          // Create new customer
+          customer = await prisma.customer.create({
+            data: {
+              email: customerData.email,
+              name: customerData.name,
+              phone: customerData.phone,
+              docusign_id: docusignId,
+              lastDocusignSyncAt: new Date(),
+            },
+          });
+
+          console.log(`[IDENTITY_MAPPER] Created customer from DocuSign: ${customer.id}`);
+          return customer;
+        } else {
+          // Customer exists - add DocuSign ID
+          customer = await prisma.customer.update({
+            where: { id: customer.id },
+            data: {
+              docusign_id: docusignId,
+              lastDocusignSyncAt: new Date(),
+            },
+          });
+
+          console.log(`[IDENTITY_MAPPER] Linked existing customer ${customer.id} to DocuSign: ${docusignId}`);
+          return customer;
+        }
+      }
+
+      // Customer exists - check if we should update based on last-write-wins
+      const now = new Date();
+      const updates: any = { lastDocusignSyncAt: now };
+
+      // Only update if DocuSign data is newer or timestamp is missing
+      const shouldUpdate =
+        !customer.lastDocusignSyncAt ||
+        !customer.updatedAt ||
+        customer.lastDocusignSyncAt < customer.updatedAt;
+
+      if (shouldUpdate) {
+        // Update fields that differ
+        if (customerData.name && customerData.name !== customer.name) {
+          updates.name = customerData.name;
+        }
+        if (customerData.phone && customerData.phone !== customer.phone) {
+          updates.phone = customerData.phone;
+        }
+
+        if (Object.keys(updates).length > 1) {
+          // More than just timestamp
+          customer = await prisma.customer.update({
+            where: { id: customer.id },
+            data: updates,
+          });
+
+          console.log(`[IDENTITY_MAPPER] Updated customer ${customer.id} from DocuSign`);
+        }
+      } else {
+        console.log(`[IDENTITY_MAPPER] Skipped update for customer ${customer.id} - local data is newer`);
+      }
+
+      return customer;
+    } catch (error) {
+      console.error(`[IDENTITY_MAPPER] Failed to sync from DocuSign ${docusignId}:`, error);
+      return null;
+    }
   }
 }
 

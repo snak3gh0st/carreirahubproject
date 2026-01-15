@@ -135,6 +135,26 @@ export async function POST(request: NextRequest) {
 
           console.log(`[QuickBooks Webhook] ${operation} ${name} with ID: ${id}`);
 
+          // Handle Customer.Update events - sync to DocuSign if customer has docusign_id
+          if (name === "Customer" && operation === "Update") {
+            try {
+              // Find customer by QuickBooks ID
+              const customer = await prisma.customer.findFirst({
+                where: { quickbooks_id: id },
+              });
+
+              if (customer?.docusign_id) {
+                // Customer exists and has DocuSign ID - sync changes
+                const { identityMapper } = await import('@/lib/services/identity-mapper');
+                await identityMapper.syncToDocuSign(customer.id);
+                console.log(`[QuickBooks Webhook] Synced customer ${customer.id} to DocuSign`);
+              }
+            } catch (syncError) {
+              console.error(`[QuickBooks Webhook] Failed to sync customer ${id} to DocuSign:`, syncError);
+              // Don't fail webhook - log and continue
+            }
+          }
+
           // Enqueue each entity for async processing
           const eventType = `${name.toLowerCase()}.${operation.toLowerCase()}`;
 

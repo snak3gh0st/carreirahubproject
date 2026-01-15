@@ -744,7 +744,7 @@ export class QuickbooksService {
    * Buscar informações da Company
    */
   async getCompanyInfo(): Promise<any> {
-    return this.request("/companyinfo");
+    return this.request(`/companyinfo/${this.companyId}`);
   }
 
   /**

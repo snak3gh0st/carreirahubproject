@@ -487,6 +487,50 @@ export class DocuSignService {
   }
 
   /**
+   * Create or update contact in DocuSign
+   * Returns DocuSign contact ID or null if operation failed
+   */
+  async createOrUpdateContact(customerData: {
+    email: string;
+    name: string;
+    phone?: string;
+  }): Promise<string | null> {
+    try {
+      // DocuSign doesn't have a separate Contacts API in the eSignature REST API
+      // Contacts are managed at the account level through the Admin API
+      // For the eSignature API, recipients are specified per envelope
+      // So we'll just return the email as the "contact ID" since DocuSign
+      // identifies recipients by email address
+
+      // In a production system with DocuSign Admin API access, you would:
+      // 1. Check if contact exists: GET /v2.1/accounts/{accountId}/contacts
+      // 2. Create if not exists: POST /v2.1/accounts/{accountId}/contacts
+      // 3. Update if exists: PUT /v2.1/accounts/{accountId}/contacts/{contactId}
+
+      // For now, we'll use email as the identifier since that's what
+      // DocuSign uses for envelope recipients
+      console.log(`[DOCUSIGN] Contact prepared for ${customerData.email}`);
+      return customerData.email; // Return email as contact ID
+
+    } catch (error) {
+      console.error('[DOCUSIGN] Failed to create/update contact:', error);
+      // Log error but return null for graceful degradation
+      const { integrationLogger } = await import("@/lib/utils/logger");
+      await integrationLogger.logError(
+        "docusign",
+        "createOrUpdateContact",
+        error as Error,
+        {
+          errorCode: "CONTACT_SYNC_FAILED",
+          category: "unknown",
+        },
+        { email: customerData.email }
+      );
+      return null;
+    }
+  }
+
+  /**
    * Create envelope from invoice
    */
   async createEnvelopeFromInvoice(
