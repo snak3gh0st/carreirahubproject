@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Pagination } from "@/components/ui/pagination";
+import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -312,7 +313,7 @@ export default async function CustomersPage({
               className={`px-3 py-1 rounded-md text-sm font-medium ${
                 !source
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
               }`}
             >
               All
@@ -322,7 +323,7 @@ export default async function CustomersPage({
               className={`px-3 py-1 rounded-md text-sm font-medium ${
                 source === "quickbooks"
                   ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
               }`}
             >
               QuickBooks ({qbCustomers})
@@ -332,7 +333,7 @@ export default async function CustomersPage({
               className={`px-3 py-1 rounded-md text-sm font-medium ${
                 source === "pipedrive"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
               }`}
             >
               Pipedrive ({pipedriveCustomers})
@@ -341,7 +342,31 @@ export default async function CustomersPage({
         </div>
 
         {/* Advanced Filters */}
-        <details className="border-t pt-4">
+        {/* Mobile Filter Button */}
+        <div className="md:hidden border-t pt-4">
+          <MobileFilterModal
+            currentFilters={{
+              balanceStatus: searchParams.balanceStatus,
+              minInvoices: searchParams.minInvoices,
+              maxInvoices: searchParams.maxInvoices,
+              minTotalInvoiced: searchParams.minTotalInvoiced,
+              maxTotalInvoiced: searchParams.maxTotalInvoiced,
+              createdFrom: searchParams.createdFrom,
+              createdTo: searchParams.createdTo,
+            }}
+            preserveParams={{
+              search: search,
+              source: source,
+              sortBy: sortBy !== "createdAt" ? sortBy : "",
+              sortOrder: sortOrder !== "desc" ? sortOrder : "",
+            }}
+            filterType="customers"
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
+
+        {/* Advanced Filters (Desktop) */}
+        <details className="hidden md:block border-t pt-4">
           <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
             <span>Advanced Filters</span>
             {activeFilterCount > 0 && (
@@ -480,7 +505,7 @@ export default async function CustomersPage({
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex md:flex-wrap gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-2 px-2">
           {(() => {
             const today = new Date();
             const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
@@ -497,10 +522,10 @@ export default async function CustomersPage({
                 {/* Has Overdue Invoices */}
                 <Link
                   href={isOverdueActive ? "/dashboard/customers" : `/dashboard/customers?balanceStatus=overdue-balance`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isOverdueActive
                       ? "bg-red-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Has Overdue Invoices
@@ -509,10 +534,10 @@ export default async function CustomersPage({
                 {/* High Balance */}
                 <Link
                   href={isHighBalanceActive ? "/dashboard/customers" : `/dashboard/customers?minTotalInvoiced=5000`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isHighBalanceActive
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   High Balance (&gt;$5k)
@@ -521,10 +546,10 @@ export default async function CustomersPage({
                 {/* No Invoices */}
                 <Link
                   href={isNoInvoicesActive ? "/dashboard/customers" : `/dashboard/customers?maxInvoices=0`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isNoInvoicesActive
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   No Invoices
@@ -533,10 +558,10 @@ export default async function CustomersPage({
                 {/* Active This Month */}
                 <Link
                   href={isActiveThisMonthActive ? "/dashboard/customers" : `/dashboard/customers?createdFrom=${monthStart}&createdTo=${monthEnd}`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isActiveThisMonthActive
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Active This Month
@@ -545,10 +570,10 @@ export default async function CustomersPage({
                 {/* From QuickBooks Only */}
                 <Link
                   href={isFromQBOnlyActive ? "/dashboard/customers" : `/dashboard/customers?source=quickbooks`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isFromQBOnlyActive
                       ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   From QuickBooks Only
@@ -561,10 +586,11 @@ export default async function CustomersPage({
 
       {/* Customer List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
+        <div className="overflow-x-auto scrollbar-hide momentum-scroll">
+          <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 <Link
                   href={buildSortUrl("name")}
                   className="hover:text-gray-900 cursor-pointer"
@@ -572,7 +598,7 @@ export default async function CustomersPage({
                   Name<SortIndicator field="name" />
                 </Link>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 <Link
                   href={buildSortUrl("email")}
                   className="hover:text-gray-900 cursor-pointer"
@@ -580,19 +606,19 @@ export default async function CustomersPage({
                   Email<SortIndicator field="email" />
                 </Link>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Phone
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Source
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Invoices
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 Balance
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                 <Link
                   href={buildSortUrl("createdAt")}
                   className="hover:text-gray-900 cursor-pointer"
@@ -634,8 +660,8 @@ export default async function CustomersPage({
                 );
 
                 return (
-                  <tr key={customer.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={customer.id} className="md:hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/dashboard/customers/${customer.id}`}
                         className="text-blue-600 hover:underline font-medium"
@@ -649,7 +675,7 @@ export default async function CustomersPage({
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {customer.phone || "-"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <div className="flex gap-1">
                         {customer.quickbooks_id && (
                           <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
@@ -707,6 +733,7 @@ export default async function CustomersPage({
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         <Pagination

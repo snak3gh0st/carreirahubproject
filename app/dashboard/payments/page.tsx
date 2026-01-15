@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Pagination } from "@/components/ui/pagination";
+import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -598,7 +599,7 @@ export default async function PaymentsPage({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   <Link
                     href={buildSortUrl("paymentDate")}
                     className="hover:text-gray-900 cursor-pointer"
@@ -606,10 +607,10 @@ export default async function PaymentsPage({
                     Date<SortIndicator field="paymentDate" />
                   </Link>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Transaction Ref #
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   <Link
                     href={buildSortUrl("customer")}
                     className="hover:text-gray-900 cursor-pointer"
@@ -617,10 +618,10 @@ export default async function PaymentsPage({
                     Customer<SortIndicator field="customer" />
                   </Link>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Invoice #
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   <Link
                     href={buildSortUrl("amount")}
                     className="hover:text-gray-900 cursor-pointer"
@@ -628,7 +629,7 @@ export default async function PaymentsPage({
                     Amount<SortIndicator field="amount" />
                   </Link>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   <Link
                     href={buildSortUrl("paymentMethod")}
                     className="hover:text-gray-900 cursor-pointer"
@@ -636,7 +637,7 @@ export default async function PaymentsPage({
                     Method<SortIndicator field="paymentMethod" />
                   </Link>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Source
                 </th>
               </tr>
@@ -663,7 +664,7 @@ export default async function PaymentsPage({
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(payment.paymentDate).toLocaleDateString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-mono text-gray-700">
                             {payment.referenceNumber || payment.id.slice(0, 8)}
@@ -694,7 +695,7 @@ export default async function PaymentsPage({
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         <Link
                           href={`/dashboard/customers/${payment.customer.id}`}
                           onClick={(e) => e.stopPropagation()}
@@ -704,7 +705,7 @@ export default async function PaymentsPage({
                         </Link>
                         <div className="text-xs text-gray-500">{payment.customer.email}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         <Link
                           href={`/dashboard/invoices/${payment.invoice.id}`}
                           onClick={(e) => e.stopPropagation()}
@@ -716,12 +717,12 @@ export default async function PaymentsPage({
                       <td className="px-6 py-4 whitespace-nowrap font-medium text-green-600">
                         ${Number(payment.amount).toLocaleString()}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
                           {payment.paymentMethod || "N/A"}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                         {isQBSynced && (
                           <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
                             QuickBooks
