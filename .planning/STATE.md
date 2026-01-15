@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 ## Current Position
 
 Phase: 4 of 6 (Insights - BI & Analytics)
-Plan: 2 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-15 — Completed 04-02-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-01-15 — Completed 04-03-PLAN.md (Date Range Filtering and Export)
 
-Progress: ████████████░░░░ 70% (12 plans executed)
+Progress: ██████████████░░ 87% (13 plans executed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 29 minutes
-- Total execution time: 5 hours 58 minutes
+- Total execution time: 6 hours 30 minutes
 
 **By Phase:**
 
@@ -32,14 +32,14 @@ Progress: ████████████░░░░ 70% (12 plans execute
 | 1.1. Dashboard Enhancement | 4/4 | 42 min | 11 min |
 | 4.1. Deployment Ready | 3/3 | 35 min | 12 min |
 | 3. Finance Workflow Automation | 2/2 | 103 min | 52 min |
-| 4. Insights (BI & Analytics) | 2/4 | 28 min | 14 min |
+| 4. Insights (BI & Analytics) | 3/3 | 60 min | 20 min |
 
 **Recent Trend:**
+- Phase 4: 04-03 (32 min) — Date range filtering and CSV export
 - Phase 4: 04-02 (18 min) — Financial KPIs and data visualization with Recharts
 - Phase 4: 04-01 (10 min) — BI dashboard infrastructure with Recharts and React Query
 - Phase 3: 03-02 (97 min) — Customer data consistency and Finance dashboard
 - Phase 3: 03-01 (6 min) — End-to-end workflow orchestration with retry logic
-- Phase 4.1: 4.1-03 (17 min) — Mobile responsiveness and deployment readiness
 
 ## Sprint 1 Roadmap
 
@@ -73,6 +73,14 @@ Recent decisions affecting current work:
 - Defer Pipedrive, Twilio, OpenAI to Sprint 2
 - Build integrations sequentially: QB → DocuSign → Workflow
 - Each phase delivers working integration before moving to next
+
+**From Phase 4 (Insights - BI & Analytics):**
+- Filter revenue metrics by paidAt (cash flow date) and invoices by createdAt (booking date) for accurate temporal analysis
+- Store date filters in URL query params for shareable/bookmarkable dashboard views
+- Stagger CSV downloads with 100ms delays to prevent browser blocking
+- Add UTF-8 BOM to CSV exports for Excel compatibility with special characters
+- Export formatted data (currency strings, percentages) for business user convenience
+- Use type assertions for conditional Prisma query results to resolve union type narrowing
 
 ### Roadmap Evolution
 
@@ -159,6 +167,42 @@ Recent decisions affecting current work:
 - **1.1-04:** URL-persisted filter state (shareable, bookmarkable)
 - **1.1-04:** Active filter count badge
 
+### Phase 4 Technical Details (Insights - BI & Analytics)
+
+**Files Created (04-01):**
+- `components/dashboard/kpi-card.tsx` — Reusable KPI card component with loading states
+
+**Files Created (04-02):**
+- `app/api/analytics/financial/route.ts` — Financial analytics aggregation endpoint
+- `components/dashboard/charts/invoice-status-chart.tsx` — Recharts pie chart for invoice status
+- `components/dashboard/charts/revenue-trend-chart.tsx` — Recharts line chart for revenue trend
+- `components/dashboard/charts/top-customers-chart.tsx` — Recharts bar chart for top customers
+
+**Files Modified (04-02):**
+- `app/dashboard/insights/page.tsx` — Integrated React Query and chart components
+
+**Files Created (04-03):**
+- `components/dashboard/date-range-filter.tsx` — Date range filter with chips and custom picker
+- `lib/utils/export-csv.ts` — CSV export utility with UTF-8 BOM
+
+**Files Modified (04-03):**
+- `app/api/analytics/financial/route.ts` — Added date range query params and filtering
+- `app/dashboard/insights/page.tsx` — Integrated date filter and export functionality
+
+**Key Features Delivered:**
+- **04-01:** BI dashboard page with React Query setup and placeholder structure
+- **04-02:** 4 financial KPIs (total revenue, overdue amount, collection rate, active customers)
+- **04-02:** Invoice status pie chart with color coding
+- **04-02:** Revenue trend line chart showing 12-month history
+- **04-02:** Top 10 customers bar chart by revenue
+- **04-02:** Single API endpoint aggregating all metrics via parallel Prisma queries
+- **04-03:** Date range filter with 5 quick chips (Last 7/30/90 Days, This Year, All Time)
+- **04-03:** Custom date range picker with start/end date inputs
+- **04-03:** URL-persisted filter state (shareable URLs)
+- **04-03:** API date filtering across all metrics
+- **04-03:** CSV export button generating 4 files (KPIs, invoice status, revenue trend, top customers)
+- **04-03:** Exports respect date filters and format data for business users
+
 **Key Issues Resolved:**
 1. bcrypt native module failure (Error: No native build for platform=linux)
    - Solution: Replaced with bcryptjs (pure JavaScript implementation)
@@ -209,9 +253,9 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 ## Session Continuity
 
 Last session: 2026-01-15
-Stopped at: Completed 04-02-PLAN.md (Financial KPIs and Data Fetching) - Phase 4 Plan 2 of 4
-Resume file: .planning/phases/04-insights-bi-analytics/04-02-SUMMARY.md
-Next action: Continue with Plan 04-03 (Date Range Filtering and Export) or plan next step with /gsd:progress
+Stopped at: Completed 04-03-PLAN.md (Date Range Filtering and Export) - Phase 4 complete (all 3 plans)
+Resume file: .planning/phases/04-insights-bi-analytics/04-03-SUMMARY.md
+Next action: Phase 4 complete. Sprint 1 has 5 of 6 phases complete. Only Phase 2 (DocuSign Integration) remains unplanned. Run /gsd:plan-phase 2 to continue, or review Sprint 1 accomplishments with /gsd:progress.
 
 ## Sprint 1 Success Criteria
 

@@ -28,7 +28,7 @@ Sprint 1 Phases:
 - [x] **Phase 4.1: Deployment Ready (INSERTED)** - Loading states, pagination, mobile responsiveness for production deployment
 - [ ] **Phase 2: DocuSign Integration** - Contract generation, signature workflow, document storage
 - [x] **Phase 3: Finance Workflow Automation** - End-to-end Deal → Invoice → Contract
-- [ ] **Phase 4: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, and analytics for invoices and customers
+- [x] **Phase 4: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, analytics, date filtering, and CSV export
 
 ## Phase Details
 
@@ -358,21 +358,22 @@ Plans:
 
 ---
 
-### Phase 4: Insights (BI & Analytics)
+### Phase 4: Insights (BI & Analytics) ✅ COMPLETE
 
 **Goal**: Create comprehensive Business Intelligence dashboard with KPIs, charts, and analytics for complete financial visibility and data-driven decision making.
 
-**Status**: ⏳ In progress (2 of 4 plans complete)
+**Status**: ✅ Complete (3 of 3 plans complete) - Completed 2026-01-15
 
 **Depends on**: Phases 1-3 (needs data from QuickBooks, DocuSign, and automated workflows)
 
 **Research**: Complete (DISCOVERY.md created 2026-01-15)
 
-**Plans**: 4 plans
+**Plans**: 3 plans
 
 Plans:
 - [x] 04-01: BI dashboard infrastructure with Recharts and React Query (completed 2026-01-15, 10 min)
 - [x] 04-02: Financial KPIs and data fetching with interactive charts (completed 2026-01-15, 18 min)
+- [x] 04-03: Date range filtering and CSV export (completed 2026-01-15, 32 min)
 
 **Scope:**
 
@@ -471,11 +472,11 @@ Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4
 | 4.1. Deployment Ready (INSERTED) | 3/3 | ✅ Complete | 2026-01-15 |
 | 2. DocuSign Integration | 0/? | Not planned | — |
 | 3. Finance Workflow Automation | 2/2 | ✅ Complete | 2026-01-15 |
-| 4. Insights (BI & Analytics) | 1/4 | ⏳ In progress | — |
+| 4. Insights (BI & Analytics) | 3/3 | ✅ Complete | 2026-01-15 |
 
-**Status:** 4 of 6 phases complete, 11 plans executed, Phase 4 in progress (1/4 plans complete)
+**Status:** 5 of 6 phases complete, 13 plans executed, Phase 2 (DocuSign) not planned
 
-**Next Action:** Continue Phase 4 with Plan 04-02 (Financial KPIs and Data Fetching) or run /gsd:progress
+**Next Action:** Sprint 1 nearing completion - only Phase 2 (DocuSign Integration) remains. Run /gsd:plan-phase 2 to continue, or review Sprint 1 accomplishments.
 
 ---
 
