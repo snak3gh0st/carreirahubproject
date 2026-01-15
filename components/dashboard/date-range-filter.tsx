@@ -8,7 +8,7 @@ interface DateRangeFilterProps {
   onFilterChange?: () => void;
 }
 
-type QuickFilter = "last7" | "last30" | "last90" | "thisYear" | "allTime";
+type QuickFilter = "last7" | "last30" | "last90" | "thisYear" | "allTime" | "custom";
 
 export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
   const router = useRouter();

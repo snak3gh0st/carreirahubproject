@@ -301,28 +301,43 @@ export async function GET(request: NextRequest) {
       }));
 
     // Format top customers
-    const topCustomers = dateFilter
-      ? topCustomersByRevenue
-          .map((customer) => {
-            const totalPaid = customer.invoices.reduce(
-              (sum, inv) => sum + Number(inv.amountPaid || 0),
-              0
-            );
-            return {
-              id: customer.id,
-              name: customer.name,
-              email: customer.email,
-              totalPaid,
-            };
-          })
-          .sort((a, b) => b.totalPaid - a.totalPaid)
-          .slice(0, 10)
-      : topCustomersByRevenue.map((customer) => ({
-          id: customer.id,
-          name: customer.name,
-          email: customer.email,
-          totalPaid: Number(customer.qbTotalPaid || 0),
-        }));
+    let topCustomers;
+    if (dateFilter) {
+      // Date-filtered customers with invoices array
+      topCustomers = (topCustomersByRevenue as Array<{
+        id: string;
+        name: string;
+        email: string;
+        invoices: Array<{ amountPaid: any }>;
+      }>)
+        .map((customer) => {
+          const totalPaid = customer.invoices.reduce(
+            (sum, inv) => sum + Number(inv.amountPaid || 0),
+            0
+          );
+          return {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+            totalPaid,
+          };
+        })
+        .sort((a, b) => b.totalPaid - a.totalPaid)
+        .slice(0, 10);
+    } else {
+      // All-time customers with qbTotalPaid
+      topCustomers = (topCustomersByRevenue as Array<{
+        id: string;
+        name: string;
+        email: string;
+        qbTotalPaid: any;
+      }>).map((customer) => ({
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        totalPaid: Number(customer.qbTotalPaid || 0),
+      }));
+    }
 
     // Return complete analytics response
     return NextResponse.json({
