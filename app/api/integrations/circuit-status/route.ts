@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db";
 import { authOptions } from "@/lib/auth";
 import { CircuitBreaker } from "@/lib/utils/circuit-breaker";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/integrations/circuit-status
  *

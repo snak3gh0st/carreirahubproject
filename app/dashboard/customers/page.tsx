@@ -185,7 +185,6 @@ export default async function CustomersPage({
     },
   });
 
-  const today = new Date();
   const customersWithOverdue = allCustomersWithInvoices.filter((customer) =>
     customer.invoices.some(
       (invoice) =>

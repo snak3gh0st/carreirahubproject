@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 
+// Force dynamic rendering (don't try to statically generate this API route)
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/quickbooks/test-pagination
  *
