@@ -1,20 +1,22 @@
 import { prisma } from "@/lib/db";
-import { stripeService } from "./stripe.service";
 import { quickbooksService } from "./quickbooks.service";
 import { docusignService } from "./docusign.service";
-import { financeService } from "./finance.service";
+import { identityMapper } from "./identity-mapper";
 import { integrationLogger } from "@/lib/utils/logger";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
 
 /**
  * Invoice Workflow Service
- * 
+ *
  * Responsabilidade: Orquestrar workflow completo de fechamento de deal
- * Deal Won → Gerar Contrato (DocuSign) → Criar Fatura (Stripe/Quickbooks) → Liberar LMS
+ * Deal Won → Create Invoice (QuickBooks) → Generate Contract (DocuSign)
+ *
+ * Sprint 1 Focus: QuickBooks + DocuSign only (no Stripe)
  */
 export class InvoiceWorkflowService {
   /**
    * Processar workflow completo de fechamento
+   * Sprint 1: QuickBooks Invoice + DocuSign Contract
    */
   async processDealWon(dealId: string): Promise<{
     contractId?: string;
@@ -22,6 +24,12 @@ export class InvoiceWorkflowService {
     success: boolean;
   }> {
     try {
+      await integrationLogger.logSuccess(
+        "WORKFLOW",
+        "PROCESS_DEAL_WON_START",
+        { dealId }
+      );
+
       // 1. Buscar Deal e Customer
       const deal = await prisma.deal.findUnique({
         where: { id: dealId },
@@ -38,9 +46,76 @@ export class InvoiceWorkflowService {
         throw new Error("Deal is not won");
       }
 
-      const customer = deal.customer;
+      let customer = deal.customer;
 
-      // 2. Gerar Contrato (DocuSign)
+      // 2. Reconcile customer via Identity Mapper
+      // Ensures QuickBooks and DocuSign IDs are populated
+      try {
+        customer = await identityMapper.reconcileCustomer({
+          email: customer.email,
+          name: customer.name,
+          phone: customer.phone || undefined,
+          document: customer.document || undefined,
+          externalIds: {
+            quickbooks_id: customer.quickbooks_id || undefined,
+          },
+        });
+
+        await integrationLogger.logSuccess(
+          "WORKFLOW",
+          "CUSTOMER_RECONCILED",
+          { dealId, customerId: customer.id }
+        );
+      } catch (error) {
+        await integrationLogger.logError(
+          "WORKFLOW",
+          "CUSTOMER_RECONCILIATION_FAILED",
+          error instanceof Error ? error : new Error(String(error)),
+          { dealId }
+        );
+        // Continue workflow even if reconciliation fails
+      }
+
+      // 3. Create Invoice in QuickBooks (with retry logic)
+      const invoiceIds: string[] = [];
+      const maxRetries = 3;
+      let qbInvoiceId: string | undefined;
+
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          qbInvoiceId = await this.createQuickbooksInvoice(
+            dealId,
+            customer.id,
+            Number(deal.value),
+            deal.currency
+          );
+          invoiceIds.push(qbInvoiceId);
+
+          await integrationLogger.logSuccess(
+            "WORKFLOW",
+            "INVOICE_CREATED",
+            { dealId, invoiceId: qbInvoiceId, attempt }
+          );
+          break; // Success, exit retry loop
+        } catch (error) {
+          const isLastAttempt = attempt === maxRetries;
+          await integrationLogger.logError(
+            "WORKFLOW",
+            isLastAttempt ? "INVOICE_CREATION_FAILED" : "INVOICE_CREATION_RETRY",
+            error instanceof Error ? error : new Error(String(error)),
+            { dealId, attempt, maxRetries }
+          );
+
+          if (!isLastAttempt) {
+            // Exponential backoff: 1s, 2s, 4s
+            const delayMs = Math.pow(2, attempt - 1) * 1000;
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          }
+          // Continue even if invoice fails after all retries
+        }
+      }
+
+      // 4. Generate Contract via DocuSign
       let contractId: string | undefined;
       try {
         contractId = await this.generateContract(dealId, customer.id, {
@@ -49,96 +124,39 @@ export class InvoiceWorkflowService {
         });
 
         await integrationLogger.logSuccess(
-          "INVOICE_WORKFLOW",
-          "CONTRACT_GENERATED",
+          "WORKFLOW",
+          "CONTRACT_SENT",
           { dealId, contractId }
         );
       } catch (error) {
         await integrationLogger.logError(
-          "INVOICE_WORKFLOW",
+          "WORKFLOW",
           "CONTRACT_GENERATION_FAILED",
           error instanceof Error ? error : new Error(String(error)),
           { dealId }
         );
-        // Continuar mesmo se contrato falhar
+        // Mark contract as FAILED but continue
+        // Finance team can manually resend via dashboard
       }
 
-      // 3. Criar Faturas (Stripe e Quickbooks)
-      const invoiceIds: string[] = [];
-
-      // 3.1 Stripe Invoice
-      try {
-        const stripeInvoiceId = await this.createStripeInvoice(
+      await integrationLogger.logSuccess(
+        "WORKFLOW",
+        "PROCESS_DEAL_WON_COMPLETE",
+        {
           dealId,
-          customer.id,
-          Number(deal.value),
-          deal.currency
-        );
-        invoiceIds.push(stripeInvoiceId);
-
-        await integrationLogger.logSuccess(
-          "INVOICE_WORKFLOW",
-          "STRIPE_INVOICE_CREATED",
-          { dealId, invoiceId: stripeInvoiceId }
-        );
-      } catch (error) {
-        await integrationLogger.logError(
-          "INVOICE_WORKFLOW",
-          "STRIPE_INVOICE_FAILED",
-          error instanceof Error ? error : new Error(String(error)),
-          { dealId }
-        );
-      }
-
-      // 3.2 Quickbooks Invoice
-      try {
-        const quickbooksInvoiceId = await this.createQuickbooksInvoice(
-          dealId,
-          customer.id,
-          Number(deal.value),
-          deal.currency
-        );
-        invoiceIds.push(quickbooksInvoiceId);
-
-        await integrationLogger.logSuccess(
-          "INVOICE_WORKFLOW",
-          "QUICKBOOKS_INVOICE_CREATED",
-          { dealId, invoiceId: quickbooksInvoiceId }
-        );
-      } catch (error) {
-        await integrationLogger.logError(
-          "INVOICE_WORKFLOW",
-          "QUICKBOOKS_INVOICE_FAILED",
-          error instanceof Error ? error : new Error(String(error)),
-          { dealId }
-        );
-      }
-
-      // 4. Liberar LMS (TODO: Implementar quando LMS API estiver disponível)
-      try {
-        await this.releaseLMSAccess(customer.id, dealId);
-        await integrationLogger.logSuccess(
-          "INVOICE_WORKFLOW",
-          "LMS_ACCESS_RELEASED",
-          { dealId, customerId: customer.id }
-        );
-      } catch (error) {
-        await integrationLogger.logError(
-          "INVOICE_WORKFLOW",
-          "LMS_ACCESS_FAILED",
-          error instanceof Error ? error : new Error(String(error)),
-          { dealId }
-        );
-      }
+          invoiceCount: invoiceIds.length,
+          hasContract: !!contractId,
+        }
+      );
 
       return {
         contractId,
         invoiceIds,
-        success: invoiceIds.length > 0,
+        success: invoiceIds.length > 0 || !!contractId,
       };
     } catch (error) {
       await integrationLogger.logError(
-        "INVOICE_WORKFLOW",
+        "WORKFLOW",
         "PROCESS_DEAL_WON_FAILED",
         error instanceof Error ? error : new Error(String(error)),
         { dealId }
@@ -186,98 +204,8 @@ export class InvoiceWorkflowService {
   }
 
   /**
-   * Criar invoice no Stripe
-   */
-  private async createStripeInvoice(
-    dealId: string,
-    customerId: string,
-    amount: number,
-    currency: string
-  ): Promise<string> {
-    // Buscar customer no banco
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
-    });
-
-    if (!customer) {
-      throw new Error("Customer not found");
-    }
-
-    // Buscar ou criar customer no Stripe
-    const stripeCustomer = await stripeService.getOrCreateCustomer({
-      email: customer.email,
-      name: customer.name,
-      phone: customer.phone || undefined,
-      metadata: {
-        customer_id: customer.id,
-        deal_id: dealId,
-      },
-    });
-
-    // Atualizar customer com Stripe ID
-    if (stripeCustomer && !customer.stripe_id) {
-      await prisma.customer.update({
-        where: { id: customerId },
-        data: { stripe_id: stripeCustomer.id },
-      });
-    }
-
-    // Criar invoice
-    const invoiceNumber = financeService.generateInvoiceNumber("INV");
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 30); // 30 dias para pagamento
-
-    if (!stripeCustomer) {
-      // Circuit breaker is open, create invoice without Stripe integration
-      console.warn("[InvoiceWorkflow] Stripe circuit breaker is open, creating invoice without Stripe");
-      const invoice = await prisma.invoice.create({
-        data: {
-          dealId,
-          customerId,
-          invoiceNumber,
-          amount,
-          dueDate,
-          status: InvoiceStatus.DRAFT,
-        },
-      });
-      return invoice.id;
-    }
-
-    const stripeInvoice = await stripeService.createInvoice({
-      customerId: stripeCustomer.id,
-      amount,
-      currency: currency.toLowerCase(),
-      description: `Invoice for Deal ${dealId}`,
-      dueDate,
-      metadata: {
-        deal_id: dealId,
-        invoice_number: invoiceNumber,
-      },
-    });
-
-    // Salvar invoice no banco
-    const invoice = await prisma.invoice.create({
-      data: {
-        dealId,
-        customerId,
-        invoiceNumber,
-        amount,
-        dueDate,
-        status: InvoiceStatus.SENT,
-        stripe_invoice_id: stripeInvoice?.id || undefined,
-      },
-    });
-
-    // Enviar invoice por email
-    if (stripeInvoice) {
-      await stripeService.sendInvoice(stripeInvoice.id);
-    }
-
-    return invoice.id;
-  }
-
-  /**
-   * Criar invoice no Quickbooks
+   * Create invoice in QuickBooks
+   * Sprint 1: QuickBooks only (Stripe removed from scope)
    */
   private async createQuickbooksInvoice(
     dealId: string,
@@ -346,21 +274,6 @@ export class InvoiceWorkflowService {
     return invoice.id;
   }
 
-  /**
-   * Liberar acesso ao LMS
-   */
-  private async releaseLMSAccess(customerId: string, dealId: string): Promise<void> {
-    // TODO: Implementar integração com LMS quando API estiver disponível
-    // Por enquanto, apenas logar
-    console.log(`[LMS] Releasing access for customer ${customerId}, deal ${dealId}`);
-    
-    // Exemplo de implementação:
-    // await lmsService.createStudent({
-    //   customerId,
-    //   dealId,
-    //   accessLevel: "full",
-    // });
-  }
 }
 
 export const invoiceWorkflowService = new InvoiceWorkflowService();

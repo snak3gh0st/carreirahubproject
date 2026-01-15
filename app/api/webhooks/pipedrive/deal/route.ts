@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { validatePipedriveWebhookSignature } from "@/lib/utils/webhook-validation";
 import { acceptWebhook, webhookResponse } from "@/lib/utils/webhook-handler";
+import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
+import { integrationLogger } from "@/lib/utils/logger";
 
 /**
  * POST /api/webhooks/pipedrive/deal
@@ -11,10 +13,10 @@ import { acceptWebhook, webhookResponse } from "@/lib/utils/webhook-handler";
  * Pattern:
  * 1. Validate signature
  * 2. Accept webhook (store in DB)
- * 3. Enqueue for async processing
- * 4. Return 200 OK immediately
+ * 3. If Deal is WON, trigger Finance workflow
+ * 4. Return 200 OK immediately (async processing)
  *
- * Actual processing happens in queue processor (see lib/utils/queue-processor.ts)
+ * Finance workflow (Deal Won → Invoice + Contract) runs asynchronously
  */
 export async function POST(request: NextRequest) {
   let rawBody = "";
@@ -95,6 +97,44 @@ export async function POST(request: NextRequest) {
         contentType: request.headers.get("content-type"),
       }
     );
+
+    // Check if Deal is WON and trigger Finance workflow
+    if (body.current && body.current.status === "WON") {
+      const dealId = body.current.id;
+
+      // Log workflow start
+      await integrationLogger.logSuccess(
+        "WORKFLOW",
+        "DEAL_WON_TRIGGER",
+        { dealId, pipedriveId: dealId }
+      );
+
+      // Trigger workflow asynchronously (don't wait for completion)
+      // Find deal in our database by Pipedrive ID
+      const deal = await prisma.deal.findUnique({
+        where: { pipedrive_deal_id: dealId },
+      });
+
+      if (deal) {
+        // Trigger workflow in background (async, non-blocking)
+        invoiceWorkflowService.processDealWon(deal.id).catch((error) => {
+          console.error(`[Workflow] Failed to process Deal Won for ${deal.id}:`, error);
+          integrationLogger.logError(
+            "WORKFLOW",
+            "PROCESS_DEAL_WON_FAILED",
+            error instanceof Error ? error : new Error(String(error)),
+            { dealId: deal.id }
+          );
+        });
+      } else {
+        console.warn(`[Workflow] Deal ${dealId} not found in database, skipping workflow`);
+        await integrationLogger.logSuccess(
+          "WORKFLOW",
+          "DEAL_NOT_FOUND",
+          { pipedriveId: dealId }
+        );
+      }
+    }
 
     // Return 200 OK immediately
     return webhookResponse(result);
