@@ -24,6 +24,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
     { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "SUPPORT", "SDR"] },
     { href: "/dashboard/deals", label: "Deals", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
     { href: "/dashboard/invoices", label: "Invoices", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/payments", label: "Payments", roles: ["ADMIN", "FINANCE"] },
     { href: "/dashboard/customers", label: "Customers", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
     { href: "/dashboard/integrations", label: "Integrations", roles: ["ADMIN", "FINANCE"] },
     { href: "/", label: "Home", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
