@@ -14,12 +14,17 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") as DealStatus | null;
     const customerId = searchParams.get("customerId");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const workflowStatus = searchParams.get("workflowStatus"); // Filter by workflow status
+    const limit = parseInt(searchParams.get("limit") || "25");
     const offset = parseInt(searchParams.get("offset") || "0");
 
     const where: any = {};
     if (status) where.status = status;
     if (customerId) where.customerId = customerId;
+    if (workflowStatus) where.workflowStatus = workflowStatus;
+
+    // Get total count for pagination
+    const total = await prisma.deal.count({ where });
 
     const deals = await prisma.deal.findMany({
       where,
@@ -39,15 +44,32 @@ export async function GET(request: NextRequest) {
           },
         },
         invoices: {
-          take: 3,
+          select: {
+            id: true,
+            invoiceNumber: true,
+            status: true,
+            amount: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: "desc" },
         },
         contracts: {
-          take: 1,
+          select: {
+            id: true,
+            status: true,
+            signedAt: true,
+            createdAt: true,
+          },
           orderBy: { createdAt: "desc" },
         },
+        _count: {
+          select: {
+            invoices: true,
+            contracts: true,
+          },
+        },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { workflowStartedAt: "desc" },
       take: limit,
       skip: offset,
     });
@@ -57,7 +79,8 @@ export async function GET(request: NextRequest) {
       pagination: {
         limit,
         offset,
-        total: deals.length,
+        total,
+        hasMore: offset + deals.length < total,
       },
     });
   } catch (error) {
