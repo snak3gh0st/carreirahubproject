@@ -6,6 +6,7 @@ import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
 import { ApprovalStatusBadge } from "@/components/invoices/approval-status-badge";
 import { Pagination } from "@/components/ui/pagination";
+import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -442,7 +443,7 @@ export default async function InvoicesPage({
               className={`px-3 py-1 rounded-md text-sm font-medium ${
                 !source
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
               }`}
             >
               All
@@ -454,7 +455,7 @@ export default async function InvoicesPage({
               className={`px-3 py-1 rounded-md text-sm font-medium ${
                 source === "quickbooks"
                   ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
               }`}
             >
               QuickBooks ({qbInvoices})
@@ -462,8 +463,31 @@ export default async function InvoicesPage({
           </div>
         </div>
 
-        {/* Advanced Filters */}
-        <details className="border-t pt-4">
+        {/* Mobile Filter Button */}
+        <div className="md:hidden border-t pt-4">
+          <MobileFilterModal
+            currentFilters={{
+              dueDateFrom: searchParams.dueDateFrom,
+              dueDateTo: searchParams.dueDateTo,
+              minAmount: searchParams.minAmount,
+              maxAmount: searchParams.maxAmount,
+              paymentMethod: searchParams.paymentMethod,
+              approvalStatus: searchParams.approvalStatus,
+            }}
+            preserveParams={{
+              search: search,
+              source: source,
+              status: searchParams.status || "",
+              sortBy: sortBy !== "createdAt" ? sortBy : "",
+              sortOrder: sortOrder !== "desc" ? sortOrder : "",
+            }}
+            filterType="invoices"
+            activeFilterCount={activeFilterCount}
+          />
+        </div>
+
+        {/* Advanced Filters (Desktop) */}
+        <details className="hidden md:block border-t pt-4">
           <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
             <span>Advanced Filters</span>
             {activeFilterCount > 0 && (
@@ -599,7 +623,7 @@ export default async function InvoicesPage({
             className={`px-3 py-1 rounded-md text-sm font-medium ${
               !searchParams.status
                 ? "bg-gray-800 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
             }`}
           >
             All
@@ -619,7 +643,7 @@ export default async function InvoicesPage({
                     : status === "SENT"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
               }`}
             >
               {status} ({data.count})
@@ -633,7 +657,7 @@ export default async function InvoicesPage({
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex md:flex-wrap gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-2 px-2">
           {(() => {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
@@ -654,10 +678,10 @@ export default async function InvoicesPage({
                 {/* Overdue */}
                 <Link
                   href={isOverdueActive ? "/dashboard/invoices" : `/dashboard/invoices?status=OVERDUE`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isOverdueActive
                       ? "bg-red-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Overdue
@@ -666,10 +690,10 @@ export default async function InvoicesPage({
                 {/* Due This Week */}
                 <Link
                   href={isDueThisWeekActive ? "/dashboard/invoices" : `/dashboard/invoices?dueDateFrom=${todayStr}&dueDateTo=${weekFromNowStr}`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isDueThisWeekActive
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Due This Week
@@ -678,10 +702,10 @@ export default async function InvoicesPage({
                 {/* Due This Month */}
                 <Link
                   href={isDueThisMonthActive ? "/dashboard/invoices" : `/dashboard/invoices?dueDateFrom=${monthStart}&dueDateTo=${monthEnd}`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isDueThisMonthActive
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Due This Month
@@ -690,10 +714,10 @@ export default async function InvoicesPage({
                 {/* High Value */}
                 <Link
                   href={isHighValueActive ? "/dashboard/invoices" : `/dashboard/invoices?minAmount=10000`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isHighValueActive
                       ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   High Value (&gt;$10k)
@@ -702,10 +726,10 @@ export default async function InvoicesPage({
                 {/* Pending Approval */}
                 <Link
                   href={isPendingApprovalActive ? "/dashboard/invoices" : `/dashboard/invoices?approvalStatus=PENDING`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isPendingApprovalActive
                       ? "bg-orange-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Pending Approval
@@ -714,10 +738,10 @@ export default async function InvoicesPage({
                 {/* From QuickBooks */}
                 <Link
                   href={isFromQBActive ? "/dashboard/invoices" : `/dashboard/invoices?source=quickbooks`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isFromQBActive
                       ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   From QuickBooks
@@ -730,52 +754,53 @@ export default async function InvoicesPage({
 
       {/* Invoice List */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <Link
-                  href={buildSortUrl("invoiceNumber")}
-                  className="hover:text-gray-900 cursor-pointer"
-                >
-                  Invoice #<SortIndicator field="invoiceNumber" />
-                </Link>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Customer
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <Link
-                  href={buildSortUrl("amount")}
-                  className="hover:text-gray-900 cursor-pointer"
-                >
-                  Amount<SortIndicator field="amount" />
-                </Link>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <Link
-                  href={buildSortUrl("dueDate")}
-                  className="hover:text-gray-900 cursor-pointer"
-                >
-                  Due Date<SortIndicator field="dueDate" />
-                </Link>
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Source
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Approval
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <Link
-                  href={buildSortUrl("status")}
-                  className="hover:text-gray-900 cursor-pointer"
-                >
-                  Status<SortIndicator field="status" />
-                </Link>
-              </th>
-            </tr>
-          </thead>
+        <div className="overflow-x-auto scrollbar-hide momentum-scroll">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <Link
+                    href={buildSortUrl("invoiceNumber")}
+                    className="hover:text-gray-900 cursor-pointer"
+                  >
+                    Invoice #<SortIndicator field="invoiceNumber" />
+                  </Link>
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Customer
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <Link
+                    href={buildSortUrl("amount")}
+                    className="hover:text-gray-900 cursor-pointer"
+                  >
+                    Amount<SortIndicator field="amount" />
+                  </Link>
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <Link
+                    href={buildSortUrl("dueDate")}
+                    className="hover:text-gray-900 cursor-pointer"
+                  >
+                    Due Date<SortIndicator field="dueDate" />
+                  </Link>
+                </th>
+                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Source
+                </th>
+                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Approval
+                </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <Link
+                    href={buildSortUrl("status")}
+                    className="hover:text-gray-900 cursor-pointer"
+                  >
+                    Status<SortIndicator field="status" />
+                  </Link>
+                </th>
+              </tr>
+            </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {invoices.length === 0 ? (
               <tr>
@@ -791,31 +816,31 @@ export default async function InvoicesPage({
                   new Date(invoice.dueDate) < new Date();
 
                 return (
-                  <tr key={invoice.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
+                  <tr key={invoice.id} className="md:hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                    <td className="px-4 md:px-6 py-4 md:py-4 whitespace-nowrap">
                       <Link
                         href={`/dashboard/invoices/${invoice.id}`}
-                        className="text-blue-600 hover:underline font-medium"
+                        className="text-blue-600 hover:underline font-medium min-h-[44px] flex items-center"
                       >
                         {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                       </Link>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <Link
                         href={`/dashboard/customers/${invoice.customer.id}`}
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-600 hover:underline min-h-[44px] flex flex-col justify-center"
                       >
-                        {invoice.customer.name}
+                        <div>{invoice.customer.name}</div>
+                        <div className="text-xs text-gray-500 md:block hidden">
+                          {invoice.customer.email}
+                        </div>
                       </Link>
-                      <div className="text-xs text-gray-500">
-                        {invoice.customer.email}
-                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap font-medium">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap font-medium">
                       ${Number(invoice.amount).toLocaleString()}
                     </td>
                     <td
-                      className={`px-6 py-4 whitespace-nowrap text-sm ${
+                      className={`px-4 md:px-6 py-4 whitespace-nowrap text-sm ${
                         isOverdue ? "text-red-600 font-medium" : "text-gray-500"
                       }`}
                     >
@@ -824,7 +849,7 @@ export default async function InvoicesPage({
                         <div className="text-xs text-red-500">Overdue</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                       {invoice.quickbooks_invoice_id ? (
                         <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
                           QuickBooks
@@ -835,10 +860,10 @@ export default async function InvoicesPage({
                         </span>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
                       <ApprovalStatusBadge status={invoice.approvalStatus as any} />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs rounded-full ${
                           invoice.status === InvoiceStatus.PAID
@@ -860,7 +885,8 @@ export default async function InvoicesPage({
               })
             )}
           </tbody>
-        </table>
+          </table>
+        </div>
 
         {/* Pagination */}
         <Pagination
