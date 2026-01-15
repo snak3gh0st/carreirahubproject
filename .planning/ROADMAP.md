@@ -1,18 +1,20 @@
-# Roadmap: Sprint 1 - Finance Integration Foundation
+# Roadmap: v2.0 - QuickBooks Invoice Management
 
 ## Overview
 
-Build rock-solid Finance department workflows by integrating QuickBooks (accounting), Stripe (payments), and DocuSign (contracts) into one unified automation platform. This sprint focuses exclusively on Finance, eliminating manual data entry, ensuring customer consistency across systems, and automating the complete invoicing → payment → contract workflow.
+Build a robust QuickBooks invoice management system for Carreira U.S.A., focusing exclusively on invoice fetching, creation, and financial visibility through an intuitive dashboard.
 
-**Sprint Goal:** Enable the Finance department to manage the entire customer financial lifecycle (invoicing, payments, contracts) without manual data entry or system-hopping.
+**Version:** 2.0 (QuickBooks-Only Focus)
+
+**Goal:** Enable the Finance department to efficiently manage invoices and customers through QuickBooks integration with a polished, production-ready dashboard.
 
 ## Domain Expertise
 
 **Primary Domain:** Finance Operations
-- Accounting workflows (QuickBooks)
-- Payment processing (Stripe)
-- Contract management (DocuSign)
-- Customer financial lifecycle management
+- QuickBooks OAuth and API integration
+- Invoice management (fetch, create, track)
+- Customer data synchronization
+- Financial dashboard and reporting
 
 ## Phases
 
@@ -24,10 +26,9 @@ Sprint 1 Phases:
 - [x] **Phase 1: QuickBooks Foundation** - OAuth, customer sync, invoice sync, payment tracking
 - [x] **Phase 1.1: Invoice & Customer Dashboard Enhancement (INSERTED)** - Enhanced UI, graphics, filtering, installment tracking
 - [x] **Phase 4.1: Deployment Ready (INSERTED)** - Loading states, pagination, mobile responsiveness for production deployment
-- [ ] **Phase 2: Stripe Integration** - Payment processing, subscriptions, QB sync
-- [ ] **Phase 3: DocuSign Integration** - Contract generation, signature workflow, document storage
-- [ ] **Phase 4: Finance Workflow Automation** - End-to-end Deal → Invoice → Payment → Contract
-- [ ] **Phase 5: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, and analytics for invoices and customers
+- [ ] **Phase 2: DocuSign Integration** - Contract generation, signature workflow, document storage
+- [ ] **Phase 3: Finance Workflow Automation** - End-to-end Deal → Invoice → Contract
+- [ ] **Phase 4: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, and analytics for invoices and customers
 
 ## Phase Details
 
@@ -203,85 +204,11 @@ Plans:
 
 ---
 
-### Phase 2: Stripe Integration
-
-**Goal**: Implement complete Stripe payment processing with QuickBooks sync, handling one-time payments, subscriptions, and failed payment recovery.
-
-**Depends on**: Phase 1 (QuickBooks must be working to sync payment data)
-
-**Research**: Likely (Stripe API integration patterns, webhook signature verification, subscription lifecycle)
-
-**Research topics**:
-- Stripe Payment Intents vs Charges API
-- Stripe webhook security (signature verification)
-- Subscription lifecycle management (trial, active, canceled, past_due)
-- Failed payment handling and retry strategies
-- Stripe customer → QuickBooks customer mapping
-
-**Plans**: To be determined — run `/gsd:plan-phase 2` to break down
-
-Plans:
-- [ ] TBD (run `/gsd:plan-phase 2` to break down work)
-
-**Scope:**
-- **Stripe API Setup**
-  - Environment configuration (sandbox + production)
-  - API key management
-  - Webhook endpoint setup with signature verification
-
-- **Customer Management**
-  - Create Stripe customer from QuickBooks customer
-  - Sync customer data bidirectionally
-  - Handle customer updates (email, name, payment method)
-  - Deduplication via Identity Mapper (email as key)
-
-- **Payment Processing**
-  - One-time payment processing (Payment Intents API)
-  - Save payment methods for future use
-  - Handle 3D Secure (SCA compliance)
-  - Payment confirmation and receipt generation
-
-- **Subscription Management**
-  - Create subscription plans/products
-  - Subscribe customers to plans
-  - Handle subscription lifecycle (active, canceled, past_due)
-  - Prorated upgrades/downgrades
-  - Trial period handling
-
-- **Webhook Handling**
-  - `payment_intent.succeeded` → create QB payment
-  - `payment_intent.failed` → log and retry
-  - `customer.subscription.created` → track in system
-  - `customer.subscription.deleted` → cancel in system
-  - `invoice.payment_succeeded` → update QB invoice
-  - Deduplication to prevent duplicate processing
-
-- **QuickBooks Sync**
-  - Payment received in Stripe → create Payment in QB
-  - Link Stripe payment to QB invoice
-  - Update invoice status (Paid/Partial)
-  - Sync payment metadata (transaction ID, payment method)
-
-- **Failed Payment Handling**
-  - Retry logic with exponential backoff
-  - Email notifications for failed payments
-  - Manual retry UI for Finance team
-  - Dunning management (subscription past_due)
-
-**Success Criteria:**
-- Customer can pay invoice via Stripe
-- Payment automatically recorded in QuickBooks
-- Subscriptions track correctly through lifecycle
-- Failed payments retry automatically with notifications
-- Finance team can view payment status in dashboard
-
----
-
-### Phase 3: DocuSign Integration
+### Phase 2: DocuSign Integration
 
 **Goal**: Automate contract generation and signature workflow, integrating DocuSign with QuickBooks to track contract status and trigger downstream actions.
 
-**Depends on**: Phase 2 (contracts typically generated after payment received)
+**Depends on**: Phase 1 (QuickBooks customer and invoice data needed for contract generation)
 
 **Research**: Likely (DocuSign API, template management, envelope tracking, JWT authentication)
 
@@ -293,10 +220,10 @@ Plans:
 - Document storage and retrieval
 - Embedded signing vs email signing
 
-**Plans**: To be determined — run `/gsd:plan-phase 3` to break down
+**Plans**: To be determined — run `/gsd:plan-phase 2` to break down
 
 Plans:
-- [ ] TBD (run `/gsd:plan-phase 3` to break down work)
+- [ ] TBD (run `/gsd:plan-phase 2` to break down work)
 
 **Scope:**
 - **DocuSign API Setup**
@@ -359,33 +286,32 @@ Plans:
 
 ---
 
-### Phase 4: Finance Workflow Automation
+### Phase 3: Finance Workflow Automation
 
-**Goal**: Integrate all three systems (QuickBooks, Stripe, DocuSign) into one seamless end-to-end workflow, ensuring customer data consistency and automating the complete financial lifecycle.
+**Goal**: Integrate QuickBooks and DocuSign into one seamless end-to-end workflow, ensuring customer data consistency and automating the complete financial lifecycle.
 
-**Depends on**: Phases 1, 2, 3 (all integrations must be working individually)
+**Depends on**: Phases 1, 2 (QuickBooks and DocuSign integrations must be working individually)
 
 **Research**: Unlikely (orchestration of existing integrations)
 
-**Plans**: To be determined — run `/gsd:plan-phase 4` to break down
+**Plans**: To be determined — run `/gsd:plan-phase 3` to break down
 
 Plans:
-- [ ] TBD (run `/gsd:plan-phase 4` to break down work)
+- [ ] TBD (run `/gsd:plan-phase 3` to break down work)
 
 **Scope:**
 - **End-to-End Workflow**
   - **Trigger**: Deal marked as "Won" (manual or via future CRM integration)
-  - **Step 1**: Create customer in all 3 systems (if not exists)
+  - **Step 1**: Create customer in QuickBooks and DocuSign (if not exists)
   - **Step 2**: Generate invoice in QuickBooks
-  - **Step 3**: Send payment link via Stripe
-  - **Step 4**: On payment received → generate contract in DocuSign
-  - **Step 5**: On contract signed → mark customer as "Active"
-  - **Step 6**: All data synced across QuickBooks, Stripe, DocuSign
+  - **Step 3**: On invoice paid → generate contract in DocuSign
+  - **Step 4**: On contract signed → mark customer as "Active"
+  - **Step 5**: All data synced across QuickBooks and DocuSign
 
 - **Customer Data Consistency**
   - Identity Mapper ensures email is unique across all systems
   - Bidirectional sync: changes in one system update all others
-  - External ID tracking (QB ID, Stripe ID, DocuSign ID) in Customer table
+  - External ID tracking (QB ID, DocuSign ID) in Customer table
   - Conflict resolution (e.g., customer updates email - which system wins?)
   - Audit log for all customer data changes
 
@@ -397,28 +323,25 @@ Plans:
   - Integration log tracks every API call
 
 - **Finance Dashboard**
-  - **Customer View**: See all customer data (QB, Stripe, DocuSign) in one place
+  - **Customer View**: See all customer data (QB, DocuSign) in one place
   - **Invoice View**: Track invoice → payment status
   - **Contract View**: Track contract → signature status
-  - **Workflow View**: Monitor end-to-end progress (Deal → Invoice → Payment → Contract)
+  - **Workflow View**: Monitor end-to-end progress (Deal → Invoice → Contract)
   - **Error View**: See failed workflows with retry options
 
 - **Manual Overrides**
   - Finance team can manually trigger invoice generation
-  - Finance team can manually send payment link
   - Finance team can manually generate contract
   - Finance team can mark workflow steps as "complete" if done outside system
 
 - **Notifications & Alerts**
   - Email Finance team when workflow step fails
-  - Alert when payment fails after 3 retry attempts
   - Alert when contract unsigned after 7 days
   - Daily summary of pending workflows
 
 - **Reporting & Analytics**
-  - Time from Deal Won → Payment Received (average, median)
-  - Time from Payment → Contract Signed (average, median)
-  - Payment failure rate by payment method
+  - Time from Deal Won → Invoice Generated (average, median)
+  - Time from Invoice → Contract Signed (average, median)
   - Contract signature rate (% signed within 7 days)
   - Customer onboarding bottlenecks
 
@@ -427,16 +350,16 @@ Plans:
 - Finance team can view all customer financial data in one dashboard
 - Errors are caught, logged, and recoverable
 - Manual intervention is possible at any step
-- Customer data stays consistent across all 3 systems
+- Customer data stays consistent across QuickBooks and DocuSign
 - Finance team receives alerts for failed workflows
 
 ---
 
-### Phase 5: Insights (BI & Analytics)
+### Phase 4: Insights (BI & Analytics)
 
 **Goal**: Create comprehensive Business Intelligence dashboard with KPIs, charts, and analytics for complete financial visibility and data-driven decision making.
 
-**Depends on**: Phases 1-4 (needs data from QuickBooks, Stripe, DocuSign, and automated workflows)
+**Depends on**: Phases 1-3 (needs data from QuickBooks, DocuSign, and automated workflows)
 
 **Research**: Likely (charting libraries, BI best practices, data visualization patterns)
 
@@ -448,10 +371,10 @@ Plans:
 - KPI calculation methodologies
 - Financial reporting standards
 
-**Plans**: To be determined — run `/gsd:plan-phase 5` to break down
+**Plans**: To be determined — run `/gsd:plan-phase 4` to break down
 
 Plans:
-- [ ] TBD (run `/gsd:plan-phase 5` to break down work)
+- [ ] TBD (run `/gsd:plan-phase 4` to break down work)
 
 **Scope:**
 
@@ -483,15 +406,13 @@ Plans:
   - New vs returning customer revenue
 
 - **Payment Analytics**
-  - Payment success/failure rates
-  - Payment method preferences
+  - Payment tracking in QuickBooks
   - Average days to payment by customer
   - Late payment patterns
-  - Refund and dispute tracking
-  - Stripe vs QuickBooks payment reconciliation
+  - Payment reconciliation reports
 
 - **Workflow Performance**
-  - Deal → Invoice → Payment → Contract funnel
+  - Deal → Invoice → Contract funnel
   - Time metrics for each workflow stage
   - Bottleneck identification
   - Automation success rates
@@ -543,20 +464,20 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 1.1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. QuickBooks Foundation | 1/1 | ✅ Complete | 2026-01-14 |
-| 1.1. Invoice & Customer Dashboard (INSERTED) | 1/4 | ⏳ In progress | — |
-| 2. Stripe Integration | 0/? | Not planned | — |
-| 3. DocuSign Integration | 0/? | Not planned | — |
-| 4. Finance Workflow Automation | 0/? | Not planned | — |
-| 5. Insights (BI & Analytics) | 0/? | Not planned | — |
+| 1.1. Invoice & Customer Dashboard (INSERTED) | 4/4 | ✅ Complete | 2026-01-14 |
+| 4.1. Deployment Ready (INSERTED) | 3/3 | ✅ Complete | 2026-01-15 |
+| 2. DocuSign Integration | 0/? | Not planned | — |
+| 3. Finance Workflow Automation | 0/? | Not planned | — |
+| 4. Insights (BI & Analytics) | 0/? | Not planned | — |
 
-**Status:** 1 of 6 phases complete, 2 of 6+ plans executed (~17% done)
+**Status:** 3 of 6 phases complete, 8 plans executed (~50% done)
 
-**Next Action:** Execute Phase 1.1 Plan 2 - run `/gsd:execute-plan .planning/phases/1.1-enhance-invoice-and-customer-dashboard/1.1-02-PLAN.md`
+**Next Action:** Plan Phase 2 (DocuSign Integration) - run `/gsd:plan-phase 2`
 
 ---
 
@@ -564,18 +485,17 @@ Phases execute in numeric order: 1 → 1.1 → 2 → 3 → 4 → 5
 
 **Business Outcomes:**
 - Finance team saves 10+ hours/week on manual data entry
-- Payment collection time reduced by 50% (automation + reminders)
+- Payment tracking and reconciliation in QuickBooks
 - Customer data consistency: 100% (zero duplicate customers)
-- Contract turnaround time: <2 days (from payment to signed)
+- Contract turnaround time: <2 days (from invoice to signed)
 
 **Technical Outcomes:**
-- Zero lost payments (all Stripe webhooks processed)
 - Zero lost contracts (all DocuSign webhooks processed)
-- Customer data synced across all 3 systems within 1 minute
+- Customer data synced across QuickBooks and DocuSign within 1 minute
 - Workflow error recovery: Finance team can retry any failed step
 
 **Quality Metrics:**
 - Integration test coverage: >80% for all Finance workflows
-- API error rate: <1% (excluding expected errors like failed payments)
+- API error rate: <1% (excluding expected errors)
 - Webhook processing: <5 seconds (95th percentile)
 - System uptime: >99.5% (Vercel + integrations)
