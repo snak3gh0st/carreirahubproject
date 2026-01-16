@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
       allCustomers,
       newCustomersThisMonth,
       allDeals,
+      allPayments,
     ] = await Promise.all([
       prisma.lead.count(),
       prisma.lead.count({ where: { status: LeadStatus.QUALIFIED } }),
@@ -105,10 +106,9 @@ export async function GET(request: NextRequest) {
           status: true,
           dueDate: true,
           amount: true,
-          amountPaid: true,
-          paidAt: true,
           createdAt: true,
           customerId: true,
+          paidAt: true,
         },
       }),
       prisma.customer.count(),
@@ -119,12 +119,21 @@ export async function GET(request: NextRequest) {
         where: dealWhereCreatedAt,
         select: { value: true, status: true },
       }),
+      // Fetch actual payments (not invoice.amountPaid which is often null)
+      prisma.payment.findMany({
+        where: dateFilter ? { paymentDate: dateFilter } : {},
+        select: { amount: true, paymentDate: true },
+      }),
     ]);
 
     // Calculate financial metrics
     const today = new Date();
-    const paidInvoices = allInvoices.filter((inv) => inv.status === InvoiceStatus.PAID);
-    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
+
+    // Total Revenue = sum of actual payments
+    const totalRevenue = allPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+    // Total Paid = same as revenue (from actual payments)
+    const totalPaid = totalRevenue;
 
     const overdueInvoices = allInvoices.filter(
       (inv) =>
@@ -135,7 +144,6 @@ export async function GET(request: NextRequest) {
     const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
 
     const totalInvoiced = allInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
-    const totalPaid = paidInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
     const pendingAmount = totalInvoiced - totalPaid;
     const collectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
 
