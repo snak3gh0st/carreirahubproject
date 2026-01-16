@@ -97,10 +97,13 @@ export async function GET(request: NextRequest) {
       leadConversionData,
       servicesData,
     ] = await Promise.all([
-      // Total Revenue (sum of actual payments)
-      prisma.payment.aggregate({
-        where: dateFilter ? { paymentDate: dateFilter } : {},
-        _sum: { amount: true },
+      // Total Revenue (sum of amountPaid from PAID invoices)
+      prisma.invoice.aggregate({
+        where: {
+          status: "PAID",
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
+        _sum: { amountPaid: true },
       }),
 
       // Overdue Amount (invoices status OVERDUE)
@@ -121,10 +124,10 @@ export async function GET(request: NextRequest) {
         _sum: { amount: true },
       }),
 
-      // Total Paid (sum of actual payments in period)
-      prisma.payment.aggregate({
-        where: dateFilter ? { paymentDate: dateFilter } : {},
-        _sum: { amount: true },
+      // Total Paid (sum of all amountPaid regardless of status)
+      prisma.invoice.aggregate({
+        where: dateFilter ? { paidAt: dateFilter } : {},
+        _sum: { amountPaid: true },
       }),
 
       // Pending Amount (total invoiced - total paid)
@@ -187,16 +190,17 @@ export async function GET(request: NextRequest) {
         _sum: { value: true },
       }),
 
-      // Revenue by Month
-      prisma.payment.findMany({
+      // Revenue by Month (from paid invoices)
+      prisma.invoice.findMany({
         where: {
-          paymentDate: {
+          status: "PAID",
+          paidAt: {
             gte: revenueTrendStartDate,
             ...(endDate && { lte: endDate }),
           },
         },
-        select: { paymentDate: true, amount: true },
-        orderBy: { paymentDate: "asc" },
+        select: { paidAt: true, amountPaid: true },
+        orderBy: { paidAt: "asc" },
       }),
 
       // Invoice Count by Month
@@ -210,27 +214,30 @@ export async function GET(request: NextRequest) {
         select: { createdAt: true },
       }),
 
-      // Top Customers (by actual payment amounts)
-      prisma.payment.groupBy({
+      // Top Customers (by amountPaid from invoices)
+      prisma.invoice.groupBy({
         by: ["customerId"],
-        where: dateFilter ? { paymentDate: dateFilter } : undefined,
-        _sum: { amount: true },
-        orderBy: { _sum: { amount: "desc" } },
+        where: {
+          status: "PAID",
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
+        _sum: { amountPaid: true },
+        orderBy: { _sum: { amountPaid: "desc" } },
         take: 10,
-      }).then(async (paymentGroups) => {
-        // Get customer details for these payment groups
-        const customerIds = paymentGroups.map(pg => pg.customerId);
+      }).then(async (invoiceGroups) => {
+        // Get customer details for these groups
+        const customerIds = invoiceGroups.map(ig => ig.customerId);
         const customers = await prisma.customer.findMany({
           where: { id: { in: customerIds } },
           select: { id: true, name: true, email: true },
         });
 
-        // Merge customer data with payment amounts
-        return paymentGroups.map(pg => {
-          const customer = customers.find(c => c.id === pg.customerId);
+        // Merge customer data with total paid amounts
+        return invoiceGroups.map(ig => {
+          const customer = customers.find(c => c.id === ig.customerId);
           return {
             ...customer,
-            totalPaid: Number(pg._sum.amount || 0),
+            totalPaid: Number(ig._sum.amountPaid || 0),
           };
         });
       }),
@@ -276,10 +283,10 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Calculate KPIs
-    const totalRevenue = Number(totalRevenueResult._sum.amount || 0);
+    const totalRevenue = Number(totalRevenueResult._sum.amountPaid || 0);
     const overdueAmount = Number(overdueAmountResult._sum.amount || 0);
     const totalInvoiced = Number(totalInvoicedResult._sum.amount || 0);
-    const totalPaid = Number(totalPaidResult._sum.amount || 0);
+    const totalPaid = Number(totalPaidResult._sum.amountPaid || 0);
     const pendingAmount = Number(pendingAmountResult._sum.amount || 0);
     const collectionRate = totalInvoiced > 0
       ? (totalPaid / totalInvoiced) * 100
@@ -322,10 +329,12 @@ export async function GET(request: NextRequest) {
       const monthKey = format(month, "yyyy-MM");
       revenueByMonthMap.set(monthKey, 0);
     }
-    revenueByMonth.forEach((payment) => {
-      const monthKey = format(startOfMonth(payment.paymentDate), "yyyy-MM");
-      const current = revenueByMonthMap.get(monthKey) || 0;
-      revenueByMonthMap.set(monthKey, current + Number(payment.amount));
+    revenueByMonth.forEach((invoice) => {
+      if (invoice.paidAt) {
+        const monthKey = format(startOfMonth(invoice.paidAt), "yyyy-MM");
+        const current = revenueByMonthMap.get(monthKey) || 0;
+        revenueByMonthMap.set(monthKey, current + Number(invoice.amountPaid || 0));
+      }
     });
     const revenueTrend = Array.from(revenueByMonthMap.entries()).map(
       ([month, revenue]) => ({
