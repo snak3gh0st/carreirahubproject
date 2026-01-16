@@ -234,6 +234,8 @@ export class QuickBooksSyncService {
         customerId: customer.id,
         approvalStatus: "APPROVED" as const, // QB invoices are pre-approved
         markedOverdueAt: status === "OVERDUE" ? new Date() : existing?.markedOverdueAt || null,
+        amountPaid: balance === 0 ? totalAmt : balance < totalAmt && balance > 0 ? totalAmt - balance : 0,
+        paidAt: balance < totalAmt && balance >= 0 ? (balance === 0 ? new Date(qbInvoice.TxnDate || new Date()) : new Date()) : null,
         installments: {
           quickbooks: {
             syncDate: new Date().toISOString(),
@@ -776,6 +778,10 @@ export class QuickBooksSyncService {
 
             // Nota: Invoice não tem campo metadata, então salvamos dados extras no installments (Json)
             // ou simplesmente não salvamos. Para rastreabilidade, podemos usar IntegrationLog
+            const balance = qbInvoice.Balance || 0;
+            const amountPaid = balance === 0 ? totalAmount : balance < totalAmount && balance > 0 ? totalAmount - balance : 0;
+            const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
+
             const invoiceData = {
               invoiceNumber: qbInvoice.DocNumber || undefined,
               amount: totalAmount,
@@ -784,6 +790,8 @@ export class QuickBooksSyncService {
               quickbooks_invoice_id: qbInvoiceId,
               dealId: latestDeal.id,
               customerId: customer.id,
+              amountPaid,
+              paidAt,
               // installments pode ser usado para dados extras se necessário
               installments: {
                 quickbooks: {
@@ -1340,6 +1348,11 @@ export class QuickBooksSyncService {
             }
 
             // Create or update invoice
+            const totalAmount = qbInvoice.TotalAmt || 0;
+            const balance = qbInvoice.Balance || 0;
+            const amountPaidBulk = balance === 0 ? totalAmount : balance < totalAmount && balance > 0 ? totalAmount - balance : 0;
+            const paidAtBulk = amountPaidBulk > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
+
             await prisma.invoice.upsert({
               where: {
                 quickbooks_invoice_id: qbInvoice.Id,
@@ -1348,17 +1361,21 @@ export class QuickBooksSyncService {
                 customerId: customer.id,
                 dealId: deal.id,
                 invoiceNumber: qbInvoice.DocNumber || qbInvoice.Id,
-                amount: qbInvoice.TotalAmt || 0,
+                amount: totalAmount,
                 dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
                 status,
                 quickbooks_invoice_id: qbInvoice.Id,
                 approvalStatus: "APPROVED", // QB invoices are pre-approved
+                amountPaid: amountPaidBulk,
+                paidAt: paidAtBulk,
               },
               update: {
                 invoiceNumber: qbInvoice.DocNumber || qbInvoice.Id,
-                amount: qbInvoice.TotalAmt || 0,
+                amount: totalAmount,
                 dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
                 status,
+                amountPaid: amountPaidBulk,
+                paidAt: paidAtBulk,
               },
             });
 
