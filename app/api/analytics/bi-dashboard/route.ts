@@ -477,25 +477,64 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.quantity - a.quantity)
       .slice(0, 10);
 
+    // Calculate additional KPIs
+    const totalInvoices = invoiceCountByMonth.length;
+    const paidInvoiceCount = invoiceStatusDistribution.find(item => item.status === "PAID")?._count.id || 0;
+    const paidInvoicePercentage = totalInvoices > 0 ? (paidInvoiceCount / totalInvoices) * 100 : 0;
+    const overdueInvoiceCount = invoiceStatusDistribution.find(item => item.status === "OVERDUE")?._count.id || 0;
+    const overdueInvoicePercentage = totalInvoices > 0 ? (overdueInvoiceCount / totalInvoices) * 100 : 0;
+
+    // Average days to payment (calculated from median invoice age)
+    // Simplified: use collection rate and payment timing to estimate DSO
+    const avgDaysToPayment = totalPaid > 0 && totalInvoiced > 0
+      ? Math.round((pendingAmount / (totalInvoiced / 365)))
+      : 0;
+
+    // Revenue concentration (% from top 20% customers)
+    const top20PercentCount = Math.ceil(activeCustomers * 0.2);
+    const topCustomersByConcentration = topCustomersByRevenue.slice(0, Math.max(1, top20PercentCount));
+    const topCustomersRevenue = topCustomersByConcentration.reduce((sum, c) => sum + Number(c.totalPaid || 0), 0);
+    const revenueConcentration = totalRevenue > 0 ? (topCustomersRevenue / totalRevenue) * 100 : 0;
+
+    // Service diversity
+    const uniqueServices = servicesMap.size;
+
     return NextResponse.json({
       kpis: {
+        // Financial KPIs
         totalRevenue,
-        overdueAmount,
-        collectionRate: Number(collectionRate.toFixed(1)),
-        overduePercentage: Number(overduePercentage.toFixed(1)),
-        activeCustomers,
-        newCustomers: newCustomersResult,
         totalInvoiced,
         totalPaid,
         pendingAmount,
+        overdueAmount,
+        collectionRate: Number(collectionRate.toFixed(1)),
+        overduePercentage: Number(overduePercentage.toFixed(1)),
+
+        // Invoice KPIs
+        totalInvoices,
+        paidInvoiceCount,
+        paidInvoicePercentage: Number(paidInvoicePercentage.toFixed(1)),
+        overdueInvoiceCount,
+        overdueInvoicePercentage: Number(overdueInvoicePercentage.toFixed(1)),
+        avgDaysToPayment,
+
+        // Customer KPIs
+        activeCustomers,
+        newCustomers: newCustomersResult,
         avgCustomerValue: Math.round(avgCustomerValue),
+        revenueConcentration: Number(revenueConcentration.toFixed(1)),
+
+        // Sales KPIs
         totalDeals,
         wonDeals,
         winRate: Number(winRate.toFixed(1)),
+        avgDealValue: Math.round(avgDealValue),
         totalLeads,
         qualifiedLeads,
         leadQualificationRate: Number(leadQualificationRate.toFixed(1)),
-        avgDealValue: Math.round(avgDealValue),
+
+        // Service KPIs
+        uniqueServices,
       },
       charts: {
         invoiceStatus: invoiceStatusChart,

@@ -15,23 +15,40 @@ import { TrendingUp, Users, DollarSign, AlertCircle, Target, ShoppingCart, FileT
 
 interface BIDashboardData {
   kpis: {
+    // Financial KPIs
     totalRevenue: number;
-    overdueAmount: number;
-    collectionRate: number;
-    overduePercentage: number;
-    activeCustomers: number;
-    newCustomers: number;
     totalInvoiced: number;
     totalPaid: number;
     pendingAmount: number;
+    overdueAmount: number;
+    collectionRate: number;
+    overduePercentage: number;
+
+    // Invoice KPIs
+    totalInvoices: number;
+    paidInvoiceCount: number;
+    paidInvoicePercentage: number;
+    overdueInvoiceCount: number;
+    overdueInvoicePercentage: number;
+    avgDaysToPayment: number;
+
+    // Customer KPIs
+    activeCustomers: number;
+    newCustomers: number;
     avgCustomerValue: number;
+    revenueConcentration: number;
+
+    // Sales KPIs
     totalDeals: number;
     wonDeals: number;
     winRate: number;
+    avgDealValue: number;
     totalLeads: number;
     qualifiedLeads: number;
     leadQualificationRate: number;
-    avgDealValue: number;
+
+    // Service KPIs
+    uniqueServices: number;
   };
   charts: {
     invoiceStatus: Array<{ name: string; value: number; amount: number }>;
@@ -264,6 +281,51 @@ export default function InsightsPage() {
           value={data ? formatInteger(data.kpis.totalLeads) : "0"}
           subtitle={data ? `${formatInteger(data.kpis.qualifiedLeads)} qualified` : "0 qualified"}
           icon={<div className="text-cyan-500"><Users className="w-5 h-5" /></div>}
+          isLoading={isLoading}
+        />
+
+        {/* Additional Invoice KPIs */}
+        <KpiCard
+          title="Total Invoices"
+          value={data ? formatInteger(data.kpis.totalInvoices) : "0"}
+          subtitle="In period"
+          icon={<div className="text-blue-500"><FileText className="w-5 h-5" /></div>}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Paid Invoices"
+          value={data ? formatPercentage(data.kpis.paidInvoicePercentage) : "0%"}
+          subtitle={data ? `${data.kpis.paidInvoiceCount} invoices` : "0 invoices"}
+          icon={<div className="text-green-500"><TrendingUp className="w-5 h-5" /></div>}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Avg Days to Payment"
+          value={data ? `${data.kpis.avgDaysToPayment}d` : "0d"}
+          subtitle="Days outstanding"
+          icon={<div className="text-orange-500"><AlertCircle className="w-5 h-5" /></div>}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Revenue Concentration"
+          value={data ? formatPercentage(data.kpis.revenueConcentration) : "0%"}
+          subtitle="From top 20% customers"
+          icon={<div className="text-purple-500"><Users className="w-5 h-5" /></div>}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Overdue Invoices"
+          value={data ? formatPercentage(data.kpis.overdueInvoicePercentage) : "0%"}
+          subtitle={data ? `${data.kpis.overdueInvoiceCount} invoices` : "0 invoices"}
+          valueColor="text-red-600 dark:text-red-400"
+          icon={<div className="text-red-500"><AlertCircle className="w-5 h-5" /></div>}
+          isLoading={isLoading}
+        />
+        <KpiCard
+          title="Unique Services"
+          value={data ? formatInteger(data.kpis.uniqueServices) : "0"}
+          subtitle="Services offered"
+          icon={<div className="text-indigo-500"><ShoppingCart className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
       </div>
