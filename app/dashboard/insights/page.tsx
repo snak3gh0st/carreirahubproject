@@ -13,8 +13,6 @@ import { exportToCSV, getDateStamp } from "@/lib/utils/export-csv";
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import { TrendingUp, Users, DollarSign, AlertCircle, Target, ShoppingCart, FileText } from "lucide-react";
 
-export const dynamic = "force-dynamic";
-
 interface BIDashboardData {
   kpis: {
     totalRevenue: number;
