@@ -96,16 +96,13 @@ export async function GET(request: NextRequest) {
       invoiceAging,
       leadConversionData,
     ] = await Promise.all([
-      // Total Revenue (paid invoices)
-      prisma.invoice.aggregate({
-        where: {
-          status: "PAID",
-          ...(dateFilter && { paidAt: dateFilter }),
-        },
-        _sum: { amountPaid: true },
+      // Total Revenue (sum of actual payments)
+      prisma.payment.aggregate({
+        where: dateFilter ? { paymentDate: dateFilter } : {},
+        _sum: { amount: true },
       }),
 
-      // Overdue Amount
+      // Overdue Amount (invoices status OVERDUE)
       prisma.invoice.aggregate({
         where: {
           status: "OVERDUE",
@@ -114,7 +111,7 @@ export async function GET(request: NextRequest) {
         _sum: { amount: true },
       }),
 
-      // Total Invoiced
+      // Total Invoiced (sum of all non-draft, non-void invoices)
       prisma.invoice.aggregate({
         where: {
           status: { notIn: ["DRAFT", "VOID"] },
@@ -123,16 +120,13 @@ export async function GET(request: NextRequest) {
         _sum: { amount: true },
       }),
 
-      // Total Paid
-      prisma.invoice.aggregate({
-        where: {
-          status: { notIn: ["DRAFT", "VOID"] },
-          ...(dateFilter && { paidAt: dateFilter }),
-        },
-        _sum: { amountPaid: true },
+      // Total Paid (sum of actual payments in period)
+      prisma.payment.aggregate({
+        where: dateFilter ? { paymentDate: dateFilter } : {},
+        _sum: { amount: true },
       }),
 
-      // Pending Amount (not yet fully paid)
+      // Pending Amount (total invoiced - total paid)
       prisma.invoice.aggregate({
         where: {
           status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
@@ -215,19 +209,29 @@ export async function GET(request: NextRequest) {
         select: { createdAt: true },
       }),
 
-      // Top Customers
-      prisma.customer.findMany({
-        where: {
-          qbTotalPaid: { gt: 0 },
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          qbTotalPaid: true,
-        },
-        orderBy: { qbTotalPaid: "desc" },
+      // Top Customers (by actual payment amounts)
+      prisma.payment.groupBy({
+        by: ["customerId"],
+        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        _sum: { amount: true },
+        orderBy: { _sum: { amount: "desc" } },
         take: 10,
+      }).then(async (paymentGroups) => {
+        // Get customer details for these payment groups
+        const customerIds = paymentGroups.map(pg => pg.customerId);
+        const customers = await prisma.customer.findMany({
+          where: { id: { in: customerIds } },
+          select: { id: true, name: true, email: true },
+        });
+
+        // Merge customer data with payment amounts
+        return paymentGroups.map(pg => {
+          const customer = customers.find(c => c.id === pg.customerId);
+          return {
+            ...customer,
+            totalPaid: Number(pg._sum.amount || 0),
+          };
+        });
       }),
 
       // Deals Pipeline by Status
@@ -258,10 +262,10 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Calculate KPIs
-    const totalRevenue = Number(totalRevenueResult._sum.amountPaid || 0);
+    const totalRevenue = Number(totalRevenueResult._sum.amount || 0);
     const overdueAmount = Number(overdueAmountResult._sum.amount || 0);
     const totalInvoiced = Number(totalInvoicedResult._sum.amount || 0);
-    const totalPaid = Number(totalPaidResult._sum.amountPaid || 0);
+    const totalPaid = Number(totalPaidResult._sum.amount || 0);
     const pendingAmount = Number(pendingAmountResult._sum.amount || 0);
     const collectionRate = totalInvoiced > 0
       ? (totalPaid / totalInvoiced) * 100
@@ -338,7 +342,7 @@ export async function GET(request: NextRequest) {
     // Format top customers
     const topCustomers = topCustomersByRevenue.map((c) => ({
       name: c.name,
-      value: Math.round(Number(c.qbTotalPaid || 0)),
+      value: Math.round(c.totalPaid || 0),
     }));
 
     // Format pipeline
