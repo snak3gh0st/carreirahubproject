@@ -42,6 +42,7 @@ interface BIDashboardData {
     dealsPipeline: Array<{ status: string; deals: number; value: number }>;
     invoiceAging: Array<{ name: string; value: number }>;
     leadFunnel: Array<{ stage: string; value: number }>;
+    topServices: Array<{ name: string; quantity: number; revenue: number }>;
   };
 }
 
@@ -418,6 +419,34 @@ export default function InsightsPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
+          )}
+        </div>
+
+        {/* Top Services Sold */}
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top Services Sold by Quantity</h3>
+          {isLoading ? (
+            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+          ) : data?.charts.topServices?.length ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.charts.topServices}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip
+                  formatter={(value, name) => {
+                    if (name === "revenue") return [formatCurrency(value as number), "Revenue"];
+                    return [value, "Quantity"];
+                  }}
+                />
+                <Legend />
+                <Bar yAxisId="left" dataKey="quantity" fill="#8b5cf6" name="Quantity" />
+                <Bar yAxisId="right" dataKey="revenue" fill="#f59e0b" name="Revenue" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-500">No service data</div>
           )}
         </div>
       </div>

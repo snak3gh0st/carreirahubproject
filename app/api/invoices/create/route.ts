@@ -133,6 +133,10 @@ export async function POST(request: NextRequest) {
         quickbooks_invoice_id: qbInvoiceId,
         dealId,
         customerId,
+        lineItems: lineItems.map(item => ({
+          ...item,
+          quantity: data.quantity,
+        })),
       },
     });
 

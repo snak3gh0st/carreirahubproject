@@ -390,6 +390,7 @@ model Invoice {
 
   pdfUrl     String?
   installments Json? // Lógica de parcelamento complexa armazenada aqui
+  lineItems   Json?  // Array of {description, amount, itemRef, quantity} for service tracking
 
   payments   Payment[]
 

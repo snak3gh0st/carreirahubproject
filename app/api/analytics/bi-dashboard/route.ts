@@ -95,6 +95,7 @@ export async function GET(request: NextRequest) {
       dealsPipeline,
       invoiceAging,
       leadConversionData,
+      servicesData,
     ] = await Promise.all([
       // Total Revenue (sum of actual payments)
       prisma.payment.aggregate({
@@ -259,6 +260,19 @@ export async function GET(request: NextRequest) {
         by: ["status"],
         _count: { id: true },
       }),
+
+      // Services sold (from invoice line items)
+      prisma.invoice.findMany({
+        where: {
+          status: { notIn: ["DRAFT", "VOID"] },
+          ...(dateFilter && { createdAt: dateFilter }),
+        },
+        select: {
+          lineItems: true,
+          amount: true,
+          createdAt: true,
+        },
+      }),
     ]);
 
     // Calculate KPIs
@@ -388,6 +402,31 @@ export async function GET(request: NextRequest) {
       { stage: "Converted", value: funnelMap.get("CONVERTED") || 0 },
     ];
 
+    // Aggregate services sold
+    const servicesMap = new Map<string, { quantity: number; revenue: number }>();
+    servicesData.forEach((invoice) => {
+      if (invoice.lineItems && Array.isArray(invoice.lineItems)) {
+        const lineItems = invoice.lineItems as Array<{ description: string; amount: number; quantity?: number }>;
+        lineItems.forEach((item) => {
+          const serviceName = item.description || "Unknown Service";
+          const current = servicesMap.get(serviceName) || { quantity: 0, revenue: 0 };
+          servicesMap.set(serviceName, {
+            quantity: current.quantity + (item.quantity || 1),
+            revenue: current.revenue + Number(item.amount || 0),
+          });
+        });
+      }
+    });
+
+    const topServices = Array.from(servicesMap.entries())
+      .map(([name, data]) => ({
+        name,
+        quantity: data.quantity,
+        revenue: Math.round(data.revenue),
+      }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 10);
+
     return NextResponse.json({
       kpis: {
         totalRevenue,
@@ -417,6 +456,7 @@ export async function GET(request: NextRequest) {
         dealsPipeline: pipelineData,
         invoiceAging: invoiceAgingChart,
         leadFunnel: funnelData,
+        topServices,
       },
     });
   } catch (error) {
