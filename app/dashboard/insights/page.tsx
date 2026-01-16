@@ -7,7 +7,8 @@ import { KpiCard } from "@/components/dashboard/kpi-card";
 import { InvoiceStatusChart } from "@/components/dashboard/charts/invoice-status-chart";
 import { RevenueTrendChart } from "@/components/dashboard/charts/revenue-trend-chart";
 import { TopCustomersChart } from "@/components/dashboard/charts/top-customers-chart";
-import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
+import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
+import { AlertsPanel } from "@/components/dashboard/alerts-panel";
 import { exportToCSV, getDateStamp } from "@/lib/utils/export-csv";
 
 export const dynamic = "force-dynamic";
@@ -165,8 +166,11 @@ export default function InsightsPage() {
         </p>
       </div>
 
-      {/* Date Range Filter */}
-      <DateRangeFilter onFilterChange={() => refetch()} />
+      {/* Alerts Panel */}
+      <AlertsPanel />
+
+      {/* Filters Panel */}
+      <DashboardFilters onFiltersChange={() => refetch()} />
 
       {/* Error State */}
       {isError && (
