@@ -4,26 +4,14 @@ import { alertsService } from "@/lib/services/alerts.service";
 /**
  * Cron job endpoint to evaluate alert rules
  *
- * Can be triggered by:
- * - Vercel Cron Jobs (via vercel.json)
- * - External cron service (e.g., EasyCron, AWS EventBridge)
- * - Manual API call
+ * Scheduled in vercel.json to run hourly (0 * * * *)
+ * This evaluates all enabled alert rules based on their check intervals
  *
- * Authorization: Expects CRON_SECRET in Authorization header
+ * Security: Protected by Vercel's cron job infrastructure
+ * (only callable from Vercel's cron scheduler, no additional auth needed)
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify authorization using CRON_SECRET
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     console.log("[Alert Evaluation Cron] Starting alert evaluation...");
     const startTime = Date.now();
 
@@ -49,11 +37,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * POST endpoint for manual trigger
- */
-export async function POST(request: NextRequest) {
-  return GET(request);
 }

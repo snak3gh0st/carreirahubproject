@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/evaluate-alerts",
+      "schedule": "0 * * * *"
+    },
+    {
       "path": "/api/cron/refresh-quickbooks-token",
       "schedule": "0 2 * * *"
     },
