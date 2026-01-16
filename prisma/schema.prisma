@@ -179,6 +179,7 @@ model Customer {
   notifications    Notification[]
   collectionCalls  CollectionCall[]
   payments         Payment[]
+  alerts          Alert[]
 
   metadata  Json?
 
@@ -320,6 +321,7 @@ model Deal {
   
   invoices   Invoice[]
   contracts  Contract[]
+  alerts    Alert[]
 
   // Workflow status tracking (Phase 3 - Finance Workflow Automation)
   workflowStatus       String?   // PENDING | IN_PROGRESS | COMPLETED | FAILED
@@ -384,6 +386,7 @@ model Invoice {
 
   notifications    Notification[]
   collectionCalls  CollectionCall[]
+  alerts          Alert[]
 
   pdfUrl     String?
   installments Json? // Lógica de parcelamento complexa armazenada aqui
@@ -669,5 +672,119 @@ model CircuitBreakerState {
   @@index([serviceName])
   @@index([state])
   @@map("circuit_breaker_states")
+}
+
+// ALERTS: Dashboard alerts for important business events
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  ACTIVE
+  ACKNOWLEDGED
+  RESOLVED
+  DISMISSED
+}
+
+model Alert {
+  id            String        @id @default(cuid())
+  ruleId        String
+  rule          AlertRule     @relation(fields: [ruleId], references: [id])
+
+  // Alert details
+  title         String
+  description   String        @db.Text
+  severity      AlertSeverity @default(MEDIUM)
+  status        AlertStatus   @default(ACTIVE)
+
+  // Related entities
+  invoiceId     String?
+  invoice       Invoice?      @relation(fields: [invoiceId], references: [id])
+  customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  dealId        String?
+  deal          Deal?         @relation(fields: [dealId], references: [id])
+
+  // Metadata
+  data          Json?         // Store alert context: overdue amount, days overdue, etc.
+  triggeredAt   DateTime      @default(now())
+  acknowledgedAt DateTime?
+  resolvedAt    DateTime?
+  dismissedAt   DateTime?
+  dismissedBy   String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  events        AlertEvent[]
+
+  @@index([ruleId])
+  @@index([status])
+  @@index([severity])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([dealId])
+  @@index([triggeredAt])
+  @@map("alerts")
+}
+
+model AlertRule {
+  id            String   @id @default(cuid())
+
+  // Rule definition
+  name          String   @unique
+  description   String?  @db.Text
+  severity      AlertSeverity @default(MEDIUM)
+
+  // Condition and evaluation
+  condition     String   @db.Text  // Human-readable condition description
+  evaluationLogic Json?           // Structured evaluation rules
+
+  // Execution schedule
+  enabled       Boolean  @default(true)
+  checkInterval String   @default("HOURLY") // HOURLY, DAILY, WEEKLY
+  lastEvaluatedAt DateTime?
+
+  // Alert settings
+  maxAlertsPerDay Int @default(1) // Prevent alert spam
+  autoResolveCondition String? // Condition that auto-resolves the alert
+
+  // Metadata
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  alerts        Alert[]
+
+  @@index([enabled])
+  @@index([lastEvaluatedAt])
+  @@map("alert_rules")
+}
+
+model AlertEvent {
+  id            String   @id @default(cuid())
+  alertId       String
+  alert         Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  // Event tracking
+  eventType     String   // "TRIGGERED", "ACKNOWLEDGED", "RESOLVED", "DISMISSED"
+  actor         String?  // User ID or "SYSTEM"
+  actorEmail    String?
+  reason        String?  @db.Text
+
+  // Event context
+  previousStatus AlertStatus?
+  newStatus     AlertStatus?
+  metadata      Json?
+
+  createdAt     DateTime @default(now())
+
+  @@index([alertId])
+  @@index([eventType])
+  @@index([createdAt])
+  @@map("alert_events")
 }
 
