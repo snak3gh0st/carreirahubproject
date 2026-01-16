@@ -58,15 +58,21 @@ export default async function DashboardPage() {
   };
 
   try {
-    const response = await fetch(
-      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/dashboard/metrics`,
-      { cache: "no-store" }
-    );
+    // Use relative URL to preserve session cookies
+    const response = await fetch("/api/dashboard/metrics", {
+      cache: "no-store",
+      credentials: "include",
+    });
     if (response.ok) {
-      metrics = await response.json();
+      const data = await response.json();
+      // Only update metrics if response has the correct structure
+      if (data.sales && data.finance && data.customers) {
+        metrics = data;
+      }
     }
   } catch (error) {
     console.error("Failed to fetch metrics:", error);
+    // Continue with default metrics on error
   }
 
   // Format currency helper

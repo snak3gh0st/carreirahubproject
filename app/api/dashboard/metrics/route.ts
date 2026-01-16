@@ -222,9 +222,35 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(metrics);
   } catch (error) {
     console.error("[Dashboard Metrics Error]:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch metrics" },
-      { status: 500 }
-    );
+    // Return partial data on error instead of complete failure
+    return NextResponse.json({
+      sales: {
+        wonDealsThisMonth: 0,
+        totalDeals: 0,
+        wonDeals: 0,
+        totalLeads: 0,
+        qualifiedLeads: 0,
+        conversionRate: "0.0",
+        pipelineValue: 0,
+        avgDealValue: 0,
+      },
+      finance: {
+        totalRevenue: 0,
+        totalInvoiced: 0,
+        totalPaid: 0,
+        pendingAmount: 0,
+        overdueAmount: 0,
+        collectionRate: "0.0",
+        totalInvoices: 0,
+        overdueCount: 0,
+        revenueGrowth: "0",
+      },
+      customers: {
+        totalCustomers: 0,
+        newCustomersThisMonth: 0,
+        avgCustomerValue: 0,
+      },
+      error: "Failed to fetch complete metrics",
+    }, { status: 200 });
   }
 }
