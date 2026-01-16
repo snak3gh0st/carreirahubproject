@@ -8,7 +8,7 @@ import { InvoiceStatusChart } from "@/components/dashboard/charts/invoice-status
 import { RevenueTrendChart } from "@/components/dashboard/charts/revenue-trend-chart";
 import { TopCustomersChart } from "@/components/dashboard/charts/top-customers-chart";
 import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
-import { AlertsPanel } from "@/components/dashboard/alerts-panel";
+import { AlertsWidget } from "@/components/dashboard/alerts-widget";
 import { exportToCSV, getDateStamp } from "@/lib/utils/export-csv";
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
 import { TrendingUp, Users, DollarSign, AlertCircle, Target, ShoppingCart, FileText } from "lucide-react";
@@ -154,9 +154,11 @@ export default function InsightsPage() {
         </p>
       </div>
 
-      {/* Alerts & Filters */}
-      <AlertsPanel />
+      {/* Filters */}
       <DashboardFilters onFiltersChange={() => refetch()} />
+
+      {/* Alerts Widget (fixed position) */}
+      <AlertsWidget />
 
       {/* Error State */}
       {isError && (
