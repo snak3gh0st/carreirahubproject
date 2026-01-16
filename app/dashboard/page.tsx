@@ -1,7 +1,6 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -14,18 +13,22 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { DashboardKPICard } from "@/components/dashboard/dashboard-kpi-card";
-import { DashboardFilters, type FilterState } from "@/components/dashboard/dashboard-filters";
-import { AlertsPanel } from "@/components/dashboard/alerts-panel";
 
 /**
- * Enhanced BI Dashboard
+ * Main Dashboard - Quick Overview & Actions
  *
- * Comprehensive view of company KPIs: Sales, Finance, and Customers
- * with real-time filtering and alert monitoring
+ * Shows high-level KPIs and quick navigation buttons
+ * Detailed analytics and filters are in the Insights tab
  */
-export default function DashboardPage() {
-  const searchParams = useSearchParams();
-  const [metrics, setMetrics] = useState({
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/auth/signin");
+  }
+
+  // Fetch comprehensive metrics from API (unfiltered, top-level view)
+  let metrics = {
     sales: {
       wonDealsThisMonth: 0,
       totalDeals: 0,
@@ -52,38 +55,19 @@ export default function DashboardPage() {
       newCustomersThisMonth: 0,
       avgCustomerValue: 0,
     },
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Fetch metrics when search params change
-  useEffect(() => {
-    fetchMetrics();
-  }, [searchParams]);
-
-  const fetchMetrics = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Build query string from search params
-      const queryString = searchParams.toString();
-      const url = `/api/dashboard/metrics${queryString ? `?${queryString}` : ""}`;
-
-      const response = await fetch(url, { cache: "no-store" });
-      if (response.ok) {
-        const data = await response.json();
-        setMetrics(data);
-      } else {
-        setError("Failed to fetch metrics");
-      }
-    } catch (err) {
-      console.error("Failed to fetch metrics:", err);
-      setError("Error loading metrics");
-    } finally {
-      setLoading(false);
-    }
   };
+
+  try {
+    const response = await fetch(
+      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/dashboard/metrics`,
+      { cache: "no-store" }
+    );
+    if (response.ok) {
+      metrics = await response.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch metrics:", error);
+  }
 
   // Format currency helper
   const formatCurrency = (value: number) =>
@@ -101,42 +85,13 @@ export default function DashboardPage() {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Business Intelligence Dashboard
+            Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Real-time company metrics and KPIs
+            Quick overview of your business
           </p>
         </div>
 
-        {/* Alerts Panel */}
-        <AlertsPanel />
-
-        {/* Filters Panel */}
-        <DashboardFilters onFiltersChange={() => fetchMetrics()} />
-
-        {/* Loading State */}
-        {loading && (
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-8 mb-8 border border-gray-200 dark:border-gray-700">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-32 bg-gray-200 dark:bg-gray-700 rounded" />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-4 mb-8">
-            <p className="text-red-700 dark:text-red-200">{error}</p>
-          </div>
-        )}
-
-        {!loading && (
-          <>
         {/* ========== SALES & REVENUE SECTION ========== */}
         <div className="mb-8">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
@@ -308,8 +263,6 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
-          </>
-        )}
       </div>
     </div>
   );
