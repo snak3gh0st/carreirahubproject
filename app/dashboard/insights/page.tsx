@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { KpiCard } from "@/components/dashboard/kpi-card";
@@ -11,7 +12,7 @@ import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { AlertsWidget } from "@/components/dashboard/alerts-widget";
 import { exportToCSV, getDateStamp } from "@/lib/utils/export-csv";
 import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
-import { TrendingUp, Users, DollarSign, AlertCircle, Target, ShoppingCart, FileText } from "lucide-react";
+import { TrendingUp, Users, DollarSign, AlertCircle, Target, ShoppingCart, FileText, Database } from "lucide-react";
 
 interface BIDashboardData {
   kpis: {
@@ -163,12 +164,24 @@ export default function InsightsPage() {
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-          Business Intelligence Dashboard
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Comprehensive analytics powered by QuickBooks data
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              Business Intelligence Dashboard
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Comprehensive analytics powered by QuickBooks data
+            </p>
+          </div>
+          <Link
+            href="/dashboard/analytics"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            title="View QuickBooks analytics including receivables and aging"
+          >
+            <Database className="w-5 h-5" />
+            QB Analytics
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
