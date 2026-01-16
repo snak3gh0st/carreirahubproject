@@ -1,15 +1,23 @@
-import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
-import { AnalyticsSection } from "@/components/dashboard/analytics-section";
+import {
+  TrendingUp,
+  Users,
+  FileText,
+  DollarSign,
+  ShoppingCart,
+  Target,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
+import { DashboardKPICard } from "@/components/dashboard/dashboard-kpi-card";
 
 /**
- * Dashboard Principal
+ * Enhanced BI Dashboard
  *
- * Exibe métricas gerais e visão geral do sistema
+ * Comprehensive view of company KPIs: Sales, Finance, and Customers
  */
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
@@ -18,257 +26,243 @@ export default async function DashboardPage() {
     redirect("/auth/signin");
   }
 
-  // Buscar métricas básicas
-  const [
-    totalLeads,
-    qualifiedLeads,
-    totalDeals,
-    wonDeals,
-    totalInvoices,
-    allInvoices,
-  ] = await Promise.all([
-    prisma.lead.count(),
-    prisma.lead.count({ where: { status: LeadStatus.QUALIFIED } }),
-    prisma.deal.count(),
-    prisma.deal.count({ where: { status: DealStatus.WON } }),
-    prisma.invoice.count(),
-    prisma.invoice.findMany({
-      select: {
-        status: true,
-        dueDate: true,
-        amount: true,
-      },
-    }),
-  ]);
+  // Fetch comprehensive metrics from API
+  let metrics = {
+    sales: {
+      wonDealsThisMonth: 0,
+      totalDeals: 0,
+      wonDeals: 0,
+      totalLeads: 0,
+      qualifiedLeads: 0,
+      conversionRate: "0.0",
+      pipelineValue: 0,
+      avgDealValue: 0,
+    },
+    finance: {
+      totalRevenue: 0,
+      totalInvoiced: 0,
+      totalPaid: 0,
+      pendingAmount: 0,
+      overdueAmount: 0,
+      collectionRate: "0.0",
+      totalInvoices: 0,
+      overdueCount: 0,
+      revenueGrowth: "0",
+    },
+    customers: {
+      totalCustomers: 0,
+      newCustomersThisMonth: 0,
+      avgCustomerValue: 0,
+    },
+  };
 
-  // Calculate overdue invoices dynamically
-  const today = new Date();
-  const overdueInvoices = allInvoices.filter(
-    (inv) =>
-      inv.status !== InvoiceStatus.PAID &&
-      inv.status !== InvoiceStatus.VOID &&
-      new Date(inv.dueDate) < today
-  );
-  const overdueCount = overdueInvoices.length;
-  const overdueAmount = overdueInvoices.reduce(
-    (sum, inv) => sum + Number(inv.amount),
-    0
-  );
+  try {
+    const response = await fetch(
+      `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/dashboard/metrics`,
+      { cache: "no-store" }
+    );
+    if (response.ok) {
+      metrics = await response.json();
+    }
+  } catch (error) {
+    console.error("Failed to fetch metrics:", error);
+  }
 
-  const conversionRate =
-    totalLeads > 0 ? ((wonDeals / totalLeads) * 100).toFixed(1) : "0.0";
+  // Format currency helper
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+    }).format(value);
+
+  const formatNumber = (value: number) => value.toLocaleString("en-US");
 
   return (
-    <div className="container mx-auto px-6 py-8">
-        {/* Métricas Principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Leads */}
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Leads</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {totalLeads}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Leads Qualificados */}
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Leads Qualificados
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {qualifiedLeads}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-green-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Deals */}
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Deals</p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {totalDeals}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-purple-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-
-          {/* Deals Ganhos */}
-          <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-indigo-500">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Deals Ganhos
-                </p>
-                <p className="text-3xl font-bold text-gray-900 mt-2">
-                  {wonDeals}
-                </p>
-              </div>
-              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <svg
-                  className="w-6 h-6 text-indigo-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Métricas Secundárias */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          {/* Taxa de Conversão */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Taxa de Conversão
-            </h3>
-            <div className="flex items-end">
-              <p className="text-4xl font-bold text-gray-900">{conversionRate}%</p>
-              <p className="text-sm text-gray-600 ml-2 mb-1">
-                de leads convertidos
-              </p>
-            </div>
-            <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full"
-                style={{ width: `${conversionRate}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Invoices */}
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Invoices
-            </h3>
-            <div className="flex items-end">
-              <p className="text-4xl font-bold text-gray-900">{totalInvoices}</p>
-              <p className="text-sm text-gray-600 ml-2 mb-1">total</p>
-            </div>
-            {overdueCount > 0 && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex flex-col">
-                  <p className="text-sm font-medium text-red-800">
-                    ⚠️ {overdueCount} invoice(s) overdue
-                  </p>
-                  <p className="text-lg font-bold text-red-900 mt-1">
-                    ${overdueAmount.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Analytics */}
+    <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
+      <div className="container mx-auto px-4 sm:px-6 py-8">
+        {/* Page Header */}
         <div className="mb-8">
-          <AnalyticsSection />
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            Business Intelligence Dashboard
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Real-time company metrics and KPIs
+          </p>
         </div>
 
-        {/* Ações Rápidas */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Ações Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        {/* ========== SALES & REVENUE SECTION ========== */}
+        <div className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="h-6 w-6 text-blue-600" />
+            Sales & Revenue
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <DashboardKPICard
+              title="Total Deals"
+              value={metrics.sales.totalDeals}
+              icon={ShoppingCart}
+              color="blue"
+              subtitle="All-time"
+            />
+            <DashboardKPICard
+              title="Deals Won This Month"
+              value={metrics.sales.wonDealsThisMonth}
+              icon={Target}
+              color="green"
+              subtitle="This month"
+            />
+            <DashboardKPICard
+              title="Conversion Rate"
+              value={`${metrics.sales.conversionRate}%`}
+              icon={ArrowUpRight}
+              color="purple"
+              subtitle="Leads → Deals"
+            />
+            <DashboardKPICard
+              title="Pipeline Value"
+              value={formatCurrency(metrics.sales.pipelineValue)}
+              icon={DollarSign}
+              color="orange"
+              subtitle="Open deals"
+            />
+          </div>
+        </div>
+
+        {/* ========== FINANCE SECTION ========== */}
+        <div className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <DollarSign className="h-6 w-6 text-green-600" />
+            Finance Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <DashboardKPICard
+              title="Total Revenue"
+              value={formatCurrency(metrics.finance.totalRevenue)}
+              icon={DollarSign}
+              color="green"
+              trend={{ value: parseFloat(metrics.finance.revenueGrowth), direction: "up", label: "MoM" }}
+              subtitle="All-time paid"
+            />
+            <DashboardKPICard
+              title="Total Invoiced"
+              value={formatCurrency(metrics.finance.totalInvoiced)}
+              icon={FileText}
+              color="blue"
+              subtitle="Outstanding + Paid"
+            />
+            <DashboardKPICard
+              title="Collection Rate"
+              value={`${metrics.finance.collectionRate}%`}
+              icon={TrendingUp}
+              color="purple"
+              subtitle="Paid / Invoiced"
+            />
+            <DashboardKPICard
+              title="Overdue Amount"
+              value={formatCurrency(metrics.finance.overdueAmount)}
+              icon={ArrowDownRight}
+              color="red"
+              subtitle={`${metrics.finance.overdueCount} invoices`}
+            />
+          </div>
+        </div>
+
+        {/* ========== CUSTOMER SECTION ========== */}
+        <div className="mb-8">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Users className="h-6 w-6 text-indigo-600" />
+            Customer Metrics
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <DashboardKPICard
+              title="Total Customers"
+              value={formatNumber(metrics.customers.totalCustomers)}
+              icon={Users}
+              color="indigo"
+              subtitle="All-time"
+            />
+            <DashboardKPICard
+              title="New Customers (This Month)"
+              value={metrics.customers.newCustomersThisMonth}
+              icon={Users}
+              color="green"
+              subtitle="New acquisitions"
+            />
+            <DashboardKPICard
+              title="Avg Customer Value"
+              value={formatCurrency(metrics.customers.avgCustomerValue)}
+              icon={DollarSign}
+              color="orange"
+              subtitle="Total revenue / customers"
+            />
+          </div>
+        </div>
+
+        {/* ========== QUICK ACTIONS ========== */}
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Quick Actions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <Link
               href="/dashboard/leads"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition text-center"
+              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
             >
-              <p className="font-medium text-gray-900">Ver Leads</p>
-              <p className="text-sm text-gray-600 mt-1">Gerenciar pipeline</p>
+              <div className="relative">
+                <p className="font-semibold text-gray-900 dark:text-white">Leads</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Manage pipeline
+                </p>
+              </div>
             </Link>
             <Link
               href="/dashboard/deals"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition text-center"
+              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-purple-400 dark:hover:border-purple-500"
             >
-              <p className="font-medium text-gray-900">Ver Deals</p>
-              <p className="text-sm text-gray-600 mt-1">Gerenciar vendas</p>
+              <div className="relative">
+                <p className="font-semibold text-gray-900 dark:text-white">Deals</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Track sales
+                </p>
+              </div>
             </Link>
             <Link
-              href="/dashboard/invoices/new"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition text-center"
+              href="/dashboard/invoices"
+              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-green-400 dark:hover:border-green-500"
             >
-              <p className="font-medium text-gray-900">Gerar Invoice</p>
-              <p className="text-sm text-gray-600 mt-1">Criar fatura no QuickBooks</p>
+              <div className="relative">
+                <p className="font-semibold text-gray-900 dark:text-white">Invoices</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  View & create
+                </p>
+              </div>
             </Link>
             <Link
               href="/dashboard/customers"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-indigo-500 hover:bg-indigo-50 transition text-center"
+              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-indigo-400 dark:hover:border-indigo-500"
             >
-              <p className="font-medium text-gray-900">Ver / Add Customer</p>
-              <p className="text-sm text-gray-600 mt-1">Gerenciar clientes</p>
+              <div className="relative">
+                <p className="font-semibold text-gray-900 dark:text-white">Customers</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Manage accounts
+                </p>
+              </div>
             </Link>
             <Link
-              href="/dashboard/integrations"
-              className="p-4 border-2 border-gray-200 rounded-lg hover:border-orange-500 hover:bg-orange-50 transition text-center"
+              href="/dashboard/insights"
+              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-orange-400 dark:hover:border-orange-500"
             >
-              <p className="font-medium text-gray-900">Integrations</p>
-              <p className="text-sm text-gray-600 mt-1">QuickBooks & Pipedrive</p>
+              <div className="relative">
+                <p className="font-semibold text-gray-900 dark:text-white">Insights</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Analytics & BI
+                </p>
+              </div>
             </Link>
           </div>
         </div>
       </div>
+    </div>
   );
 }
