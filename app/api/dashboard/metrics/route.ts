@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
 import { subDays, startOfYear } from "date-fns";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
