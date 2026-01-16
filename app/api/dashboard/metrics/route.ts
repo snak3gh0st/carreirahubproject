@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
+import { subDays, startOfYear } from "date-fns";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,9 +13,58 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Parse query parameters for filters
+    const url = new URL(request.url);
+    const dateRange = url.searchParams.get("dateRange") || "allTime"; // last7, last30, last90, thisYear, allTime
+    const fromDate = url.searchParams.get("from");
+    const toDate = url.searchParams.get("to");
+    const customerSegment = url.searchParams.get("segment") || "all"; // all, active, inactive, churned
+    const invoiceStatus = url.searchParams.get("invoiceStatus"); // comma-separated: PAID, OVERDUE, PENDING, etc.
+
+    // Calculate date range
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const yearStart = startOfYear(now);
+
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+
+    if (fromDate && toDate) {
+      dateFilter = {
+        gte: new Date(fromDate),
+        lte: new Date(toDate),
+      };
+    } else {
+      switch (dateRange) {
+        case "last7":
+          dateFilter = { gte: subDays(now, 7) };
+          break;
+        case "last30":
+          dateFilter = { gte: subDays(now, 30) };
+          break;
+        case "last90":
+          dateFilter = { gte: subDays(now, 90) };
+          break;
+        case "thisYear":
+          dateFilter = { gte: yearStart };
+          break;
+        case "allTime":
+        default:
+          dateFilter = {}; // No date filter
+      }
+    }
+
+    // Parse invoice status filter
+    const invoiceStatuses = invoiceStatus
+      ? (invoiceStatus.split(",") as InvoiceStatus[])
+      : undefined;
+
+    // Build where clauses with filters
+    const invoiceWhereInvoiceStatus = invoiceStatuses
+      ? { status: { in: invoiceStatuses } }
+      : {};
+
+    const dealWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
+    const invoiceWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
 
     // Fetch all data in parallel
     const [
@@ -31,16 +81,24 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       prisma.lead.count(),
       prisma.lead.count({ where: { status: LeadStatus.QUALIFIED } }),
-      prisma.deal.count(),
-      prisma.deal.count({ where: { status: DealStatus.WON } }),
+      prisma.deal.count({ where: dealWhereCreatedAt }),
+      prisma.deal.count({
+        where: {
+          status: DealStatus.WON,
+          ...dealWhereCreatedAt,
+        },
+      }),
       prisma.deal.count({
         where: {
           status: DealStatus.WON,
           createdAt: { gte: startOfMonth },
         },
       }),
-      prisma.invoice.count(),
+      prisma.invoice.count({
+        where: invoiceWhereInvoiceStatus,
+      }),
       prisma.invoice.findMany({
+        where: invoiceWhereInvoiceStatus,
         select: {
           status: true,
           dueDate: true,
@@ -48,6 +106,7 @@ export async function GET(request: NextRequest) {
           amountPaid: true,
           paidAt: true,
           createdAt: true,
+          customerId: true,
         },
       }),
       prisma.customer.count(),
@@ -55,6 +114,7 @@ export async function GET(request: NextRequest) {
         where: { createdAt: { gte: startOfMonth } },
       }),
       prisma.deal.findMany({
+        where: dealWhereCreatedAt,
         select: { value: true, status: true },
       }),
     ]);
@@ -140,6 +200,12 @@ export async function GET(request: NextRequest) {
       summary: {
         totalMetrics: totalLeads + totalDeals + totalInvoices + allCustomers,
         activeUsers: totalLeads,
+      },
+      filters: {
+        dateRange,
+        customerSegment,
+        invoiceStatus: invoiceStatuses || [],
+        appliedDateRange: dateFilter,
       },
     };
 
