@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { format } from "date-fns";
+import { useToast } from "@/lib/contexts/toast.context";
 
 interface DashboardFiltersProps {
   onFiltersChange?: (filters: FilterState) => void;
@@ -52,6 +53,7 @@ const DATE_RANGES = [
 export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { addToast } = useToast();
 
   // Parse current filter state from URL
   const [dateRange, setDateRange] = useState(
@@ -126,6 +128,8 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
       invoiceStatus: invoiceStatuses,
       dealStatus: dealStatuses,
     });
+
+    addToast("Filters applied", "success");
   };
 
   const resetFilters = () => {
@@ -145,6 +149,8 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
       invoiceStatus: [],
       dealStatus: [],
     });
+
+    addToast("Filters reset", "success");
   };
 
   const hasActiveFilters =

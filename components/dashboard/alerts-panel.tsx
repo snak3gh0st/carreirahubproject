@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import { useToast } from "@/lib/contexts/toast.context";
 
 interface Alert {
   id: string;
@@ -21,6 +22,7 @@ export function AlertsPanel() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   useEffect(() => {
     fetchAlerts();
@@ -54,9 +56,13 @@ export function AlertsPanel() {
             a.id === alertId ? { ...a, status: "ACKNOWLEDGED" } : a
           )
         );
+        addToast("Alert acknowledged", "success");
+      } else {
+        addToast("Failed to acknowledge alert", "error");
       }
     } catch (err) {
       console.error("Failed to acknowledge alert:", err);
+      addToast("Error acknowledging alert", "error");
     }
   };
 
@@ -73,9 +79,13 @@ export function AlertsPanel() {
             a.id === alertId ? { ...a, status: "RESOLVED" } : a
           )
         );
+        addToast("Alert resolved", "success");
+      } else {
+        addToast("Failed to resolve alert", "error");
       }
     } catch (err) {
       console.error("Failed to resolve alert:", err);
+      addToast("Error resolving alert", "error");
     }
   };
 
@@ -92,9 +102,13 @@ export function AlertsPanel() {
             a.id === alertId ? { ...a, status: "DISMISSED" } : a
           )
         );
+        addToast("Alert dismissed", "success");
+      } else {
+        addToast("Failed to dismiss alert", "error");
       }
     } catch (err) {
       console.error("Failed to dismiss alert:", err);
+      addToast("Error dismissing alert", "error");
     }
   };
 
