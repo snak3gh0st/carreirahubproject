@@ -124,9 +124,12 @@ export async function GET(request: NextRequest) {
         _sum: { amount: true },
       }),
 
-      // Total Paid (sum of all amountPaid regardless of status)
+      // Total Paid (sum of amountPaid from PAID or PARTIALLY_PAID invoices)
       prisma.invoice.aggregate({
-        where: dateFilter ? { paidAt: dateFilter } : {},
+        where: {
+          status: { in: ["PAID", "PARTIALLY_PAID"] },
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
         _sum: { amountPaid: true },
       }),
 
@@ -190,10 +193,10 @@ export async function GET(request: NextRequest) {
         _sum: { value: true },
       }),
 
-      // Revenue by Month (from paid invoices)
+      // Revenue by Month (from paid or partially paid invoices)
       prisma.invoice.findMany({
         where: {
-          status: "PAID",
+          status: { in: ["PAID", "PARTIALLY_PAID"] },
           paidAt: {
             gte: revenueTrendStartDate,
             ...(endDate && { lte: endDate }),
@@ -214,11 +217,11 @@ export async function GET(request: NextRequest) {
         select: { createdAt: true },
       }),
 
-      // Top Customers (by amountPaid from invoices)
+      // Top Customers (by amountPaid from paid or partially paid invoices)
       prisma.invoice.groupBy({
         by: ["customerId"],
         where: {
-          status: "PAID",
+          status: { in: ["PAID", "PARTIALLY_PAID"] },
           ...(dateFilter && { paidAt: dateFilter }),
         },
         _sum: { amountPaid: true },

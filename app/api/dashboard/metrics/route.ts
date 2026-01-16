@@ -124,12 +124,15 @@ export async function GET(request: NextRequest) {
     // Calculate financial metrics
     const today = new Date();
 
-    // Total Revenue = sum of amountPaid from invoices
+    // Total Revenue = sum of amountPaid from PAID invoices
     const paidInvoices = allInvoices.filter((inv) => inv.status === InvoiceStatus.PAID);
     const totalRevenue = paidInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
 
-    // Total Paid = sum of all amountPaid (paid + partial payments)
-    const totalPaid = allInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
+    // Total Paid = sum of amountPaid from invoices with payments (PAID or PARTIALLY_PAID)
+    const paidOrPartialInvoices = allInvoices.filter(
+      (inv) => inv.status === InvoiceStatus.PAID || inv.status === InvoiceStatus.PARTIALLY_PAID
+    );
+    const totalPaid = paidOrPartialInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
 
     const overdueInvoices = allInvoices.filter(
       (inv) =>
