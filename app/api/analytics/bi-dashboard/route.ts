@@ -325,13 +325,31 @@ export async function GET(request: NextRequest) {
       amount: Number(item._sum.value || 0),
     }));
 
-    // Format revenue trend
+    // Format revenue trend with proper year/month grouping
     const revenueByMonthMap = new Map<string, number>();
-    for (let i = 0; i < 12; i++) {
-      const month = subMonths(startOfMonth(new Date()), 11 - i);
-      const monthKey = format(month, "yyyy-MM");
-      revenueByMonthMap.set(monthKey, 0);
+
+    // Calculate date range from data
+    let minDate = new Date();
+    let maxDate = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000); // Default 12 months back
+
+    if (revenueByMonth.length > 0) {
+      revenueByMonth.forEach((inv) => {
+        if (inv.paidAt) {
+          const d = new Date(inv.paidAt);
+          if (d < minDate) minDate = d;
+          if (d > maxDate) maxDate = d;
+        }
+      });
     }
+
+    // Initialize all months in range
+    let current = startOfMonth(minDate);
+    while (current <= maxDate) {
+      const monthKey = format(current, "yyyy-MM");
+      revenueByMonthMap.set(monthKey, 0);
+      current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+    }
+
     revenueByMonth.forEach((invoice) => {
       if (invoice.paidAt) {
         const monthKey = format(startOfMonth(invoice.paidAt), "yyyy-MM");
@@ -339,31 +357,51 @@ export async function GET(request: NextRequest) {
         revenueByMonthMap.set(monthKey, current + Number(invoice.amountPaid || 0));
       }
     });
-    const revenueTrend = Array.from(revenueByMonthMap.entries()).map(
-      ([month, revenue]) => ({
-        month: format(new Date(month + "-01"), "MMM"),
-        revenue: Math.round(revenue),
-      })
-    );
 
-    // Format invoice count trend
+    const revenueTrend = Array.from(revenueByMonthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, revenue]) => ({
+        month: format(new Date(month + "-01"), "MMM yy"),
+        fullMonth: month,
+        revenue: Math.round(revenue),
+      }));
+
+    // Format invoice count trend with proper year/month grouping
     const invoiceCountByMonthMap = new Map<string, number>();
-    for (let i = 0; i < 12; i++) {
-      const month = subMonths(startOfMonth(new Date()), 11 - i);
-      const monthKey = format(month, "yyyy-MM");
-      invoiceCountByMonthMap.set(monthKey, 0);
+
+    // Calculate date range from data
+    let minDateInv = new Date();
+    let maxDateInv = new Date(now.getTime() - 12 * 30 * 24 * 60 * 60 * 1000);
+
+    if (invoiceCountByMonth.length > 0) {
+      invoiceCountByMonth.forEach((inv) => {
+        const d = new Date(inv.createdAt);
+        if (d < minDateInv) minDateInv = d;
+        if (d > maxDateInv) maxDateInv = d;
+      });
     }
+
+    // Initialize all months in range
+    let currentInv = startOfMonth(minDateInv);
+    while (currentInv <= maxDateInv) {
+      const monthKey = format(currentInv, "yyyy-MM");
+      invoiceCountByMonthMap.set(monthKey, 0);
+      currentInv = new Date(currentInv.getFullYear(), currentInv.getMonth() + 1, 1);
+    }
+
     invoiceCountByMonth.forEach((invoice) => {
       const monthKey = format(startOfMonth(invoice.createdAt), "yyyy-MM");
       const current = invoiceCountByMonthMap.get(monthKey) || 0;
       invoiceCountByMonthMap.set(monthKey, current + 1);
     });
-    const invoiceCountTrend = Array.from(invoiceCountByMonthMap.entries()).map(
-      ([month, count]) => ({
-        month: format(new Date(month + "-01"), "MMM"),
+
+    const invoiceCountTrend = Array.from(invoiceCountByMonthMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([month, count]) => ({
+        month: format(new Date(month + "-01"), "MMM yy"),
+        fullMonth: month,
         count,
-      })
-    );
+      }));
 
     // Format top customers
     const topCustomers = topCustomersByRevenue.map((c) => ({
