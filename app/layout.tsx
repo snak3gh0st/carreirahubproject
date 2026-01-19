@@ -3,6 +3,7 @@ import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
 import { ThemeProvider } from "@/components/theme-provider"
 import { QueryProvider } from "@/components/providers/query-provider"
+import { SessionProvider } from "@/components/providers/session-provider"
 import { ToastProvider } from "@/lib/contexts/toast.context"
 import { ToastContainer } from "@/components/ui/toast"
 import "./globals.css"
@@ -22,14 +23,16 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider>
-          <QueryProvider>
-            <ToastProvider>
-              {children}
-              <ToastContainer />
-            </ToastProvider>
-          </QueryProvider>
-        </ThemeProvider>
+        <SessionProvider>
+          <ThemeProvider>
+            <QueryProvider>
+              <ToastProvider>
+                {children}
+                <ToastContainer />
+              </ToastProvider>
+            </QueryProvider>
+          </ThemeProvider>
+        </SessionProvider>
         <Toaster
           position="top-right"
           richColors
