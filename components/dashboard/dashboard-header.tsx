@@ -74,10 +74,15 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
             {/* Theme Toggle */}
             <ThemeToggle />
 
-            {/* User Email - Hidden on mobile */}
-            <span className="hidden sm:inline-block text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
-              {session?.user?.email}
-            </span>
+            {/* User Info - Hidden on mobile */}
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                {session?.user?.name}
+              </span>
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {userRole}
+              </span>
+            </div>
 
             {/* Logout Button - Desktop Only */}
             <Button
@@ -118,9 +123,17 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
 
                   {/* Mobile User Info */}
                   <div className="pt-4 mt-4 border-t dark:border-slate-700">
-                    <p className="text-xs text-gray-600 dark:text-gray-400 break-all mb-4">
-                      {session?.user?.email}
-                    </p>
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                        {session?.user?.name}
+                      </p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        {session?.user?.email}
+                      </p>
+                      <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                        Role: {userRole}
+                      </p>
+                    </div>
 
                     {/* Mobile Logout Button */}
                     <Button
