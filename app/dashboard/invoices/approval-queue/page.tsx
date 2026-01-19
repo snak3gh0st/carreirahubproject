@@ -209,12 +209,16 @@ export default async function ApprovalQueuePage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/dashboard/deals/${invoice.deal.id}`}
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          {invoice.deal.title}
-                        </Link>
+                        {invoice.deal ? (
+                          <Link
+                            href={`/dashboard/deals/${invoice.deal.id}`}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {invoice.deal.title}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400 text-sm italic">No deal</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">
                         ${Number(invoice.amount).toLocaleString()}
