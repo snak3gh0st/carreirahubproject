@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
   PlusCircle,
+  CheckCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 
@@ -87,6 +88,12 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/invoices/new",
         label: "Create Invoice",
         icon: PlusCircle,
+        roles: ["ADMIN", "FINANCE"],
+      },
+      {
+        href: "/dashboard/invoices/approval-queue",
+        label: "Approval Queue",
+        icon: CheckCircle,
         roles: ["ADMIN", "FINANCE"],
       },
       {
