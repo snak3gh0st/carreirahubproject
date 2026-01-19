@@ -105,7 +105,67 @@ export default function DashboardPage() {
 
   const userName = session.user?.name || "Usuário";
   const firstName = userName.split(" ")[0]; // Get first name only
+  const userRole = (session.user as any).role;
 
+  // COMMERCIAL users see simplified dashboard
+  if (userRole === "COMMERCIAL") {
+    return (
+      <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
+        <div className="container mx-auto px-4 sm:px-6 py-8">
+          {/* Page Header with Greeting */}
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              {getGreeting()}, {firstName}! 👋
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Área Comercial - Gestão de Invoices
+            </p>
+          </div>
+
+          {/* Quick Actions for COMMERCIAL */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+            <Link
+              href="/dashboard/invoices/new"
+              className="group relative overflow-hidden rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
+            >
+              <div className="relative">
+                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">Criar Invoice</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Nova invoice para cliente
+                </p>
+              </div>
+            </Link>
+            <Link
+              href="/dashboard/invoices?filter=myInvoices"
+              className="group relative overflow-hidden rounded-lg border-2 border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-green-400 dark:hover:border-green-500"
+            >
+              <div className="relative">
+                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">Minhas Invoices</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Ver invoices criadas por mim
+                </p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Info card */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
+              📋 Workflow de Invoices
+            </h3>
+            <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal list-inside">
+              <li>Crie uma nova invoice selecionando cliente e serviço</li>
+              <li>Suas invoices ficam com status DRAFT (rascunho)</li>
+              <li>Finance revisa e aprova suas invoices</li>
+              <li>Após aprovação, a invoice é enviada ao cliente via QuickBooks</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Admin/Finance/Sales users see full dashboard
   return (
     <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 py-8">
