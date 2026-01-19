@@ -8,7 +8,7 @@ import { z } from "zod";
 
 const createInvoiceSchema = z.object({
   customerId: z.string(),
-  dealId: z.string(),
+  dealId: z.string().optional(),
   serviceItemId: z.string(),
   quantity: z.number().min(1).default(1),
   unitPrice: z.number().min(0),
@@ -41,18 +41,19 @@ export async function POST(request: NextRequest) {
 
     const { customerId, dealId } = data;
 
-    // Garantir que customer e deal existem
-    const [customer, deal] = await Promise.all([
-      prisma.customer.findUnique({ where: { id: customerId } }),
-      prisma.deal.findUnique({ where: { id: dealId } }),
-    ]);
+    // Garantir que customer existe
+    const customer = await prisma.customer.findUnique({ where: { id: customerId } });
 
     if (!customer) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
-    if (!deal) {
-      return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+    // Validar deal se fornecido
+    if (dealId) {
+      const deal = await prisma.deal.findUnique({ where: { id: dealId } });
+      if (!deal) {
+        return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+      }
     }
 
     // Calculate total amount

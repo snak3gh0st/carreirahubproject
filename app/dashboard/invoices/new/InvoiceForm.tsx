@@ -260,20 +260,19 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Deal <span className="text-red-500">*</span>
+              Deal <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <select
               value={form.dealId}
               onChange={(e) => handleChange("dealId", e.target.value)}
               className="w-full border rounded px-3 py-2"
-              required
               disabled={!form.customerId || filteredDeals.length === 0}
             >
               <option value="">
                 {form.customerId
                   ? filteredDeals.length === 0
-                    ? "Nenhum deal disponível"
-                    : "Selecione um deal"
+                    ? "Nenhum deal disponível (pode continuar sem deal)"
+                    : "Selecione um deal (opcional)"
                   : "Selecione um customer primeiro"}
               </option>
               {filteredDeals.map((deal) => (
