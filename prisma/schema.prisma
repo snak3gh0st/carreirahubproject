@@ -384,8 +384,8 @@ model Invoice {
   lastCollectionCallAt  DateTime?
   collectionCallCount   Int      @default(0)
 
-  dealId     String
-  deal       Deal     @relation(fields: [dealId], references: [id])
+  dealId     String?
+  deal       Deal?    @relation(fields: [dealId], references: [id])
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
