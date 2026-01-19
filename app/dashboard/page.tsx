@@ -85,16 +85,27 @@ export default async function DashboardPage() {
 
   const formatNumber = (value: number) => value.toLocaleString("en-US");
 
+  // Get greeting based on time of day
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Bom dia";
+    if (hour < 18) return "Boa tarde";
+    return "Boa noite";
+  };
+
+  const userName = session.user?.name || "Usuário";
+  const firstName = userName.split(" ")[0]; // Get first name only
+
   return (
     <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
       <div className="container mx-auto px-4 sm:px-6 py-8">
-        {/* Page Header */}
+        {/* Page Header with Greeting */}
         <div className="mb-8">
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            Dashboard
+            {getGreeting()}, {firstName}! 👋
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Quick overview of your business
+            Visão geral do seu negócio
           </p>
         </div>
 

@@ -12,7 +12,7 @@ export default async function NewInvoicePage() {
   }
 
   const role = (session.user as any).role;
-  const allowedRoles = ["ADMIN", "FINANCE", "SALES"];
+  const allowedRoles = ["ADMIN", "FINANCE", "SALES", "COMMERCIAL"];
   if (!allowedRoles.includes(role)) {
     redirect("/dashboard");
   }

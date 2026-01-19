@@ -377,16 +377,16 @@ export class QuickbooksService {
   }
 
   /**
-   * Enviar Invoice por email
+   * Enviar Invoice por email via QuickBooks
+   * Uses the QB send invoice endpoint to email the invoice to the customer
    */
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
-    return this.request(`/invoice/${invoiceId}/send`, {
+    const endpoint = email
+      ? `/invoice/${invoiceId}/send?sendTo=${encodeURIComponent(email)}`
+      : `/invoice/${invoiceId}/send`;
+
+    return this.request(endpoint, {
       method: "POST",
-      body: JSON.stringify({
-        Email: {
-          To: email,
-        },
-      }),
     });
   }
 
@@ -728,16 +728,56 @@ export class QuickbooksService {
     console.log(`[QuickBooks] Executando query: ${query}`);
     const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
     console.log(`[QuickBooks] Resposta da query Item:`, JSON.stringify(result, null, 2));
-    
+
     let items = result.QueryResponse?.Item || [];
     console.log(`[QuickBooks] Total de items encontrados: ${items.length}`);
-    
+
     // Se não houver items no array, pode ser que venha como objeto único
     if (!Array.isArray(items) && items.Id) {
       items = [items];
     }
-    
+
     return items;
+  }
+
+  /**
+   * Buscar todos os Price Levels do QuickBooks
+   */
+  async getPriceLevels(maxResults: number = 1000): Promise<any[]> {
+    const query = `SELECT * FROM PriceLevel WHERE Active = true MAXRESULTS ${maxResults}`;
+    console.log(`[QuickBooks] Executando query: ${query}`);
+    const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+    console.log(`[QuickBooks] Resposta da query PriceLevel:`, JSON.stringify(result, null, 2));
+
+    let priceLevels = result.QueryResponse?.PriceLevel || [];
+    console.log(`[QuickBooks] Total de price levels encontrados: ${priceLevels.length}`);
+
+    // Se não houver price levels no array, pode ser que venha como objeto único
+    if (!Array.isArray(priceLevels) && priceLevels.Id) {
+      priceLevels = [priceLevels];
+    }
+
+    return priceLevels;
+  }
+
+  /**
+   * Buscar todos os Payment Terms (Terms) do QuickBooks
+   */
+  async getPaymentTerms(maxResults: number = 1000): Promise<any[]> {
+    const query = `SELECT * FROM Term WHERE Active = true MAXRESULTS ${maxResults}`;
+    console.log(`[QuickBooks] Executando query: ${query}`);
+    const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+    console.log(`[QuickBooks] Resposta da query Term:`, JSON.stringify(result, null, 2));
+
+    let terms = result.QueryResponse?.Term || [];
+    console.log(`[QuickBooks] Total de payment terms encontrados: ${terms.length}`);
+
+    // Se não houver terms no array, pode ser que venha como objeto único
+    if (!Array.isArray(terms) && terms.Id) {
+      terms = [terms];
+    }
+
+    return terms;
   }
 
   /**

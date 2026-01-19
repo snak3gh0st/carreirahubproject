@@ -591,6 +591,37 @@ model QuickBooksItem {
   @@map("quickbooks_items")
 }
 
+// QUICKBOOKS PRICE LEVELS: Pricing tiers from QuickBooks
+model QuickBooksPriceLevel {
+  id          String   @id @default(uuid())
+  qbId        String   @unique
+  name        String
+  active      Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([qbId])
+  @@map("quickbooks_price_levels")
+}
+
+// QUICKBOOKS PAYMENT TERMS: Payment terms from QuickBooks
+model QuickBooksPaymentTerm {
+  id              String   @id @default(uuid())
+  qbId            String   @unique
+  name            String
+  dueDays         Int?
+  discountDays    Int?
+  discountPercent Decimal? @db.Decimal(5, 2)
+  active          Boolean  @default(true)
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([qbId])
+  @@map("quickbooks_payment_terms")
+}
+
 // COLLECTION CALLS: AI-powered phone calls for overdue payments
 model CollectionCall {
   id              String   @id @default(uuid())

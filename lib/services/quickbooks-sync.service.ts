@@ -19,6 +19,8 @@ export interface SyncOptions {
   syncInvoices?: boolean;
   syncPayments?: boolean;
   syncItems?: boolean;
+  syncPriceLevels?: boolean;
+  syncPaymentTerms?: boolean;
   maxResults?: number;
   incremental?: boolean; // Sincronizar apenas novos/atualizados
 }
@@ -48,6 +50,16 @@ export interface SyncResult {
     errors: number;
   };
   items?: {
+    total: number;
+    synced: number;
+    errors: number;
+  };
+  priceLevels?: {
+    total: number;
+    synced: number;
+    errors: number;
+  };
+  paymentTerms?: {
     total: number;
     synced: number;
     errors: number;
@@ -476,7 +488,9 @@ export class QuickBooksSyncService {
       syncCustomers = true,
       syncInvoices = true,
       syncPayments = false,
-      syncItems = false,
+      syncItems = true,
+      syncPriceLevels = true,
+      syncPaymentTerms = true,
       maxResults = 1000,
       incremental = false,
     } = options;
@@ -511,7 +525,17 @@ export class QuickBooksSyncService {
         result.items = await this.syncItems(maxResults);
       }
 
-      // 5. Buscar Company Info
+      // 5. Sincronizar Price Levels (se necessário)
+      if (syncPriceLevels) {
+        result.priceLevels = await this.syncPriceLevels(maxResults);
+      }
+
+      // 6. Sincronizar Payment Terms (se necessário)
+      if (syncPaymentTerms) {
+        result.paymentTerms = await this.syncPaymentTerms(maxResults);
+      }
+
+      // 7. Buscar Company Info
       try {
         const companyInfo = await quickbooksService.getCompanyInfo();
         result.companyInfo = {
@@ -1108,6 +1132,141 @@ export class QuickBooksSyncService {
   }
 
   /**
+   * Sincronizar Price Levels do QuickBooks
+   */
+  private async syncPriceLevels(maxResults: number): Promise<SyncResult["priceLevels"]> {
+    try {
+      const qbPriceLevels = await quickbooksService.getPriceLevels(maxResults);
+
+      console.log(`[QuickBooks Sync] Syncing ${qbPriceLevels.length} price levels from QB`);
+
+      const synced: string[] = [];
+      const updated: string[] = [];
+      const errors: Array<{ priceLevelId: string; error: string }> = [];
+
+      for (const qbPriceLevel of qbPriceLevels) {
+        try {
+          const qbId = qbPriceLevel.Id;
+
+          const priceLevelData = {
+            qbId,
+            name: qbPriceLevel.Name,
+            active: qbPriceLevel.Active !== false,
+            metadata: {
+              quickbooksData: {
+                syncDate: new Date().toISOString(),
+                fullData: qbPriceLevel,
+              },
+            } as any,
+          };
+
+          const existing = await prisma.quickBooksPriceLevel.findUnique({
+            where: { qbId },
+          });
+
+          if (existing) {
+            await prisma.quickBooksPriceLevel.update({
+              where: { qbId },
+              data: priceLevelData,
+            });
+            updated.push(existing.id);
+          } else {
+            const priceLevel = await prisma.quickBooksPriceLevel.create({
+              data: priceLevelData,
+            });
+            synced.push(priceLevel.id);
+          }
+        } catch (error: any) {
+          errors.push({
+            priceLevelId: qbPriceLevel.Id || 'N/A',
+            error: error.message,
+          });
+        }
+      }
+
+      console.log(`[QuickBooks Sync] Price levels synced: ${synced.length}, updated: ${updated.length}, errors: ${errors.length}`);
+
+      return {
+        total: qbPriceLevels.length,
+        synced: synced.length,
+        errors: errors.length,
+      };
+    } catch (error: any) {
+      console.error("[QuickBooks Sync] Error syncing price levels:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sincronizar Payment Terms do QuickBooks
+   */
+  private async syncPaymentTerms(maxResults: number): Promise<SyncResult["paymentTerms"]> {
+    try {
+      const qbPaymentTerms = await quickbooksService.getPaymentTerms(maxResults);
+
+      console.log(`[QuickBooks Sync] Syncing ${qbPaymentTerms.length} payment terms from QB`);
+
+      const synced: string[] = [];
+      const updated: string[] = [];
+      const errors: Array<{ termId: string; error: string }> = [];
+
+      for (const qbTerm of qbPaymentTerms) {
+        try {
+          const qbId = qbTerm.Id;
+
+          const paymentTermData = {
+            qbId,
+            name: qbTerm.Name,
+            dueDays: qbTerm.DueDays || null,
+            discountDays: qbTerm.DiscountDays || null,
+            discountPercent: qbTerm.DiscountPercent ? parseFloat(qbTerm.DiscountPercent) : null,
+            active: qbTerm.Active !== false,
+            metadata: {
+              quickbooksData: {
+                syncDate: new Date().toISOString(),
+                fullData: qbTerm,
+              },
+            } as any,
+          };
+
+          const existing = await prisma.quickBooksPaymentTerm.findUnique({
+            where: { qbId },
+          });
+
+          if (existing) {
+            await prisma.quickBooksPaymentTerm.update({
+              where: { qbId },
+              data: paymentTermData,
+            });
+            updated.push(existing.id);
+          } else {
+            const paymentTerm = await prisma.quickBooksPaymentTerm.create({
+              data: paymentTermData,
+            });
+            synced.push(paymentTerm.id);
+          }
+        } catch (error: any) {
+          errors.push({
+            termId: qbTerm.Id || 'N/A',
+            error: error.message,
+          });
+        }
+      }
+
+      console.log(`[QuickBooks Sync] Payment terms synced: ${synced.length}, updated: ${updated.length}, errors: ${errors.length}`);
+
+      return {
+        total: qbPaymentTerms.length,
+        synced: synced.length,
+        errors: errors.length,
+      };
+    } catch (error: any) {
+      console.error("[QuickBooks Sync] Error syncing payment terms:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Log da sincronização no IntegrationLog
    */
   private async logSync(result: SyncResult, error?: any): Promise<void> {
@@ -1124,6 +1283,8 @@ export class QuickBooksSyncService {
               invoices: result.invoices,
               payments: result.payments,
               items: result.items,
+              priceLevels: result.priceLevels,
+              paymentTerms: result.paymentTerms,
               duration: result.duration,
               startTime: result.startTime.toISOString(),
               endTime: result.endTime?.toISOString(),

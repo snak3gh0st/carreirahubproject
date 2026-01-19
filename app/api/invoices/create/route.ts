@@ -14,9 +14,11 @@ const createInvoiceSchema = z.object({
   unitPrice: z.number().min(0),
   discount: z.number().min(0).optional(),
   entryAmount: z.number().min(0).optional(),
-  installments: z.number().min(0).optional(),
+  installments: z.number().min(0).max(12).optional(),
   dueDate: z.string().datetime().optional(),
   description: z.string().optional(),
+  priceLevelId: z.string().optional(),
+  paymentTermId: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const role = (session.user as any).role;
   const userId = (session.user as any).id;
-  const allowedRoles = ["ADMIN", "FINANCE", "SALES"];
+  const allowedRoles = ["ADMIN", "FINANCE", "SALES", "COMMERCIAL"];
   if (!allowedRoles.includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -53,94 +55,166 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Deal not found" }, { status: 404 });
     }
 
-    // Calcular linhas e total
+    // Calculate total amount
     const baseAmount = data.unitPrice * data.quantity;
     const discount = data.discount || 0;
-    let total = Math.max(0, baseAmount - discount);
+    const totalAmount = Math.max(0, baseAmount - discount);
 
     const entryAmount = data.entryAmount || 0;
-    const installments = data.installments || 0;
-    const remaining = Math.max(0, total - entryAmount);
-
-    const lineItems: Array<{ description: string; amount: number; itemRef?: string }> = [];
-
-    if (entryAmount > 0) {
-      lineItems.push({
-        description: data.description || "Entrada",
-        amount: entryAmount,
-        itemRef: data.serviceItemId,
-      });
-    }
-
-    if (installments > 0) {
-      const installmentAmount = remaining / installments;
-      for (let i = 1; i <= installments; i++) {
-        lineItems.push({
-          description: `Parcela ${i}/${installments}`,
-          amount: Number(installmentAmount.toFixed(2)),
-          itemRef: data.serviceItemId,
-        });
-      }
-    } else {
-      // Sem parcelamento, usar total restante
-      lineItems.push({
-        description: data.description || "Serviço",
-        amount: remaining || total,
-        itemRef: data.serviceItemId,
-      });
-    }
+    const installmentCount = data.installments || 0;
+    const remaining = Math.max(0, totalAmount - entryAmount);
 
     // Role-based approval workflow
-    const needsApproval = role === "SALES";
-    let qbInvoiceId: string | undefined;
-    let invoiceNumber: string;
+    const needsApproval = role === "SALES" || role === "COMMERCIAL";
+    const isFinanceOrAdmin = role === "FINANCE" || role === "ADMIN";
 
-    if (needsApproval) {
-      // SALES role: Create draft invoice pending approval
-      // Generate temporary invoice number
-      const timestamp = Date.now();
-      invoiceNumber = `DRAFT-${timestamp}`;
-    } else {
-      // FINANCE/ADMIN: Auto-approve and sync to QuickBooks
-      // Criar customer no QuickBooks se necessário
-      const qbCustomer = await quickbooksService.getOrCreateCustomer({
-        email: customer.email,
-        name: customer.name,
-        phone: customer.phone || undefined,
-      });
+    // Generate series ID for linking installments
+    const seriesId = `SERIES-${Date.now()}`;
+    const invoices: any[] = [];
 
-      // Criar invoice no QuickBooks
-      const qbInvoice = await quickbooksService.createInvoice({
-        customerId: qbCustomer.Id,
-        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
-        lineItems,
-      });
-
-      qbInvoiceId = qbInvoice.Id;
-      invoiceNumber = qbInvoice.DocNumber || qbInvoice.Id;
+    // Determine number of invoices to create
+    let invoiceCountToCreate = 1;
+    if (entryAmount > 0 && installmentCount > 0) {
+      // Entry + installments = 1 entry invoice + N installment invoices
+      invoiceCountToCreate = 1 + installmentCount;
+    } else if (installmentCount > 0) {
+      // Just installments = N invoices
+      invoiceCountToCreate = installmentCount;
     }
 
-    // Salvar invoice local
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoiceNumber,
-        amount: total,
-        dueDate: data.dueDate ? new Date(data.dueDate) : new Date(),
-        status: needsApproval ? InvoiceStatus.DRAFT : InvoiceStatus.SENT,
-        approvalStatus: needsApproval ? "PENDING" : "APPROVED",
-        approvedBy: needsApproval ? undefined : userId,
-        approvedAt: needsApproval ? undefined : new Date(),
-        quickbooks_invoice_id: qbInvoiceId,
-        dealId,
-        customerId,
-        lineItems: lineItems.map(item => ({
-          ...item,
-          quantity: data.quantity,
-        })),
-      },
-    });
+    // Create multiple invoices (one per installment)
+    for (let i = 1; i <= invoiceCountToCreate; i++) {
+      let invoiceAmount: number;
+      let invoiceDescription: string;
+      let invoiceDueDate: Date;
 
-    return NextResponse.json(invoice, { status: 201 });
+      // Calculate amount and description based on position
+      if (entryAmount > 0 && i === 1) {
+        // First invoice is the entry
+        invoiceAmount = entryAmount;
+        invoiceDescription = `${data.description || 'Service'} - Entry Payment`;
+        invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+      } else if (installmentCount > 0) {
+        // Subsequent invoices are installments
+        const installmentAmount = remaining / installmentCount;
+        const installmentNumber = entryAmount > 0 ? i - 1 : i;
+        invoiceAmount = Number(installmentAmount.toFixed(2));
+        invoiceDescription = `${data.description || 'Service'} - Installment ${installmentNumber} of ${installmentCount}`;
+
+        // Calculate due date (monthly installments)
+        invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+        const monthsToAdd = entryAmount > 0 ? i - 1 : i - 1;
+        invoiceDueDate.setMonth(invoiceDueDate.getMonth() + monthsToAdd);
+      } else {
+        // Single invoice (no installments)
+        invoiceAmount = totalAmount;
+        invoiceDescription = data.description || 'Service';
+        invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+      }
+
+      // Prepare line items for this invoice
+      const lineItems = [{
+        description: invoiceDescription,
+        quantity: 1,
+        unitPrice: invoiceAmount,
+        amount: invoiceAmount,
+        serviceItemId: data.serviceItemId,
+      }];
+
+      let qbInvoiceId: string | undefined;
+      let invoiceNumber: string;
+
+      if (needsApproval) {
+        // SALES/COMMERCIAL role: Create draft invoice pending approval
+        const timestamp = Date.now();
+        invoiceNumber = `DRAFT-${timestamp}-${i}`;
+      } else {
+        // FINANCE/ADMIN: Auto-approve and sync to QuickBooks immediately
+        await quickbooksService.initialize();
+
+        // Create customer in QuickBooks if necessary
+        const qbCustomer = await quickbooksService.getOrCreateCustomer({
+          email: customer.email,
+          name: customer.name,
+          phone: customer.phone || undefined,
+        });
+
+        // Prepare QB invoice data
+        const qbInvoiceData: any = {
+          customerId: qbCustomer.Id,
+          dueDate: invoiceDueDate,
+          lineItems: [{
+            description: invoiceDescription,
+            amount: invoiceAmount,
+            itemRef: data.serviceItemId,
+          }],
+        };
+
+        // Create invoice in QuickBooks
+        const qbInvoice = await quickbooksService.createInvoice(qbInvoiceData);
+        qbInvoiceId = qbInvoice.Id;
+        invoiceNumber = qbInvoice.DocNumber || qbInvoice.Id;
+
+        // Send invoice via QB email
+        try {
+          await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
+        } catch (emailError) {
+          console.error(`Failed to send QB invoice email for ${qbInvoice.Id}:`, emailError);
+          // Don't fail the whole operation if email fails
+        }
+      }
+
+      // Save invoice to local database
+      const invoice = await prisma.invoice.create({
+        data: {
+          invoiceNumber,
+          amount: invoiceAmount,
+          dueDate: invoiceDueDate,
+          status: needsApproval ? InvoiceStatus.DRAFT : InvoiceStatus.SENT,
+          approvalStatus: needsApproval ? "PENDING" : "APPROVED",
+          approvedBy: needsApproval ? undefined : userId,
+          approvedAt: needsApproval ? undefined : new Date(),
+          quickbooks_invoice_id: qbInvoiceId,
+          dealId,
+          customerId,
+          lineItems: lineItems as any,
+          installments: invoiceCountToCreate > 1 ? {
+            seriesId,
+            current: i,
+            total: invoiceCountToCreate,
+            priceLevelId: data.priceLevelId,
+            paymentTermId: data.paymentTermId,
+          } : null,
+        },
+      });
+
+      invoices.push(invoice);
+
+      // Log to IntegrationLog if synced to QB
+      if (qbInvoiceId) {
+        await prisma.integrationLog.create({
+          data: {
+            service: "quickbooks",
+            action: "invoice_created_and_sent",
+            status: "SUCCESS",
+            payload: {
+              invoiceId: invoice.id,
+              qbInvoiceId,
+              isInstallment: invoiceCountToCreate > 1,
+              installmentNumber: i,
+              totalInstallments: invoiceCountToCreate,
+              seriesId,
+            } as any,
+          },
+        });
+      }
+    }
+
+    return NextResponse.json({
+      message: `${invoiceCountToCreate} invoice(s) created successfully`,
+      invoices,
+      seriesId: invoiceCountToCreate > 1 ? seriesId : null,
+    }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating invoice:", error);
     if (error instanceof z.ZodError) {

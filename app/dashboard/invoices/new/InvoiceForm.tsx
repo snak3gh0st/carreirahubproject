@@ -24,6 +24,19 @@ interface ServiceItem {
   type?: string;
 }
 
+interface PriceLevel {
+  id: string;
+  qbId: string;
+  name: string;
+}
+
+interface PaymentTerm {
+  id: string;
+  qbId: string;
+  name: string;
+  dueDays?: number;
+}
+
 interface InvoiceFormProps {
   customers: Customer[];
   deals: Deal[];
@@ -42,8 +55,12 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     installments: 0,
     dueDate: "",
     description: "",
+    priceLevelId: "",
+    paymentTermId: "",
   });
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
+  const [priceLevels, setPriceLevels] = useState<PriceLevel[]>([]);
+  const [paymentTerms, setPaymentTerms] = useState<PaymentTerm[]>([]);
   const [filteredDeals, setFilteredDeals] = useState<Deal[]>(deals);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +87,46 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       }
     }
     fetchServiceItems();
+  }, []);
+
+  // Buscar price levels do QuickBooks
+  useEffect(() => {
+    async function fetchPriceLevels() {
+      try {
+        const res = await fetch("/api/quickbooks/price-levels");
+        if (res.ok) {
+          const data = await res.json();
+          setPriceLevels(Array.isArray(data) ? data : []);
+        } else {
+          console.warn("Failed to fetch QuickBooks price levels:", res.status);
+          setPriceLevels([]);
+        }
+      } catch (err) {
+        console.error("Error fetching price levels:", err);
+        setPriceLevels([]);
+      }
+    }
+    fetchPriceLevels();
+  }, []);
+
+  // Buscar payment terms do QuickBooks
+  useEffect(() => {
+    async function fetchPaymentTerms() {
+      try {
+        const res = await fetch("/api/quickbooks/payment-terms");
+        if (res.ok) {
+          const data = await res.json();
+          setPaymentTerms(Array.isArray(data) ? data : []);
+        } else {
+          console.warn("Failed to fetch QuickBooks payment terms:", res.status);
+          setPaymentTerms([]);
+        }
+      } catch (err) {
+        console.error("Error fetching payment terms:", err);
+        setPaymentTerms([]);
+      }
+    }
+    fetchPaymentTerms();
   }, []);
 
   // Filtrar deals quando customer mudar
@@ -134,6 +191,8 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           installments: form.installments || undefined,
           dueDate: form.dueDate || undefined,
           description: form.description || undefined,
+          priceLevelId: form.priceLevelId || undefined,
+          paymentTermId: form.paymentTermId || undefined,
         }),
       });
 
@@ -325,6 +384,44 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               rows={3}
               placeholder="Descrição do serviço..."
             />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Price Level (Optional)
+              </label>
+              <select
+                value={form.priceLevelId}
+                onChange={(e) => handleChange("priceLevelId", e.target.value)}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">Standard Pricing</option>
+                {priceLevels.map((pl) => (
+                  <option key={pl.id} value={pl.qbId}>
+                    {pl.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Payment Terms
+              </label>
+              <select
+                value={form.paymentTermId}
+                onChange={(e) => handleChange("paymentTermId", e.target.value)}
+                className="w-full border rounded px-3 py-2"
+              >
+                <option value="">Select Payment Terms</option>
+                {paymentTerms.map((term) => (
+                  <option key={term.id} value={term.qbId}>
+                    {term.name} {term.dueDays && `(Net ${term.dueDays})`}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 

@@ -241,9 +241,18 @@ export class InvoiceApprovalService {
         throw new Error(`Invoice ${invoiceId} not found`);
       }
 
+      // Extract installment metadata if present
+      const installmentMeta = invoice.installments as any;
+      const isInstallment = installmentMeta?.seriesId;
+      const priceLevelId = installmentMeta?.priceLevelId;
+      const paymentTermId = installmentMeta?.paymentTermId;
+
       // Sync to QuickBooks (if not already synced)
       if (!invoice.quickbooks_invoice_id) {
         try {
+          // Initialize QB service
+          await quickbooksService.initialize();
+
           // Get or create QB customer
           const qbCustomer = await quickbooksService.getOrCreateCustomer({
             email: invoice.customer.email,
@@ -251,18 +260,37 @@ export class InvoiceApprovalService {
             phone: invoice.customer.phone || undefined,
           });
 
-          // Create QB invoice
-          const qbInvoice = await quickbooksService.createInvoice({
+          // Prepare line items from invoice data
+          const lineItems = (invoice.lineItems as any[]) || [];
+          const qbLineItems = lineItems.map((item: any) => ({
+            description: item.description || `Invoice for Deal: ${invoice.deal.title}`,
+            amount: Number(item.amount || invoice.amount),
+            itemRef: item.serviceItemId || "1", // Use service item from invoice or default
+          }));
+
+          // If no line items, create default one
+          if (qbLineItems.length === 0) {
+            qbLineItems.push({
+              description: `Invoice for Deal: ${invoice.deal.title}`,
+              amount: Number(invoice.amount),
+              itemRef: "1",
+            });
+          }
+
+          // Prepare QB invoice data with optional payment term
+          const qbInvoiceData: any = {
             customerId: qbCustomer.Id,
             dueDate: invoice.dueDate,
-            lineItems: [
-              {
-                description: `Invoice for Deal: ${invoice.deal.title}`,
-                amount: Number(invoice.amount),
-                itemRef: "1", // Default service item ID
-              },
-            ],
-          });
+            lineItems: qbLineItems,
+          };
+
+          // Add payment term if specified
+          if (paymentTermId) {
+            qbInvoiceData.paymentTermId = paymentTermId;
+          }
+
+          // Create QB invoice
+          const qbInvoice = await quickbooksService.createInvoice(qbInvoiceData);
 
           // Update invoice with QB ID
           await prisma.invoice.update({
@@ -274,11 +302,44 @@ export class InvoiceApprovalService {
           });
 
           // Send invoice via email
-          await quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email);
+          try {
+            await quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email);
+            console.log(`[INVOICE_APPROVAL] Sent QB invoice email for ${qbInvoice.Id}`);
+          } catch (emailError) {
+            console.error(`[INVOICE_APPROVAL] Failed to send QB invoice email:`, emailError);
+            // Don't fail the whole operation if email fails
+          }
+
+          // Log to IntegrationLog
+          await prisma.integrationLog.create({
+            data: {
+              service: "quickbooks",
+              action: "invoice_synced_on_approval",
+              status: "SUCCESS",
+              payload: {
+                invoiceId,
+                qbInvoiceId: qbInvoice.Id,
+                isInstallment,
+                installmentMeta,
+              } as any,
+            },
+          });
 
           console.log(`[INVOICE_APPROVAL] Synced invoice ${invoiceId} to QuickBooks: ${qbInvoice.Id}`);
         } catch (error) {
           console.error(`[INVOICE_APPROVAL] Error syncing invoice to QuickBooks:`, error);
+
+          // Log error to IntegrationLog
+          await prisma.integrationLog.create({
+            data: {
+              service: "quickbooks",
+              action: "invoice_sync_failed",
+              status: "ERROR",
+              error: error instanceof Error ? error.message : "Unknown error",
+              payload: { invoiceId } as any,
+            },
+          });
+
           // Don't throw - continue with Pipedrive sync
         }
       }

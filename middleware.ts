@@ -22,7 +22,7 @@ export default withAuth(
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
 
-      if (path.startsWith("/dashboard/invoices") && userRole !== "ADMIN" && userRole !== "FINANCE") {
+      if (path.startsWith("/dashboard/invoices") && userRole !== "ADMIN" && userRole !== "FINANCE" && userRole !== "COMMERCIAL") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
 

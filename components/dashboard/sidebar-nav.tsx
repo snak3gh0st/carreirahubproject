@@ -18,6 +18,7 @@ import {
   Workflow,
   ChevronDown,
   ChevronRight,
+  PlusCircle,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 
@@ -83,6 +84,12 @@ const navigationSections: NavSection[] = [
         roles: ["ADMIN", "FINANCE"],
       },
       {
+        href: "/dashboard/invoices/new",
+        label: "Create Invoice",
+        icon: PlusCircle,
+        roles: ["ADMIN", "FINANCE"],
+      },
+      {
         href: "/dashboard/payments",
         label: "Payments",
         icon: CreditCard,
@@ -99,6 +106,24 @@ const navigationSections: NavSection[] = [
         label: "Insights",
         icon: BarChart3,
         roles: ["ADMIN", "FINANCE"],
+      },
+    ],
+  },
+  {
+    title: "Commercial",
+    roles: ["ADMIN", "COMMERCIAL"],
+    items: [
+      {
+        href: "/dashboard/invoices/new",
+        label: "Create Invoice",
+        icon: PlusCircle,
+        roles: ["ADMIN", "COMMERCIAL"],
+      },
+      {
+        href: "/dashboard/invoices?filter=myInvoices",
+        label: "My Invoices",
+        icon: FileText,
+        roles: ["ADMIN", "COMMERCIAL"],
       },
     ],
   },
