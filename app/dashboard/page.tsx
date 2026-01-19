@@ -53,15 +53,7 @@ export default function DashboardPage() {
     },
   });
 
-  if (status === "unauthenticated") {
-    redirect("/auth/signin");
-  }
-
-  if (status === "loading") {
-    return <div>Carregando...</div>;
-  }
-
-  // Fetch comprehensive metrics from API
+  // Fetch comprehensive metrics from API - MUST be before any conditional returns
   useEffect(() => {
     async function fetchMetrics() {
       try {
@@ -102,6 +94,15 @@ export default function DashboardPage() {
     if (hour < 18) return "Boa tarde";
     return "Boa noite";
   };
+
+  // Check authentication status AFTER all hooks and function definitions
+  if (status === "unauthenticated") {
+    redirect("/auth/signin");
+  }
+
+  if (status === "loading") {
+    return <div>Carregando...</div>;
+  }
 
   const userName = session.user?.name || "Usuário";
   const firstName = userName.split(" ")[0]; // Get first name only
