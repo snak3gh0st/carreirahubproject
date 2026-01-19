@@ -201,8 +201,17 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
         throw new Error(data.error || "Erro ao criar invoice");
       }
 
-      const invoice = await res.json();
-      router.push(`/dashboard/invoices/${invoice.id}`);
+      const data = await res.json();
+
+      // API returns { invoices: [...], message, seriesId }
+      if (data.invoices && data.invoices.length > 0) {
+        // Redirect to first invoice (if multiple installments, user can see series from there)
+        const firstInvoice = data.invoices[0];
+        router.push(`/dashboard/invoices/${firstInvoice.id}`);
+      } else {
+        // Fallback to invoices list
+        router.push("/dashboard/invoices");
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao criar invoice");
     } finally {
