@@ -171,8 +171,8 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     setError(null);
 
     try {
-      if (!form.customerId || !form.dealId || !form.serviceItemId) {
-        throw new Error("Preencha todos os campos obrigatórios");
+      if (!form.customerId || !form.serviceItemId) {
+        throw new Error("Preencha todos os campos obrigatórios (Customer e Serviço)");
       }
 
       const res = await fetch("/api/invoices/create", {
@@ -182,7 +182,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
         },
         body: JSON.stringify({
           customerId: form.customerId,
-          dealId: form.dealId,
+          dealId: form.dealId || undefined,
           serviceItemId: form.serviceItemId,
           quantity: form.quantity,
           unitPrice: form.unitPrice,
