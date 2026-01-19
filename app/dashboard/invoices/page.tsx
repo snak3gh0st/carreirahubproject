@@ -146,9 +146,10 @@ export default async function InvoicesPage({
     },
   });
 
-  // Global statistics (not filtered)
+  // Statistics filtered by same whereClause (respects COMMERCIAL user filter)
   const globalStats = await prisma.invoice.groupBy({
     by: ["status"],
+    where: whereClause,
     _count: { id: true },
     _sum: { amount: true },
   });
@@ -164,9 +165,10 @@ export default async function InvoicesPage({
     {} as Record<InvoiceStatus, { count: number; amount: number }>
   );
 
-  // Approval statistics
+  // Approval statistics (also filtered)
   const approvalStats = await prisma.invoice.groupBy({
     by: ["approvalStatus"],
+    where: whereClause,
     _count: { id: true },
   });
 
