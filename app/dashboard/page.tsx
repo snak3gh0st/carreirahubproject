@@ -1,5 +1,6 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+"use client"
+
+import { useSession } from "next-auth/react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,6 +14,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { DashboardKPICard } from "@/components/dashboard/dashboard-kpi-card";
+import { useEffect, useState } from "react";
 
 /**
  * Main Dashboard - Quick Overview & Actions
@@ -20,15 +22,9 @@ import { DashboardKPICard } from "@/components/dashboard/dashboard-kpi-card";
  * Shows high-level KPIs and quick navigation buttons
  * Detailed analytics and filters are in the Insights tab
  */
-export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
-    redirect("/auth/signin");
-  }
-
-  // Fetch comprehensive metrics from API (unfiltered, top-level view)
-  let metrics = {
+export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const [metrics, setMetrics] = useState({
     sales: {
       wonDealsThisMonth: 0,
       totalDeals: 0,
@@ -55,25 +51,39 @@ export default async function DashboardPage() {
       newCustomersThisMonth: 0,
       avgCustomerValue: 0,
     },
-  };
+  });
 
-  try {
-    // Use relative URL to preserve session cookies
-    const response = await fetch("/api/dashboard/metrics", {
-      cache: "no-store",
-      credentials: "include",
-    });
-    if (response.ok) {
-      const data = await response.json();
-      // Only update metrics if response has the correct structure
-      if (data.sales && data.finance && data.customers) {
-        metrics = data;
+  if (status === "unauthenticated") {
+    redirect("/auth/signin");
+  }
+
+  if (status === "loading") {
+    return <div>Carregando...</div>;
+  }
+
+  // Fetch comprehensive metrics from API
+  useEffect(() => {
+    async function fetchMetrics() {
+      try {
+        const response = await fetch("/api/dashboard/metrics", {
+          cache: "no-store",
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.sales && data.finance && data.customers) {
+            setMetrics(data);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch metrics:", error);
       }
     }
-  } catch (error) {
-    console.error("Failed to fetch metrics:", error);
-    // Continue with default metrics on error
-  }
+
+    if (session) {
+      fetchMetrics();
+    }
+  }, [session]);
 
   // Format currency helper
   const formatCurrency = (value: number) =>
