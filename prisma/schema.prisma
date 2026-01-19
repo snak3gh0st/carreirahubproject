@@ -144,6 +144,7 @@ model User {
   qualifiedLeads        Lead[]              @relation("QualifiedLeads")
   escalatedConversations Conversation[]     @relation("EscalatedConversations")
   leadQualifications    LeadQualification[] @relation("LeadQualifications")
+  ownedInvoices         Invoice[]           @relation("InvoiceOwner")
   approvedInvoices      Invoice[]           @relation("InvoiceApprovals")
   bulkImports           BulkImport[]        @relation("BulkImports")
 
@@ -347,6 +348,10 @@ model Invoice {
   amount          Decimal       @db.Decimal(10, 2)
   dueDate         DateTime
   status          InvoiceStatus @default(DRAFT)
+
+  // Ownership tracking
+  ownerId         String?
+  owner           User?          @relation("InvoiceOwner", fields: [ownerId], references: [id])
 
   // Approval workflow
   approvalStatus  ApprovalStatus @default(PENDING)

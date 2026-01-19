@@ -176,6 +176,7 @@ export async function POST(request: NextRequest) {
           approvedBy: needsApproval ? undefined : userId,
           approvedAt: needsApproval ? undefined : new Date(),
           quickbooks_invoice_id: qbInvoiceId,
+          ownerId: userId,
           dealId,
           customerId,
           lineItems: lineItems as any,
