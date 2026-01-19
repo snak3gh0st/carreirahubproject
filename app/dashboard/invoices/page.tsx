@@ -41,7 +41,10 @@ export default async function InvoicesPage({
 
   // Verificar permissão
   const userRole = (session.user as any).role;
-  if (userRole !== "ADMIN" && userRole !== "FINANCE") {
+  const userId = (session.user as any).id;
+  const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL"];
+
+  if (!allowedRoles.includes(userRole)) {
     redirect("/dashboard");
   }
 
@@ -57,6 +60,11 @@ export default async function InvoicesPage({
 
   // Build filter based on params
   const whereClause: any = {};
+
+  // COMMERCIAL users can only see their own invoices
+  if (userRole === "COMMERCIAL") {
+    whereClause.ownerId = userId;
+  }
 
   if (searchParams.approvalStatus) {
     whereClause.approvalStatus = searchParams.approvalStatus;
