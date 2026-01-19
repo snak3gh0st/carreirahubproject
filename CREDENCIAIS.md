@@ -1,158 +1,138 @@
 # 🔐 Credenciais de Acesso - Carreira AI Hub
 
-## 👥 Usuários Criados
+## 👥 Usuários Ativos
 
-Todos os usuários foram criados com senha e usam o domínio **@carreirausa.com**
-
-### 🔑 ADMIN
-- **Email:** paulo.admin@carreirausa.com
-- **Senha:** admin123
-- **Nome:** Paulo Admin
-- **Acesso:** Total do sistema
-
----
+Todos os usuários usam o domínio **@carreirausa.com**
 
 ### 💰 FINANCE
-- **Email:** maria.finance@carreirausa.com
+- **Email:** cris@carreirausa.com
 - **Senha:** finance123
-- **Nome:** Maria Finance
+- **Nome:** cris
 - **Acesso:**
-  - Aprovação de invoices
-  - Gestão financeira
-  - Criar invoices (auto-aprovado)
-  - Analytics e relatórios
+  - ✅ Aprovação de invoices
+  - ✅ Gestão financeira
+  - ✅ Criar invoices (auto-aprovado)
+  - ✅ Analytics e relatórios
 
 ---
 
 ### 💼 COMMERCIAL
-- **Email:** carlos.commercial@carreirausa.com
+- **Email:** comercial@carreirausa.com
 - **Senha:** comercial123
-- **Nome:** Carlos Commercial
+- **Nome:** comercial
 - **Acesso:**
-  - Criar invoices (precisa aprovação Finance)
-  - Ver próprias invoices
-  - Dashboard limitado
-
----
-
-### 📊 SALES
-- **Email:** ana.sales@carreirausa.com
-- **Senha:** sales123
-- **Nome:** Ana Sales
-- **Acesso:**
-  - Criar invoices (precisa aprovação Finance)
-  - Gestão de deals
-  - Gestão de leads
-  - Customers
-
----
-
-### 🎯 SDR (Sales Development Representative)
-- **Email:** joo.sdr@carreirausa.com
-- **Senha:** sdr123
-- **Nome:** João SDR
-- **Acesso:**
-  - Qualificação de leads
-  - Gestão de conversas
-  - Pipeline de vendas
-
----
-
-### 💬 SUPPORT
-- **Email:** beatriz.support@carreirausa.com
-- **Senha:** support123
-- **Nome:** Beatriz Support
-- **Acesso:**
-  - Gestão de conversas
-  - Atendimento ao cliente
-  - Suporte
-
----
-
-### ⚙️ OPERATIONAL
-- **Email:** ricardo.operations@carreirausa.com
-- **Senha:** operations123
-- **Nome:** Ricardo Operations
-- **Acesso:**
-  - Dashboards operacionais
-  - Gestão de customers
-  - Tracking de deals
+  - ✅ Criar invoices (precisa aprovação Finance)
+  - ✅ Ver próprias invoices
+  - ✅ Dashboard comercial
 
 ---
 
 ## 🚀 Como Fazer Login
 
-1. Acesse: http://localhost:3000
-2. Você será redirecionado automaticamente para a página de login
-3. Digite o email e senha do usuário desejado
-4. Após login, será redirecionado para o Dashboard com saudação personalizada
+1. **Acesse:** http://localhost:3000 ou https://carreirausa.sigmaintel.io
+2. Será redirecionado automaticamente para `/auth/signin`
+3. Digite o email e senha
+4. Após login → Dashboard com saudação personalizada
 
-### Exemplo de Saudação no Dashboard:
-- **Manhã (até 12h):** "Bom dia, Paulo! 👋"
-- **Tarde (12h-18h):** "Boa tarde, Paulo! 👋"
-- **Noite (após 18h):** "Boa noite, Paulo! 👋"
+### Saudação no Dashboard:
+- **Manhã (até 12h):** "Bom dia, [Nome]! 👋"
+- **Tarde (12h-18h):** "Boa tarde, [Nome]! 👋"
+- **Noite (após 18h):** "Boa noite, [Nome]! 👋"
 
 ---
 
-## 📝 Comandos de Gerenciamento de Usuários
+## 📝 Comandos de Gerenciamento
 
-### Criar Novo Usuário
+### ➕ Criar Novo Usuário
 ```bash
-npm run user:create-secure "<Nome Completo>" <ROLE> <senha>
+npm run user:create "<Nome>" <ROLE> <senha>
 ```
 
 **Exemplo:**
 ```bash
-npm run user:create-secure "Pedro Silva" FINANCE pedro123
+npm run user:create "Paulo Admin" ADMIN admin123
+npm run user:create "Maria Finance" FINANCE finance123
+npm run user:create "Carlos Sales" COMMERCIAL sales123
 ```
 
-**Roles Disponíveis:** ADMIN, FINANCE, COMMERCIAL, SALES, SDR, SUPPORT, OPERATIONAL
+**Roles Disponíveis:**
+- `ADMIN` - Acesso total
+- `FINANCE` - Finanças e aprovações
+- `COMMERCIAL` - Comercial (cria invoices)
+- `SALES` - Vendas
+- `SDR` - Sales Development
+- `SUPPORT` - Suporte
+- `OPERATIONAL` - Operações
 
 ---
 
-### Listar Todos os Usuários
+### 📋 Listar Todos os Usuários
 ```bash
 npm run user:list
 ```
 
-Mostra todos os usuários organizados por departamento com indicador de senha (🔒 = com senha)
+**Saída:**
+```
+📋 Total de Usuários: 2
+
+🏢 FINANCE (1)
+────────────────────────────────────────────────────────────
+✅ 🔒 cris
+   Email: cris@carreirausa.com
+   ID: 066acae8-d59e-4a2a-8643-450d308763d7
+
+🏢 COMMERCIAL (1)
+────────────────────────────────────────────────────────────
+✅ 🔒 comercial
+   Email: comercial@carreirausa.com
+   ID: b69d8693-413b-467b-8b87-9c4c09286eba
+
+🔒 = Com senha | 🔓 = Sem senha
+```
 
 ---
 
-### Alterar Senha de Usuário
+### 🔑 Alterar Senha
 ```bash
 npm run user:password <email> <nova-senha>
 ```
 
 **Exemplo:**
 ```bash
-npm run user:password paulo.admin@carreirausa.com novaSenha456
+npm run user:password cris@carreirausa.com novaSenha123
+npm run user:password comercial@carreirausa.com novaComercial456
 ```
 
 ---
 
-### Atualizar Informações do Usuário
+### ✏️ Atualizar Dados do Usuário
 ```bash
 npm run user:update <email> <campo> <valor>
 ```
 
-**Campos válidos:** name, role, active, email
+**Campos disponíveis:** `name`, `role`, `active`, `email`
 
 **Exemplos:**
 ```bash
 # Mudar nome
-npm run user:update paulo.admin@carreirausa.com name "Paulo Loureiro"
+npm run user:update cris@carreirausa.com name "Cristina Finance"
 
 # Mudar role
-npm run user:update maria.finance@carreirausa.com role ADMIN
+npm run user:update comercial@carreirausa.com role SALES
 
 # Desativar usuário
-npm run user:update carlos.commercial@carreirausa.com active false
+npm run user:update comercial@carreirausa.com active false
+
+# Reativar usuário
+npm run user:update comercial@carreirausa.com active true
+
+# Mudar email
+npm run user:update cris@carreirausa.com email cristina.finance@carreirausa.com
 ```
 
 ---
 
-### Deletar Usuário
+### ❌ Deletar Usuário
 ```bash
 npm run user:delete <email>
 ```
@@ -164,85 +144,229 @@ npm run user:delete teste@carreirausa.com
 
 ---
 
-### Deletar TODOS os Usuários (⚠️ CUIDADO!)
+### 🧪 Testar Login (Debug)
+```bash
+npm run user:test-login <email> <senha>
+```
+
+**Exemplo:**
+```bash
+npm run user:test-login comercial@carreirausa.com comercial123
+```
+
+**Saída:**
+```
+🔍 Testando login para: comercial@carreirausa.com
+   Senha fornecida: comercial123
+
+✅ Usuário encontrado:
+   Nome: comercial
+   Role: COMMERCIAL
+   Ativo: true
+   Tem senha: Sim
+
+✅ SENHA CORRETA! Login deve funcionar.
+```
+
+---
+
+### ⚠️ Deletar TODOS os Usuários (CUIDADO!)
 ```bash
 npm run user:delete-all
 ```
 
-**Atenção:** Este comando deleta TODOS os usuários do sistema após 3 segundos de espera.
+**Atenção:**
+- Deleta TODOS os usuários do sistema
+- Aguarda 3 segundos antes de executar (pode cancelar com Ctrl+C)
+- Use com cuidado!
 
 ---
 
-## 🔄 Workflow de Invoice com Senha
+## 🔄 Workflow Completo de Invoice
 
-### 1. Usuário COMMERCIAL cria invoice:
+### Cenário: Commercial cria invoice → Finance aprova
+
+#### 1️⃣ Login como COMMERCIAL
 ```
-Login: carlos.commercial@carreirausa.com / comercial123
+Email: comercial@carreirausa.com
+Senha: comercial123
+```
+
+#### 2️⃣ Criar Invoice
+```
 Dashboard → Commercial → Create Invoice
-Status: DRAFT
-Approval: PENDING
+- Selecionar Customer
+- Selecionar Deal
+- Selecionar Service Item
+- Escolher Price Level (opcional)
+- Escolher Payment Terms
+- Definir Installments (ex: 3)
+- Submit
 ```
 
-### 2. Usuário FINANCE aprova:
+**Resultado:**
 ```
-Login: maria.finance@carreirausa.com / finance123
+✅ 3 invoices criadas
+   Status: DRAFT
+   Approval: PENDING
+   Aguardando aprovação Finance
+```
+
+#### 3️⃣ Login como FINANCE
+```
+Email: cris@carreirausa.com
+Senha: finance123
+```
+
+#### 4️⃣ Aprovar Invoice
+```
 Dashboard → Finance → Invoices → Approval Queue
-Clica em "Approve"
-Sistema:
-  ✓ Cria invoice no QuickBooks
-  ✓ Envia email QB para cliente
-  ✓ Registra em IntegrationLog
+- Visualizar invoices pendentes
+- Clicar "Review" na primeira
+- Clicar "Approve Invoice"
 ```
 
-### 3. Cliente recebe:
+**Sistema Executa:**
 ```
-✓ Email do QuickBooks
-✓ PDF da invoice
-✓ Link para pagamento
+✅ Cria invoice no QuickBooks
+✅ Envia email QB para cliente
+✅ Registra em IntegrationLog
+✅ Atualiza status para SENT/APPROVED
+```
+
+#### 5️⃣ Cliente Recebe
+```
+✅ Email do QuickBooks
+✅ PDF da invoice anexo
+✅ Link para pagamento online
 ```
 
 ---
 
 ## 🔒 Segurança
 
-### Senhas
+### Configuração de Senhas
 - **Mínimo:** 6 caracteres
 - **Hash:** bcrypt (salt rounds: 10)
 - **Armazenamento:** Database (campo `password`)
-- **Validação:** Obrigatória no login
+- **Validação:** Obrigatória em todos os logins
 
-### Sessão
-- **Tipo:** JWT
-- **Duração:** 30 dias
-- **Atualização:** A cada 24 horas
-- **Secret:** NEXTAUTH_SECRET (env variable)
+### Autenticação
+- **Tipo:** NextAuth.js com JWT
+- **Provider:** Credentials (email + password)
+- **Sessão:** 30 dias
+- **Auto-refresh:** A cada 24 horas
 
-### Desenvolvimento vs Produção
-- **Desenvolvimento:** Senhas definidas manualmente via script
-- **Produção:** Usuários devem definir senha no primeiro acesso
+### Política de Senhas
+```javascript
+// Regras atuais:
+- Mínimo 6 caracteres
+- Case-sensitive
+- Sem expiração automática
+- Resetável via comando npm run user:password
+```
 
 ---
 
-## 📞 Suporte
+## 🐛 Troubleshooting
 
-Para criar novos usuários ou resetar senhas, use os comandos acima ou entre em contato com o administrador do sistema.
+### ❌ Login não funciona
 
-**Email do Admin:** paulo.admin@carreirausa.com
+**Problema:** Email ou senha incorretos
+
+**Solução:**
+```bash
+# 1. Verificar se usuário existe
+npm run user:list
+
+# 2. Testar credenciais
+npm run user:test-login email@carreirausa.com senha123
+
+# 3. Se falhar, resetar senha
+npm run user:password email@carreirausa.com novaSenha123
+
+# 4. Testar novamente
+npm run user:test-login email@carreirausa.com novaSenha123
+```
+
+---
+
+### ❌ Usuário não aparece na listagem
+
+**Problema:** Usuário foi deletado ou não foi criado
+
+**Solução:**
+```bash
+# Criar novamente
+npm run user:create "Nome Completo" ROLE senha123
+```
+
+---
+
+### ❌ Erro "Password must be at least 6 characters"
+
+**Problema:** Senha muito curta
+
+**Solução:**
+```bash
+# Use senha com 6+ caracteres
+npm run user:create "Nome" ROLE senha123456
+```
 
 ---
 
 ## ✅ Checklist de Verificação
 
-- [x] Todos os usuários criados com senha
-- [x] Autenticação obrigatória
-- [x] Página inicial redireciona para dashboard ou login
-- [x] Dashboard mostra saudação personalizada (Bom dia + nome)
-- [x] Sistema de roles funcionando
-- [x] Approval workflow ativo
-- [x] QuickBooks integration pronta
-- [x] Scripts de gerenciamento de usuários funcionais
+Antes de fazer login:
+
+- [ ] Usuário existe (`npm run user:list`)
+- [ ] Usuário está ativo (✅ na listagem)
+- [ ] Usuário tem senha (🔒 na listagem)
+- [ ] Senha está correta (`npm run user:test-login`)
+- [ ] Servidor está rodando (`npm run dev`)
+- [ ] URL correta (http://localhost:3000 ou https://carreirausa.sigmaintel.io)
+
+---
+
+## 📞 Suporte
+
+Para problemas com login ou gerenciamento de usuários:
+
+1. **Verificar logs:** Console do servidor mostra erros de autenticação
+2. **Testar login:** Use `npm run user:test-login` para debug
+3. **Resetar senha:** Use `npm run user:password` se necessário
+4. **Criar novo:** Use `npm run user:create` para novo usuário
+
+---
+
+## 🎯 Resumo Rápido
+
+### Comandos Essenciais:
+```bash
+# Ver todos usuários
+npm run user:list
+
+# Criar usuário
+npm run user:create "Nome" ROLE senha
+
+# Alterar senha
+npm run user:password email@carreirausa.com novaSenha
+
+# Testar login
+npm run user:test-login email@carreirausa.com senha
+
+# Deletar usuário
+npm run user:delete email@carreirausa.com
+```
+
+### Usuários Atuais:
+```
+Finance:    cris@carreirausa.com / finance123
+Commercial: comercial@carreirausa.com / comercial123
+```
 
 ---
 
 **Última Atualização:** 19/01/2026
-**Versão do Sistema:** 0.1.0
+**Sistema:** Carreira AI Hub v0.1.0
+**Ambiente:** Produção (carreirausa.sigmaintel.io)
