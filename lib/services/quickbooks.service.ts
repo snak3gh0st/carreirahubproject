@@ -634,48 +634,37 @@ export class QuickbooksService {
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
     const endpoint = `/invoice/${invoiceId}/send`;
 
-    console.log(`[QuickBooks] Sending invoice ${invoiceId}...`);
+    console.log(`[QuickBooks] Sending invoice ${invoiceId} to ${email || 'default customer email'}...`);
 
     try {
-      // Email should be passed from invoice creation (where it's on BillEmail)
-      if (!email) {
-        console.warn(`[QuickBooks] ⚠️ No email provided for invoice send`);
-        // QB will try to send to customer's email, but might fail
+      // QB /send endpoint - try with query parameter first
+      let options: any = { method: "POST" };
+
+      if (email) {
+        // Try sending with email as query parameter in endpoint
+        const sendEndpoint = `${endpoint}?sendTo=${encodeURIComponent(email)}`;
+        console.log(`[QuickBooks] Endpoint: ${sendEndpoint}`);
+
+        const result = await this.request(sendEndpoint, options);
+
+        console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
+        console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
+
+        return result;
+      } else {
+        // If no email provided, just call send - QB will use invoice's BillEmail
+        console.log(`[QuickBooks] Calling send with invoice's configured email`);
+
+        const result = await this.request(endpoint, options);
+
+        console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
+        console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
+
+        return result;
       }
-
-      // QB /send endpoint requires email in query parameter
-      const sendEndpoint = email
-        ? `${endpoint}?sendTo=${encodeURIComponent(email)}`
-        : endpoint;
-
-      console.log(`[QuickBooks] Calling: POST ${sendEndpoint}`);
-
-      const result = await this.request(sendEndpoint, {
-        method: "POST",
-      });
-
-      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
-      console.log(`[QuickBooks] Send response:`, JSON.stringify(result, null, 2));
-
-      return result;
     } catch (error: any) {
       console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
-
-      // QUICKBOOKS PRODUCTION API ISSUE: send endpoint returns 500 Internal Server Error
-      // This is a QB-side bug (java.lang.NullPointerException)
-      // Instead of failing, generate a shareable invoice link
-      if (error?.status === 500) {
-        console.log(`[QuickBooks] ⚠️  QB email API down, providing fallback solution...`);
-        const invoiceLink = `https://app.qbo.intuit.com/app/invoice?view=edit&id=${invoiceId}`;
-        return {
-          success: false,
-          fallback: true,
-          message: "QB email API unavailable",
-          invoiceLink,
-          email,
-          error: error.message || String(error)
-        };
-      }
+      console.error(`[QuickBooks] Error response:`, error.responseText);
 
       throw error;
     }
