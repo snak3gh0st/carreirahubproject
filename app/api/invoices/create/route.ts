@@ -140,6 +140,25 @@ export async function POST(request: NextRequest) {
           phone: customer.phone || undefined,
         });
 
+        // Ensure QB customer has correct email before sending invoice
+        if (customer.email) {
+          const emailVerified = await quickbooksService.ensureCustomerEmail(qbCustomer.Id, customer.email);
+
+          // Log email verification result
+          await prisma.integrationLog.create({
+            data: {
+              service: "quickbooks",
+              action: emailVerified ? "customer_email_verified" : "customer_email_verification_failed",
+              status: emailVerified ? "SUCCESS" : "ERROR",
+              payload: {
+                qbCustomerId: qbCustomer.Id,
+                customerEmail: customer.email,
+                emailVerified,
+              } as any,
+            },
+          });
+        }
+
         // Prepare QB invoice data
         const qbInvoiceData: any = {
           customerId: qbCustomer.Id,
@@ -156,47 +175,66 @@ export async function POST(request: NextRequest) {
         qbInvoiceId = qbInvoice.Id;
         invoiceNumber = qbInvoice.DocNumber || qbInvoice.Id;
 
-        // Send invoice via QB email
-        try {
-          console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} to ${customer.email}...`);
-          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
-          console.log(`[INVOICE_CREATE] ✓ Successfully sent QB invoice email for ${qbInvoice.Id}`, sendResult);
+        // Send invoice via QB email (only if customer has email)
+        if (customer.email) {
+          try {
+            console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} to ${customer.email}...`);
+            const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
+            console.log(`[INVOICE_CREATE] ✓ Successfully sent QB invoice email for ${qbInvoice.Id}`, sendResult);
 
-          // Log email sent to IntegrationLog
+            // Log email sent to IntegrationLog
+            await prisma.integrationLog.create({
+              data: {
+                service: "quickbooks",
+                action: "invoice_email_sent",
+                status: "SUCCESS",
+                payload: {
+                  qbInvoiceId: qbInvoice.Id,
+                  recipientEmail: customer.email,
+                  sendResult,
+                } as any,
+              },
+            });
+          } catch (emailError: any) {
+            console.error(`[INVOICE_CREATE] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, {
+              error: emailError.message,
+              stack: emailError.stack,
+              email: customer.email,
+            });
+
+            // Log email failure to IntegrationLog
+            await prisma.integrationLog.create({
+              data: {
+                service: "quickbooks",
+                action: "invoice_email_failed",
+                status: "ERROR",
+                error: emailError.message || "Unknown error",
+                payload: {
+                  qbInvoiceId: qbInvoice.Id,
+                  customerEmail: customer.email,
+                } as any,
+              },
+            });
+
+            // Don't fail the whole operation if email fails
+          }
+        } else {
+          // Customer has no email - skip email sending but log warning
+          console.warn(`[INVOICE_CREATE] ⚠️  Customer ${customer.name} has no email, skipping invoice email send`);
+
           await prisma.integrationLog.create({
             data: {
               service: "quickbooks",
-              action: "invoice_email_sent",
+              action: "invoice_email_skipped",
               status: "SUCCESS",
               payload: {
                 qbInvoiceId: qbInvoice.Id,
-                recipientEmail: customer.email,
-                sendResult,
+                customerId: customer.id,
+                customerName: customer.name,
+                reason: "Customer has no email address",
               } as any,
             },
           });
-        } catch (emailError: any) {
-          console.error(`[INVOICE_CREATE] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, {
-            error: emailError.message,
-            stack: emailError.stack,
-            email: customer.email,
-          });
-
-          // Log email failure to IntegrationLog
-          await prisma.integrationLog.create({
-            data: {
-              service: "quickbooks",
-              action: "invoice_email_failed",
-              status: "ERROR",
-              error: emailError.message || "Unknown error",
-              payload: {
-                qbInvoiceId: qbInvoice.Id,
-                customerEmail: customer.email,
-              } as any,
-            },
-          });
-
-          // Don't fail the whole operation if email fails
         }
       }
 
