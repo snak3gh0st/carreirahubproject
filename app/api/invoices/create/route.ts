@@ -15,7 +15,7 @@ const createInvoiceSchema = z.object({
   discount: z.number().min(0).optional(),
   entryAmount: z.number().min(0).optional(),
   installments: z.number().min(0).max(12).optional(),
-  dueDate: z.string().datetime().optional(),
+  dueDate: z.string().optional(), // Aceita string de data simples (YYYY-MM-DD)
   description: z.string().optional(),
   priceLevelId: z.string().optional(),
   paymentTermId: z.string().optional(),
@@ -66,8 +66,8 @@ export async function POST(request: NextRequest) {
     const remaining = Math.max(0, totalAmount - entryAmount);
 
     // Role-based approval workflow
-    const needsApproval = role === "SALES" || role === "COMMERCIAL";
-    const isFinanceOrAdmin = role === "FINANCE" || role === "ADMIN";
+    const needsApproval = role === "SALES";
+    const isFinanceOrAdmin = role === "FINANCE" || role === "ADMIN" || role === "COMMERCIAL";
 
     // Generate series ID for linking installments
     const seriesId = `SERIES-${Date.now()}`;
@@ -158,9 +158,44 @@ export async function POST(request: NextRequest) {
 
         // Send invoice via QB email
         try {
-          await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
-        } catch (emailError) {
-          console.error(`Failed to send QB invoice email for ${qbInvoice.Id}:`, emailError);
+          console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} to ${customer.email}...`);
+          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
+          console.log(`[INVOICE_CREATE] ✓ Successfully sent QB invoice email for ${qbInvoice.Id}`, sendResult);
+
+          // Log email sent to IntegrationLog
+          await prisma.integrationLog.create({
+            data: {
+              service: "quickbooks",
+              action: "invoice_email_sent",
+              status: "SUCCESS",
+              payload: {
+                qbInvoiceId: qbInvoice.Id,
+                recipientEmail: customer.email,
+                sendResult,
+              } as any,
+            },
+          });
+        } catch (emailError: any) {
+          console.error(`[INVOICE_CREATE] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, {
+            error: emailError.message,
+            stack: emailError.stack,
+            email: customer.email,
+          });
+
+          // Log email failure to IntegrationLog
+          await prisma.integrationLog.create({
+            data: {
+              service: "quickbooks",
+              action: "invoice_email_failed",
+              status: "ERROR",
+              error: emailError.message || "Unknown error",
+              payload: {
+                qbInvoiceId: qbInvoice.Id,
+                customerEmail: customer.email,
+              } as any,
+            },
+          });
+
           // Don't fail the whole operation if email fails
         }
       }
@@ -180,13 +215,15 @@ export async function POST(request: NextRequest) {
           dealId,
           customerId,
           lineItems: lineItems as any,
-          installments: invoiceCountToCreate > 1 ? {
-            seriesId,
-            current: i,
-            total: invoiceCountToCreate,
-            priceLevelId: data.priceLevelId,
-            paymentTermId: data.paymentTermId,
-          } : null,
+          ...(invoiceCountToCreate > 1 && {
+            installments: {
+              seriesId,
+              current: i,
+              total: invoiceCountToCreate,
+              priceLevelId: data.priceLevelId,
+              paymentTermId: data.paymentTermId,
+            } as any,
+          }),
         },
       });
 
@@ -219,9 +256,21 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error: any) {
     console.error("Error creating invoice:", error);
+
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Invalid payload", details: error.flatten() }, { status: 400 });
+      console.error("Zod validation error:", error.flatten());
+      return NextResponse.json({
+        error: "Invalid payload",
+        details: error.flatten().fieldErrors
+      }, { status: 400 });
     }
+
+    // Log detalhado do erro
+    console.error("Invoice creation failed:", {
+      message: error.message,
+      stack: error.stack,
+      name: error.name,
+    });
 
     return NextResponse.json(
       { error: error.message || "Failed to create invoice" },
