@@ -637,15 +637,23 @@ export class QuickbooksService {
     console.log(`[QuickBooks] Sending invoice ${invoiceId}...`);
 
     try {
-      // QB /send endpoint uses the invoice's BillEmail that was set during creation
-      // IMPORTANT: Do NOT pass email as query parameter - causes 500 NullPointerException
-      // QB expects: POST /invoice/{id}/send (with no parameters)
+      // Try sending with email in POST body - QB may require this format
+      let requestBody = undefined;
+
+      if (email) {
+        console.log(`[QuickBooks] Sending to: ${email}`);
+        // QB /send might need email in request body
+        requestBody = {
+          sendTo: email,
+        };
+        console.log(`[QuickBooks] Request body:`, JSON.stringify(requestBody, null, 2));
+      }
 
       console.log(`[QuickBooks] Calling: POST ${endpoint}`);
-      console.log(`[QuickBooks] QB will use invoice's configured BillEmail`);
 
       const result = await this.request(endpoint, {
         method: "POST",
+        body: requestBody ? JSON.stringify(requestBody) : undefined,
       });
 
       console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
