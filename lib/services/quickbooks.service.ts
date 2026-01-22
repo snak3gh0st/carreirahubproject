@@ -634,35 +634,37 @@ export class QuickbooksService {
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
     const endpoint = `/invoice/${invoiceId}/send`;
 
-    console.log(`[QuickBooks] Sending invoice ${invoiceId}...`);
+    console.log(`[QuickBooks] Attempting to send invoice ${invoiceId}...`);
 
     try {
-      // Try sending with email in POST body - QB may require this format
-      let requestBody = undefined;
-
-      if (email) {
-        console.log(`[QuickBooks] Sending to: ${email}`);
-        // QB /send might need email in request body
-        requestBody = {
-          sendTo: email,
-        };
-        console.log(`[QuickBooks] Request body:`, JSON.stringify(requestBody, null, 2));
-      }
-
       console.log(`[QuickBooks] Calling: POST ${endpoint}`);
 
+      // QB /send endpoint should use just the endpoint with no body
       const result = await this.request(endpoint, {
         method: "POST",
-        body: requestBody ? JSON.stringify(requestBody) : undefined,
       });
 
       console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
       console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
 
-      return result;
+      return { success: true, sent: true, result };
     } catch (error: any) {
       console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
-      console.error(`[QuickBooks] Error response:`, error.responseText);
+      console.error(`[QuickBooks] Error code:`, error.status);
+
+      // If /send fails (common with QB API), return success with warning
+      // Invoice is created correctly and user can send manually from QB UI
+      if (error?.status === 500 || error?.status === 400) {
+        console.warn(`[QuickBooks] ⚠️ QB /send endpoint issue (${error.status}). Invoice created successfully.`);
+        console.warn(`[QuickBooks] ⚠️ User can send invoice manually from QB UI.`);
+
+        return {
+          success: false,
+          sent: false,
+          message: "Invoice created but QB send endpoint unavailable. Send manually from QB.",
+          error: error.message,
+        };
+      }
 
       throw error;
     }
@@ -1174,6 +1176,88 @@ export class QuickbooksService {
    */
   async refreshAccessTokenDirect(): Promise<void> {
     return this.refreshAccessToken();
+  }
+
+  /**
+   * Delete Invoice from QuickBooks
+   * Requires SyncToken from the invoice
+   */
+  async deleteInvoice(invoiceId: string): Promise<any> {
+    try {
+      console.log(`[QuickBooks] Fetching invoice ${invoiceId} for deletion...`);
+
+      // First fetch invoice to get SyncToken (QB requires it for delete)
+      const invoiceResponse = await this.getInvoice(invoiceId);
+      const invoice = invoiceResponse.Invoice;
+
+      if (!invoice) {
+        throw new Error(`Invoice ${invoiceId} not found`);
+      }
+
+      console.log(`[QuickBooks] Invoice SyncToken: ${invoice.SyncToken}`);
+
+      // Prepare delete payload
+      const deletePayload = {
+        Id: invoiceId,
+        SyncToken: invoice.SyncToken,
+      };
+
+      console.log(`[QuickBooks] Deleting invoice ${invoiceId}...`);
+      const result = await this.request(`/invoice`, {
+        method: "POST",
+        body: JSON.stringify(deletePayload),
+        headers: {
+          "X-QB-Operation": "Delete",
+        },
+      });
+
+      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} deleted successfully`);
+      return result;
+    } catch (error: any) {
+      console.error(`[QuickBooks] ✗ Failed to delete invoice ${invoiceId}:`, error.message || String(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Delete Customer from QuickBooks
+   * Requires SyncToken from the customer
+   */
+  async deleteCustomer(customerId: string): Promise<any> {
+    try {
+      console.log(`[QuickBooks] Fetching customer ${customerId} for deletion...`);
+
+      // First fetch customer to get SyncToken
+      const customerResponse = await this.getCustomerById(customerId);
+      const customer = customerResponse.Customer;
+
+      if (!customer) {
+        throw new Error(`Customer ${customerId} not found`);
+      }
+
+      console.log(`[QuickBooks] Customer SyncToken: ${customer.SyncToken}`);
+
+      // Prepare delete payload
+      const deletePayload = {
+        Id: customerId,
+        SyncToken: customer.SyncToken,
+      };
+
+      console.log(`[QuickBooks] Deleting customer ${customerId}...`);
+      const result = await this.request(`/customer`, {
+        method: "POST",
+        body: JSON.stringify(deletePayload),
+        headers: {
+          "X-QB-Operation": "Delete",
+        },
+      });
+
+      console.log(`[QuickBooks] ✓ Customer ${customerId} deleted successfully`);
+      return result;
+    } catch (error: any) {
+      console.error(`[QuickBooks] ✗ Failed to delete customer ${customerId}:`, error.message || String(error));
+      throw error;
+    }
   }
 }
 

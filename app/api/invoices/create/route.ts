@@ -206,30 +206,34 @@ export async function POST(request: NextRequest) {
           // Call sendInvoice which calls QB's /send endpoint
           const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
 
-          console.log(`[INVOICE_CREATE] ✓ QB /send returned:`, JSON.stringify(sendResult, null, 2));
+          console.log(`[INVOICE_CREATE] QB /send result:`, JSON.stringify(sendResult, null, 2));
 
-          // Log successful send
+          // Log send result (success or graceful failure)
+          const sendStatus = sendResult.success && sendResult.sent ? "SUCCESS" : "WARNING";
+          const action = sendResult.success && sendResult.sent ? "invoice_email_sent" : "invoice_created_send_unavailable";
+
           await prisma.integrationLog.create({
             data: {
               service: "quickbooks",
-              action: "invoice_email_sent",
-              status: "SUCCESS",
+              action: action,
+              status: sendStatus,
               payload: {
                 qbInvoiceId: qbInvoice.Id,
                 recipientEmail: customer.email,
+                sendResult,
               } as any,
             },
           });
         } catch (sendError: any) {
-          console.error(`[INVOICE_CREATE] ✗ QB /send failed:`, sendError.message || String(sendError));
+          console.error(`[INVOICE_CREATE] QB /send error (non-critical):`, sendError.message || String(sendError));
 
-          // Log send failure but don't fail invoice creation
+          // Log send error but invoice creation continues
           await prisma.integrationLog.create({
             data: {
               service: "quickbooks",
-              action: "invoice_email_failed",
-              status: "ERROR",
-              error: sendError.message || "Send failed",
+              action: "invoice_created_send_error",
+              status: "WARNING",
+              error: sendError.message || "Send error",
               payload: {
                 qbInvoiceId: qbInvoice.Id,
                 recipientEmail: customer.email,
