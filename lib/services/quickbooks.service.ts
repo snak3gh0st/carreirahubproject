@@ -632,40 +632,41 @@ export class QuickbooksService {
    * Body: { "Id": "xxx", "BillEmail": { "Address": "email@example.com" } }
    */
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
-    const endpoint = `/invoice/${invoiceId}/send`;
-
-    console.log(`[QuickBooks] Attempting to send invoice ${invoiceId}...`);
+    // QB /send endpoint requires minorversion parameter
+    // Format: POST /invoice/{id}/send?sendTo={email}&minorversion=75
+    console.log(`[QuickBooks] Attempting to send invoice ${invoiceId} to ${email || 'default customer email'}...`);
 
     try {
+      let endpoint = `/invoice/${invoiceId}/send?minorversion=75`;
+
+      if (email) {
+        endpoint += `&sendTo=${encodeURIComponent(email)}`;
+        console.log(`[QuickBooks] Sending to: ${email}`);
+      }
+
       console.log(`[QuickBooks] Calling: POST ${endpoint}`);
 
-      // QB /send endpoint should use just the endpoint with no body
       const result = await this.request(endpoint, {
         method: "POST",
       });
 
       console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
-      console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
+      console.log(`[QuickBooks] EmailStatus: ${result.Invoice?.EmailStatus}`);
+      console.log(`[QuickBooks] DeliveryInfo:`, JSON.stringify(result.Invoice?.DeliveryInfo, null, 2));
 
-      return { success: true, sent: true, result };
+      return {
+        success: true,
+        sent: true,
+        emailStatus: result.Invoice?.EmailStatus,
+        deliveryInfo: result.Invoice?.DeliveryInfo,
+        result
+      };
     } catch (error: any) {
       console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
       console.error(`[QuickBooks] Error code:`, error.status);
+      console.error(`[QuickBooks] Error response:`, error.responseText);
 
-      // If /send fails (common with QB API), return success with warning
-      // Invoice is created correctly and user can send manually from QB UI
-      if (error?.status === 500 || error?.status === 400) {
-        console.warn(`[QuickBooks] ⚠️ QB /send endpoint issue (${error.status}). Invoice created successfully.`);
-        console.warn(`[QuickBooks] ⚠️ User can send invoice manually from QB UI.`);
-
-        return {
-          success: false,
-          sent: false,
-          message: "Invoice created but QB send endpoint unavailable. Send manually from QB.",
-          error: error.message,
-        };
-      }
-
+      // If /send fails, return error (don't swallow it)
       throw error;
     }
   }
