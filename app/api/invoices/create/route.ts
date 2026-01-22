@@ -158,9 +158,10 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Prepare QB invoice data
+      // Prepare QB invoice data with BillEmail - QB requires email on invoice for sending
       const qbInvoiceData: any = {
         customerId: qbCustomer.Id,
+        customerEmail: customer.email, // REQUIRED - set email on invoice itself
         dueDate: invoiceDueDate,
         docNumber: invoiceNumber, // Custom professional invoice number
         lineItems: [{
@@ -170,16 +171,16 @@ export async function POST(request: NextRequest) {
         }],
       };
 
-      // Create invoice in QuickBooks
-      const qbInvoice = await quickbooksService.createInvoice(qbInvoiceData);
+      // Create invoice in QuickBooks WITH BillEmail set during creation
+      const qbInvoice = await quickbooksService.createInvoiceWithBillEmail(qbInvoiceData);
       qbInvoiceId = qbInvoice.Id;
       // invoiceNumber already set above with professional format
 
-      // Send invoice via QB email (only if customer has email)
+      // Send invoice via QB email (already has email set from creation)
       if (customer.email) {
         try {
-          console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} to ${customer.email}...`);
-          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
+          console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} (email already set during creation)...`);
+          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id);
           console.log(`[INVOICE_CREATE] ✓ Successfully sent QB invoice email for ${qbInvoice.Id}`, sendResult);
 
           // Log email sent to IntegrationLog
