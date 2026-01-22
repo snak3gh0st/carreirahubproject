@@ -22,18 +22,31 @@ export interface ParsedInvoiceNumber {
 }
 
 /**
- * Generate customer code from name
- * Takes first 4 alphanumeric characters, uppercase
- * Falls back to "CUST" if name is empty or has no valid chars
+ * Generate customer code from name using initials
+ * Takes first character of each word (separated by spaces/hyphens)
+ * Falls back to "X" if name is empty or has no valid chars
+ *
+ * Examples:
+ *   - "Philipe Melo" -> "PM"
+ *   - "Carreira USA" -> "CU"
+ *   - "John" -> "J"
+ *   - "Mary Jane Watson" -> "MJW"
+ *   - "" -> "X"
  */
 export function generateCustomerCode(name: string): string {
-  // Remove non-alphanumeric, take first 4 chars, uppercase
-  const code = name
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .slice(0, 4)
-    .toUpperCase();
+  // Split by spaces and hyphens, filter empty strings
+  const words = name
+    .split(/[\s-]+/)
+    .filter(word => word.length > 0);
 
-  return code.length >= 3 ? code : 'CUST';
+  if (words.length === 0) return 'X';
+
+  // Take first character of each word, uppercase
+  const initials = words
+    .map(word => word.charAt(0).toUpperCase())
+    .join('');
+
+  return initials || 'X';
 }
 
 /**
@@ -55,8 +68,8 @@ export function generateInvoiceNumber(options: InvoiceNumberOptions): string {
  * Returns null if format is invalid
  */
 export function parseInvoiceNumber(invoiceNumber: string): ParsedInvoiceNumber | null {
-  // Pattern: XXXX-YYYY-MM-NNN
-  const match = invoiceNumber.match(/^([A-Z0-9]{3,4})-(\d{4})-(\d{2})-(\d{3})$/);
+  // Pattern: X-YYYY-MM-NNN (1-4 char customer code)
+  const match = invoiceNumber.match(/^([A-Z0-9]{1,4})-(\d{4})-(\d{2})-(\d{3})$/);
 
   if (!match) return null;
 
