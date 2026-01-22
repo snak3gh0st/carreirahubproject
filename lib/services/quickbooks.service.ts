@@ -385,9 +385,37 @@ export class QuickbooksService {
       ? `/invoice/${invoiceId}/send?sendTo=${encodeURIComponent(email)}`
       : `/invoice/${invoiceId}/send`;
 
-    return this.request(endpoint, {
-      method: "POST",
-    });
+    console.log(`[QuickBooks] Sending invoice ${invoiceId} via email to ${email || 'customer default email'}...`);
+
+    try {
+      const result = await this.request(endpoint, {
+        method: "POST",
+      });
+
+      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`, result);
+
+      // NOTE: QuickBooks Sandbox may not actually send emails
+      // Check the result to see if it indicates email was sent
+      return result;
+    } catch (error) {
+      // QUICKBOOKS PRODUCTION API ISSUE: send endpoint returns 500 Internal Server Error
+      // This is a QB-side bug (java.lang.NullPointerException)
+      // Instead of failing, generate a shareable invoice link
+      if ((error as any)?.status === 500) {
+        console.log(`[QuickBooks] ⚠️  QB email API down, providing fallback solution...`);
+        const invoiceLink = `https://app.qbo.intuit.com/app/invoice?view=edit&id=${invoiceId}`;
+        return {
+          success: false,
+          fallback: true,
+          message: "QB email API unavailable",
+          invoiceLink,
+          email,
+          error: error.message
+        };
+      }
+      
+      throw error;
+    }
   }
 
   /**
@@ -785,6 +813,76 @@ export class QuickbooksService {
    */
   async getCompanyInfo(): Promise<any> {
     return this.request(`/companyinfo/${this.companyId}`);
+  }
+
+  /**
+   * Update customer email in QuickBooks
+   * Requires reading customer first to get SyncToken
+   */
+  async updateCustomerEmail(customerId: string, email: string): Promise<any> {
+    console.log(`[QuickBooks] Updating customer ${customerId} email to ${email}...`);
+
+    // Read current customer to get SyncToken (required for updates)
+    const customer = await this.getCustomerById(customerId);
+
+    if (!customer) {
+      throw new Error(`Customer ${customerId} not found in QuickBooks`);
+    }
+
+    // Update customer with new email
+    const updateData = {
+      Id: customer.Customer.Id,
+      SyncToken: customer.Customer.SyncToken,
+      PrimaryEmailAddr: {
+        Address: email,
+      },
+    };
+
+    const result = await this.request("/customer", {
+      method: "POST",
+      body: JSON.stringify(updateData),
+    });
+
+    console.log(`[QuickBooks] ✓ Customer ${customerId} email updated successfully`);
+    return result.Customer;
+  }
+
+  /**
+   * Ensure customer has correct email in QuickBooks
+   * Checks if email matches, updates if different
+   * Returns true if email was correct or successfully updated
+   */
+  async ensureCustomerEmail(customerId: string, email: string): Promise<boolean> {
+    try {
+      console.log(`[QuickBooks] Verifying customer ${customerId} has email ${email}...`);
+
+      // Get current customer data
+      const customerResponse = await this.getCustomerById(customerId);
+      const customer = customerResponse.Customer;
+
+      if (!customer) {
+        console.error(`[QuickBooks] Customer ${customerId} not found`);
+        return false;
+      }
+
+      // Check current email
+      const currentEmail = customer.PrimaryEmailAddr?.Address;
+
+      if (currentEmail === email) {
+        console.log(`[QuickBooks] ✓ Customer ${customerId} already has correct email: ${email}`);
+        return true;
+      }
+
+      // Email is different or missing, update it
+      console.log(`[QuickBooks] Customer ${customerId} email mismatch: "${currentEmail}" !== "${email}", updating...`);
+      await this.updateCustomerEmail(customerId, email);
+
+      console.log(`[QuickBooks] ✓ Customer ${customerId} email updated from "${currentEmail}" to "${email}"`);
+      return true;
+    } catch (error) {
+      console.error(`[QuickBooks] Error ensuring customer email for ${customerId}:`, error);
+      return false;
+    }
   }
 
   /**
