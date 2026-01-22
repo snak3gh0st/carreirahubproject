@@ -333,6 +333,7 @@ export class QuickbooksService {
   async createInvoice(data: {
     customerId: string;
     dueDate?: Date;
+    docNumber?: string; // Custom invoice number
     lineItems: Array<{
       description: string;
       amount: number;
@@ -343,6 +344,7 @@ export class QuickbooksService {
       CustomerRef: {
         value: data.customerId,
       },
+      DocNumber: data.docNumber, // Include custom invoice number
       TxnDate: new Date().toISOString().split("T")[0],
       DueDate: data.dueDate
         ? data.dueDate.toISOString().split("T")[0]
