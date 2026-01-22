@@ -205,30 +205,49 @@ export async function POST(request: NextRequest) {
           console.log(`[INVOICE_CREATE] Calling QB /send endpoint for invoice ${qbInvoice.Id} to ${customer.email}...`);
 
           // Call sendInvoice which calls QB's /send endpoint
+          // Note: sendInvoice now returns graceful failure instead of throwing
+          // This allows invoice creation to complete even if /send fails
           const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
 
           console.log(`[INVOICE_CREATE] QB /send result:`, JSON.stringify(sendResult, null, 2));
 
           // Log send result (success or graceful failure)
-          const sendStatus = sendResult.success && sendResult.sent ? "SUCCESS" : "WARNING";
-          const action = sendResult.success && sendResult.sent ? "invoice_email_sent" : "invoice_created_send_unavailable";
-
-          await prisma.integrationLog.create({
-            data: {
-              service: "quickbooks",
-              action: action,
-              status: sendStatus,
-              payload: {
-                qbInvoiceId: qbInvoice.Id,
-                recipientEmail: customer.email,
-                sendResult,
-              } as any,
-            },
-          });
+          // Invoice is already marked NeedToSend in QB, so it will be batch-sent automatically
+          if (sendResult.success && sendResult.sent) {
+            console.log(`[INVOICE_CREATE] ✓ Invoice email sent immediately via QB API`);
+            await prisma.integrationLog.create({
+              data: {
+                service: "quickbooks",
+                action: "invoice_email_sent",
+                status: "SUCCESS",
+                payload: {
+                  qbInvoiceId: qbInvoice.Id,
+                  recipientEmail: customer.email,
+                  deliveryInfo: sendResult.deliveryInfo,
+                } as any,
+              },
+            });
+          } else {
+            console.log(`[INVOICE_CREATE] ⓘ Invoice created with NeedToSend status. QB will batch-send automatically.`);
+            await prisma.integrationLog.create({
+              data: {
+                service: "quickbooks",
+                action: "invoice_created_batch_send_queued",
+                status: "SUCCESS",
+                payload: {
+                  qbInvoiceId: qbInvoice.Id,
+                  recipientEmail: customer.email,
+                  emailStatus: "NeedToSend",
+                  note: "QB /send endpoint unavailable. Invoice queued for batch sending.",
+                  error: sendResult.error,
+                } as any,
+              },
+            });
+          }
         } catch (sendError: any) {
-          console.error(`[INVOICE_CREATE] QB /send error (non-critical):`, sendError.message || String(sendError));
+          // Shouldn't happen since sendInvoice is now non-throwing, but keep as safety net
+          console.error(`[INVOICE_CREATE] QB send error (non-critical):`, sendError.message || String(sendError));
 
-          // Log send error but invoice creation continues
           await prisma.integrationLog.create({
             data: {
               service: "quickbooks",

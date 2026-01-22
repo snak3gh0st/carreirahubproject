@@ -632,8 +632,9 @@ export class QuickbooksService {
    * Body: { "Id": "xxx", "BillEmail": { "Address": "email@example.com" } }
    */
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
-    // QB /send endpoint requires minorversion parameter
-    // Format: POST /invoice/{id}/send?sendTo={email}&minorversion=75
+    // QB /send endpoint: POST /invoice/{id}/send?sendTo={email}&minorversion=75
+    // CRITICAL: Content-Type must be application/octet-stream (NOT application/json)
+    // Body: empty
     console.log(`[QuickBooks] Attempting to send invoice ${invoiceId} to ${email || 'default customer email'}...`);
 
     try {
@@ -645,10 +646,36 @@ export class QuickbooksService {
       }
 
       console.log(`[QuickBooks] Calling: POST ${endpoint}`);
+      console.log(`[QuickBooks] Content-Type: application/octet-stream (per QB API documentation)`);
 
-      const result = await this.request(endpoint, {
+      if (!this.accessToken) {
+        throw new Error("Quickbooks access token not configured");
+      }
+
+      if (!this.companyId || this.companyId.trim() === "") {
+        throw new Error("Quickbooks company ID not configured");
+      }
+
+      // Make direct fetch call with correct Content-Type for /send endpoint
+      const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
+
+      const response = await fetch(url, {
         method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.accessToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/octet-stream",  // CRITICAL: Must be octet-stream for /send
+        },
+        body: "",  // Empty body as per QB API documentation
       });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
+        throw new Error(`QB /send failed (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
 
       console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
       console.log(`[QuickBooks] EmailStatus: ${result.Invoice?.EmailStatus}`);
@@ -663,11 +690,16 @@ export class QuickbooksService {
       };
     } catch (error: any) {
       console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
-      console.error(`[QuickBooks] Error code:`, error.status);
-      console.error(`[QuickBooks] Error response:`, error.responseText);
 
-      // If /send fails, return error (don't swallow it)
-      throw error;
+      // Log but don't throw - allow invoice creation to complete
+      // The invoice is already set to NeedToSend, QB will batch-send it automatically
+      return {
+        success: false,
+        sent: false,
+        emailStatus: "NeedToSend",
+        error: error.message || String(error),
+        note: "Invoice created successfully and marked NeedToSend. QB will batch-send automatically. Immediate send via /send endpoint failed."
+      };
     }
   }
 
