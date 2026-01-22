@@ -632,22 +632,18 @@ export class QuickbooksService {
    * Body: { "Id": "xxx", "BillEmail": { "Address": "email@example.com" } }
    */
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
-    // QB /send endpoint: POST /invoice/{id}/send?sendTo={email}&minorversion=75
-    // CRITICAL: Content-Type must be application/octet-stream (NOT application/json)
+    // QB API Documentation for sending invoices:
+    // Method 1 (Simple - uses BillEmail from invoice): POST /v3/company/{realmId}/invoice/{invoiceId}/send
+    // Method 2 (With override): POST /v3/company/{realmId}/invoice/{invoiceId}/send?sendTo={emailAddr}&minorversion=75
+    // Content-Type: application/octet-stream (CRITICAL)
     // Body: empty
-    console.log(`[QuickBooks] Attempting to send invoice ${invoiceId} to ${email || 'default customer email'}...`);
+
+    console.log(`[QuickBooks] Attempting to send invoice ${invoiceId}...`);
+    if (email) {
+      console.log(`[QuickBooks] Override email: ${email}`);
+    }
 
     try {
-      let endpoint = `/invoice/${invoiceId}/send?minorversion=75`;
-
-      if (email) {
-        endpoint += `&sendTo=${encodeURIComponent(email)}`;
-        console.log(`[QuickBooks] Sending to: ${email}`);
-      }
-
-      console.log(`[QuickBooks] Calling: POST ${endpoint}`);
-      console.log(`[QuickBooks] Content-Type: application/octet-stream (per QB API documentation)`);
-
       if (!this.accessToken) {
         throw new Error("Quickbooks access token not configured");
       }
@@ -656,15 +652,24 @@ export class QuickbooksService {
         throw new Error("Quickbooks company ID not configured");
       }
 
-      // Make direct fetch call with correct Content-Type for /send endpoint
+      // Build endpoint - use Method 2 if explicit email provided, otherwise Method 1
+      let endpoint = `/invoice/${invoiceId}/send`;
+      if (email) {
+        endpoint += `?sendTo=${encodeURIComponent(email)}&minorversion=75`;
+        console.log(`[QuickBooks] Using Method 2 (explicit email with minorversion=75)`);
+      } else {
+        console.log(`[QuickBooks] Using Method 1 (BillEmail from invoice)`);
+      }
+
       const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
+      console.log(`[QuickBooks] Calling: POST ${url}`);
 
       const response = await fetch(url, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${this.accessToken}`,
           "Accept": "application/json",
-          "Content-Type": "application/octet-stream",  // CRITICAL: Must be octet-stream for /send
+          "Content-Type": "application/octet-stream",  // CRITICAL: Per QB API docs
         },
         body: "",  // Empty body as per QB API documentation
       });
