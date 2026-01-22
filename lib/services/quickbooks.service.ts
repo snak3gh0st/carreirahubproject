@@ -634,34 +634,24 @@ export class QuickbooksService {
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
     const endpoint = `/invoice/${invoiceId}/send`;
 
-    console.log(`[QuickBooks] Sending invoice ${invoiceId} to ${email || 'default customer email'}...`);
+    console.log(`[QuickBooks] Sending invoice ${invoiceId}...`);
 
     try {
-      // QB /send endpoint - try with query parameter first
-      let options: any = { method: "POST" };
+      // QB /send endpoint uses the invoice's BillEmail that was set during creation
+      // IMPORTANT: Do NOT pass email as query parameter - causes 500 NullPointerException
+      // QB expects: POST /invoice/{id}/send (with no parameters)
 
-      if (email) {
-        // Try sending with email as query parameter in endpoint
-        const sendEndpoint = `${endpoint}?sendTo=${encodeURIComponent(email)}`;
-        console.log(`[QuickBooks] Endpoint: ${sendEndpoint}`);
+      console.log(`[QuickBooks] Calling: POST ${endpoint}`);
+      console.log(`[QuickBooks] QB will use invoice's configured BillEmail`);
 
-        const result = await this.request(sendEndpoint, options);
+      const result = await this.request(endpoint, {
+        method: "POST",
+      });
 
-        console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
-        console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
+      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
+      console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
 
-        return result;
-      } else {
-        // If no email provided, just call send - QB will use invoice's BillEmail
-        console.log(`[QuickBooks] Calling send with invoice's configured email`);
-
-        const result = await this.request(endpoint, options);
-
-        console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
-        console.log(`[QuickBooks] Response:`, JSON.stringify(result, null, 2));
-
-        return result;
-      }
+      return result;
     } catch (error: any) {
       console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
       console.error(`[QuickBooks] Error response:`, error.responseText);
