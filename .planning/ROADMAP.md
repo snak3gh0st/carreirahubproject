@@ -208,81 +208,57 @@ Plans:
 
 **Goal**: Automate contract generation and signature workflow, integrating DocuSign with QuickBooks to track contract status and trigger downstream actions.
 
+**Status**: Planned (4 plans in 4 waves)
+
 **Depends on**: Phase 1 (QuickBooks customer and invoice data needed for contract generation)
 
-**Research**: Likely (DocuSign API, template management, envelope tracking, JWT authentication)
+**Research**: ✅ Complete (02-RESEARCH.md created 2026-01-22)
 
-**Research topics**:
-- DocuSign authentication (JWT vs OAuth 2.0)
-- Template creation and management
-- Envelope sending and tracking
-- Webhook events for signature completion
-- Document storage and retrieval
-- Embedded signing vs email signing
-
-**Plans**: To be determined — run `/gsd:plan-phase 2` to break down
+**Plans**: 4 plans
 
 Plans:
-- [ ] TBD (run `/gsd:plan-phase 2` to break down work)
+- [ ] 02-01-PLAN.md — Webhook security (HMAC verification + deduplication)
+- [ ] 02-02-PLAN.md — Template-based envelope creation (composite templates)
+- [ ] 02-03-PLAN.md — S3 document storage for signed contracts
+- [ ] 02-04-PLAN.md — Finance dashboard for contract management
+
+**Wave Structure:**
+- Wave 1: 02-01 (Webhook security - foundation)
+- Wave 2: 02-02 (Template management - depends on secure webhooks)
+- Wave 3: 02-03 (S3 storage - depends on templates)
+- Wave 4: 02-04 (Dashboard - depends on all above)
 
 **Scope:**
-- **DocuSign API Setup**
-  - Authentication (JWT recommended for server-to-server)
-  - Environment configuration (sandbox + production)
-  - Account ID and User ID configuration
-  - RSA key pair generation for JWT
+- **Webhook Security (02-01)**
+  - HMAC-SHA256 signature verification
+  - Idempotent event processing with WebhookEvent table
+  - Prevent duplicate processing (DocuSign retries 45x over 7 days)
+  - Timing-safe comparison to prevent timing attacks
 
-- **Template Management**
-  - Create contract templates in DocuSign
-  - Define merge fields (customer name, service, price, dates)
-  - Template versioning and updates
-  - Template selection logic (different contracts for different services)
+- **Template Management (02-02)**
+  - Composite Templates pattern (serverTemplates + inlineTemplates)
+  - Template ID configurable via DOCUSIGN_TEMPLATE_ID env var
+  - Dynamic merge fields (customer_name, invoice_number, amount, due_date)
+  - Automatic fallback to inline PDF if template not configured
 
-- **Contract Generation**
-  - Generate contract from template + customer data
-  - Populate merge fields from QuickBooks customer + deal data
-  - Attach invoice PDF to contract envelope
-  - Send contract for signature (email or embedded)
+- **Document Storage (02-03)**
+  - S3 bucket for signed contract PDFs
+  - Download combined document (all docs + certificate) from DocuSign
+  - Presigned URLs with 7-day expiration
+  - Schema update: signedS3Key, signedS3Url, signedS3UrlExpiresAt
 
-- **Signature Workflow**
-  - Single signer workflow (customer only)
-  - Multi-signer workflow (customer + guarantor)
-  - Signing order enforcement
-  - Reminder emails for pending signatures
-  - Expiration handling (30 days)
-
-- **Webhook Handling**
-  - `envelope-sent` → track in system
-  - `envelope-delivered` → log delivery
-  - `envelope-completed` → download signed PDF, update QB
-  - `envelope-declined` → notify Finance team
-  - `envelope-voided` → mark as canceled
-  - Deduplication to prevent duplicate processing
-
-- **Document Storage**
-  - Download signed PDF after completion
-  - Store in file system or S3-compatible storage
-  - Link document to customer record
-  - Version tracking (if contract amended and re-signed)
-
-- **QuickBooks Integration**
-  - Contract signed → add note to QB customer
-  - Update customer status to "Active" after contract
-  - Link contract PDF to QB customer record (attachment or URL)
-
-- **Finance Dashboard**
-  - View pending contracts (awaiting signature)
-  - Resend contract reminder
-  - Void contract if needed
-  - Download signed contracts
+- **Finance Dashboard (02-04)**
+  - Contract list page with status filtering
+  - Contract detail page with actions
+  - Download signed contracts via presigned URL
+  - Resend reminders for pending contracts
 
 **Success Criteria:**
-- Contract auto-generated from deal data
-- Customer receives contract via email
-- Signature tracked in system
-- Signed PDF stored and accessible
-- QuickBooks updated when contract completed
-- Finance team can monitor contract status
+- Webhook signature verified before processing
+- Duplicate events detected and skipped
+- Contract envelopes use DocuSign templates
+- Signed PDFs stored durably in S3
+- Finance team can view, download, and manage contracts
 
 ---
 
@@ -470,13 +446,13 @@ Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4
 | 1. QuickBooks Foundation | 1/1 | ✅ Complete | 2026-01-14 |
 | 1.1. Invoice & Customer Dashboard (INSERTED) | 4/4 | ✅ Complete | 2026-01-14 |
 | 4.1. Deployment Ready (INSERTED) | 3/3 | ✅ Complete | 2026-01-15 |
-| 2. DocuSign Integration | 0/? | Not planned | — |
+| 2. DocuSign Integration | 0/4 | Planned | — |
 | 3. Finance Workflow Automation | 2/2 | ✅ Complete | 2026-01-15 |
 | 4. Insights (BI & Analytics) | 3/3 | ✅ Complete | 2026-01-15 |
 
-**Status:** 5 of 6 phases complete, 13 plans executed, Phase 2 (DocuSign) not planned
+**Status:** 5 of 6 phases complete, 13 plans executed, Phase 2 (DocuSign) planned with 4 plans
 
-**Next Action:** Sprint 1 nearing completion - only Phase 2 (DocuSign Integration) remains. Run /gsd:plan-phase 2 to continue, or review Sprint 1 accomplishments.
+**Next Action:** Execute Phase 2 (DocuSign Integration). Run `/gsd:execute-phase 2` to start.
 
 ---
 
