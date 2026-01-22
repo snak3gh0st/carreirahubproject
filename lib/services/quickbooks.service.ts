@@ -397,11 +397,11 @@ export class QuickbooksService {
       // NOTE: QuickBooks Sandbox may not actually send emails
       // Check the result to see if it indicates email was sent
       return result;
-    } catch (error) {
+    } catch (error: any) {
       // QUICKBOOKS PRODUCTION API ISSUE: send endpoint returns 500 Internal Server Error
       // This is a QB-side bug (java.lang.NullPointerException)
       // Instead of failing, generate a shareable invoice link
-      if ((error as any)?.status === 500) {
+      if (error?.status === 500) {
         console.log(`[QuickBooks] ⚠️  QB email API down, providing fallback solution...`);
         const invoiceLink = `https://app.qbo.intuit.com/app/invoice?view=edit&id=${invoiceId}`;
         return {
@@ -410,10 +410,10 @@ export class QuickbooksService {
           message: "QB email API unavailable",
           invoiceLink,
           email,
-          error: error.message
+          error: error.message || String(error)
         };
       }
-      
+
       throw error;
     }
   }
