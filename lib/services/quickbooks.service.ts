@@ -634,20 +634,37 @@ export class QuickbooksService {
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
     const endpoint = `/invoice/${invoiceId}/send`;
 
-    console.log(`[QuickBooks] Sending invoice ${invoiceId} to QB customer email...`);
+    console.log(`[QuickBooks] Sending invoice ${invoiceId}...`);
 
     try {
-      // QB /send endpoint sends to the customer's configured email
-      // Just make a POST request with no body - QB uses the invoice's customer email
-      const result = await this.request(endpoint, {
+      // First fetch invoice to get BillEmail and SyncToken
+      const invoiceResponse = await this.getInvoice(invoiceId);
+      const invoice = invoiceResponse.Invoice;
+
+      if (!invoice) {
+        throw new Error(`Invoice ${invoiceId} not found`);
+      }
+
+      // Get email from parameter or from invoice's BillEmail field
+      const sendEmail = email || invoice.BillEmail?.Address;
+
+      if (!sendEmail) {
+        console.warn(`[QuickBooks] ⚠️ No email found for invoice ${invoiceId}`);
+        return { success: false, message: "No email configured for invoice" };
+      }
+
+      console.log(`[QuickBooks] Sending to: ${sendEmail}`);
+
+      // QB /send endpoint requires email in query parameter
+      const sendEndpoint = `${endpoint}?sendTo=${encodeURIComponent(sendEmail)}`;
+
+      const result = await this.request(sendEndpoint, {
         method: "POST",
       });
 
-      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
+      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully to ${sendEmail}`);
       console.log(`[QuickBooks] Send response:`, JSON.stringify(result, null, 2));
 
-      // NOTE: QuickBooks Sandbox may not actually send emails
-      // Check the result to see if it indicates email was sent
       return result;
     } catch (error: any) {
       console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
