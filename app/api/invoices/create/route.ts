@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
+import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 
 const createInvoiceSchema = z.object({
   customerId: z.string(),
@@ -125,10 +126,16 @@ export async function POST(request: NextRequest) {
       let qbInvoiceId: string | undefined;
       let invoiceNumber: string;
 
+      // Generate professional invoice number for all invoices
+      invoiceNumber = generateInvoiceNumber({
+        customerName: customer.name,
+        date: invoiceDueDate,
+        sequence: i,
+      });
+
       if (needsApproval) {
         // SALES/COMMERCIAL role: Create draft invoice pending approval
-        const timestamp = Date.now();
-        invoiceNumber = `DRAFT-${timestamp}-${i}`;
+        // Use the same professional numbering format (will be used when approved)
       } else {
         // FINANCE/ADMIN: Auto-approve and sync to QuickBooks immediately
         await quickbooksService.initialize();
@@ -163,6 +170,7 @@ export async function POST(request: NextRequest) {
         const qbInvoiceData: any = {
           customerId: qbCustomer.Id,
           dueDate: invoiceDueDate,
+          docNumber: invoiceNumber, // Custom professional invoice number
           lineItems: [{
             description: invoiceDescription,
             amount: invoiceAmount,
@@ -173,7 +181,7 @@ export async function POST(request: NextRequest) {
         // Create invoice in QuickBooks
         const qbInvoice = await quickbooksService.createInvoice(qbInvoiceData);
         qbInvoiceId = qbInvoice.Id;
-        invoiceNumber = qbInvoice.DocNumber || qbInvoice.Id;
+        // invoiceNumber already set above with professional format
 
         // Send invoice via QB email (only if customer has email)
         if (customer.email) {
