@@ -3,6 +3,27 @@ import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 
 /**
+ * Diagnostic result for verbose send operations
+ */
+export interface SendInvoiceResult {
+  success: boolean;
+  httpStatus: number;
+  emailStatus?: string;  // QB's EmailStatus field
+  qbResponse: any;
+  diagnostics: {
+    endpoint: string;
+    requestBody: any;
+    responseHeaders: Record<string, string>;
+    rawResponse: string;
+    parsedResponse: any;
+    hasFault: boolean;
+    hasError: boolean;
+    emailStatusBefore?: string;
+    emailStatusAfter?: string;
+  };
+}
+
+/**
  * Quickbooks Service
  *
  * Responsabilidade: Integração com Quickbooks API para sincronização de invoices e customers
@@ -372,10 +393,228 @@ export class QuickbooksService {
   }
 
   /**
+   * Create Invoice with BillEmail set during creation
+   * Some QB configurations require email on invoice before /send works
+   */
+  async createInvoiceWithBillEmail(data: {
+    customerId: string;
+    customerEmail: string;  // REQUIRED - will be set as BillEmail
+    dueDate?: Date;
+    docNumber?: string;
+    lineItems: Array<{
+      description: string;
+      amount: number;
+      itemRef?: string;
+    }>;
+  }): Promise<any> {
+    const invoiceData = {
+      CustomerRef: {
+        value: data.customerId,
+      },
+      DocNumber: data.docNumber,
+      BillEmail: {
+        Address: data.customerEmail,  // SET EMAIL ON CREATION
+      },
+      EmailStatus: "NeedToSend",  // Tell QB this needs to be sent
+      TxnDate: new Date().toISOString().split("T")[0],
+      DueDate: data.dueDate
+        ? data.dueDate.toISOString().split("T")[0]
+        : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+      Line: data.lineItems.map((item) => ({
+        Amount: item.amount,
+        DetailType: "SalesItemLineDetail",
+        SalesItemLineDetail: {
+          ItemRef: {
+            value: item.itemRef || "1",
+          },
+        },
+        Description: item.description,
+      })),
+    };
+
+    console.log(`[QuickBooks] Creating invoice WITH BillEmail: ${data.customerEmail}`);
+    console.log(`[QuickBooks] Invoice payload:`, JSON.stringify(invoiceData, null, 2));
+
+    const result = await this.request("/invoice", {
+      method: "POST",
+      body: JSON.stringify(invoiceData),
+    });
+
+    console.log(`[QuickBooks] Created invoice ${result.Invoice?.Id} with BillEmail: ${result.Invoice?.BillEmail?.Address}`);
+    console.log(`[QuickBooks] Invoice EmailStatus: ${result.Invoice?.EmailStatus}`);
+
+    return result.Invoice;
+  }
+
+  /**
+   * Update invoice to set/change BillEmail
+   * Requires fetching invoice first to get SyncToken
+   */
+  async updateInvoiceBillEmail(invoiceId: string, email: string): Promise<any> {
+    console.log(`[QuickBooks] Updating invoice ${invoiceId} BillEmail to ${email}...`);
+
+    // First fetch the invoice to get SyncToken
+    const invoiceResponse = await this.getInvoice(invoiceId);
+    const invoice = invoiceResponse.Invoice;
+
+    if (!invoice) {
+      throw new Error(`Invoice ${invoiceId} not found in QuickBooks`);
+    }
+
+    console.log(`[QuickBooks] Current invoice EmailStatus: ${invoice.EmailStatus}`);
+    console.log(`[QuickBooks] Current invoice BillEmail: ${invoice.BillEmail?.Address}`);
+
+    // Sparse update to set BillEmail
+    const updateData = {
+      Id: invoice.Id,
+      SyncToken: invoice.SyncToken,
+      sparse: true,
+      BillEmail: {
+        Address: email,
+      },
+    };
+
+    const result = await this.request("/invoice", {
+      method: "POST",
+      body: JSON.stringify(updateData),
+    });
+
+    console.log(`[QuickBooks] Updated invoice ${invoiceId}`);
+    console.log(`[QuickBooks] New BillEmail: ${result.Invoice?.BillEmail?.Address}`);
+    console.log(`[QuickBooks] New EmailStatus: ${result.Invoice?.EmailStatus}`);
+
+    return result.Invoice;
+  }
+
+  /**
    * Buscar Invoice por ID
    */
   async getInvoice(invoiceId: string): Promise<any> {
     return this.request(`/invoice/${invoiceId}`);
+  }
+
+  /**
+   * Enviar Invoice por email via QuickBooks (verbose version with diagnostics)
+   * Uses the QB send invoice endpoint to email the invoice to the customer
+   *
+   * QB API requires email in POST body (not query param):
+   * POST /invoice/{id}/send
+   * Body: { "Id": "xxx", "BillEmail": { "Address": "email@example.com" } }
+   */
+  async sendInvoiceVerbose(invoiceId: string, email?: string): Promise<SendInvoiceResult> {
+    const endpoint = `/invoice/${invoiceId}/send`;
+    const fullUrl = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
+
+    console.log(`[QB_SEND_DEBUG] === SEND INVOICE START ===`);
+    console.log(`[QB_SEND_DEBUG] Invoice ID: ${invoiceId}`);
+    console.log(`[QB_SEND_DEBUG] Email: ${email || 'not provided'}`);
+    console.log(`[QB_SEND_DEBUG] Full endpoint URL: ${fullUrl}`);
+    console.log(`[QB_SEND_DEBUG] Environment: ${process.env.QUICKBOOKS_ENVIRONMENT || 'sandbox'}`);
+
+    // QB API accepts email override in POST body
+    const body = email ? {
+      "SparseUpdate": false,
+      "Id": invoiceId,
+      "BillEmail": {
+        "Address": email
+      }
+    } : undefined;
+
+    console.log(`[QB_SEND_DEBUG] Request body: ${JSON.stringify(body, null, 2)}`);
+
+    let httpStatus = 0;
+    let responseHeaders: Record<string, string> = {};
+    let rawResponse = '';
+    let parsedResponse: any = null;
+
+    try {
+      // Make the request directly to capture raw response
+      const response = await fetch(fullUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${this.accessToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+
+      httpStatus = response.status;
+
+      // Capture response headers
+      response.headers.forEach((value, key) => {
+        responseHeaders[key] = value;
+      });
+
+      console.log(`[QB_SEND_DEBUG] HTTP Status: ${response.status} ${response.statusText}`);
+      console.log(`[QB_SEND_DEBUG] Response Headers: ${JSON.stringify(responseHeaders, null, 2)}`);
+
+      // Get raw response text
+      rawResponse = await response.text();
+      console.log(`[QB_SEND_DEBUG] Raw Response Body: ${rawResponse}`);
+
+      // Parse JSON if possible
+      try {
+        parsedResponse = JSON.parse(rawResponse);
+        console.log(`[QB_SEND_DEBUG] Parsed Response: ${JSON.stringify(parsedResponse, null, 2)}`);
+      } catch (parseError) {
+        console.log(`[QB_SEND_DEBUG] Failed to parse response as JSON: ${parseError}`);
+      }
+
+      // Check QB-specific success indicators
+      const emailStatus = parsedResponse?.Invoice?.EmailStatus;
+      const deliveryInfo = parsedResponse?.Invoice?.DeliveryInfo;
+      const hasFault = !!parsedResponse?.Fault;
+      const hasError = !!parsedResponse?.Error;
+      const warnings = parsedResponse?.warnings;
+
+      console.log(`[QB_SEND_DEBUG] EmailStatus: ${emailStatus || 'not present'}`);
+      console.log(`[QB_SEND_DEBUG] DeliveryInfo: ${JSON.stringify(deliveryInfo, null, 2)}`);
+      console.log(`[QB_SEND_DEBUG] Fault: ${hasFault ? JSON.stringify(parsedResponse.Fault, null, 2) : 'none'}`);
+      console.log(`[QB_SEND_DEBUG] Error: ${hasError ? JSON.stringify(parsedResponse.Error, null, 2) : 'none'}`);
+      console.log(`[QB_SEND_DEBUG] Warnings: ${warnings ? JSON.stringify(warnings, null, 2) : 'none'}`);
+
+      // Determine actual success
+      const success = response.ok && !hasFault && !hasError;
+      console.log(`[QB_SEND_DEBUG] Determined success: ${success}`);
+
+      return {
+        success,
+        httpStatus,
+        emailStatus,
+        qbResponse: parsedResponse,
+        diagnostics: {
+          endpoint: fullUrl,
+          requestBody: body,
+          responseHeaders,
+          rawResponse,
+          parsedResponse,
+          hasFault,
+          hasError,
+          emailStatusAfter: emailStatus,
+        },
+      };
+    } catch (error: any) {
+      console.error(`[QB_SEND_DEBUG] Exception caught: ${error.message || String(error)}`);
+      console.error(`[QB_SEND_DEBUG] Exception stack: ${error.stack}`);
+
+      return {
+        success: false,
+        httpStatus: httpStatus || 0,
+        qbResponse: parsedResponse,
+        diagnostics: {
+          endpoint: fullUrl,
+          requestBody: body,
+          responseHeaders,
+          rawResponse,
+          parsedResponse,
+          hasFault: !!parsedResponse?.Fault,
+          hasError: true,
+        },
+      };
+    }
   }
 
   /**
