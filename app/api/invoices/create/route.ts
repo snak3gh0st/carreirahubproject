@@ -122,11 +122,28 @@ export async function POST(request: NextRequest) {
       let qbInvoiceId: string | undefined;
       let invoiceNumber: string;
 
-      // Generate professional invoice number for all invoices
+      // Generate professional invoice number - use actual count of existing invoices for this month
+      // Query how many invoices this customer has in this month
+      const monthStart = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth(), 1);
+      const monthEnd = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth() + 1, 0);
+
+      const existingInvoicesThisMonth = await prisma.invoice.count({
+        where: {
+          customerId: customer.id,
+          createdAt: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+      });
+
+      // Sequence is count of existing invoices + current loop position
+      const sequence = existingInvoicesThisMonth + i;
+
       invoiceNumber = generateInvoiceNumber({
         customerName: customer.name,
         date: invoiceDueDate,
-        sequence: i,
+        sequence: sequence,
       });
 
       // Auto-approve and sync to QuickBooks immediately for all roles
