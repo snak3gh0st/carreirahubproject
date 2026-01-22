@@ -6,6 +6,7 @@ import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
+import { contractWorkflowService } from "@/lib/services/contract-workflow.service";
 
 const createInvoiceSchema = z.object({
   customerId: z.string(),
@@ -301,6 +302,92 @@ export async function POST(request: NextRequest) {
               installmentNumber: i,
               totalInstallments: invoiceCountToCreate,
               seriesId,
+            } as any,
+          },
+        });
+      }
+    }
+
+    // Send DocuSign contract for first invoice in any series (only if deal exists)
+    if (invoiceCountToCreate > 0) {
+      try {
+        // Only send contract for first invoice in series (avoid duplicates for installments)
+        const firstInvoice = invoices[0];
+
+        // Get deal data if available (optional, not required)
+        let dealData = null;
+        if (firstInvoice.dealId) {
+          dealData = await prisma.deal.findUnique({
+            where: { id: firstInvoice.dealId },
+            select: { id: true, title: true }
+          });
+        }
+
+        // Only send contract if deal exists (contract requires dealId)
+        if (dealData) {
+          await contractWorkflowService.sendContractOnApproval({
+            id: firstInvoice.id,
+            invoiceNumber: firstInvoice.invoiceNumber,
+            amount: firstInvoice.amount,
+            dueDate: firstInvoice.dueDate,
+            deal: dealData,
+            customer: {
+              id: customer.id,
+              name: customer.name,
+              email: customer.email,
+              phone: customer.phone,
+            },
+          });
+
+          console.log(`[INVOICE_CREATE] ✓ DocuSign contract sent for invoice ${firstInvoice.id}`);
+
+          // Log successful contract generation
+          await prisma.integrationLog.create({
+            data: {
+              service: "CONTRACT_WORKFLOW",
+              action: "CONTRACT_SENT_ON_CREATE",
+              status: "SUCCESS",
+              payload: {
+                invoiceId: firstInvoice.id,
+                userRole: role,
+                qbInvoiceId: firstInvoice.quickbooks_invoice_id,
+                hasDeal: true,
+                isInstallmentSeries: invoiceCountToCreate > 1,
+                installmentPosition: 1,
+                totalInstallments: invoiceCountToCreate,
+              } as any,
+            },
+          });
+        } else {
+          console.log(`[INVOICE_CREATE] ⓘ Contract not sent - no deal linked to invoice ${firstInvoice.id}`);
+
+          // Log that contract was skipped (informational)
+          await prisma.integrationLog.create({
+            data: {
+              service: "CONTRACT_WORKFLOW",
+              action: "CONTRACT_SKIPPED_NO_DEAL",
+              status: "SUCCESS",
+              payload: {
+                invoiceId: firstInvoice.id,
+                reason: "No deal associated with invoice",
+              } as any,
+            },
+          });
+        }
+      } catch (contractError: any) {
+        console.error(`[INVOICE_CREATE] ✗ DocuSign contract generation failed:`, contractError);
+
+        // Log error but don't fail invoice creation (non-blocking)
+        await prisma.integrationLog.create({
+          data: {
+            service: "CONTRACT_WORKFLOW",
+            action: "CONTRACT_SEND_FAILED",
+            status: "ERROR",
+            error: contractError.message || "Unknown error",
+            payload: {
+              invoiceId: invoices[0].id,
+              userRole: role,
+              errorType: contractError.constructor.name,
             } as any,
           },
         });
