@@ -98,7 +98,32 @@ export class InvoiceApprovalService {
       });
 
       // Sync to external systems (QuickBooks and Pipedrive)
-      await this.syncApprovedInvoice(invoiceId);
+      // Only sync immediately if dueDate is within 3 days or already past
+      const daysUntilDue = Math.ceil((invoice.dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+
+      if (daysUntilDue <= 3) {
+        // Send immediately if due soon
+        await this.syncApprovedInvoice(invoiceId);
+        console.log(`[INVOICE_APPROVAL] Invoice ${invoiceId} sent to QB immediately (due in ${daysUntilDue} days)`);
+      } else {
+        // Schedule for later (will be sent by cron job 3 days before due date)
+        console.log(`[INVOICE_APPROVAL] Invoice ${invoiceId} approved but scheduled for QB sync on ${new Date(invoice.dueDate.getTime() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString()} (3 days before due date)`);
+
+        // Log scheduling
+        await prisma.integrationLog.create({
+          data: {
+            service: "quickbooks",
+            action: "invoice_sync_scheduled",
+            status: "SUCCESS",
+            payload: {
+              invoiceId,
+              dueDate: invoice.dueDate,
+              scheduledSendDate: new Date(invoice.dueDate.getTime() - 3 * 24 * 60 * 60 * 1000),
+              daysUntilDue,
+            } as any,
+          },
+        });
+      }
 
       // Send approval confirmation notification
       if (invoice.approver) {
@@ -226,8 +251,9 @@ export class InvoiceApprovalService {
 
   /**
    * Sync approved invoice to QuickBooks and Pipedrive
+   * Public method - can be called by cron jobs
    */
-  private async syncApprovedInvoice(invoiceId: string): Promise<void> {
+  async syncApprovedInvoice(invoiceId: string): Promise<void> {
     try {
       const invoice = await prisma.invoice.findUnique({
         where: { id: invoiceId },
@@ -260,10 +286,30 @@ export class InvoiceApprovalService {
             phone: invoice.customer.phone || undefined,
           });
 
+          // Ensure QB customer has correct email before sending invoice
+          if (invoice.customer.email) {
+            const emailVerified = await quickbooksService.ensureCustomerEmail(qbCustomer.Id, invoice.customer.email);
+
+            // Log email verification result
+            await prisma.integrationLog.create({
+              data: {
+                service: "quickbooks",
+                action: emailVerified ? "customer_email_verified" : "customer_email_verification_failed",
+                status: emailVerified ? "SUCCESS" : "ERROR",
+                payload: {
+                  qbCustomerId: qbCustomer.Id,
+                  customerEmail: invoice.customer.email,
+                  emailVerified,
+                  context: "approval_flow",
+                } as any,
+              },
+            });
+          }
+
           // Prepare line items from invoice data
           const lineItems = (invoice.lineItems as any[]) || [];
           const qbLineItems = lineItems.map((item: any) => ({
-            description: item.description || `Invoice for Deal: ${invoice.deal.title}`,
+            description: item.description || (invoice.deal ? `Invoice for Deal: ${invoice.deal.title}` : `Invoice for ${invoice.customer.name}`),
             amount: Number(item.amount || invoice.amount),
             itemRef: item.serviceItemId || "1", // Use service item from invoice or default
           }));
@@ -271,7 +317,7 @@ export class InvoiceApprovalService {
           // If no line items, create default one
           if (qbLineItems.length === 0) {
             qbLineItems.push({
-              description: `Invoice for Deal: ${invoice.deal.title}`,
+              description: invoice.deal ? `Invoice for Deal: ${invoice.deal.title}` : `Invoice for ${invoice.customer.name}`,
               amount: Number(invoice.amount),
               itemRef: "1",
             });
@@ -301,13 +347,67 @@ export class InvoiceApprovalService {
             },
           });
 
-          // Send invoice via email
-          try {
-            await quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email);
-            console.log(`[INVOICE_APPROVAL] Sent QB invoice email for ${qbInvoice.Id}`);
-          } catch (emailError) {
-            console.error(`[INVOICE_APPROVAL] Failed to send QB invoice email:`, emailError);
-            // Don't fail the whole operation if email fails
+          // Send invoice via email (only if customer has email)
+          if (invoice.customer.email) {
+            try {
+              console.log(`[INVOICE_APPROVAL] Sending QB invoice ${qbInvoice.Id} to ${invoice.customer.email}...`);
+              await quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email);
+              console.log(`[INVOICE_APPROVAL] ✓ Successfully sent QB invoice email for ${qbInvoice.Id} to ${invoice.customer.email}`);
+
+              // Log email sent
+              await prisma.integrationLog.create({
+                data: {
+                  service: "quickbooks",
+                  action: "invoice_email_sent",
+                  status: "SUCCESS",
+                  payload: {
+                    invoiceId,
+                    qbInvoiceId: qbInvoice.Id,
+                    recipientEmail: invoice.customer.email,
+                    context: "approval_flow",
+                  } as any,
+                },
+              });
+            } catch (emailError) {
+              console.error(`[INVOICE_APPROVAL] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, emailError);
+
+              // Log email failure
+              await prisma.integrationLog.create({
+                data: {
+                  service: "quickbooks",
+                  action: "invoice_email_failed",
+                  status: "ERROR",
+                  error: emailError instanceof Error ? emailError.message : "Unknown error",
+                  payload: {
+                    invoiceId,
+                    qbInvoiceId: qbInvoice.Id,
+                    customerEmail: invoice.customer.email,
+                    context: "approval_flow",
+                  } as any,
+                },
+              });
+
+              // Don't fail the whole operation if email fails
+            }
+          } else {
+            // Customer has no email - skip email sending but log warning
+            console.warn(`[INVOICE_APPROVAL] ⚠️  Customer ${invoice.customer.name} has no email, skipping invoice email send`);
+
+            await prisma.integrationLog.create({
+              data: {
+                service: "quickbooks",
+                action: "invoice_email_skipped",
+                status: "SUCCESS",
+                payload: {
+                  invoiceId,
+                  qbInvoiceId: qbInvoice.Id,
+                  customerId: invoice.customer.id,
+                  customerName: invoice.customer.name,
+                  reason: "Customer has no email address",
+                  context: "approval_flow",
+                } as any,
+              },
+            });
           }
 
           // Log to IntegrationLog
@@ -344,8 +444,8 @@ export class InvoiceApprovalService {
         }
       }
 
-      // Sync to Pipedrive (add note to deal)
-      if (invoice.deal.pipedrive_deal_id) {
+      // Sync to Pipedrive (add note to deal) - only if deal exists
+      if (invoice.deal && invoice.deal.pipedrive_deal_id) {
         try {
           await pipedriveSyncService.syncInvoiceToPipedrive(invoiceId);
           console.log(`[INVOICE_APPROVAL] Synced invoice ${invoiceId} to Pipedrive`);
@@ -369,8 +469,10 @@ export class InvoiceApprovalService {
       // For now, just log
       console.log(`[INVOICE_APPROVAL] Notification: Invoice ${invoice.id} pending approval`);
       console.log(`  Customer: ${invoice.customer.name}`);
-      console.log(`  Amount: ${invoice.amount} ${invoice.deal.currency}`);
-      console.log(`  Deal: ${invoice.deal.title}`);
+      console.log(`  Amount: ${invoice.amount} ${invoice.deal?.currency || 'USD'}`);
+      if (invoice.deal) {
+        console.log(`  Deal: ${invoice.deal.title}`);
+      }
 
       // In production, this would send email to EMAIL_FINANCE_TEAM
       // Example:
@@ -394,7 +496,10 @@ export class InvoiceApprovalService {
       // For now, just log
       console.log(`[INVOICE_APPROVAL] Notification: Invoice ${invoice.id} ${decision}`);
       console.log(`  Customer: ${invoice.customer.name}`);
-      console.log(`  Amount: ${invoice.amount} ${invoice.deal.currency}`);
+      console.log(`  Amount: ${invoice.amount} ${invoice.deal?.currency || 'USD'}`);
+      if (invoice.deal) {
+        console.log(`  Deal: ${invoice.deal.title}`);
+      }
       if (decision === "rejected" && invoice.rejectedReason) {
         console.log(`  Reason: ${invoice.rejectedReason}`);
       }
