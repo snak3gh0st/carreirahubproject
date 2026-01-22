@@ -179,8 +179,8 @@ export async function POST(request: NextRequest) {
       // Send invoice via QB email (already has email set from creation)
       if (customer.email) {
         try {
-          console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} (email already set during creation)...`);
-          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id);
+          console.log(`[INVOICE_CREATE] Attempting to send QB invoice ${qbInvoice.Id} to ${customer.email}...`);
+          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
           console.log(`[INVOICE_CREATE] ✓ Successfully sent QB invoice email for ${qbInvoice.Id}`, sendResult);
 
           // Log email sent to IntegrationLog
