@@ -379,25 +379,44 @@ export class QuickbooksService {
   /**
    * Enviar Invoice por email via QuickBooks
    * Uses the QB send invoice endpoint to email the invoice to the customer
+   *
+   * QB API requires email in POST body (not query param):
+   * POST /invoice/{id}/send
+   * Body: { "Id": "xxx", "BillEmail": { "Address": "email@example.com" } }
    */
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
-    const endpoint = email
-      ? `/invoice/${invoiceId}/send?sendTo=${encodeURIComponent(email)}`
-      : `/invoice/${invoiceId}/send`;
+    const endpoint = `/invoice/${invoiceId}/send`;
 
     console.log(`[QuickBooks] Sending invoice ${invoiceId} via email to ${email || 'customer default email'}...`);
+
+    // QB API accepts email override in POST body
+    const body = email ? {
+      "SparseUpdate": false,
+      "Id": invoiceId,
+      "BillEmail": {
+        "Address": email
+      }
+    } : undefined;
+
+    if (body) {
+      console.log(`[QuickBooks] Request body:`, JSON.stringify(body, null, 2));
+    }
 
     try {
       const result = await this.request(endpoint, {
         method: "POST",
+        body: body ? JSON.stringify(body) : undefined,
       });
 
-      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`, result);
+      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
+      console.log(`[QuickBooks] Send response:`, JSON.stringify(result, null, 2));
 
       // NOTE: QuickBooks Sandbox may not actually send emails
       // Check the result to see if it indicates email was sent
       return result;
     } catch (error: any) {
+      console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
+
       // QUICKBOOKS PRODUCTION API ISSUE: send endpoint returns 500 Internal Server Error
       // This is a QB-side bug (java.lang.NullPointerException)
       // Instead of failing, generate a shareable invoice link
