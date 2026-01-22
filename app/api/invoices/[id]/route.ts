@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
@@ -17,6 +19,15 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
       include: {
@@ -32,6 +43,13 @@ export async function GET(
             },
           },
         },
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
       },
     });
 
@@ -42,6 +60,17 @@ export async function GET(
       );
     }
 
+    // Authorization: Check ownership for COMMERCIAL and SALES
+    if (userRole === "COMMERCIAL" || userRole === "SALES") {
+      if (invoice.ownerId !== userId) {
+        return NextResponse.json(
+          { error: "Forbidden: You can only view your own invoices" },
+          { status: 403 }
+        );
+      }
+    }
+
+    // ADMIN and FINANCE can view all invoices
     return NextResponse.json(invoice);
   } catch (error) {
     console.error("Error fetching invoice:", error);
@@ -61,6 +90,37 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+
+    // Check if invoice exists and user has access
+    const existingInvoice = await prisma.invoice.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!existingInvoice) {
+      return NextResponse.json(
+        { error: "Invoice not found" },
+        { status: 404 }
+      );
+    }
+
+    // Authorization: Check ownership for COMMERCIAL and SALES
+    if (userRole === "COMMERCIAL" || userRole === "SALES") {
+      if (existingInvoice.ownerId !== userId) {
+        return NextResponse.json(
+          { error: "Forbidden: You can only update your own invoices" },
+          { status: 403 }
+        );
+      }
+    }
+
     const body = await request.json();
     const data = updateInvoiceSchema.parse(body);
 

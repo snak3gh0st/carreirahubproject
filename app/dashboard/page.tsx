@@ -104,9 +104,9 @@ export default function DashboardPage() {
     return <div>Carregando...</div>;
   }
 
-  const userName = session.user?.name || "Usuário";
+  const userName = session?.user?.name || "Usuário";
   const firstName = userName.split(" ")[0]; // Get first name only
-  const userRole = (session.user as any).role;
+  const userRole = (session?.user as any)?.role;
 
   // COMMERCIAL users see simplified dashboard
   if (userRole === "COMMERCIAL") {
@@ -124,7 +124,18 @@ export default function DashboardPage() {
           </div>
 
           {/* Quick Actions for COMMERCIAL */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <Link
+              href="/dashboard/customers/new"
+              className="group relative overflow-hidden rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-purple-400 dark:hover:border-purple-500"
+            >
+              <div className="relative">
+                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">Criar Cliente</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Novo cliente no QuickBooks
+                </p>
+              </div>
+            </Link>
             <Link
               href="/dashboard/invoices/new"
               className="group relative overflow-hidden rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
@@ -137,7 +148,7 @@ export default function DashboardPage() {
               </div>
             </Link>
             <Link
-              href="/dashboard/invoices?filter=myInvoices"
+              href="/dashboard/invoices"
               className="group relative overflow-hidden rounded-lg border-2 border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-green-400 dark:hover:border-green-500"
             >
               <div className="relative">
@@ -152,13 +163,14 @@ export default function DashboardPage() {
           {/* Info card */}
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
             <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              📋 Workflow de Invoices
+              📋 Workflow Comercial
             </h3>
             <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal list-inside">
-              <li>Crie uma nova invoice selecionando cliente e serviço</li>
-              <li>Suas invoices ficam com status DRAFT (rascunho)</li>
+              <li>Crie clientes - serão sincronizados automaticamente com QuickBooks</li>
+              <li>Crie invoices para seus clientes selecionando serviço e valores</li>
+              <li>Suas invoices ficam com status DRAFT (rascunho) aguardando aprovação</li>
               <li>Finance revisa e aprova suas invoices</li>
-              <li>Após aprovação, a invoice é enviada ao cliente via QuickBooks</li>
+              <li>Após aprovação, a invoice é enviada ao cliente via email do QuickBooks</li>
             </ol>
           </div>
         </div>

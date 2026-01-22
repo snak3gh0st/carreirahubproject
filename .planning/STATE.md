@@ -259,12 +259,13 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 | 003 | Fix QB invoice email sending with POST body format | 2026-01-22 | c358469 | [003-fix-qb-email-send](.planning/quick/003-fix-qb-email-send/) |
 | 004 | Implement professional invoice numbering (CUST-YYYY-MM-001) | 2026-01-22 | 2e2fa77 | [004-custom-invoice-numbers](.planning/quick/004-custom-invoice-numbers/) |
 | 005 | Change invoice numbering to initials and enable auto-send for all roles | 2026-01-22 | 721030f | [005-initials-and-auto-send](.planning/quick/005-initials-and-auto-send/) |
+| 006 | Add comprehensive QB /send endpoint debugging | 2026-01-22 | d0f488a | [006-debug-qb-send](.planning/quick/006-debug-qb-send/) |
 
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed quick task 005 - Initials and auto-send
-Resume file: .planning/quick/005-initials-and-auto-send/005-SUMMARY.md
+Stopped at: Completed quick task 006 - QB send debugging
+Resume file: .planning/quick/006-debug-qb-send/006-SUMMARY.md
 Next action: Phase 2 (DocuSign Integration) ready for planning. Run /gsd:plan-phase 2 to continue.
 
 ## Sprint 1 Success Criteria

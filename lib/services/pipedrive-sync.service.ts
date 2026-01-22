@@ -171,7 +171,7 @@ export class PipedriveSyncService {
         throw new Error(`Invoice ${invoiceId} not found`);
       }
 
-      if (!invoice.deal.pipedrive_deal_id) {
+      if (!invoice.deal || !invoice.deal.pipedrive_deal_id) {
         console.warn(`[PIPEDRIVE_SYNC] Invoice ${invoiceId} has no associated Pipedrive deal, cannot sync`);
         return;
       }
@@ -180,7 +180,7 @@ export class PipedriveSyncService {
       const noteContent = `
 📄 Invoice #${invoice.invoiceNumber || "Pending"}
 
-Amount: ${invoice.amount} ${invoice.deal.currency}
+Amount: ${invoice.amount} ${invoice.deal.currency || 'USD'}
 Due Date: ${invoice.dueDate.toLocaleDateString()}
 Status: ${invoice.status}
 Approval Status: ${invoice.approvalStatus}

@@ -61,11 +61,26 @@ export default async function InvoiceDetailPage({
           email: true,
         },
       },
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
     },
   });
 
   if (!invoice) {
     notFound();
+  }
+
+  // Authorization: Check ownership for COMMERCIAL and SALES
+  const userId = (session.user as any).id;
+  if (userRole === "COMMERCIAL" || userRole === "SALES") {
+    if (invoice.ownerId !== userId) {
+      redirect("/dashboard");
+    }
   }
 
   const isOverdue =

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
@@ -11,6 +13,15 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id;
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") as InvoiceStatus | null;
     const customerId = searchParams.get("customerId");
@@ -22,6 +33,11 @@ export async function GET(request: NextRequest) {
     if (status) where.status = status;
     if (customerId) where.customerId = customerId;
     if (dealId) where.dealId = dealId;
+
+    // Authorization: Filter by owner for COMMERCIAL and SALES
+    if (userRole === "COMMERCIAL" || userRole === "SALES") {
+      where.ownerId = userId;
+    }
 
     const invoices = await prisma.invoice.findMany({
       where,

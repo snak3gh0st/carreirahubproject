@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { identityMapper } from "@/lib/services/identity-mapper";
 import { createUserFallbackResponse, categorizeByStatusCode } from "@/lib/utils/error-fallback";
+import { quickbooksService } from "@/lib/services/quickbooks.service";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -67,10 +70,23 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/customers
- * Criar novo customer (usando Identity Mapper)
+ * Criar novo customer (usando Identity Mapper e sincronizando com QuickBooks)
  */
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check authorization - COMMERCIAL, FINANCE, ADMIN, SALES can create customers
+    const userRole = (session.user as any).role;
+    const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL", "SALES"];
+    if (!allowedRoles.includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const data = createCustomerSchema.parse(body);
 
@@ -88,7 +104,71 @@ export async function POST(request: NextRequest) {
       metadata: data.metadata,
     });
 
-    return NextResponse.json(customer, { status: 201 });
+    // Sync to QuickBooks if not already synced
+    let qbCustomer = null;
+    if (!customer.quickbooks_id) {
+      try {
+        console.log(`[CUSTOMER_CREATE] Syncing customer ${customer.id} to QuickBooks...`);
+        await quickbooksService.initialize();
+
+        qbCustomer = await quickbooksService.getOrCreateCustomer({
+          email: customer.email,
+          name: customer.name,
+          phone: customer.phone || undefined,
+        });
+
+        // Update customer with QB ID
+        await prisma.customer.update({
+          where: { id: customer.id },
+          data: { quickbooks_id: String(qbCustomer.Id) },
+        });
+
+        // Log success
+        await prisma.integrationLog.create({
+          data: {
+            service: "quickbooks",
+            action: "customer_created",
+            status: "SUCCESS",
+            payload: {
+              customerId: customer.id,
+              qbCustomerId: qbCustomer.Id,
+            } as any,
+          },
+        });
+
+        console.log(`[CUSTOMER_CREATE] ✓ Customer synced to QuickBooks: ${qbCustomer.Id}`);
+      } catch (qbError: any) {
+        console.error(`[CUSTOMER_CREATE] ✗ Failed to sync to QuickBooks:`, qbError);
+
+        // Log error
+        await prisma.integrationLog.create({
+          data: {
+            service: "quickbooks",
+            action: "customer_creation_failed",
+            status: "ERROR",
+            error: qbError.message || "Unknown error",
+            payload: {
+              customerId: customer.id,
+              customerEmail: customer.email,
+            } as any,
+          },
+        });
+
+        // Don't fail customer creation if QB sync fails
+        // Customer will be synced later when creating invoice
+      }
+    }
+
+    return NextResponse.json({
+      customer,
+      quickbooksSync: qbCustomer ? {
+        synced: true,
+        qbId: qbCustomer.Id,
+      } : {
+        synced: false,
+        message: "Customer created locally. Will sync to QuickBooks when creating invoice.",
+      },
+    }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

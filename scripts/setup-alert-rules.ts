@@ -17,6 +17,14 @@ const DEFAULT_RULES = [
     autoResolveCondition: "invoice.status = 'PAID'",
   },
   {
+    name: "Invoice Pending Approval",
+    description: "Alert when invoice is pending approval for more than 48 hours",
+    severity: AlertSeverity.MEDIUM,
+    condition: "invoice.approvalStatus = 'PENDING' AND invoice.hoursPending > 48",
+    checkInterval: "DAILY",
+    autoResolveCondition: "invoice.approvalStatus IN ('APPROVED', 'REJECTED')",
+  },
+  {
     name: "High-Value Deals at Risk",
     description: "Alert when deals >$10k haven't been updated in 30 days",
     severity: AlertSeverity.MEDIUM,

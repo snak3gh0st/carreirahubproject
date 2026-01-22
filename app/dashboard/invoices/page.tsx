@@ -42,7 +42,7 @@ export default async function InvoicesPage({
   // Verificar permissão
   const userRole = (session.user as any).role;
   const userId = (session.user as any).id;
-  const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL"];
+  const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL", "SALES"];
 
   if (!allowedRoles.includes(userRole)) {
     redirect("/dashboard");
@@ -61,8 +61,8 @@ export default async function InvoicesPage({
   // Build filter based on params
   const whereClause: any = {};
 
-  // COMMERCIAL users can only see their own invoices
-  if (userRole === "COMMERCIAL") {
+  // COMMERCIAL and SALES users can only see their own invoices
+  if (userRole === "COMMERCIAL" || userRole === "SALES") {
     whereClause.ownerId = userId;
   }
 
@@ -180,9 +180,12 @@ export default async function InvoicesPage({
     {} as Record<string, number>
   );
 
-  // QuickBooks synced count
+  // QuickBooks synced count (respects user filter)
   const qbInvoices = await prisma.invoice.count({
-    where: { quickbooks_invoice_id: { not: null } },
+    where: {
+      ...whereClause,
+      quickbooks_invoice_id: { not: null }
+    },
   });
 
   // Calculate totals

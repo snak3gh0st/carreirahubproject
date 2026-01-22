@@ -324,7 +324,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                     <option value="">Selecione um serviço ({serviceItems.length} disponíveis)</option>
                     {serviceItems.map((item) => (
                       <option key={item.id} value={item.id}>
-                        {item.name} {item.unitPrice ? `- $${item.unitPrice.toLocaleString()}` : ""} {item.type ? `[${item.type}]` : ""}
+                        {item.name}
                       </option>
                     ))}
                   </select>

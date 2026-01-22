@@ -23,10 +23,14 @@ export function AlertsWidget() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [metadata, setMetadata] = useState<any>(null);
   const { addToast } = useToast();
 
   useEffect(() => {
     fetchAlerts();
+    // Refresh alerts every 5 minutes
+    const interval = setInterval(fetchAlerts, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchAlerts = async () => {
@@ -36,6 +40,7 @@ export function AlertsWidget() {
       if (!response.ok) throw new Error("Failed to fetch alerts");
       const data = await response.json();
       setAlerts(data.alerts || []);
+      setMetadata(data.metadata || null);
     } catch (err) {
       console.error("Failed to fetch alerts:", err);
     }
@@ -131,6 +136,35 @@ export function AlertsWidget() {
     }
   };
 
+  const getAlertLink = (alert: Alert): string | null => {
+    if (alert.invoiceId) {
+      return `/dashboard/invoices/${alert.invoiceId}`;
+    }
+    if (alert.dealId) {
+      return `/dashboard/deals/${alert.dealId}`;
+    }
+    if (alert.customerId) {
+      return `/dashboard/customers/${alert.customerId}`;
+    }
+    return null;
+  };
+
+  const getTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffDays > 0) {
+      return `${diffDays}d ago`;
+    }
+    if (diffHours > 0) {
+      return `${diffHours}h ago`;
+    }
+    return "Just now";
+  };
+
   const activeAlerts = alerts.filter(
     (a) => a.status === "ACTIVE" || a.status === "ACKNOWLEDGED"
   );
@@ -191,65 +225,93 @@ export function AlertsWidget() {
               </div>
             ) : (
               <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {activeAlerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={`p-4 border-l-4 ${getSeverityColor(alert.severity)}`}
-                  >
-                    <div className="flex items-start justify-between gap-3 mb-2">
-                      <div className="flex items-center gap-2 flex-1">
-                        <div
-                          className={`w-2 h-2 rounded-full flex-shrink-0 ${getSeverityBadgeColor(alert.severity)}`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-                            {alert.title}
-                          </h4>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                            {alert.description}
-                          </p>
+                {activeAlerts.map((alert) => {
+                  const link = getAlertLink(alert);
+                  const timeAgo = getTimeAgo(alert.triggeredAt);
+
+                  return (
+                    <div
+                      key={alert.id}
+                      className={`p-4 border-l-4 ${getSeverityColor(alert.severity)}`}
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex items-center gap-2 flex-1">
+                          <div
+                            className={`w-2 h-2 rounded-full flex-shrink-0 ${getSeverityBadgeColor(alert.severity)}`}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                                {alert.title}
+                              </h4>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                                {timeAgo}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                              {alert.description}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2 mt-3">
-                      {alert.status === "ACTIVE" && (
+                      <div className="flex items-center gap-2 mt-3 flex-wrap">
+                        {link && (
+                          <a
+                            href={link}
+                            className="text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                            onClick={() => setIsOpen(false)}
+                          >
+                            View Details
+                          </a>
+                        )}
+                        {alert.status === "ACTIVE" && (
+                          <button
+                            onClick={() => handleAcknowledge(alert.id)}
+                            className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          >
+                            Acknowledge
+                          </button>
+                        )}
+                        {alert.status === "ACKNOWLEDGED" && (
+                          <button
+                            onClick={() => handleResolve(alert.id)}
+                            className="text-xs px-2 py-1 rounded bg-green-200 dark:bg-green-900/30 text-green-700 dark:text-green-200 hover:bg-green-300 dark:hover:bg-green-800/50"
+                          >
+                            Resolve
+                          </button>
+                        )}
                         <button
-                          onClick={() => handleAcknowledge(alert.id)}
+                          onClick={() => handleDismiss(alert.id)}
                           className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
                         >
-                          Acknowledge
+                          Dismiss
                         </button>
-                      )}
-                      {alert.status === "ACKNOWLEDGED" && (
-                        <button
-                          onClick={() => handleResolve(alert.id)}
-                          className="text-xs px-2 py-1 rounded bg-green-200 dark:bg-green-900/30 text-green-700 dark:text-green-200 hover:bg-green-300 dark:hover:bg-green-800/50"
-                        >
-                          Resolve
-                        </button>
-                      )}
-                      <button
-                        onClick={() => handleDismiss(alert.id)}
-                        className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
-                      >
-                        Dismiss
-                      </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 dark:border-gray-700 p-3 text-center">
-            <button
-              onClick={fetchAlerts}
-              className="text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            >
-              Refresh
-            </button>
+          <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {metadata && (
+                  <span>
+                    {metadata.total} alerts • {metadata.timePeriod}
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={fetchAlerts}
+                className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
         </div>
       )}

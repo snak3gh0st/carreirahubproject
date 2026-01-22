@@ -333,6 +333,12 @@ export class QuickbooksService {
       PrimaryEmailAddr: {
         Address: data.email,
       },
+      // QB requires BillAddr for email sending to work properly
+      BillAddr: {
+        City: "USA",
+        Country: "USA",
+        Line1: "Billing Address",
+      },
       ...(data.phone && {
         PrimaryPhone: {
           FreeFormNumber: data.phone,
@@ -628,25 +634,13 @@ export class QuickbooksService {
   async sendInvoice(invoiceId: string, email?: string): Promise<any> {
     const endpoint = `/invoice/${invoiceId}/send`;
 
-    console.log(`[QuickBooks] Sending invoice ${invoiceId} via email to ${email || 'customer default email'}...`);
-
-    // QB API accepts email override in POST body
-    const body = email ? {
-      "SparseUpdate": false,
-      "Id": invoiceId,
-      "BillEmail": {
-        "Address": email
-      }
-    } : undefined;
-
-    if (body) {
-      console.log(`[QuickBooks] Request body:`, JSON.stringify(body, null, 2));
-    }
+    console.log(`[QuickBooks] Sending invoice ${invoiceId} to QB customer email...`);
 
     try {
+      // QB /send endpoint sends to the customer's configured email
+      // Just make a POST request with no body - QB uses the invoice's customer email
       const result = await this.request(endpoint, {
         method: "POST",
-        body: body ? JSON.stringify(body) : undefined,
       });
 
       console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);

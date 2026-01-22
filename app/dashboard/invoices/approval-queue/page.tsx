@@ -12,7 +12,14 @@ export const dynamic = 'force-dynamic';
  *
  * Displays all invoices pending approval for Finance team
  */
-export default async function ApprovalQueuePage() {
+export default async function ApprovalQueuePage({
+  searchParams,
+}: {
+  searchParams: {
+    sortBy?: string;
+    sortOrder?: string;
+  };
+}) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -25,14 +32,28 @@ export default async function ApprovalQueuePage() {
     redirect("/dashboard");
   }
 
+  // Parse sort parameters
+  const sortBy = searchParams.sortBy || "createdAt";
+  const sortOrder = (searchParams.sortOrder || "asc") as "asc" | "desc";
+
+  // Valid sort fields
+  const validSortFields = ["createdAt", "amount", "dueDate", "customer"];
+  const actualSortBy = validSortFields.includes(sortBy) ? sortBy : "createdAt";
+
+  // Build orderBy clause
+  let orderByClause: any = {};
+  if (actualSortBy === "customer") {
+    orderByClause = { customer: { name: sortOrder } };
+  } else {
+    orderByClause = { [actualSortBy]: sortOrder };
+  }
+
   // Fetch pending invoices
   const pendingInvoices = await prisma.invoice.findMany({
     where: {
       approvalStatus: "PENDING",
     },
-    orderBy: {
-      createdAt: "asc", // Oldest first (FIFO)
-    },
+    orderBy: orderByClause,
     include: {
       customer: {
         select: {
@@ -136,12 +157,66 @@ export default async function ApprovalQueuePage() {
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">
-              Pending Invoices ({pendingInvoices.length})
-            </h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Oldest invoices shown first
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Pending Invoices ({pendingInvoices.length})
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {actualSortBy === "createdAt" && sortOrder === "asc" && "Oldest invoices shown first"}
+                  {actualSortBy === "createdAt" && sortOrder === "desc" && "Newest invoices shown first"}
+                  {actualSortBy === "amount" && sortOrder === "desc" && "Highest amounts shown first"}
+                  {actualSortBy === "amount" && sortOrder === "asc" && "Lowest amounts shown first"}
+                  {actualSortBy === "customer" && "Sorted by customer name"}
+                  {actualSortBy === "dueDate" && sortOrder === "asc" && "Soonest due dates shown first"}
+                  {actualSortBy === "dueDate" && sortOrder === "desc" && "Latest due dates shown first"}
+                </p>
+              </div>
+
+              {/* Sort Controls */}
+              <div className="flex gap-2">
+                <Link
+                  href="/dashboard/invoices/approval-queue?sortBy=createdAt&sortOrder=desc"
+                  className={`px-3 py-2 text-sm rounded-md transition ${
+                    actualSortBy === "createdAt" && sortOrder === "desc"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Mais Recentes
+                </Link>
+                <Link
+                  href="/dashboard/invoices/approval-queue?sortBy=createdAt&sortOrder=asc"
+                  className={`px-3 py-2 text-sm rounded-md transition ${
+                    actualSortBy === "createdAt" && sortOrder === "asc"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Mais Antigas
+                </Link>
+                <Link
+                  href="/dashboard/invoices/approval-queue?sortBy=amount&sortOrder=desc"
+                  className={`px-3 py-2 text-sm rounded-md transition ${
+                    actualSortBy === "amount" && sortOrder === "desc"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Maior Valor
+                </Link>
+                <Link
+                  href="/dashboard/invoices/approval-queue?sortBy=dueDate&sortOrder=asc"
+                  className={`px-3 py-2 text-sm rounded-md transition ${
+                    actualSortBy === "dueDate" && sortOrder === "asc"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Vencimento Próximo
+                </Link>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">

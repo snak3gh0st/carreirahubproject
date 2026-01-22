@@ -72,6 +72,18 @@ const navigationSections: NavSection[] = [
         icon: Briefcase,
         roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
       },
+      {
+        href: "/dashboard/invoices/new",
+        label: "Create Invoice",
+        icon: PlusCircle,
+        roles: ["ADMIN", "SALES"],
+      },
+      {
+        href: "/dashboard/invoices",
+        label: "My Invoices",
+        icon: FileText,
+        roles: ["ADMIN", "SALES"],
+      },
     ],
   },
   {
@@ -121,13 +133,19 @@ const navigationSections: NavSection[] = [
     roles: ["ADMIN", "COMMERCIAL"],
     items: [
       {
+        href: "/dashboard/customers/new",
+        label: "Criar Cliente",
+        icon: Users,
+        roles: ["ADMIN", "COMMERCIAL"],
+      },
+      {
         href: "/dashboard/invoices/new",
         label: "Create Invoice",
         icon: PlusCircle,
         roles: ["ADMIN", "COMMERCIAL"],
       },
       {
-        href: "/dashboard/invoices?filter=myInvoices",
+        href: "/dashboard/invoices",
         label: "My Invoices",
         icon: FileText,
         roles: ["ADMIN", "COMMERCIAL"],
