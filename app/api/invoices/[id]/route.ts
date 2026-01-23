@@ -193,48 +193,48 @@ export async function DELETE(
       );
     }
 
-    let deletedFromQuickBooks = false;
+    let voidedInQuickBooks = false;
     let quickbooksError: string | null = null;
 
-    // Delete from QuickBooks if synced
+    // Void in QuickBooks if synced
     if (invoice.quickbooks_invoice_id) {
       try {
-        console.log(`[DELETE Invoice] Attempting to delete invoice ${invoice.quickbooks_invoice_id} from QuickBooks...`);
+        console.log(`[DELETE Invoice] Attempting to void invoice ${invoice.quickbooks_invoice_id} in QuickBooks...`);
         
         // Import and initialize QuickBooks service
         const { quickbooksService } = await import("@/lib/services/quickbooks.service");
         await quickbooksService.initialize();
 
-        // Delete from QuickBooks
-        await quickbooksService.deleteInvoice(invoice.quickbooks_invoice_id);
-        deletedFromQuickBooks = true;
+        // Void in QuickBooks
+        await quickbooksService.voidInvoice(invoice.quickbooks_invoice_id);
+        voidedInQuickBooks = true;
 
-        // Log successful QB deletion
+        // Log successful QB void
         await prisma.integrationLog.create({
           data: {
             service: "quickbooks",
-            action: "invoice_deleted",
+            action: "invoice_voided",
             status: "SUCCESS",
             payload: {
               invoiceNumber: invoice.invoiceNumber,
               amount: Number(invoice.amount),
               quickbooks_invoice_id: invoice.quickbooks_invoice_id,
               customerName: invoice.customer.name,
-              deletedBy: userEmail,
+              voidedBy: userEmail,
             },
           },
         });
 
-        console.log(`[DELETE Invoice] ✓ Invoice ${invoice.quickbooks_invoice_id} deleted from QuickBooks`);
+        console.log(`[DELETE Invoice] ✓ Invoice ${invoice.quickbooks_invoice_id} voided in QuickBooks`);
       } catch (qbError: any) {
         // Log QB error but continue with local delete
         quickbooksError = qbError.message || String(qbError);
-        console.error(`[DELETE Invoice] ✗ Failed to delete from QuickBooks:`, quickbooksError);
+        console.error(`[DELETE Invoice] ✗ Failed to void in QuickBooks:`, quickbooksError);
 
         await prisma.integrationLog.create({
           data: {
             service: "quickbooks",
-            action: "invoice_delete_failed",
+            action: "invoice_void_failed",
             status: "ERROR",
             error: quickbooksError,
             payload: {
@@ -242,7 +242,7 @@ export async function DELETE(
               amount: Number(invoice.amount),
               quickbooks_invoice_id: invoice.quickbooks_invoice_id,
               customerName: invoice.customer.name,
-              deletedBy: userEmail,
+              voidedBy: userEmail,
             },
           },
         });
@@ -259,9 +259,12 @@ export async function DELETE(
     // Return success response
     return NextResponse.json({
       success: true,
-      deletedFromQuickBooks,
+      voidedInQuickBooks,
       quickbooksError,
       invoice: deletedInvoice,
+      message: voidedInQuickBooks 
+        ? "Invoice voided in QuickBooks and deleted locally" 
+        : "Invoice deleted locally",
     });
   } catch (error: any) {
     console.error("Error deleting invoice:", error);
