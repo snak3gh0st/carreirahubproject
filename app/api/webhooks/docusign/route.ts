@@ -143,6 +143,60 @@ export async function POST(request: NextRequest) {
         // Handle signed contract
         await contractWorkflowService.handleContractSigned(contract.id);
 
+        // Download and store signed document in S3
+        try {
+          const { documentStorageService } = await import('@/lib/services/document-storage.service');
+          const { docusignService } = await import('@/lib/services/docusign.service');
+
+          if (documentStorageService.isConfigured()) {
+            console.log(`[DOCUSIGN_WEBHOOK] Downloading signed document for envelope ${envelopeId}`);
+
+            // Download combined document (all docs + certificate) from DocuSign
+            const pdfBuffer = await docusignService.downloadDocument(envelopeId, 'combined');
+
+            // Upload to S3
+            const s3Key = await documentStorageService.uploadSignedContract(
+              envelopeId,
+              pdfBuffer,
+              {
+                contractId: contract.id,
+                customerId: contract.customerId,
+                invoiceId: contract.invoiceId || undefined,
+              }
+            );
+
+            // Generate presigned URL (valid for 7 days)
+            const presignedUrl = await documentStorageService.getPresignedUrl(s3Key);
+            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+
+            // Update contract with S3 info
+            await prisma.contract.update({
+              where: { id: contract.id },
+              data: {
+                signedS3Key: s3Key,
+                signedS3Url: presignedUrl,
+                signedS3UrlExpiresAt: expiresAt,
+              },
+            });
+
+            console.log(`[DOCUSIGN_WEBHOOK] Signed document stored in S3: ${s3Key}`);
+          } else {
+            console.log(`[DOCUSIGN_WEBHOOK] S3 not configured, skipping document storage`);
+          }
+        } catch (storageError) {
+          console.error(`[DOCUSIGN_WEBHOOK] Failed to store signed document:`, storageError);
+          // Log error but don't fail the webhook - contract is still signed
+          await prisma.integrationLog.create({
+            data: {
+              service: 'DOCUMENT_STORAGE',
+              action: 'S3_UPLOAD_FAILED',
+              status: 'ERROR',
+              error: storageError instanceof Error ? storageError.message : 'Unknown error',
+              payload: { contractId: contract.id, envelopeId } as any,
+            },
+          });
+        }
+
         // Trigger payment workflow
         if (contract.invoice) {
           try {
