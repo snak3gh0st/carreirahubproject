@@ -89,7 +89,41 @@ export async function POST(request: NextRequest) {
       invoiceCountToCreate = installmentCount;
     }
 
-    // Create multiple invoices (one per installment)
+    // ============================================
+    // PHASE 1: PRE-GENERATE ALL INVOICE METADATA
+    // ============================================
+    // Query how many invoices exist for this customer this month (run ONCE)
+    const firstDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+    const monthStart = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth(), 1);
+    const monthEnd = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth() + 1, 0);
+
+    const existingInvoicesThisMonth = await prisma.invoice.count({
+      where: {
+        customerId: customer.id,
+        createdAt: {
+          gte: monthStart,
+          lte: monthEnd,
+        },
+      },
+    });
+
+    // Generate metadata for all invoices upfront to prevent duplicate DocNumbers
+    interface InvoiceMetadata {
+      number: string;
+      dueDate: Date;
+      amount: number;
+      description: string;
+      lineItems: Array<{
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        amount: number;
+        serviceItemId: string;
+      }>;
+    }
+
+    const invoiceMetadata: InvoiceMetadata[] = [];
+
     for (let i = 1; i <= invoiceCountToCreate; i++) {
       let invoiceAmount: number;
       let invoiceDescription: string;
@@ -139,32 +173,41 @@ export async function POST(request: NextRequest) {
               },
             ];
 
-      let qbInvoiceId: string | undefined;
-      let invoiceNumber: string;
-
-      // Generate professional invoice number - use actual count of existing invoices for this month
-      // Query how many invoices this customer has in this month
-      const monthStart = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth(), 1);
-      const monthEnd = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth() + 1, 0);
-
-      const existingInvoicesThisMonth = await prisma.invoice.count({
-        where: {
-          customerId: customer.id,
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-      });
-
-      // Sequence is count of existing invoices + current loop position
+      // Generate professional invoice number with sequential numbering
       const sequence = existingInvoicesThisMonth + i;
-
-      invoiceNumber = generateInvoiceNumber({
+      const invoiceNumber = generateInvoiceNumber({
         customerName: customer.name,
         date: invoiceDueDate,
         sequence: sequence,
       });
+
+      // Store metadata for this invoice
+      invoiceMetadata.push({
+        number: invoiceNumber,
+        dueDate: invoiceDueDate,
+        amount: invoiceAmount,
+        description: invoiceDescription,
+        lineItems: lineItems,
+      });
+    }
+
+    console.log(`[INVOICE_CREATE] Pre-generated ${invoiceMetadata.length} invoice numbers:`, 
+      invoiceMetadata.map(m => m.number));
+
+    // ============================================
+    // PHASE 2: CREATE INVOICES USING PRE-GENERATED METADATA
+    // ============================================
+    // Create multiple invoices (one per installment)
+    for (let i = 1; i <= invoiceCountToCreate; i++) {
+      // Use pre-generated metadata
+      const metadata = invoiceMetadata[i - 1];
+      const invoiceNumber = metadata.number;
+      const invoiceDueDate = metadata.dueDate;
+      const invoiceAmount = metadata.amount;
+      const invoiceDescription = metadata.description;
+      const lineItems = metadata.lineItems;
+
+      let qbInvoiceId: string | undefined;
 
       // Auto-approve and sync to QuickBooks immediately for all roles
       await quickbooksService.initialize();
