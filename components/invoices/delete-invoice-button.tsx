@@ -27,7 +27,7 @@ export function DeleteInvoiceButton({
 
   const handleDelete = async () => {
     const confirmMessage = hasQuickbooksId
-      ? `Are you sure you want to delete invoice ${invoiceNumber}?\n\nThis will remove it from both QuickBooks and the local database.\n\nThis action cannot be undone.`
+      ? `Void invoice ${invoiceNumber}?\n\nThis will mark it as voided in QuickBooks (setting balance to $0) and remove it from the system.\n\nVoiding sets the invoice balance to $0 and marks it as voided. This operation cannot be undone.`
       : `Are you sure you want to delete invoice ${invoiceNumber}?\n\nThis will remove it from the local database.\n\nThis action cannot be undone.`;
 
     if (!confirm(confirmMessage)) {
@@ -43,7 +43,7 @@ export function DeleteInvoiceButton({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to delete invoice");
+        throw new Error(error.error || "Failed to void invoice");
       }
 
       const result = await response.json();
@@ -51,10 +51,10 @@ export function DeleteInvoiceButton({
       // Show appropriate success message
       if (result.quickbooksError) {
         alert(
-          `Invoice deleted locally, but QuickBooks deletion failed:\n${result.quickbooksError}\n\nCheck Integration Logs for details.`
+          `Invoice deleted locally, but QuickBooks void operation failed:\n${result.quickbooksError}\n\nCheck Integration Logs for details.`
         );
-      } else if (result.deletedFromQuickBooks) {
-        alert(`Invoice ${invoiceNumber} deleted from QuickBooks and local database.`);
+      } else if (result.voidedInQuickBooks) {
+        alert(`Invoice ${invoiceNumber} voided successfully in QuickBooks and removed from local database.`);
       } else {
         alert(`Invoice ${invoiceNumber} deleted successfully.`);
       }
@@ -62,7 +62,7 @@ export function DeleteInvoiceButton({
       // Redirect to invoice list instead of just refreshing
       router.push('/dashboard/invoices');
     } catch (error: any) {
-      alert(`Failed to delete invoice: ${error.message || "Unknown error"}`);
+      alert(`Failed to void invoice: ${error.message || "Unknown error"}`);
       setIsDeleting(false);
     }
   };
@@ -72,10 +72,10 @@ export function DeleteInvoiceButton({
       onClick={handleDelete}
       disabled={isDeleting}
       className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed transition-colors"
-      title="Delete invoice"
+      title={hasQuickbooksId ? "Void invoice in QuickBooks" : "Delete invoice"}
     >
       <Trash2 className="w-4 h-4" />
-      {isDeleting ? 'Deleting...' : 'Delete'}
+      {isDeleting ? (hasQuickbooksId ? 'Voiding...' : 'Deleting...') : (hasQuickbooksId ? 'Void Invoice' : 'Delete')}
     </button>
   );
 }
