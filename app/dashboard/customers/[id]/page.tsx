@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
+import { DeleteInvoiceButtonCustomer } from "@/components/customers/delete-invoice-button-customer";
 
 /**
  * Customer Detail Page
@@ -20,6 +21,9 @@ export default async function CustomerDetailPage({
   if (!session) {
     redirect("/auth/signin");
   }
+
+  // Get user role for delete button visibility
+  const userRole = (session.user as any).role;
 
   // Fetch customer with all invoices
   const customer = await prisma.customer.findUnique({
@@ -167,13 +171,13 @@ export default async function CustomerDetailPage({
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Customers
+          Voltar para Clientes
         </Link>
       </div>
 
       {/* Customer Header */}
       <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h1 className="text-3xl font-bold mb-2">{customer.name}</h1>
             <div className="space-y-1 text-gray-600">
@@ -225,6 +229,14 @@ export default async function CustomerDetailPage({
                 Pipedrive
               </span>
             )}
+          </div>
+          <div>
+            <Link
+              href={`/dashboard/invoices/new?customerId=${customer.id}`}
+              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+            >
+              Criar invoice para este cliente
+            </Link>
           </div>
         </div>
       </div>
@@ -476,12 +488,20 @@ export default async function CustomerDetailPage({
                           : "-"}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          href={`/dashboard/invoices/${invoice.id}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          View Details
-                        </Link>
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/dashboard/invoices/${invoice.id}`}
+                            className="text-blue-600 hover:underline"
+                          >
+                            View Details
+                          </Link>
+                          <DeleteInvoiceButtonCustomer
+                            invoiceId={invoice.id}
+                            invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                            hasQuickbooksId={!!invoice.quickbooks_invoice_id}
+                            userRole={userRole}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
