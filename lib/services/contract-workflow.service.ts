@@ -54,8 +54,8 @@ export class ContractWorkflowService {
 
       console.log(`[CONTRACT_WORKFLOW] Contract record created: ${contract.id}`);
 
-      // Generate and send contract via DocuSign
-      const envelopeId = await docusignService.createEnvelopeFromInvoice(
+      // Generate and send contract via DocuSign (using template if configured)
+      const envelopeId = await docusignService.createEnvelopeFromTemplate(
         {
           id: invoice.id,
           invoiceNumber: invoice.invoiceNumber,
