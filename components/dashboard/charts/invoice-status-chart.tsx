@@ -49,14 +49,14 @@ export function InvoiceStatusChart({ data }: InvoiceStatusChartProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white dark:bg-slate-800 p-3 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
-          <p className="font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white">
+          <p className="font-semibold text-gray-900">
             {data.name}
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600">
             Count: {data.value}
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600">
             Value: ${data.totalValue.toLocaleString()}
           </p>
         </div>
@@ -68,7 +68,7 @@ export function InvoiceStatusChart({ data }: InvoiceStatusChartProps) {
   // If no data, show empty state
   if (!data || data.length === 0) {
     return (
-      <div className="h-[400px] flex items-center justify-center text-gray-500 dark:text-gray-400">
+      <div className="h-[400px] flex items-center justify-center text-gray-500">
         No invoice data available
       </div>
     );

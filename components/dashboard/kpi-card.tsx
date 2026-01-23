@@ -25,27 +25,27 @@ export function KpiCard({
   subtitle,
   trend,
   icon,
-  valueColor = "text-gray-900 dark:text-white",
+  valueColor = "text-gray-900",
   isLoading = false,
 }: KpiCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700 animate-pulse">
+      <div className="bg-white">
         <div className="flex items-center justify-between mb-2">
-          <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-24"></div>
-          <div className="h-5 w-5 bg-gray-300 dark:bg-gray-700 rounded"></div>
+          <div className="h-4 bg-gray-300"></div>
+          <div className="h-5 w-5 bg-gray-300"></div>
         </div>
-        <div className="h-8 bg-gray-300 dark:bg-gray-700 rounded w-32 mb-2"></div>
-        <div className="h-3 bg-gray-300 dark:bg-gray-700 rounded w-20"></div>
+        <div className="h-8 bg-gray-300"></div>
+        <div className="h-3 bg-gray-300"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg shadow p-6 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white">
       {/* Header with title and icon */}
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+        <h3 className="text-sm font-medium text-gray-600">
           {title}
         </h3>
         {icon && <div>{icon}</div>}
@@ -72,7 +72,7 @@ export function KpiCard({
 
       {/* Subtitle */}
       {subtitle && (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-xs text-gray-500">
           {subtitle}
         </p>
       )}

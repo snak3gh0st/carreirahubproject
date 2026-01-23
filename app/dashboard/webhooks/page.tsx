@@ -157,10 +157,10 @@ export default function WebhookMonitoringPage() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900">
             Webhook Monitoring
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
+          <p className="text-gray-600">
             Real-time webhook delivery and health metrics
           </p>
         </div>
@@ -211,7 +211,7 @@ export default function WebhookMonitoringPage() {
 
       {/* Per-Service Health Cards */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900">
           Service Health (Last 24 Hours)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

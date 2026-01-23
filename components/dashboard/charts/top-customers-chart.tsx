@@ -53,14 +53,14 @@ export function TopCustomersChart({ data }: TopCustomersChartProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white dark:bg-slate-800 p-3 border border-gray-200 dark:border-gray-700 rounded shadow-lg">
-          <p className="font-semibold text-gray-900 dark:text-white">
+        <div className="bg-white">
+          <p className="font-semibold text-gray-900">
             {data.fullName}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+          <p className="text-xs text-gray-500">
             {data.email}
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600">
             Revenue: ${data.revenue.toLocaleString()}
           </p>
         </div>
@@ -72,7 +72,7 @@ export function TopCustomersChart({ data }: TopCustomersChartProps) {
   // If no data, show empty state
   if (!data || data.length === 0) {
     return (
-      <div className="h-[400px] flex items-center justify-center text-gray-500 dark:text-gray-400">
+      <div className="h-[400px] flex items-center justify-center text-gray-500">
         No customer data available
       </div>
     );
@@ -89,17 +89,17 @@ export function TopCustomersChart({ data }: TopCustomersChartProps) {
           bottom: 5,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+        <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200" />
         <XAxis
           dataKey="name"
-          className="text-xs text-gray-600 dark:text-gray-400"
+          className="text-xs text-gray-600"
           angle={-45}
           textAnchor="end"
           height={100}
         />
         <YAxis
           tickFormatter={formatYAxis}
-          className="text-xs text-gray-600 dark:text-gray-400"
+          className="text-xs text-gray-600"
         />
         <Tooltip content={<CustomTooltip />} />
         <Bar dataKey="revenue" fill="#10b981" radius={[4, 4, 0, 0]} />

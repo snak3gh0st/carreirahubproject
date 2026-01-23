@@ -111,66 +111,63 @@ export default function DashboardPage() {
   // COMMERCIAL users see simplified dashboard
   if (userRole === "COMMERCIAL") {
     return (
-      <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
+      <div className="bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 py-8">
           {/* Page Header with Greeting */}
           <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
               {getGreeting()}, {firstName}! 👋
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600">
               Área Comercial - Gestão de Invoices
             </p>
           </div>
 
           {/* Quick Actions for COMMERCIAL */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
             <Link
               href="/dashboard/customers/new"
-              className="group relative overflow-hidden rounded-lg border-2 border-purple-200 dark:border-purple-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-purple-400 dark:hover:border-purple-500"
+              className="group rounded-xl border border-purple-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="relative">
-                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">Criar Cliente</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-lg font-bold text-gray-900">Criar Cliente</p>
+                <p className="text-sm text-gray-600">
                   Novo cliente no QuickBooks
                 </p>
               </div>
             </Link>
             <Link
               href="/dashboard/invoices/new"
-              className="group relative overflow-hidden rounded-lg border-2 border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
+              className="group rounded-xl border border-blue-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="relative">
-                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">Criar Invoice</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-lg font-bold text-gray-900">Criar Invoice</p>
+                <p className="text-sm text-gray-600">
                   Nova invoice para cliente
                 </p>
               </div>
             </Link>
             <Link
               href="/dashboard/invoices"
-              className="group relative overflow-hidden rounded-lg border-2 border-green-200 dark:border-green-800 bg-white dark:bg-slate-800 p-6 transition-all hover:shadow-lg hover:border-green-400 dark:hover:border-green-500"
+              className="group rounded-xl border border-green-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="relative">
-                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">Minhas Invoices</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
+                <p className="text-lg font-bold text-gray-900">Minhas Invoices</p>
+                <p className="text-sm text-gray-600">
                   Ver invoices criadas por mim
                 </p>
               </div>
             </Link>
           </div>
 
-          {/* Info card */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              📋 Workflow Comercial
+          <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Fluxo comercial (resumo)
             </h3>
-            <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal list-inside">
-              <li>Crie clientes - serão sincronizados automaticamente com QuickBooks</li>
-              <li>Crie invoices para seus clientes selecionando serviço e valores</li>
-              <li>Suas invoices ficam com status DRAFT (rascunho) aguardando aprovação</li>
-              <li>Finance revisa e aprova suas invoices</li>
-              <li>Após aprovação, a invoice é enviada ao cliente via email do QuickBooks</li>
+            <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
+              <li>Crie o cliente e confirme o e-mail</li>
+              <li>Monte a invoice com um ou mais itens</li>
+              <li>Envio imediato: invoice + contrato DocuSign</li>
             </ol>
           </div>
         </div>
@@ -180,21 +177,21 @@ export default function DashboardPage() {
 
   // Admin/Finance/Sales users see full dashboard
   return (
-    <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
+    <div className="bg-gray-50">
       <div className="container mx-auto px-4 sm:px-6 py-8">
         {/* Page Header with Greeting */}
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
             {getGreeting()}, {firstName}! 👋
           </h1>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-gray-600">
             Visão geral do seu negócio
           </p>
         </div>
 
         {/* ========== SALES & REVENUE SECTION ========== */}
         <div className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             <TrendingUp className="h-6 w-6 text-blue-600" />
             Sales & Revenue
           </h2>
@@ -232,7 +229,7 @@ export default function DashboardPage() {
 
         {/* ========== FINANCE SECTION ========== */}
         <div className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             <DollarSign className="h-6 w-6 text-green-600" />
             Finance Metrics
           </h2>
@@ -271,7 +268,7 @@ export default function DashboardPage() {
 
         {/* ========== CUSTOMER SECTION ========== */}
         <div className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             <Users className="h-6 w-6 text-indigo-600" />
             Customer Metrics
           </h2>
@@ -302,61 +299,61 @@ export default function DashboardPage() {
 
         {/* ========== QUICK ACTIONS ========== */}
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <Link
               href="/dashboard/leads"
-              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-blue-400 dark:hover:border-blue-500"
+              className="group relative overflow-hidden rounded-lg border border-gray-200"
             >
               <div className="relative">
-                <p className="font-semibold text-gray-900 dark:text-white">Leads</p>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="font-semibold text-gray-900">Leads</p>
+                <p className="text-xs sm:text-sm text-gray-600">
                   Manage pipeline
                 </p>
               </div>
             </Link>
             <Link
               href="/dashboard/deals"
-              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-purple-400 dark:hover:border-purple-500"
+              className="group relative overflow-hidden rounded-lg border border-gray-200"
             >
               <div className="relative">
-                <p className="font-semibold text-gray-900 dark:text-white">Deals</p>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="font-semibold text-gray-900">Deals</p>
+                <p className="text-xs sm:text-sm text-gray-600">
                   Track sales
                 </p>
               </div>
             </Link>
             <Link
               href="/dashboard/invoices"
-              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-green-400 dark:hover:border-green-500"
+              className="group relative overflow-hidden rounded-lg border border-gray-200"
             >
               <div className="relative">
-                <p className="font-semibold text-gray-900 dark:text-white">Invoices</p>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="font-semibold text-gray-900">Invoices</p>
+                <p className="text-xs sm:text-sm text-gray-600">
                   View & create
                 </p>
               </div>
             </Link>
             <Link
               href="/dashboard/customers"
-              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-indigo-400 dark:hover:border-indigo-500"
+              className="group relative overflow-hidden rounded-lg border border-gray-200"
             >
               <div className="relative">
-                <p className="font-semibold text-gray-900 dark:text-white">Customers</p>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="font-semibold text-gray-900">Customers</p>
+                <p className="text-xs sm:text-sm text-gray-600">
                   Manage accounts
                 </p>
               </div>
             </Link>
             <Link
               href="/dashboard/insights"
-              className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 transition-all hover:shadow-lg hover:border-orange-400 dark:hover:border-orange-500"
+              className="group relative overflow-hidden rounded-lg border border-gray-200"
             >
               <div className="relative">
-                <p className="font-semibold text-gray-900 dark:text-white">Insights</p>
-                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                <p className="font-semibold text-gray-900">Insights</p>
+                <p className="text-xs sm:text-sm text-gray-600">
                   Analytics & BI
                 </p>
               </div>

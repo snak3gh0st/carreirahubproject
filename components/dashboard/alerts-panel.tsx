@@ -117,15 +117,15 @@ export function AlertsPanel() {
   ) => {
     switch (severity) {
       case "CRITICAL":
-        return "bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200";
+        return "bg-red-100";
       case "HIGH":
-        return "bg-orange-100 dark:bg-orange-900/30 border-orange-300 dark:border-orange-700 text-orange-800 dark:text-orange-200";
+        return "bg-orange-100";
       case "MEDIUM":
-        return "bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200";
+        return "bg-yellow-100";
       case "LOW":
-        return "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200";
+        return "bg-blue-100";
       default:
-        return "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600";
+        return "bg-gray-100";
     }
   };
 
@@ -150,10 +150,10 @@ export function AlertsPanel() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
+      <div className="bg-white">
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-20 bg-gray-200 dark:bg-gray-700 rounded" />
+            <div key={i} className="h-20 bg-gray-200" />
           ))}
         </div>
       </div>
@@ -162,11 +162,11 @@ export function AlertsPanel() {
 
   if (activeAlerts.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
+      <div className="bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-green-100">
             <svg
-              className="w-6 h-6 text-green-600 dark:text-green-400"
+              className="w-6 h-6 text-green-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -180,10 +180,10 @@ export function AlertsPanel() {
             </svg>
           </div>
           <div>
-            <p className="font-medium text-gray-900 dark:text-white">
+            <p className="font-medium text-gray-900">
               No Active Alerts
             </p>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-gray-600">
               Everything looks good! All systems operating normally.
             </p>
           </div>
@@ -193,11 +193,11 @@ export function AlertsPanel() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow mb-6 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white">
       {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 p-6">
+      <div className="border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-gray-900">
             Active Alerts
             <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 rounded-full">
               {activeAlerts.length}
@@ -205,7 +205,7 @@ export function AlertsPanel() {
           </h2>
           <button
             onClick={fetchAlerts}
-            className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            className="text-sm text-gray-600 hover:text-gray-900"
             title="Refresh alerts"
           >
             <svg
@@ -226,7 +226,7 @@ export function AlertsPanel() {
       </div>
 
       {/* Alerts List */}
-      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+      <div className="divide-y divide-gray-200">
         {activeAlerts.map((alert) => (
           <div
             key={alert.id}
@@ -238,17 +238,17 @@ export function AlertsPanel() {
                   <span
                     className={`inline-block w-3 h-3 rounded-full ${getSeverityBadgeColor(alert.severity)}`}
                   />
-                  <h3 className="font-semibold text-gray-900 dark:text-white">
+                  <h3 className="font-semibold text-gray-900">
                     {alert.title}
                   </h3>
-                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  <span className="text-xs font-medium text-gray-600">
                     {alert.severity}
                   </span>
                 </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                <p className="text-sm text-gray-700">
                   {alert.description}
                 </p>
-                <div className="text-xs text-gray-600 dark:text-gray-400 flex gap-4">
+                <div className="text-xs text-gray-600">
                   <span>
                     Triggered: {format(new Date(alert.triggeredAt), "MMM d, h:mm a")}
                   </span>
@@ -266,7 +266,7 @@ export function AlertsPanel() {
                 {alert.status === "ACTIVE" && (
                   <button
                     onClick={() => handleAcknowledge(alert.id)}
-                    className="px-3 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                    className="px-3 py-1 text-xs font-medium rounded bg-gray-200"
                   >
                     Acknowledge
                   </button>
@@ -274,14 +274,14 @@ export function AlertsPanel() {
                 {alert.status === "ACKNOWLEDGED" && (
                   <button
                     onClick={() => handleResolve(alert.id)}
-                    className="px-3 py-1 text-xs font-medium rounded bg-green-200 dark:bg-green-900/30 text-green-800 dark:text-green-200 hover:bg-green-300 dark:hover:bg-green-900/50 transition-colors"
+                    className="px-3 py-1 text-xs font-medium rounded bg-green-200"
                   >
                     Resolve
                   </button>
                 )}
                 <button
                   onClick={() => handleDismiss(alert.id)}
-                  className="px-3 py-1 text-xs font-medium rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+                  className="px-3 py-1 text-xs font-medium rounded bg-gray-200"
                 >
                   Dismiss
                 </button>

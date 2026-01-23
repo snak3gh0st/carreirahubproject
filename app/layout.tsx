@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
-import { ThemeProvider } from "@/components/theme-provider"
+
 import { QueryProvider } from "@/components/providers/query-provider"
 import { SessionProvider } from "@/components/providers/session-provider"
 import { ToastProvider } from "@/lib/contexts/toast.context"
@@ -24,14 +24,12 @@ export default function RootLayout({
     <html lang="pt-BR" suppressHydrationWarning>
       <body className={inter.className}>
         <SessionProvider>
-          <ThemeProvider>
-            <QueryProvider>
-              <ToastProvider>
-                {children}
-                <ToastContainer />
-              </ToastProvider>
-            </QueryProvider>
-          </ThemeProvider>
+          <QueryProvider>
+            <ToastProvider>
+              {children}
+              <ToastContainer />
+            </ToastProvider>
+          </QueryProvider>
         </SessionProvider>
         <Toaster
           position="top-right"

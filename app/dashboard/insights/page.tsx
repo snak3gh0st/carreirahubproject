@@ -160,16 +160,16 @@ export default function InsightsPage() {
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-slate-900 min-h-screen">
+    <div className="bg-gray-50">
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-4xl font-bold text-gray-900">
               Business Intelligence Dashboard
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600">
               Comprehensive analytics powered by QuickBooks data
             </p>
           </div>
@@ -192,12 +192,12 @@ export default function InsightsPage() {
 
       {/* Error State */}
       {isError && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+        <div className="mb-6 bg-red-50">
           <div className="flex items-center gap-3">
             <AlertCircle className="text-red-500" />
             <div className="flex-1">
-              <h3 className="text-red-800 dark:text-red-200 font-semibold">Error Loading Analytics</h3>
-              <p className="text-red-600 dark:text-red-300 text-sm">{error?.message}</p>
+              <h3 className="text-red-800">Error Loading Analytics</h3>
+              <p className="text-red-600">{error?.message}</p>
             </div>
             <button onClick={() => refetch()} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Retry</button>
           </div>
@@ -241,7 +241,7 @@ export default function InsightsPage() {
           title="Overdue Amount"
           value={data ? formatCurrency(data.kpis.overdueAmount) : "$0"}
           subtitle={data ? `${formatPercentage(data.kpis.overduePercentage)} of invoiced` : "0%"}
-          valueColor="text-red-600 dark:text-red-400"
+          valueColor="text-red-600"
           icon={<div className="text-red-500"><AlertCircle className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
@@ -330,7 +330,7 @@ export default function InsightsPage() {
           title="Overdue Invoices"
           value={data ? formatPercentage(data.kpis.overdueInvoicePercentage) : "0%"}
           subtitle={data ? `${data.kpis.overdueInvoiceCount} invoices` : "0 invoices"}
-          valueColor="text-red-600 dark:text-red-400"
+          valueColor="text-red-600"
           icon={<div className="text-red-500"><AlertCircle className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
@@ -346,10 +346,10 @@ export default function InsightsPage() {
       {/* Charts Grid - 2x2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Revenue Trend Line Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Revenue Trend (12 Months)</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Revenue Trend (12 Months)</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.revenueTrend?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.charts.revenueTrend}>
@@ -367,10 +367,10 @@ export default function InsightsPage() {
         </div>
 
         {/* Invoice Count Trend */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invoice Count Trend</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Invoice Count Trend</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.invoiceCountTrend?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.charts.invoiceCountTrend}>
@@ -388,10 +388,10 @@ export default function InsightsPage() {
         </div>
 
         {/* Invoice Status Pie */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invoice Distribution by Status</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Invoice Distribution by Status</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.invoiceStatus?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -410,10 +410,10 @@ export default function InsightsPage() {
         </div>
 
         {/* Deal Status Pie */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Deal Distribution by Status</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Deal Distribution by Status</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.dealStatus?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -432,10 +432,10 @@ export default function InsightsPage() {
         </div>
 
         {/* Top Customers Bar Chart */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700 lg:col-span-2">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top 10 Customers by Revenue</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Top 10 Customers by Revenue</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.topCustomers?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.charts.topCustomers}>
@@ -456,10 +456,10 @@ export default function InsightsPage() {
       {/* Invoice Aging & Pipeline Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Invoice Aging */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Invoice Aging Distribution</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Invoice Aging Distribution</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.invoiceAging?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.charts.invoiceAging}>
@@ -477,10 +477,10 @@ export default function InsightsPage() {
         </div>
 
         {/* Sales Pipeline */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Sales Pipeline Value by Status</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Sales Pipeline Value by Status</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.dealsPipeline?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.charts.dealsPipeline}>
@@ -500,10 +500,10 @@ export default function InsightsPage() {
         </div>
 
         {/* Top Services Sold */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Top Services Sold by Quantity</h3>
+        <div className="bg-white">
+          <h3 className="text-lg font-semibold text-gray-900">Top Services Sold by Quantity</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 dark:bg-gray-700 rounded" />
+            <div className="h-80 animate-pulse bg-gray-200" />
           ) : data?.charts.topServices?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.charts.topServices}>

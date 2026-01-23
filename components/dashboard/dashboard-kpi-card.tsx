@@ -20,40 +20,40 @@ interface DashboardKPICardProps {
 
 const colorConfig = {
   blue: {
-    bg: "bg-blue-50 dark:bg-blue-900/20",
-    icon: "text-blue-600 dark:text-blue-400",
-    border: "border-blue-200 dark:border-blue-800",
-    label: "text-gray-600 dark:text-gray-400",
+    bg: "bg-blue-50",
+    icon: "text-blue-600",
+    border: "border-blue-200",
+    label: "text-gray-600",
   },
   green: {
-    bg: "bg-green-50 dark:bg-green-900/20",
-    icon: "text-green-600 dark:text-green-400",
-    border: "border-green-200 dark:border-green-800",
-    label: "text-gray-600 dark:text-gray-400",
+    bg: "bg-green-50",
+    icon: "text-green-600",
+    border: "border-green-200",
+    label: "text-gray-600",
   },
   purple: {
-    bg: "bg-purple-50 dark:bg-purple-900/20",
-    icon: "text-purple-600 dark:text-purple-400",
-    border: "border-purple-200 dark:border-purple-800",
-    label: "text-gray-600 dark:text-gray-400",
+    bg: "bg-purple-50",
+    icon: "text-purple-600",
+    border: "border-purple-200",
+    label: "text-gray-600",
   },
   orange: {
-    bg: "bg-orange-50 dark:bg-orange-900/20",
-    icon: "text-orange-600 dark:text-orange-400",
-    border: "border-orange-200 dark:border-orange-800",
-    label: "text-gray-600 dark:text-gray-400",
+    bg: "bg-orange-50",
+    icon: "text-orange-600",
+    border: "border-orange-200",
+    label: "text-gray-600",
   },
   red: {
-    bg: "bg-red-50 dark:bg-red-900/20",
-    icon: "text-red-600 dark:text-red-400",
-    border: "border-red-200 dark:border-red-800",
-    label: "text-gray-600 dark:text-gray-400",
+    bg: "bg-red-50",
+    icon: "text-red-600",
+    border: "border-red-200",
+    label: "text-gray-600",
   },
   indigo: {
-    bg: "bg-indigo-50 dark:bg-indigo-900/20",
-    icon: "text-indigo-600 dark:text-indigo-400",
-    border: "border-indigo-200 dark:border-indigo-800",
-    label: "text-gray-600 dark:text-gray-400",
+    bg: "bg-indigo-50",
+    icon: "text-indigo-600",
+    border: "border-indigo-200",
+    label: "text-gray-600",
   },
 }
 
@@ -72,7 +72,7 @@ export function DashboardKPICard({
     <div
       onClick={onClick}
       className={cn(
-        "relative overflow-hidden rounded-lg border bg-white dark:bg-slate-800 shadow-sm transition-all hover:shadow-md",
+        "relative overflow-hidden rounded-lg border bg-white",
         colors.border,
         onClick && "cursor-pointer hover:scale-105",
         "p-6"
@@ -94,11 +94,11 @@ export function DashboardKPICard({
 
         {/* Value */}
         <div className="mb-2">
-          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900">
             {value}
           </p>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-xs sm:text-sm text-gray-600">
               {subtitle}
             </p>
           )}
@@ -110,12 +110,12 @@ export function DashboardKPICard({
             <span
               className={cn(
                 "text-xs font-semibold",
-                trend.direction === "up" ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                trend.direction === "up" ? "text-green-600" : "text-red-600"
               )}
             >
               {trend.direction === "up" ? "↑" : "↓"} {Math.abs(trend.value)}%
             </span>
-            <span className="text-xs text-gray-600 dark:text-gray-400">{trend.label}</span>
+            <span className="text-xs text-gray-600">{trend.label}</span>
           </div>
         )}
       </div>

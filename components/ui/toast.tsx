@@ -60,30 +60,30 @@ function Toast({ toast, onClose }: ToastProps) {
   const getBgColor = () => {
     switch (toast.type) {
       case "success":
-        return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800";
+        return "bg-green-50";
       case "error":
-        return "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800";
+        return "bg-red-50";
       case "warning":
-        return "bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800";
+        return "bg-yellow-50";
       case "info":
-        return "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800";
+        return "bg-blue-50";
       default:
-        return "bg-gray-50 dark:bg-gray-900/20";
+        return "bg-gray-50";
     }
   };
 
   const getTextColor = () => {
     switch (toast.type) {
       case "success":
-        return "text-green-800 dark:text-green-200";
+        return "text-green-800";
       case "error":
-        return "text-red-800 dark:text-red-200";
+        return "text-red-800";
       case "warning":
-        return "text-yellow-800 dark:text-yellow-200";
+        return "text-yellow-800";
       case "info":
-        return "text-blue-800 dark:text-blue-200";
+        return "text-blue-800";
       default:
-        return "text-gray-800 dark:text-gray-200";
+        return "text-gray-800";
     }
   };
 
@@ -111,7 +111,7 @@ function Toast({ toast, onClose }: ToastProps) {
         </div>
         <button
           onClick={handleClose}
-          className="ml-2 inline-flex text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+          className="ml-2 inline-flex text-gray-400 hover:text-gray-600"
           aria-label="Close notification"
         >
           <X className="w-4 h-4" />

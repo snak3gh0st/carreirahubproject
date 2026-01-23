@@ -39,7 +39,7 @@ export default async function DashboardLayout({
   console.log("[DashboardLayout] User role:", userRole);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen bg-gray-50">
       <SkipToContent />
       <DashboardHeader session={session} userRole={userRole} />
 

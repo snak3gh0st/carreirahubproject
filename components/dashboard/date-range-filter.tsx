@@ -60,8 +60,8 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
   return (
     <div className="mb-6">
       {/* Quick Filter Chips */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+      <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300">
+        <span className="text-sm font-medium text-gray-700">
           Date Range:
         </span>
         {quickFilters.map((filter) => (
@@ -71,7 +71,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               isActiveFilter(filter.value)
                 ? "bg-blue-600 text-white"
-                : "bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-slate-700"
+                : "bg-white"
             }`}
           >
             {filter.label}
@@ -82,7 +82,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
           className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
             isCustomRangeActive
               ? "bg-blue-600 text-white"
-              : "bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-slate-700"
+              : "bg-white"
           }`}
         >
           Custom Range
@@ -91,28 +91,28 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
 
       {/* Custom Date Range Picker */}
       {showCustomRange && (
-        <div className="bg-white dark:bg-slate-800 border border-gray-300 dark:border-gray-600 rounded-lg p-4 mb-4">
+        <div className="bg-white">
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700">
                 Start Date
               </label>
               <input
                 type="date"
                 value={customFrom || currentFrom || ""}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300"
               />
             </div>
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-gray-700">
                 End Date
               </label>
               <input
                 type="date"
                 value={customTo || currentTo || ""}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300"
               />
             </div>
             <button
@@ -128,50 +128,50 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
 
       {/* Active Filter Display */}
       {(currentFilter || isCustomRangeActive) && (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
+        <div className="text-sm text-gray-600">
           {isCustomRangeActive ? (
             <span>
               Showing data from{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 {format(new Date(currentFrom!), "MMM d, yyyy")}
               </span>{" "}
               to{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 {format(new Date(currentTo!), "MMM d, yyyy")}
               </span>
             </span>
           ) : currentFilter === "last7" ? (
             <span>
               Showing data for the{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 last 7 days
               </span>
             </span>
           ) : currentFilter === "last30" ? (
             <span>
               Showing data for the{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 last 30 days
               </span>
             </span>
           ) : currentFilter === "last90" ? (
             <span>
               Showing data for the{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 last 90 days
               </span>
             </span>
           ) : currentFilter === "thisYear" ? (
             <span>
               Showing data for{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 this year
               </span>
             </span>
           ) : currentFilter === "allTime" ? (
             <span>
               Showing{" "}
-              <span className="font-semibold text-gray-900 dark:text-white">
+              <span className="font-semibold text-gray-900">
                 all time
               </span>{" "}
               data

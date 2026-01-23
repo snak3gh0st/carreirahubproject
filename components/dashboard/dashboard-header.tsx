@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react"
 import { Menu, X, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { ThemeToggle } from "@/components/theme-toggle"
+
 import { GlobalSearch } from "@/components/search/global-search"
 
 interface DashboardHeaderProps {
@@ -36,7 +36,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
   const NavLink = ({ href, label }: { href: string; label: string }) => (
     <Link
       href={href}
-      className="block px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-slate-800 rounded-md transition"
+      className="block px-4 py-2 text-sm font-medium text-gray-700"
       onClick={() => setMobileOpen(false)}
     >
       {label}
@@ -44,16 +44,16 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
   )
 
   return (
-    <header className="sticky top-0 z-40 bg-white dark:bg-slate-800 shadow-sm border-b dark:border-slate-700">
+    <header className="sticky top-0 z-40 bg-white">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
           <div className="flex-shrink-0 mr-4 sm:mr-8">
             <Link href="/dashboard" className="flex flex-col">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                 Carreira AI Hub
               </h1>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Dashboard</p>
+              <p className="text-xs sm:text-sm text-gray-600">Dashboard</p>
             </Link>
           </div>
 
@@ -71,15 +71,14 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
 
           {/* Right Section */}
           <div className="flex items-center gap-2 sm:gap-4">
-            {/* Theme Toggle */}
-            <ThemeToggle />
+
 
             {/* User Info - Hidden on mobile */}
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+              <span className="text-xs sm:text-sm font-medium text-gray-900">
                 {session?.user?.name}
               </span>
-              <span className="text-xs text-gray-600 dark:text-gray-400">
+              <span className="text-xs text-gray-600">
                 {userRole}
               </span>
             </div>
@@ -89,7 +88,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
               variant="ghost"
               size="sm"
               onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-              className="hidden lg:flex items-center gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              className="hidden lg:flex items-center gap-2 text-gray-700"
             >
               <LogOut className="h-4 w-4" />
               <span className="text-sm">Logout</span>
@@ -122,15 +121,15 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
                   </nav>
 
                   {/* Mobile User Info */}
-                  <div className="pt-4 mt-4 border-t dark:border-slate-700">
+                  <div className="pt-4 mt-4 border-t">
                     <div className="mb-4">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                      <p className="text-sm font-medium text-gray-900">
                         {session?.user?.name}
                       </p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                      <p className="text-xs text-gray-600">
                         {session?.user?.email}
                       </p>
-                      <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">
+                      <p className="text-xs font-semibold text-blue-600">
                         Role: {userRole}
                       </p>
                     </div>

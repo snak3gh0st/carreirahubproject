@@ -109,15 +109,15 @@ export function AlertsWidget() {
   const getSeverityColor = (severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL") => {
     switch (severity) {
       case "CRITICAL":
-        return "bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-700 text-red-800 dark:text-red-200";
+        return "bg-red-100";
       case "HIGH":
-        return "bg-orange-100 dark:bg-orange-900/30 border-orange-300 dark:border-orange-700 text-orange-800 dark:text-orange-200";
+        return "bg-orange-100";
       case "MEDIUM":
-        return "bg-yellow-100 dark:bg-yellow-900/30 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200";
+        return "bg-yellow-100";
       case "LOW":
-        return "bg-blue-100 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-800 dark:text-blue-200";
+        return "bg-blue-100";
       default:
-        return "bg-gray-100 dark:bg-gray-800";
+        return "bg-gray-100";
     }
   };
 
@@ -189,12 +189,12 @@ export function AlertsWidget() {
 
       {/* Alerts Popup Panel */}
       {isOpen && (
-        <div className="fixed bottom-24 right-8 w-96 max-h-[600px] bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-50 flex flex-col">
+        <div className="fixed bottom-24 right-8 w-96 max-h-[600px] bg-white">
           {/* Header */}
-          <div className="border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between">
+          <div className="border-b border-gray-200">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-gray-900 dark:text-white">
+              <h3 className="font-semibold text-gray-900">
                 Alerts
               </h3>
               {activeAlerts.length > 0 && (
@@ -205,7 +205,7 @@ export function AlertsWidget() {
             </div>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-gray-500 hover:text-gray-700"
             >
               <X className="w-5 h-5" />
             </button>
@@ -216,15 +216,15 @@ export function AlertsWidget() {
             {activeAlerts.length === 0 ? (
               <div className="p-6 text-center">
                 <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                <p className="text-sm font-medium text-gray-900">
                   No Active Alerts
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs text-gray-600">
                   Everything looks good!
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className="divide-y divide-gray-200">
                 {activeAlerts.map((alert) => {
                   const link = getAlertLink(alert);
                   const timeAgo = getTimeAgo(alert.triggeredAt);
@@ -241,14 +241,14 @@ export function AlertsWidget() {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
-                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                              <h4 className="text-sm font-semibold text-gray-900">
                                 {alert.title}
                               </h4>
-                              <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                              <span className="text-xs text-gray-500">
                                 {timeAgo}
                               </span>
                             </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                            <p className="text-xs text-gray-600">
                               {alert.description}
                             </p>
                           </div>
@@ -259,7 +259,7 @@ export function AlertsWidget() {
                         {link && (
                           <a
                             href={link}
-                            className="text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800/50"
+                            className="text-xs px-2 py-1 rounded bg-blue-100"
                             onClick={() => setIsOpen(false)}
                           >
                             View Details
@@ -268,7 +268,7 @@ export function AlertsWidget() {
                         {alert.status === "ACTIVE" && (
                           <button
                             onClick={() => handleAcknowledge(alert.id)}
-                            className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+                            className="text-xs px-2 py-1 rounded bg-gray-200"
                           >
                             Acknowledge
                           </button>
@@ -276,14 +276,14 @@ export function AlertsWidget() {
                         {alert.status === "ACKNOWLEDGED" && (
                           <button
                             onClick={() => handleResolve(alert.id)}
-                            className="text-xs px-2 py-1 rounded bg-green-200 dark:bg-green-900/30 text-green-700 dark:text-green-200 hover:bg-green-300 dark:hover:bg-green-800/50"
+                            className="text-xs px-2 py-1 rounded bg-green-200"
                           >
                             Resolve
                           </button>
                         )}
                         <button
                           onClick={() => handleDismiss(alert.id)}
-                          className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          className="text-xs px-2 py-1 rounded bg-gray-200"
                         >
                           Dismiss
                         </button>
@@ -296,9 +296,9 @@ export function AlertsWidget() {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+          <div className="border-t border-gray-200">
             <div className="flex items-center justify-between">
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs text-gray-500">
                 {metadata && (
                   <span>
                     {metadata.total} alerts • {metadata.timePeriod}
@@ -307,7 +307,7 @@ export function AlertsWidget() {
               </div>
               <button
                 onClick={fetchAlerts}
-                className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                className="text-xs text-blue-600 hover:text-blue-700"
               >
                 Refresh
               </button>

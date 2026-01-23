@@ -11,16 +11,21 @@ import { contractWorkflowService } from "@/lib/services/contract-workflow.servic
 const createInvoiceSchema = z.object({
   customerId: z.string(),
   dealId: z.string().optional(),
-  serviceItemId: z.string(),
-  quantity: z.number().min(1).default(1),
-  unitPrice: z.number().min(0),
+  items: z
+    .array(
+      z.object({
+        serviceItemId: z.string(),
+        quantity: z.number().min(1),
+        unitPrice: z.number().min(0),
+        description: z.string().optional(),
+      })
+    )
+    .min(1),
   discount: z.number().min(0).optional(),
   entryAmount: z.number().min(0).optional(),
   installments: z.number().min(0).max(12).optional(),
   dueDate: z.string().optional(), // Aceita string de data simples (YYYY-MM-DD)
   description: z.string().optional(),
-  priceLevelId: z.string().optional(),
-  paymentTermId: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -59,7 +64,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Calculate total amount
-    const baseAmount = data.unitPrice * data.quantity;
+    const baseAmount = data.items.reduce(
+      (sum, item) => sum + item.unitPrice * item.quantity,
+      0
+    );
     const discount = data.discount || 0;
     const totalAmount = Math.max(0, baseAmount - discount);
 
@@ -112,13 +120,24 @@ export async function POST(request: NextRequest) {
       }
 
       // Prepare line items for this invoice
-      const lineItems = [{
-        description: invoiceDescription,
-        quantity: 1,
-        unitPrice: invoiceAmount,
-        amount: invoiceAmount,
-        serviceItemId: data.serviceItemId,
-      }];
+      const lineItems =
+        invoiceCountToCreate === 1
+          ? data.items.map((item) => ({
+              description: item.description || invoiceDescription,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              amount: Number((item.unitPrice * item.quantity).toFixed(2)),
+              serviceItemId: item.serviceItemId,
+            }))
+          : [
+              {
+                description: invoiceDescription,
+                quantity: 1,
+                unitPrice: invoiceAmount,
+                amount: invoiceAmount,
+                serviceItemId: data.items[0].serviceItemId,
+              },
+            ];
 
       let qbInvoiceId: string | undefined;
       let invoiceNumber: string;
@@ -182,11 +201,11 @@ export async function POST(request: NextRequest) {
         customerEmail: customer.email, // REQUIRED - set email on invoice itself
         dueDate: invoiceDueDate,
         docNumber: invoiceNumber, // Custom professional invoice number
-        lineItems: [{
-          description: invoiceDescription,
-          amount: invoiceAmount,
-          itemRef: data.serviceItemId,
-        }],
+        lineItems: lineItems.map((item) => ({
+          description: item.description,
+          amount: item.amount,
+          itemRef: item.serviceItemId,
+        })),
       };
 
       // Create invoice in QuickBooks WITH BillEmail set during creation
@@ -298,8 +317,6 @@ export async function POST(request: NextRequest) {
               seriesId,
               current: i,
               total: invoiceCountToCreate,
-              priceLevelId: data.priceLevelId,
-              paymentTermId: data.paymentTermId,
             } as any,
           }),
         },

@@ -37,7 +37,7 @@ export const FormField = React.forwardRef<
     <div ref={ref} className={cn("flex flex-col gap-1.5", className)} {...props}>
       <label
         htmlFor={htmlFor}
-        className="text-sm font-medium text-gray-700 dark:text-gray-300"
+        className="text-sm font-medium text-gray-700"
       >
         {label}
         {required && (
@@ -56,7 +56,7 @@ export const FormField = React.forwardRef<
         : children}
 
       {helperText && (
-        <p id={helperId} className="text-xs text-gray-500 dark:text-gray-400">
+        <p id={helperId} className="text-xs text-gray-500">
           {helperText}
         </p>
       )}
@@ -65,7 +65,7 @@ export const FormField = React.forwardRef<
         <p
           id={errorId}
           role="alert"
-          className="text-xs font-medium text-red-600 dark:text-red-400"
+          className="text-xs font-medium text-red-600"
         >
           {error}
         </p>

@@ -160,15 +160,15 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
     dealStatuses.length > 0;
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-6 mb-6 border border-gray-200 dark:border-gray-700">
+    <div className="bg-white">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h2 className="text-lg font-semibold text-gray-900">
           Filters
         </h2>
         {hasActiveFilters && (
           <button
             onClick={resetFilters}
-            className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+            className="text-sm text-blue-600 hover:text-blue-700"
           >
             Reset Filters
           </button>
@@ -178,7 +178,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
       <div className="space-y-6">
         {/* Date Range Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <label className="block text-sm font-medium text-gray-700">
             Date Range
           </label>
           <div className="flex flex-wrap gap-2">
@@ -189,7 +189,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   dateRange === range.value
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    : "bg-gray-100"
                 }`}
               >
                 {range.label}
@@ -201,25 +201,25 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
           {showCustomDateRange && (
             <div className="mt-4 flex gap-4">
               <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-gray-600">
                   From
                 </label>
                 <input
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-gray-300"
                 />
               </div>
               <div className="flex-1">
-                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                <label className="block text-xs font-medium text-gray-600">
                   To
                 </label>
                 <input
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                  className="w-full px-3 py-2 border border-gray-300"
                 />
               </div>
             </div>
@@ -228,7 +228,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
 
         {/* Customer Segment Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <label className="block text-sm font-medium text-gray-700">
             Customer Segment
           </label>
           <div className="flex flex-wrap gap-2">
@@ -239,7 +239,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   segment === seg.value
                     ? "bg-green-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    : "bg-gray-100"
                 }`}
               >
                 {seg.label}
@@ -250,7 +250,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
 
         {/* Invoice Status Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <label className="block text-sm font-medium text-gray-700">
             Invoice Status
           </label>
           <div className="flex flex-wrap gap-2">
@@ -261,7 +261,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   invoiceStatuses.includes(status.value)
                     ? "bg-purple-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    : "bg-gray-100"
                 }`}
               >
                 {status.label}
@@ -272,7 +272,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
 
         {/* Deal Status Section */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <label className="block text-sm font-medium text-gray-700">
             Deal Status
           </label>
           <div className="flex flex-wrap gap-2">
@@ -283,7 +283,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                   dealStatuses.includes(status.value)
                     ? "bg-orange-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                    : "bg-gray-100"
                 }`}
               >
                 {status.label}
@@ -293,7 +293,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex gap-3 pt-4 border-t border-gray-200">
           <button
             onClick={applyFilters}
             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-md transition-colors"
