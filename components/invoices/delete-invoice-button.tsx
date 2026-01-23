@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface DeleteInvoiceButtonProps {
@@ -27,8 +27,8 @@ export function DeleteInvoiceButton({
 
   const handleDelete = async () => {
     const confirmMessage = hasQuickbooksId
-      ? `Delete invoice ${invoiceNumber}?\n\nThis will remove it from both QuickBooks and the local database.`
-      : `Delete invoice ${invoiceNumber}?\n\nThis will remove it from the local database.`;
+      ? `Are you sure you want to delete invoice ${invoiceNumber}?\n\nThis will remove it from both QuickBooks and the local database.\n\nThis action cannot be undone.`
+      : `Are you sure you want to delete invoice ${invoiceNumber}?\n\nThis will remove it from the local database.\n\nThis action cannot be undone.`;
 
     if (!confirm(confirmMessage)) {
       return;
@@ -59,8 +59,8 @@ export function DeleteInvoiceButton({
         alert(`Invoice ${invoiceNumber} deleted successfully.`);
       }
 
-      // Refresh the page to show updated list
-      router.refresh();
+      // Redirect to invoice list instead of just refreshing
+      router.push('/dashboard/invoices');
     } catch (error: any) {
       alert(`Failed to delete invoice: ${error.message || "Unknown error"}`);
       setIsDeleting(false);
@@ -71,10 +71,11 @@ export function DeleteInvoiceButton({
     <button
       onClick={handleDelete}
       disabled={isDeleting}
-      className="text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] px-2"
+      className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed transition-colors"
       title="Delete invoice"
     >
-      <X className="h-5 w-5" />
+      <Trash2 className="w-4 h-4" />
+      {isDeleting ? 'Deleting...' : 'Delete'}
     </button>
   );
 }

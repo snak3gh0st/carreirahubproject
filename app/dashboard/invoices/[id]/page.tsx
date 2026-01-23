@@ -11,6 +11,8 @@ import { ContractStatusCard } from "@/components/invoices/contract-status-card";
 import { PaymentStatusCard } from "@/components/invoices/payment-status-card";
 import { CollectionCallButton } from "@/components/invoices/collection-call-button";
 import { CollectionCallHistory } from "@/components/invoices/collection-call-history";
+import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
+import { Edit, Download, ArrowLeft } from "lucide-react";
 
 /**
  * Invoice Detail Page with full workflow status
@@ -188,19 +190,118 @@ export default async function InvoiceDetailPage({
   ];
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <Link
-          href="/dashboard/invoices"
-          className="text-blue-600 hover:underline mb-4 inline-block"
-        >
-          ← Voltar para Invoices
-        </Link>
-        <div className="flex items-center justify-between mt-4">
-          <h1 className="text-3xl font-bold">
-            Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
-          </h1>
-          <ApprovalStatusBadge status={invoice.approvalStatus as any} />
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Back Link */}
+      <Link
+        href="/dashboard/invoices"
+        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back to Invoices
+      </Link>
+
+      {/* Header Section with Actions */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          {/* Title and Badge */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-3xl font-bold text-gray-900">
+              Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
+            </h1>
+            <ApprovalStatusBadge status={invoice.approvalStatus as any} />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href={`/dashboard/invoices/${invoice.id}/edit`}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+              Edit
+            </Link>
+            
+            <DeleteInvoiceButton
+              invoiceId={invoice.id}
+              invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
+              hasQuickbooksId={!!invoice.quickbooks_invoice_id}
+              userRole={userRole}
+            />
+
+            {invoice.pdfUrl && (
+              <a
+                href={invoice.pdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Key Financial Information - Prominent Display */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Amount Card */}
+        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+          <p className="text-sm font-medium text-gray-600 mb-2">Total Amount</p>
+          <p className="text-4xl font-bold text-gray-900">
+            {Number(invoice.amount).toLocaleString("en-US", {
+              style: "currency",
+              currency: "USD",
+            })}
+          </p>
+        </div>
+
+        {/* Status Card */}
+        <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${
+          invoice.status === InvoiceStatus.PAID
+            ? "border-green-500"
+            : isOverdue
+            ? "border-red-500"
+            : invoice.status === InvoiceStatus.SENT
+            ? "border-blue-500"
+            : "border-gray-300"
+        }`}>
+          <p className="text-sm font-medium text-gray-600 mb-2">Status</p>
+          <span
+            className={`inline-block px-4 py-2 text-lg font-bold rounded-lg ${
+              invoice.status === InvoiceStatus.PAID
+                ? "bg-green-100 text-green-800"
+                : isOverdue
+                ? "bg-red-100 text-red-800"
+                : invoice.status === InvoiceStatus.SENT
+                ? "bg-blue-100 text-blue-800"
+                : "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {invoice.status}
+            {isOverdue && invoice.status !== InvoiceStatus.PAID && " (Overdue)"}
+          </span>
+        </div>
+
+        {/* Due Date Card */}
+        <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${
+          isOverdue && invoice.status !== InvoiceStatus.PAID ? "border-orange-500" : "border-gray-300"
+        }`}>
+          <p className="text-sm font-medium text-gray-600 mb-2">Due Date</p>
+          <p className={`text-3xl font-bold ${
+            isOverdue && invoice.status !== InvoiceStatus.PAID ? "text-red-600" : "text-gray-900"
+          }`}>
+            {new Date(invoice.dueDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric"
+            })}
+          </p>
+          {isOverdue && invoice.status !== InvoiceStatus.PAID && (
+            <p className="text-sm font-semibold text-red-600 mt-1">
+              Overdue by {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
+            </p>
+          )}
         </div>
       </div>
 
@@ -263,59 +364,33 @@ export default async function InvoiceDetailPage({
       )}
 
       {/* Workflow Timeline */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-6">Workflow Progress</h2>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Workflow Progress</h2>
         <WorkflowTimeline steps={workflowSteps} />
       </div>
 
       {/* Main Content: Two-Column Layout (Invoice Details + Customer Info) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column: Invoice Details */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4">Invoice Information</h2>
-          <div className="space-y-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">Invoice Details</h2>
+          <div className="space-y-6">
+            {/* Basic Info Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-600">Status</p>
-                <span
-                  className={`inline-block mt-1 px-3 py-1 text-sm rounded-full ${
-                    invoice.status === InvoiceStatus.PAID
-                      ? "bg-green-100 text-green-800"
-                      : invoice.status === InvoiceStatus.OVERDUE || isOverdue
-                      ? "bg-red-100 text-red-800"
-                      : invoice.status === InvoiceStatus.SENT
-                      ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                  }`}
-                >
-                  {invoice.status}
-                  {isOverdue && invoice.status !== InvoiceStatus.PAID && " (Overdue)"}
-                </span>
+                <p className="text-sm font-medium text-gray-600 mb-1">Invoice Number</p>
+                <p className="text-base font-semibold text-gray-900">
+                  {invoice.invoiceNumber || "N/A"}
+                </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Amount</p>
-                <p className="text-2xl font-bold mt-1">
-                  {Number(invoice.amount).toLocaleString("en-US", {
-                    style: "currency",
-                    currency: "USD",
+                <p className="text-sm font-medium text-gray-600 mb-1">Created Date</p>
+                <p className="text-base text-gray-900">
+                  {new Date(invoice.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric"
                   })}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Due Date</p>
-                <p className={`mt-1 ${isOverdue && invoice.status !== InvoiceStatus.PAID ? "text-red-600 font-semibold" : ""}`}>
-                  {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}
-                  {isOverdue && invoice.status !== InvoiceStatus.PAID && (
-                    <span className="block text-xs text-red-600 font-semibold mt-1">
-                      Overdue
-                    </span>
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Created</p>
-                <p className="mt-1">
-                  {new Date(invoice.createdAt).toLocaleDateString("pt-BR")}
                 </p>
               </div>
             </div>
@@ -323,41 +398,61 @@ export default async function InvoiceDetailPage({
             {/* Payment Info */}
             {invoice.paidAt && (
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600">Payment Date</p>
-                <p className="mt-1 text-green-600 font-medium">
-                  {new Date(invoice.paidAt).toLocaleDateString("pt-BR")}
-                </p>
-                {invoice.paymentMethod && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    Via {invoice.paymentMethod}
+                <p className="text-sm font-medium text-gray-600 mb-2">Payment Information</p>
+                <div className="bg-green-50 rounded-lg p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    <p className="text-sm font-semibold text-green-800">Payment Received</p>
+                  </div>
+                  <p className="text-sm text-green-700">
+                    <span className="font-medium">Date:</span>{" "}
+                    {new Date(invoice.paidAt).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric"
+                    })}
                   </p>
-                )}
+                  {invoice.paymentMethod && (
+                    <p className="text-sm text-green-700">
+                      <span className="font-medium">Method:</span> {invoice.paymentMethod}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
             {/* External IDs */}
             <div className="pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-2">External IDs</p>
-              <div className="space-y-1 text-sm">
+              <p className="text-sm font-medium text-gray-600 mb-3">External System IDs</p>
+              <div className="space-y-3">
                 {invoice.quickbooks_invoice_id && (
-                  <p className="text-gray-700">
-                    <span className="font-medium">QuickBooks:</span> {invoice.quickbooks_invoice_id}
-                  </p>
+                  <div className="flex items-start gap-2">
+                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded">QB</span>
+                    <p className="text-sm text-gray-700 font-mono flex-1">
+                      {invoice.quickbooks_invoice_id}
+                    </p>
+                  </div>
                 )}
                 {invoice.stripe_invoice_id && (
-                  <p className="text-gray-700">
-                    <span className="font-medium">Stripe Invoice:</span> {invoice.stripe_invoice_id}
-                  </p>
+                  <div className="flex items-start gap-2">
+                    <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">Stripe</span>
+                    <p className="text-sm text-gray-700 font-mono flex-1">
+                      {invoice.stripe_invoice_id}
+                    </p>
+                  </div>
                 )}
                 {invoice.stripePaymentIntentId && (
-                  <p className="text-gray-700">
-                    <span className="font-medium">Stripe Payment:</span> {invoice.stripePaymentIntentId}
-                  </p>
+                  <div className="flex items-start gap-2">
+                    <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">Payment</span>
+                    <p className="text-sm text-gray-700 font-mono flex-1">
+                      {invoice.stripePaymentIntentId}
+                    </p>
+                  </div>
                 )}
                 {!invoice.quickbooks_invoice_id &&
                   !invoice.stripe_invoice_id &&
                   !invoice.stripePaymentIntentId && (
-                    <p className="text-gray-400 text-sm">No external IDs yet</p>
+                    <p className="text-gray-400 text-sm">No external IDs synced yet</p>
                   )}
               </div>
             </div>
@@ -366,56 +461,62 @@ export default async function InvoiceDetailPage({
 
         {/* Right Column: Customer Information */}
         {invoice.customer && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Customer Information</h2>
-            <div className="space-y-4">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Customer Information</h2>
+            <div className="space-y-6">
               {/* Customer Name with Link */}
               <div>
-                <p className="text-sm text-gray-600 mb-1">Name</p>
+                <p className="text-sm font-medium text-gray-600 mb-2">Customer</p>
                 <Link
                   href={`/dashboard/customers/${invoice.customer.id}`}
-                  className="text-lg font-semibold text-blue-600 hover:underline"
+                  className="text-2xl font-bold text-blue-600 hover:text-blue-700 hover:underline"
                 >
                   {invoice.customer.name}
                 </Link>
               </div>
 
               {/* Contact Info */}
-              <div className="space-y-2">
+              <div className="space-y-3 pt-4 border-t border-gray-200">
                 <div>
-                  <p className="text-sm text-gray-600">Email</p>
-                  <p className="text-gray-900">{invoice.customer.email}</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Email</p>
+                  <a 
+                    href={`mailto:${invoice.customer.email}`}
+                    className="text-gray-900 hover:text-blue-600 transition-colors"
+                  >
+                    {invoice.customer.email}
+                  </a>
                 </div>
-                {invoice.customer.phone && (
-                  <div>
-                    <p className="text-sm text-gray-600">Phone</p>
-                    <p className="text-gray-900">{invoice.customer.phone}</p>
-                  </div>
-                )}
-                {!invoice.customer.phone && (
-                  <div>
-                    <p className="text-sm text-gray-600">Phone</p>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Phone</p>
+                  {invoice.customer.phone ? (
+                    <a 
+                      href={`tel:${invoice.customer.phone}`}
+                      className="text-gray-900 hover:text-blue-600 transition-colors"
+                    >
+                      {invoice.customer.phone}
+                    </a>
+                  ) : (
                     <p className="text-gray-400 text-sm">Not provided</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Source Badges */}
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-2">Data Sources</p>
+                <p className="text-sm font-medium text-gray-600 mb-3">Data Sources</p>
                 <div className="flex flex-wrap gap-2">
                   {invoice.customer.quickbooks_id && (
-                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
+                    <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
                       QuickBooks
                     </span>
                   )}
                   {invoice.customer.pipedrive_id && (
-                    <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
+                    <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
                       Pipedrive
                     </span>
                   )}
                   {!invoice.customer.quickbooks_id && !invoice.customer.pipedrive_id && (
-                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded text-sm font-medium">
+                    <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
                       Manual Entry
                     </span>
                   )}
@@ -424,12 +525,12 @@ export default async function InvoiceDetailPage({
 
               {/* Customer Financial Summary */}
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm text-gray-600 mb-3">Financial Summary</p>
-                <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-600 mb-4">Financial Summary</p>
+                <div className="space-y-3">
                   {invoice.customer.qbBalance !== null && invoice.customer.qbBalance !== undefined && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-700">Current Balance:</span>
-                      <span className={`font-semibold ${Number(invoice.customer.qbBalance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Current Balance</span>
+                      <span className={`text-lg font-bold ${Number(invoice.customer.qbBalance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {Number(invoice.customer.qbBalance).toLocaleString("en-US", {
                           style: "currency",
                           currency: "USD",
@@ -438,9 +539,9 @@ export default async function InvoiceDetailPage({
                     </div>
                   )}
                   {invoice.customer.qbTotalInvoiced !== null && invoice.customer.qbTotalInvoiced !== undefined && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-700">Total Invoiced:</span>
-                      <span className="font-medium text-gray-900">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Total Invoiced</span>
+                      <span className="text-lg font-semibold text-gray-900">
                         {Number(invoice.customer.qbTotalInvoiced).toLocaleString("en-US", {
                           style: "currency",
                           currency: "USD",
@@ -449,9 +550,9 @@ export default async function InvoiceDetailPage({
                     </div>
                   )}
                   {invoice.customer.qbTotalPaid !== null && invoice.customer.qbTotalPaid !== undefined && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-700">Total Paid:</span>
-                      <span className="font-medium text-green-600">
+                    <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                      <span className="text-sm font-medium text-gray-700">Total Paid</span>
+                      <span className="text-lg font-semibold text-green-600">
                         {Number(invoice.customer.qbTotalPaid).toLocaleString("en-US", {
                           style: "currency",
                           currency: "USD",
@@ -460,14 +561,18 @@ export default async function InvoiceDetailPage({
                     </div>
                   )}
                   {(!invoice.customer.qbBalance && !invoice.customer.qbTotalInvoiced && !invoice.customer.qbTotalPaid) && (
-                    <p className="text-sm text-gray-400">
+                    <p className="text-sm text-gray-400 p-3 bg-gray-50 rounded-lg text-center">
                       No financial data synced yet
                     </p>
                   )}
                 </div>
                 {invoice.customer.lastQbBalanceSync && (
-                  <p className="text-xs text-gray-400 mt-2">
-                    Last synced: {new Date(invoice.customer.lastQbBalanceSync).toLocaleDateString("pt-BR")}
+                  <p className="text-xs text-gray-500 mt-3">
+                    Last synced: {new Date(invoice.customer.lastQbBalanceSync).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric"
+                    })}
                   </p>
                 )}
               </div>
@@ -476,7 +581,7 @@ export default async function InvoiceDetailPage({
               <div className="pt-4">
                 <Link
                   href={`/dashboard/customers/${invoice.customer.id}`}
-                  className="inline-flex items-center text-sm text-blue-600 hover:underline"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
                 >
                   View All Customer Invoices →
                 </Link>
@@ -492,41 +597,33 @@ export default async function InvoiceDetailPage({
 
           {/* Deal */}
           {invoice.deal && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Related Deal</h2>
-              <div className="space-y-2">
-                <p>
-                  <span className="font-medium">Title:</span>{" "}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Related Deal</h2>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Title</p>
                   <Link
                     href={`/dashboard/deals/${invoice.deal.id}`}
-                    className="text-blue-600 hover:underline"
+                    className="text-lg font-semibold text-blue-600 hover:text-blue-700 hover:underline"
                   >
                     {invoice.deal.title}
                   </Link>
-                </p>
-                <p>
-                  <span className="font-medium">Value:</span>{" "}
-                  {invoice.deal.currency} {Number(invoice.deal.value).toLocaleString()}
-                </p>
-                <p>
-                  <span className="font-medium">Status:</span> {invoice.deal.status}
-                </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Deal Value</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {invoice.deal.currency} {Number(invoice.deal.value).toLocaleString()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Status</p>
+                    <span className="inline-block px-3 py-1 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
+                      {invoice.deal.status}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* PDF */}
-          {invoice.pdfUrl && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Document</h2>
-              <a
-                href={invoice.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                View PDF →
-              </a>
             </div>
           )}
         </div>
@@ -564,10 +661,10 @@ export default async function InvoiceDetailPage({
           {(invoice.status === InvoiceStatus.OVERDUE || isOverdue) &&
             invoice.status !== InvoiceStatus.PAID &&
             canApprove && (
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold">Collection Calls</h3>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                  <h3 className="text-lg font-semibold text-gray-900">Collection Calls</h3>
+                  <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-800">
                     AI Voice
                   </span>
                 </div>
@@ -584,27 +681,42 @@ export default async function InvoiceDetailPage({
               </div>
             )}
 
-          {/* Informações Adicionais */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="font-semibold mb-4">Information</h3>
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="text-gray-600">Invoice Number:</span>
-                <br />
-                <span className="font-medium">
-                  {invoice.invoiceNumber || "N/A"}
-                </span>
-              </p>
-              <p>
-                <span className="text-gray-600">Created:</span>
-                <br />
-                {new Date(invoice.createdAt).toLocaleString("pt-BR")}
-              </p>
-              <p>
-                <span className="text-gray-600">Updated:</span>
-                <br />
-                {new Date(invoice.updatedAt).toLocaleString("pt-BR")}
-              </p>
+          {/* Additional Information */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Created</p>
+                  <p className="text-sm text-gray-900">
+                    {new Date(invoice.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Last Updated</p>
+                  <p className="text-sm text-gray-900">
+                    {new Date(invoice.updatedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    })}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">Internal ID</p>
+                <p className="text-xs text-gray-500 font-mono bg-gray-50 p-2 rounded">
+                  {invoice.id}
+                </p>
+              </div>
             </div>
           </div>
         </div>
