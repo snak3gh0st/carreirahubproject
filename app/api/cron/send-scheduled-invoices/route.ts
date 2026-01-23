@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { invoiceApprovalService } from '@/lib/services/invoice-approval.service';
+import { invoiceSyncService } from '@/lib/services/invoice-sync.service';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * GET /api/cron/send-scheduled-invoices
- * Send approved invoices to QuickBooks when they are 3 days from due date
+ * Send invoices to QuickBooks when they are 5 days from due date
  *
  * Schedule: Daily at 9:00 AM UTC
  *
  * Logic:
- * - Find all APPROVED invoices without quickbooks_invoice_id
- * - Check if dueDate is within 3 days
+ * - Find all invoices without quickbooks_invoice_id
+ * - Check if dueDate is within 5 days
  * - Send to QuickBooks and email to customer
  */
 export async function GET(request: NextRequest) {
@@ -28,10 +28,9 @@ export async function GET(request: NextRequest) {
 
     console.log('[CRON] Starting scheduled invoice sending job...');
 
-    // Find approved invoices that haven't been sent to QuickBooks yet
+    // Find invoices that haven't been sent to QuickBooks yet
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
-        approvalStatus: 'APPROVED',
         quickbooks_invoice_id: null, // Not yet sent to QB
       },
       include: {
@@ -40,7 +39,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[CRON] Found ${pendingInvoices.length} approved invoices not yet sent to QB`);
+    console.log(`[CRON] Found ${pendingInvoices.length} invoices not yet sent to QB`);
 
     let sent = 0;
     let skipped = 0;
@@ -84,7 +83,7 @@ export async function GET(request: NextRequest) {
           console.log(`[CRON] Sending invoice ${invoice.id} to QB (due in ${daysUntilDue} days, isInstallment: ${isInstallment})`);
 
           // Send to QuickBooks
-          await invoiceApprovalService.syncApprovedInvoice(invoice.id);
+          await invoiceSyncService.syncInvoiceToQuickBooks(invoice.id);
 
           sent++;
 
