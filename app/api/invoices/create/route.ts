@@ -80,10 +80,12 @@ export async function POST(request: NextRequest) {
     const invoices: any[] = [];
 
     // Determine number of invoices to create
+    // IMPORTANT: When there's an entry + installments, we combine entry with first installment
+    // So: Total invoices = installmentCount (NOT 1 + installmentCount)
     let invoiceCountToCreate = 1;
     if (entryAmount > 0 && installmentCount > 0) {
-      // Entry + installments = 1 entry invoice + N installment invoices
-      invoiceCountToCreate = 1 + installmentCount;
+      // Entry + installments = N invoices (first includes entry + installment 1)
+      invoiceCountToCreate = installmentCount;
     } else if (installmentCount > 0) {
       // Just installments = N invoices
       invoiceCountToCreate = installmentCount;
@@ -115,48 +117,81 @@ export async function POST(request: NextRequest) {
       let invoiceDueDate: Date;
 
       // Calculate amount and description based on position
-      if (entryAmount > 0 && i === 1) {
-        // First invoice is the entry
-        invoiceAmount = entryAmount;
-        invoiceDescription = `${data.description || 'Service'} - Entry Payment`;
+      if (entryAmount > 0 && installmentCount > 0 && i === 1) {
+        // FIRST INVOICE: Combine entry + first installment (both due now)
+        const firstInstallmentAmount = remaining / installmentCount;
+        invoiceAmount = Number((entryAmount + firstInstallmentAmount).toFixed(2));
+        invoiceDescription = `${data.description || 'Service'} - Initial Payment (Entry + Installment 1 of ${installmentCount})`;
         invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
       } else if (installmentCount > 0) {
-        // Subsequent invoices are installments
+        // Subsequent invoices are regular installments
         const installmentAmount = remaining / installmentCount;
-        const installmentNumber = entryAmount > 0 ? i - 1 : i;
+        const installmentNumber = entryAmount > 0 ? i : i; // If entry exists, i=2 is "Installment 2"
         invoiceAmount = Number(installmentAmount.toFixed(2));
         invoiceDescription = `${data.description || 'Service'} - Installment ${installmentNumber} of ${installmentCount}`;
 
         // Calculate due date (monthly installments)
         invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+        // If entry exists: i=2 → +1 month, i=3 → +2 months
+        // If no entry: i=1 → +0 months, i=2 → +1 month
         const monthsToAdd = entryAmount > 0 ? i - 1 : i - 1;
         invoiceDueDate.setMonth(invoiceDueDate.getMonth() + monthsToAdd);
       } else {
-        // Single invoice (no installments)
+        // Single invoice (no installments, no entry split)
         invoiceAmount = totalAmount;
         invoiceDescription = data.description || 'Service';
         invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
       }
 
       // Prepare line items for this invoice
-      const lineItems =
-        invoiceCountToCreate === 1
-          ? data.items.map((item) => ({
-              description: item.description || invoiceDescription,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              amount: Number((item.unitPrice * item.quantity).toFixed(2)),
-              serviceItemId: item.serviceItemId,
-            }))
-          : [
-              {
-                description: invoiceDescription,
-                quantity: 1,
-                unitPrice: invoiceAmount,
-                amount: invoiceAmount,
-                serviceItemId: data.items[0].serviceItemId,
-              },
-            ];
+      let lineItems: Array<{
+        description: string;
+        quantity: number;
+        unitPrice: number;
+        amount: number;
+        serviceItemId: string;
+      }>;
+
+      if (invoiceCountToCreate === 1) {
+        // Single invoice - use original items
+        lineItems = data.items.map((item) => ({
+          description: item.description || invoiceDescription,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          amount: Number((item.unitPrice * item.quantity).toFixed(2)),
+          serviceItemId: item.serviceItemId,
+        }));
+      } else if (entryAmount > 0 && i === 1) {
+        // First invoice with entry + first installment - show as TWO line items
+        const firstInstallmentAmount = remaining / installmentCount;
+        lineItems = [
+          {
+            description: `${data.description || 'Service'} - Entry Payment`,
+            quantity: 1,
+            unitPrice: entryAmount,
+            amount: entryAmount,
+            serviceItemId: data.items[0].serviceItemId,
+          },
+          {
+            description: `${data.description || 'Service'} - Installment 1 of ${installmentCount}`,
+            quantity: 1,
+            unitPrice: Number(firstInstallmentAmount.toFixed(2)),
+            amount: Number(firstInstallmentAmount.toFixed(2)),
+            serviceItemId: data.items[0].serviceItemId,
+          },
+        ];
+      } else {
+        // Regular installment - single line item
+        lineItems = [
+          {
+            description: invoiceDescription,
+            quantity: 1,
+            unitPrice: invoiceAmount,
+            amount: invoiceAmount,
+            serviceItemId: data.items[0].serviceItemId,
+          },
+        ];
+      }
 
       // Determine installment type for invoice number generation
       let installmentType: 'single' | 'entry' | 'installment';
@@ -166,12 +201,14 @@ export async function POST(request: NextRequest) {
         // Single invoice (no installments)
         installmentType = 'single';
       } else if (entryAmount > 0 && i === 1) {
-        // Entry payment (first invoice in series with entry)
+        // First invoice with entry + first installment combined
         installmentType = 'entry';
       } else {
-        // Installment payment
+        // Regular installment payment
         installmentType = 'installment';
-        installmentNum = entryAmount > 0 ? i - 1 : i;
+        // If entry exists: i=2 is "Installment 2", i=3 is "Installment 3"
+        // If no entry: i=1 is "Installment 1", i=2 is "Installment 2"
+        installmentNum = entryAmount > 0 ? i : i;
       }
 
       // Generate unique invoice number using enhanced format
@@ -273,15 +310,19 @@ export async function POST(request: NextRequest) {
       console.log(`[INVOICE_CREATE] Invoice ${qbInvoice.Id} created in QB with status: ${qbInvoice.EmailStatus}`);
 
       // Determine if this invoice should be emailed immediately
-      // ONLY send email for: (1) first installment OR (2) non-installment invoices
+      // LOGIC:
+      // - Single invoice: Send immediately
+      // - First invoice (entry + installment 1): Send immediately
+      // - Subsequent installments: DRAFT (send 5 days before due date)
       const isInstallmentSeries = invoiceCountToCreate > 1;
-      const isFirstInstallment = i === 1;
-      const shouldSendEmail = !isInstallmentSeries || isFirstInstallment;
+      const isFirstInvoice = i === 1;
+      const shouldSendEmail = !isInstallmentSeries || isFirstInvoice;
 
       console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
         isInstallmentSeries,
-        isFirstInstallment,
+        isFirstInvoice,
         shouldSendEmail,
+        description: invoiceDescription,
       });
 
       // QB does NOT auto-send with EmailStatus: "NeedToSend" - must call /send explicitly
@@ -313,7 +354,7 @@ export async function POST(request: NextRequest) {
                   recipientEmail: customer.email,
                   deliveryInfo: sendResult.deliveryInfo,
                   isInstallment: isInstallmentSeries,
-                  isFirstInstallment,
+                  isFirstInvoice,
                 } as any,
               },
             });
@@ -331,7 +372,7 @@ export async function POST(request: NextRequest) {
                   note: "QB /send endpoint unavailable. Invoice queued for batch sending.",
                   error: sendResult.error,
                   isInstallment: isInstallmentSeries,
-                  isFirstInstallment,
+                  isFirstInvoice,
                 } as any,
               },
             });
@@ -346,11 +387,11 @@ export async function POST(request: NextRequest) {
               action: "invoice_created_send_error",
               status: "WARNING",
               error: sendError.message || "Send error",
-              payload: {
+               payload: {
                 qbInvoiceId: qbInvoice.Id,
                 recipientEmail: customer.email,
                 isInstallment: isInstallmentSeries,
-                isFirstInstallment,
+                isFirstInvoice,
               } as any,
             },
           });
@@ -387,7 +428,7 @@ export async function POST(request: NextRequest) {
               customerId: customer.id,
               customerName: customer.name,
               isInstallment: isInstallmentSeries,
-              isFirstInstallment,
+              isFirstInvoice,
             } as any,
           },
         });
