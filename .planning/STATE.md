@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 2 of 6 (DocuSign Integration)
 Plan: 4 of 4 in current phase
 Status: Phase complete
-Last activity: 2026-01-23 — Completed quick task 008: Add delete invoice button with QuickBooks integration
+Last activity: 2026-01-23 — Completed quick task 009: Redesign invoice detail page with better layout and delete button
 
 Progress: ████████████████ 100% (17 plans executed)
 
