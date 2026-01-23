@@ -215,8 +215,20 @@ export async function POST(request: NextRequest) {
 
       console.log(`[INVOICE_CREATE] Invoice ${qbInvoice.Id} created in QB with status: ${qbInvoice.EmailStatus}`);
 
+      // Determine if this invoice should be emailed immediately
+      // ONLY send email for: (1) first installment OR (2) non-installment invoices
+      const isInstallmentSeries = invoiceCountToCreate > 1;
+      const isFirstInstallment = i === 1;
+      const shouldSendEmail = !isInstallmentSeries || isFirstInstallment;
+
+      console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
+        isInstallmentSeries,
+        isFirstInstallment,
+        shouldSendEmail,
+      });
+
       // QB does NOT auto-send with EmailStatus: "NeedToSend" - must call /send explicitly
-      if (customer.email) {
+      if (customer.email && shouldSendEmail) {
         // Wait a moment for QB to fully process the invoice before sending
         await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -243,6 +255,8 @@ export async function POST(request: NextRequest) {
                   qbInvoiceId: qbInvoice.Id,
                   recipientEmail: customer.email,
                   deliveryInfo: sendResult.deliveryInfo,
+                  isInstallment: isInstallmentSeries,
+                  isFirstInstallment,
                 } as any,
               },
             });
@@ -259,6 +273,8 @@ export async function POST(request: NextRequest) {
                   emailStatus: "NeedToSend",
                   note: "QB /send endpoint unavailable. Invoice queued for batch sending.",
                   error: sendResult.error,
+                  isInstallment: isInstallmentSeries,
+                  isFirstInstallment,
                 } as any,
               },
             });
@@ -276,10 +292,31 @@ export async function POST(request: NextRequest) {
               payload: {
                 qbInvoiceId: qbInvoice.Id,
                 recipientEmail: customer.email,
+                isInstallment: isInstallmentSeries,
+                isFirstInstallment,
               } as any,
             },
           });
         }
+      } else if (customer.email && !shouldSendEmail) {
+        // Subsequent installment - DO NOT send email now (will be sent 5 days before due date)
+        console.log(`[INVOICE_CREATE] ⏱️  Installment invoice ${i}/${invoiceCountToCreate} created as DRAFT. Email will be sent 5 days before due date: ${invoiceDueDate.toISOString().split('T')[0]}`);
+
+        await prisma.integrationLog.create({
+          data: {
+            service: "quickbooks",
+            action: "installment_invoice_scheduled",
+            status: "SUCCESS",
+            payload: {
+              qbInvoiceId: qbInvoice.Id,
+              recipientEmail: customer.email,
+              dueDate: invoiceDueDate.toISOString(),
+              installmentNumber: i,
+              totalInstallments: invoiceCountToCreate,
+              scheduledSendDate: new Date(invoiceDueDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+            } as any,
+          },
+        });
       } else {
         console.warn(`[INVOICE_CREATE] ⚠️  Customer ${customer.name} has no email, invoice created but NOT sent`);
 
@@ -292,6 +329,8 @@ export async function POST(request: NextRequest) {
               qbInvoiceId: qbInvoice.Id,
               customerId: customer.id,
               customerName: customer.name,
+              isInstallment: isInstallmentSeries,
+              isFirstInstallment,
             } as any,
           },
         });
@@ -314,6 +353,7 @@ export async function POST(request: NextRequest) {
               seriesId,
               current: i,
               total: invoiceCountToCreate,
+              isFirstInstallment: i === 1,
             } as any,
           }),
         },
