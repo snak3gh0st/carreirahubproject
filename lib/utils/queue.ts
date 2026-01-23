@@ -408,15 +408,9 @@ export function initializeWorkers() {
     "invoice-approval",
     async (job) => {
       const { invoiceId, action, userId, reason } = job.data;
-      const { invoiceApprovalService } = await import("@/lib/services/invoice-approval.service");
-
-      if (action === "approve") {
-        await invoiceApprovalService.approveInvoice(invoiceId, userId);
-      } else if (action === "reject") {
-        await invoiceApprovalService.rejectInvoice(invoiceId, userId, reason || "No reason provided");
-      } else if (action === "submit") {
-        await invoiceApprovalService.submitForApproval(invoiceId, userId);
-      }
+      // Note: Approval workflow removed in quick-012, this queue processor is deprecated
+      console.warn(`Invoice approval action '${action}' attempted but approval workflow has been removed`);
+      return;
     },
     { connection: connectionOptions }
   );

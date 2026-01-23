@@ -42,7 +42,7 @@ async function testServiceImports() {
     { name: 'StripeService', path: '../lib/services/stripe.service' },
     { name: 'QuickbooksService', path: '../lib/services/quickbooks.service' },
     { name: 'DocuSignService', path: '../lib/services/docusign.service' },
-    { name: 'InvoiceApprovalService', path: '../lib/services/invoice-approval.service' },
+    { name: 'InvoiceSyncService', path: '../lib/services/invoice-sync.service' },
   ];
 
   for (const { name, path } of services) {
