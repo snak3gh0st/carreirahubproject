@@ -620,6 +620,148 @@ export class DocuSignService {
   }
 
   /**
+   * Create envelope from DocuSign template with dynamic data
+   *
+   * Uses Composite Templates pattern for maximum flexibility:
+   * - serverTemplates: Reference to template created in DocuSign UI
+   * - inlineTemplates: Runtime recipient data and tab values
+   *
+   * This is the PREFERRED method for production. Falls back to inline PDF
+   * if DOCUSIGN_TEMPLATE_ID is not configured.
+   *
+   * @param invoice Invoice data for contract
+   * @param customer Customer data for signer
+   * @returns Envelope ID
+   */
+  async createEnvelopeFromTemplate(
+    invoice: Invoice,
+    customer: Customer
+  ): Promise<string> {
+    try {
+      const templateId = process.env.DOCUSIGN_TEMPLATE_ID;
+
+      // If no template configured, fall back to inline PDF generation
+      if (!templateId) {
+        console.log('[DOCUSIGN] No template ID configured, falling back to inline PDF');
+        return this.createEnvelopeFromInvoice(invoice, customer);
+      }
+
+      console.log(`[DOCUSIGN] Creating envelope from template ${templateId}`);
+
+      // Build envelope definition using Composite Templates
+      const envelopeDefinition = {
+        status: 'sent',
+        emailSubject: `CarreiraUSA - Contract for Signature (Invoice ${invoice.invoiceNumber || invoice.id})`,
+        emailBlurb: 'Please review and sign the attached service agreement to proceed.',
+        compositeTemplates: [
+          {
+            serverTemplates: [
+              {
+                templateId: templateId,
+                sequence: '1',
+              },
+            ],
+            inlineTemplates: [
+              {
+                sequence: '1',
+                recipients: {
+                  signers: [
+                    {
+                      email: customer.email,
+                      name: customer.name,
+                      recipientId: '1',
+                      roleName: 'Client', // Must match template role
+                      tabs: {
+                        textTabs: [
+                          {
+                            tabLabel: 'customer_name',
+                            value: customer.name,
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'customer_email',
+                            value: customer.email,
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'invoice_number',
+                            value: invoice.invoiceNumber || invoice.id,
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'amount',
+                            value: `$${Number(invoice.amount).toFixed(2)}`,
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'due_date',
+                            value: new Date(invoice.dueDate).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            }),
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'service_description',
+                            value: invoice.deal?.title || 'Professional Services',
+                            locked: 'true',
+                          },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+        notification: {
+          useAccountDefaults: 'false',
+          reminders: {
+            reminderEnabled: 'true',
+            reminderDelay: '3',
+            reminderFrequency: '4',
+          },
+          expirations: {
+            expireEnabled: 'true',
+            expireAfter: '30',
+            expireWarn: '3',
+          },
+        },
+      };
+
+      // Create envelope via API
+      const result = await this.apiRequest('/envelopes', {
+        method: 'POST',
+        body: JSON.stringify(envelopeDefinition),
+      });
+
+      if (!result || !result.envelopeId) {
+        throw new Error('Failed to create envelope - no envelope ID returned');
+      }
+
+      console.log(`[DOCUSIGN] Template-based envelope created: ${result.envelopeId}`);
+      return result.envelopeId;
+
+    } catch (error) {
+      console.error('[DOCUSIGN] Failed to create envelope from template:', error);
+
+      // If template fails, fall back to inline PDF as last resort
+      if (process.env.DOCUSIGN_TEMPLATE_ID) {
+        console.log('[DOCUSIGN] Template failed, attempting fallback to inline PDF');
+        try {
+          return await this.createEnvelopeFromInvoice(invoice, customer);
+        } catch (fallbackError) {
+          console.error('[DOCUSIGN] Fallback also failed:', fallbackError);
+        }
+      }
+
+      throw new Error('Failed to create DocuSign envelope: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  /**
    * Create envelope (legacy method)
    */
   async createEnvelope(data: {
