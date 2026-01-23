@@ -10,7 +10,6 @@ interface MobileFilterModalProps {
     minAmount?: string;
     maxAmount?: string;
     paymentMethod?: string;
-    approvalStatus?: string;
     balanceStatus?: string;
     minInvoices?: string;
     maxInvoices?: string;
@@ -215,21 +214,6 @@ export function MobileFilterModal({
                         <option value="BANK_TRANSFER">Bank Transfer</option>
                         <option value="CASH">Cash</option>
                         <option value="OTHER">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Approval Status
-                      </label>
-                      <select
-                        name="approvalStatus"
-                        defaultValue={currentFilters.approvalStatus || ""}
-                        className="w-full px-3 py-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-base min-h-[44px]"
-                      >
-                        <option value="">All</option>
-                        <option value="PENDING">Pending</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED">Rejected</option>
                       </select>
                     </div>
                   </>

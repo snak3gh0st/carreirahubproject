@@ -4,8 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
 import Link from "next/link";
-import { ApprovalStatusBadge } from "@/components/invoices/approval-status-badge";
-import { ApproveRejectActions } from "@/components/invoices/approve-reject-actions";
 import { WorkflowTimeline } from "@/components/invoices/workflow-timeline";
 import { ContractStatusCard } from "@/components/invoices/contract-status-card";
 import { PaymentStatusCard } from "@/components/invoices/payment-status-card";
@@ -56,13 +54,6 @@ export default async function InvoiceDetailPage({
         },
       },
       contract: true,
-      approver: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
       owner: {
         select: {
           id: true,
@@ -109,20 +100,22 @@ export default async function InvoiceDetailPage({
       description: `Created by ${invoice.deal?.owner?.name || "System"}`,
     },
     {
-      title: "Awaiting Approval",
-      status:
-        invoice.approvalStatus === "PENDING"
-          ? ("current" as const)
-          : invoice.approvalStatus === "REJECTED"
-          ? ("failed" as const)
-          : ("completed" as const),
-      date: invoice.approvalStatus !== "PENDING" ? invoice.approvedAt : null,
-      description:
-        invoice.approvalStatus === "APPROVED"
-          ? `Approved by ${invoice.approver?.name || "Finance"}`
-          : invoice.approvalStatus === "REJECTED"
-          ? `Rejected: ${invoice.rejectedReason || "No reason provided"}`
-          : "Waiting for FINANCE approval",
+      title: "QuickBooks Sync",
+      status: invoice.quickbooks_invoice_id ? ("completed" as const) : ("current" as const),
+      date: invoice.quickbooks_invoice_id ? invoice.createdAt : null,
+      description: invoice.quickbooks_invoice_id 
+        ? `Synced to QuickBooks (ID: ${invoice.quickbooks_invoice_id})`
+        : "Syncing to QuickBooks...",
+    },
+    {
+      title: "Email Sent",
+      status: invoice.status === InvoiceStatus.SENT || invoice.status === InvoiceStatus.PAID 
+        ? ("completed" as const) 
+        : ("pending" as const),
+      date: invoice.status === InvoiceStatus.SENT || invoice.status === InvoiceStatus.PAID ? invoice.createdAt : null,
+      description: invoice.status === InvoiceStatus.SENT || invoice.status === InvoiceStatus.PAID
+        ? `Email sent to ${invoice.customer.email}`
+        : "Email will be sent automatically",
     },
     {
       title: "Contract Sent",
@@ -131,15 +124,11 @@ export default async function InvoiceDetailPage({
           invoice.contract.status === ContractStatus.EXPIRED
           ? ("failed" as const)
           : ("completed" as const)
-        : invoice.approvalStatus === "APPROVED"
-        ? ("current" as const)
         : ("pending" as const),
       date: invoice.contract?.sentAt,
       description: invoice.contract
         ? `Sent to ${invoice.contract.signerEmail}`
-        : invoice.approvalStatus === "APPROVED"
-        ? "Generating contract..."
-        : "Contract will be sent after approval",
+        : "Contract will be generated automatically",
     },
     {
       title: "Contract Signed",
@@ -210,12 +199,11 @@ export default async function InvoiceDetailPage({
       {/* Header Section with Actions */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          {/* Title and Badge */}
+          {/* Title */}
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-3xl font-bold text-gray-900">
               Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
             </h1>
-            <ApprovalStatusBadge status={invoice.approvalStatus as any} />
           </div>
 
           {/* Action Buttons */}
@@ -328,63 +316,6 @@ export default async function InvoiceDetailPage({
       </div>
 
       {/* Approval Section */}
-      {invoice.approvalStatus === "PENDING" && canApprove && (
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 mb-6">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold text-orange-900 mb-2">
-                This invoice requires your approval
-              </h2>
-              <p className="text-sm text-orange-700 mb-4">
-                Please review the invoice details below and approve or reject it. Once approved,
-                the contract will be automatically sent to the client via DocuSign.
-              </p>
-            </div>
-          </div>
-          <ApproveRejectActions
-            invoiceId={invoice.id}
-            invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
-          />
-        </div>
-      )}
-
-      {invoice.approvalStatus === "APPROVED" && invoice.approver && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold text-green-900 mb-2">
-            Invoice Approved
-          </h2>
-          <p className="text-sm text-green-700">
-            Approved by <strong>{invoice.approver.name}</strong> on{" "}
-            {invoice.approvedAt ? new Date(invoice.approvedAt).toLocaleString() : "N/A"}
-          </p>
-          {invoice.quickbooks_invoice_id && (
-            <p className="text-sm text-green-700 mt-1">
-              Synced to QuickBooks (ID: {invoice.quickbooks_invoice_id})
-            </p>
-          )}
-        </div>
-      )}
-
-      {invoice.approvalStatus === "REJECTED" && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
-          <h2 className="text-lg font-semibold text-red-900 mb-2">
-            Invoice Rejected
-          </h2>
-          {invoice.approver && (
-            <p className="text-sm text-red-700">
-              Rejected by <strong>{invoice.approver.name}</strong> on{" "}
-              {invoice.approvedAt ? new Date(invoice.approvedAt).toLocaleString() : "N/A"}
-            </p>
-          )}
-          {invoice.rejectedReason && (
-            <div className="mt-3 p-3 bg-white border border-red-200 rounded">
-              <p className="text-sm font-medium text-gray-700 mb-1">Reason:</p>
-              <p className="text-sm text-gray-900">{invoice.rejectedReason}</p>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Workflow Timeline */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Workflow Progress</h2>

@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
-import { ApprovalStatusBadge } from "@/components/invoices/approval-status-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
@@ -20,7 +19,6 @@ export default async function InvoicesPage({
   searchParams,
 }: {
   searchParams: {
-    approvalStatus?: string;
     status?: string;
     page?: string;
     search?: string;
@@ -65,10 +63,6 @@ export default async function InvoicesPage({
   // COMMERCIAL and SALES users can only see their own invoices
   if (userRole === "COMMERCIAL" || userRole === "SALES") {
     whereClause.ownerId = userId;
-  }
-
-  if (searchParams.approvalStatus) {
-    whereClause.approvalStatus = searchParams.approvalStatus;
   }
 
   if (searchParams.status) {
@@ -166,21 +160,6 @@ export default async function InvoicesPage({
     {} as Record<InvoiceStatus, { count: number; amount: number }>
   );
 
-  // Approval statistics (also filtered)
-  const approvalStats = await prisma.invoice.groupBy({
-    by: ["approvalStatus"],
-    where: whereClause,
-    _count: { id: true },
-  });
-
-  const approvalStatsMap = approvalStats.reduce(
-    (acc, item) => {
-      acc[item.approvalStatus] = item._count.id;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
   // QuickBooks synced count (respects user filter)
   const qbInvoices = await prisma.invoice.count({
     where: {
@@ -199,14 +178,10 @@ export default async function InvoicesPage({
   const pendingAmount =
     (statsMap.SENT?.amount || 0) + (statsMap.DRAFT?.amount || 0);
 
-  const pendingApprovalCount = approvalStatsMap.PENDING || 0;
-
   // Build search params for pagination
   const paginationParams: Record<string, string> = {};
   if (search) paginationParams.search = search;
   if (source) paginationParams.source = source;
-  if (searchParams.approvalStatus)
-    paginationParams.approvalStatus = searchParams.approvalStatus;
   if (searchParams.status) paginationParams.status = searchParams.status;
   if (sortBy !== "createdAt") paginationParams.sortBy = sortBy;
   if (sortOrder !== "desc") paginationParams.sortOrder = sortOrder;
@@ -223,7 +198,6 @@ export default async function InvoicesPage({
     searchParams.minAmount,
     searchParams.maxAmount,
     searchParams.paymentMethod,
-    searchParams.approvalStatus,
   ].filter(Boolean).length;
 
   // Helper function to build sort URL
@@ -231,7 +205,6 @@ export default async function InvoicesPage({
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (source) params.set("source", source);
-    if (searchParams.approvalStatus) params.set("approvalStatus", searchParams.approvalStatus);
     if (searchParams.status) params.set("status", searchParams.status);
     params.set("sortBy", field);
     params.set("sortOrder", sortBy === field && sortOrder === "asc" ? "desc" : "asc");
@@ -249,15 +222,6 @@ export default async function InvoicesPage({
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Invoices & Financeiro</h1>
         <div className="flex items-center gap-3">
-          {pendingApprovalCount > 0 && (
-            <Link
-              href="/dashboard/invoices/approval-queue"
-              className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition flex items-center gap-2"
-            >
-              <span className="font-semibold">{pendingApprovalCount}</span>
-              Pending Approvals
-            </Link>
-          )}
           <Link
             href="/dashboard/invoices/new"
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
@@ -412,13 +376,6 @@ export default async function InvoicesPage({
         <div className="flex flex-wrap items-center gap-4 mb-4">
           {/* Search */}
           <form method="GET" className="flex-1 min-w-[200px]">
-            {searchParams.approvalStatus && (
-              <input
-                type="hidden"
-                name="approvalStatus"
-                value={searchParams.approvalStatus}
-              />
-            )}
             {searchParams.status && (
               <input type="hidden" name="status" value={searchParams.status} />
             )}
@@ -486,7 +443,6 @@ export default async function InvoicesPage({
               minAmount: searchParams.minAmount,
               maxAmount: searchParams.maxAmount,
               paymentMethod: searchParams.paymentMethod,
-              approvalStatus: searchParams.approvalStatus,
             }}
             preserveParams={{
               search: search,
@@ -588,23 +544,6 @@ export default async function InvoicesPage({
                   <option value="OTHER">Other</option>
                 </select>
               </div>
-
-              {/* Approval Status */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Approval Status
-                </label>
-                <select
-                  name="approvalStatus"
-                  defaultValue={searchParams.approvalStatus || ""}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All</option>
-                  <option value="PENDING">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
-                </select>
-              </div>
             </div>
 
             {/* Action Buttons */}
@@ -684,7 +623,6 @@ export default async function InvoicesPage({
             const isDueThisWeekActive = searchParams.dueDateFrom === todayStr && searchParams.dueDateTo === weekFromNowStr;
             const isDueThisMonthActive = searchParams.dueDateFrom === monthStart && searchParams.dueDateTo === monthEnd;
             const isHighValueActive = searchParams.minAmount === "10000";
-            const isPendingApprovalActive = searchParams.approvalStatus === "PENDING";
             const isFromQBActive = source === "quickbooks";
 
             return (
@@ -735,18 +673,6 @@ export default async function InvoicesPage({
                   }`}
                 >
                   High Value (&gt;$10k)
-                </Link>
-
-                {/* Pending Approval */}
-                <Link
-                  href={isPendingApprovalActive ? "/dashboard/invoices" : `/dashboard/invoices?approvalStatus=PENDING`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isPendingApprovalActive
-                      ? "bg-orange-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  Pending Approval
                 </Link>
 
                 {/* From QuickBooks */}
@@ -801,9 +727,6 @@ export default async function InvoicesPage({
                 </th>
                 <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Source
-                </th>
-                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Approval
                 </th>
                 <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   <Link
@@ -876,9 +799,6 @@ export default async function InvoicesPage({
                           Manual
                         </span>
                       )}
-                    </td>
-                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                      <ApprovalStatusBadge status={invoice.approvalStatus as any} />
                     </td>
                     <td className="px-4 md:px-6 py-4 whitespace-nowrap">
                       <span
