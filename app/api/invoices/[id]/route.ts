@@ -6,6 +6,13 @@ import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 
 const updateInvoiceSchema = z.object({
+  amount: z.number().positive().optional(),
+  dueDate: z.string().datetime().optional(), // ISO 8601 format
+  description: z.string().optional(),
+  lineItems: z.array(z.object({
+    description: z.string(),
+    amount: z.number().positive(),
+  })).optional(),
   status: z.nativeEnum(InvoiceStatus).optional(),
   pdfUrl: z.string().url().optional(),
 });
@@ -124,10 +131,69 @@ export async function PATCH(
     const body = await request.json();
     const data = updateInvoiceSchema.parse(body);
 
+    // Determine if financial fields changed (triggers QB sync)
+    const financialFieldsChanged = !!(
+      data.amount !== undefined ||
+      data.dueDate !== undefined ||
+      data.description !== undefined ||
+      data.lineItems !== undefined
+    );
+
+    let qbSyncError: string | null = null;
+
+    // Sync to QuickBooks if invoice is synced and financial fields changed
+    if (existingInvoice.quickbooks_invoice_id && financialFieldsChanged) {
+      try {
+        console.log(`[PATCH Invoice] Syncing financial changes to QuickBooks...`);
+        
+        // Import and initialize QuickBooks service
+        const { quickbooksService } = await import("@/lib/services/quickbooks.service");
+        await quickbooksService.initialize();
+
+        // Prepare updates for QuickBooks
+        const qbUpdates: any = {};
+
+        if (data.dueDate !== undefined) {
+          // Convert ISO 8601 to YYYY-MM-DD for QuickBooks
+          qbUpdates.dueDate = new Date(data.dueDate).toISOString().split('T')[0];
+        }
+
+        if (data.description !== undefined) {
+          qbUpdates.description = data.description;
+        }
+
+        if (data.lineItems !== undefined) {
+          qbUpdates.lineItems = data.lineItems;
+        }
+
+        // Call QuickBooks sparse update
+        await quickbooksService.updateInvoice(
+          existingInvoice.quickbooks_invoice_id,
+          qbUpdates
+        );
+
+        console.log(`[PATCH Invoice] ✓ Successfully synced to QuickBooks`);
+      } catch (qbError: any) {
+        // Log error but don't fail the request - allow manual reconciliation
+        qbSyncError = qbError.message || String(qbError);
+        console.error(`[PATCH Invoice] ✗ QuickBooks sync failed:`, qbSyncError);
+      }
+    }
+
+    // Update local database with all changes
     const invoice = await prisma.invoice.update({
       where: { id: params.id },
       data,
     });
+
+    // Return response with QB sync status
+    if (qbSyncError) {
+      return NextResponse.json({
+        invoice,
+        qbSyncError,
+        message: "Invoice updated locally. QuickBooks sync failed - manual reconciliation may be needed.",
+      });
+    }
 
     return NextResponse.json(invoice);
   } catch (error) {
