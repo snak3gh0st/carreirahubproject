@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 2 of 6 (DocuSign Integration)
 Plan: 4 of 4 in current phase
 Status: Phase complete
-Last activity: 2026-01-23 — Completed quick task 010: Fix invoice deletion to use QuickBooks void operation
+Last activity: 2026-01-23 — Completed quick task 011: Implement invoice edit functionality with QuickBooks sparse update
 
 Progress: ████████████████ 100% (17 plans executed)
 
@@ -319,11 +319,12 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 | 008 | Add delete invoice button with QuickBooks integration | 2026-01-23 | 5863d7b | [008-add-delete-invoice-button-with-quickbook](.planning/quick/008-add-delete-invoice-button-with-quickbook/) |
 | 009 | Redesign invoice detail page with better layout and delete button | 2026-01-23 | 99b0271 | [009-redesign-invoice-detail-page-with-better](.planning/quick/009-redesign-invoice-detail-page-with-better/) |
 | 010 | Fix invoice deletion to use QuickBooks void operation | 2026-01-23 | 7b9e2f2 | [010-fix-invoice-deletion-to-use-quickbooks-v](.planning/quick/010-fix-invoice-deletion-to-use-quickbooks-v/) |
+| 011 | Implement invoice edit functionality with QuickBooks sparse update | 2026-01-23 | a4b43cc | [011-implement-invoice-edit-functionality-wit](.planning/quick/011-implement-invoice-edit-functionality-wit/) |
 
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed quick task 010 (Fix invoice deletion to use QuickBooks void operation)
+Stopped at: Completed quick task 011 (Implement invoice edit functionality with QuickBooks sparse update)
 Resume file: .planning/quick/009-redesign-invoice-detail-page-with-better/009-SUMMARY.md
 Next action: Phase 2 complete. Ready to begin Phase 3 (Finance Workflow Automation).
 
