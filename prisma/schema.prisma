@@ -446,7 +446,12 @@ model Contract {
   id              String         @id @default(uuid())
   docusign_env_id String?        @unique
   status          ContractStatus @default(DRAFT)
-  signedUrl       String?        @db.Text
+  signedUrl       String?        @db.Text  // Legacy: DocuSign document URI
+
+  // S3 Storage (Phase 2 - DocuSign Integration)
+  signedS3Key          String?   // S3 key: contracts/2026/envelope-id.pdf
+  signedS3Url          String?   @db.Text  // Presigned URL (expires after 7 days)
+  signedS3UrlExpiresAt DateTime? // When the presigned URL expires
 
   // Signature tracking
   sentAt          DateTime?
