@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 
 /**
  * DELETE /api/invoices/delete
- * Delete an invoice from QuickBooks by ID
+ * Void an invoice in QuickBooks by ID
  *
  * Body:
  * {
@@ -32,15 +32,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing qbInvoiceId" }, { status: 400 });
     }
 
-    console.log(`[DELETE_INVOICE] Deleting QB invoice ${qbInvoiceId}...`);
+    console.log(`[VOID_INVOICE] Voiding QB invoice ${qbInvoiceId}...`);
 
     // Initialize QB service
     await quickbooksService.initialize();
 
-    // Delete from QB
-    const deleteResult = await quickbooksService.deleteInvoice(qbInvoiceId);
+    // Void in QB
+    const voidResult = await quickbooksService.voidInvoice(qbInvoiceId);
 
-    console.log(`[DELETE_INVOICE] ✓ QB invoice ${qbInvoiceId} deleted successfully`);
+    console.log(`[VOID_INVOICE] ✓ QB invoice ${qbInvoiceId} voided successfully`);
 
     // Delete from local database
     const localInvoice = await prisma.invoice.findFirst({
@@ -51,37 +51,37 @@ export async function POST(request: NextRequest) {
       await prisma.invoice.delete({
         where: { id: localInvoice.id },
       });
-      console.log(`[DELETE_INVOICE] ✓ Local invoice ${localInvoice.id} deleted`);
+      console.log(`[VOID_INVOICE] ✓ Local invoice ${localInvoice.id} deleted`);
     }
 
     // Log operation
     await prisma.integrationLog.create({
       data: {
         service: "quickbooks",
-        action: "invoice_deleted",
+        action: "invoice_voided",
         status: "SUCCESS",
         payload: {
           qbInvoiceId,
-          deletedAt: new Date(),
+          voidedAt: new Date(),
         } as any,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "Invoice deleted successfully",
+      message: "Invoice voided successfully in QuickBooks",
       qbInvoiceId,
-      result: deleteResult,
+      result: voidResult,
     });
   } catch (error: any) {
-    console.error("[DELETE_INVOICE] Error:", error);
+    console.error("[VOID_INVOICE] Error:", error);
 
     await prisma.integrationLog.create({
       data: {
         service: "quickbooks",
-        action: "invoice_delete_failed",
+        action: "invoice_void_failed",
         status: "ERROR",
-        error: error.message || "Delete failed",
+        error: error.message || "Void failed",
         payload: {
           errorStack: error.stack,
         } as any,
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { error: error.message || "Failed to delete invoice" },
+      { error: error.message || "Failed to void invoice" },
       { status: 500 }
     );
   }
