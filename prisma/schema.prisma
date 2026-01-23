@@ -77,12 +77,6 @@ enum MessageRole {
   SYSTEM
 }
 
-enum ApprovalStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
 enum ImportStatus {
   RUNNING
   COMPLETED
@@ -91,9 +85,6 @@ enum ImportStatus {
 }
 
 enum NotificationType {
-  INVOICE_APPROVAL_REQUEST
-  INVOICE_APPROVED
-  INVOICE_REJECTED
   CONTRACT_SENT
   CONTRACT_REMINDER
   CONTRACT_SIGNED
@@ -145,7 +136,6 @@ model User {
   escalatedConversations Conversation[]     @relation("EscalatedConversations")
   leadQualifications    LeadQualification[] @relation("LeadQualifications")
   ownedInvoices         Invoice[]           @relation("InvoiceOwner")
-  approvedInvoices      Invoice[]           @relation("InvoiceApprovals")
   bulkImports           BulkImport[]        @relation("BulkImports")
 
   createdAt DateTime @default(now())
@@ -352,13 +342,6 @@ model Invoice {
   // Ownership tracking
   ownerId         String?
   owner           User?          @relation("InvoiceOwner", fields: [ownerId], references: [id])
-
-  // Approval workflow
-  approvalStatus  ApprovalStatus @default(PENDING)
-  approvedBy      String?
-  approver        User?          @relation("InvoiceApprovals", fields: [approvedBy], references: [id])
-  approvedAt      DateTime?
-  rejectedReason  String?        @db.Text
 
   // Contract tracking
   contractId      String?        @unique
