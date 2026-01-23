@@ -1290,6 +1290,126 @@ export class QuickbooksService {
       throw error;
     }
   }
+
+  /**
+   * Update Invoice in QuickBooks using sparse update
+   * QuickBooks sparse update pattern:
+   * - POST to /v3/company/{realmId}/invoice?minorversion=73
+   * - Body includes: { sparse: true, ...changed_fields, SyncToken, Id }
+   * - Must fetch current invoice first to get SyncToken
+   * - SyncToken increments with each update (prevents concurrent update conflicts)
+   * - Only include fields being changed
+   */
+  async updateInvoice(
+    quickbooksInvoiceId: string,
+    updates: {
+      amount?: number;
+      dueDate?: string; // YYYY-MM-DD format
+      description?: string;
+      lineItems?: Array<{
+        description: string;
+        amount: number;
+        detailType?: string;
+        accountRef?: { value: string };
+      }>;
+    }
+  ): Promise<any> {
+    try {
+      console.log(`[QuickBooks] Updating invoice ${quickbooksInvoiceId} with sparse update...`);
+
+      // 1. Fetch current invoice to get SyncToken
+      const invoiceResponse = await this.getInvoice(quickbooksInvoiceId);
+      const invoice = invoiceResponse.Invoice;
+
+      if (!invoice) {
+        throw new Error(`Invoice ${quickbooksInvoiceId} not found in QuickBooks`);
+      }
+
+      console.log(`[QuickBooks] Current invoice SyncToken: ${invoice.SyncToken}`);
+
+      // 2. Build sparse update object with only changed fields
+      const updateData: any = {
+        Id: invoice.Id,
+        SyncToken: invoice.SyncToken,
+        sparse: true,
+      };
+
+      // Add changed fields
+      if (updates.dueDate !== undefined) {
+        updateData.DueDate = updates.dueDate;
+        console.log(`[QuickBooks] Updating DueDate to: ${updates.dueDate}`);
+      }
+
+      if (updates.description !== undefined) {
+        updateData.CustomerMemo = {
+          value: updates.description,
+        };
+        console.log(`[QuickBooks] Updating description`);
+      }
+
+      if (updates.lineItems !== undefined && updates.lineItems.length > 0) {
+        // Map line items to QuickBooks format
+        updateData.Line = updates.lineItems.map((item) => ({
+          Amount: item.amount,
+          DetailType: "SalesItemLineDetail",
+          Description: item.description,
+          SalesItemLineDetail: {
+            ItemRef: {
+              value: item.accountRef?.value || "1", // Use default service item
+            },
+          },
+        }));
+        console.log(`[QuickBooks] Updating ${updates.lineItems.length} line items`);
+      }
+
+      // Note: Amount is calculated from line items in QuickBooks, not set directly
+
+      // 3. POST to /v3/company/{realmId}/invoice?minorversion=73
+      console.log(`[QuickBooks] Sending sparse update...`);
+      const result = await this.request("/invoice?minorversion=73", {
+        method: "POST",
+        body: JSON.stringify(updateData),
+      });
+
+      console.log(`[QuickBooks] ✓ Invoice ${quickbooksInvoiceId} updated successfully`);
+      console.log(`[QuickBooks] New SyncToken: ${result.Invoice?.SyncToken}`);
+
+      // 4. Log to IntegrationLog
+      await prisma.integrationLog.create({
+        data: {
+          service: "quickbooks",
+          action: "invoice_updated",
+          status: "SUCCESS",
+          payload: {
+            quickbooks_invoice_id: quickbooksInvoiceId,
+            updates,
+            newSyncToken: result.Invoice?.SyncToken,
+          },
+        },
+      });
+
+      // 5. Return updated invoice
+      return result.Invoice;
+    } catch (error: any) {
+      console.error(`[QuickBooks] ✗ Failed to update invoice ${quickbooksInvoiceId}:`, error.message || String(error));
+
+      // Log error to IntegrationLog
+      await prisma.integrationLog.create({
+        data: {
+          service: "quickbooks",
+          action: "invoice_update_failed",
+          status: "ERROR",
+          error: error.message || String(error),
+          payload: {
+            quickbooks_invoice_id: quickbooksInvoiceId,
+            updates,
+          },
+        },
+      });
+
+      throw error;
+    }
+  }
 }
 
 export const quickbooksService = new QuickbooksService();
