@@ -53,30 +53,59 @@ export async function GET(request: NextRequest) {
         // Calculate days until due
         const daysUntilDue = Math.ceil((invoice.dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-        // Only send if within 3 days of due date
-        if (daysUntilDue <= 3) {
-          console.log(`[CRON] Sending invoice ${invoice.id} to QB (due in ${daysUntilDue} days)`);
+        // Parse installment metadata
+        const installmentMeta = invoice.installments as any;
+        const isInstallment = !!installmentMeta?.seriesId;
+        const isFirstInstallment = installmentMeta?.isFirstInstallment === true;
+
+        // Skip first installments (already sent during approval)
+        if (isInstallment && isFirstInstallment) {
+          console.log(`[CRON] Skipping first installment ${invoice.id} (already sent during approval)`);
+          
+          await prisma.integrationLog.create({
+            data: {
+              service: 'quickbooks',
+              action: 'skipped_first_installment',
+              status: 'SUCCESS',
+              payload: {
+                invoiceId: invoice.id,
+                reason: 'First installment already sent during approval',
+                isFirstInstallment: true,
+              } as any,
+            },
+          });
+          
+          skipped++;
+          continue;
+        }
+
+        // Only send if within 5 days of due date
+        if (daysUntilDue <= 5) {
+          console.log(`[CRON] Sending invoice ${invoice.id} to QB (due in ${daysUntilDue} days, isInstallment: ${isInstallment})`);
 
           // Send to QuickBooks
           await invoiceApprovalService.syncApprovedInvoice(invoice.id);
 
           sent++;
 
-          // Log success
+          // Log success with appropriate action
+          const action = isInstallment ? 'scheduled_installment_sent' : 'scheduled_invoice_sent';
           await prisma.integrationLog.create({
             data: {
               service: 'quickbooks',
-              action: 'scheduled_invoice_sent',
+              action,
               status: 'SUCCESS',
               payload: {
                 invoiceId: invoice.id,
                 daysUntilDue,
                 sentAt: now,
+                isInstallment,
+                isFirstInstallment: false,
               } as any,
             },
           });
         } else {
-          console.log(`[CRON] Skipping invoice ${invoice.id} (due in ${daysUntilDue} days, will send on ${new Date(invoice.dueDate.getTime() - 3 * 24 * 60 * 60 * 1000).toLocaleDateString()})`);
+          console.log(`[CRON] Skipping invoice ${invoice.id} (due in ${daysUntilDue} days, will send on ${new Date(invoice.dueDate.getTime() - 5 * 24 * 60 * 60 * 1000).toLocaleDateString()})`);
           skipped++;
         }
       } catch (error) {
