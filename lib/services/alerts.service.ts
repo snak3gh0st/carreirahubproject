@@ -430,7 +430,6 @@ export class AlertsService {
       // Find invoices pending approval for > 48 hours
       const pendingInvoices = await prisma.invoice.findMany({
         where: {
-          approvalStatus: "PENDING",
           createdAt: { lt: fortyEightHoursAgo },
         },
         include: {
@@ -491,7 +490,6 @@ export class AlertsService {
         where: {
           rule: { name: "Invoice Pending Approval" },
           status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
-          invoice: { approvalStatus: { in: ["APPROVED", "REJECTED"] } },
         },
         data: {
           status: AlertStatus.RESOLVED,

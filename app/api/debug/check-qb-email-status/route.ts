@@ -104,7 +104,6 @@ export async function GET(request: NextRequest) {
         customerEmail: inv.customer.email,
         amount: inv.amount,
         status: inv.status,
-        approvalStatus: inv.approvalStatus,
         createdAt: inv.createdAt,
       })),
       instructions: {

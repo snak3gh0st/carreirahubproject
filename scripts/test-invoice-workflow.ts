@@ -129,13 +129,11 @@ async function testInvoiceWorkflow() {
 
     // Get approval status counts
     const approvalCounts = await prisma.invoice.groupBy({
-      by: ['approvalStatus'],
       _count: true,
     });
 
     console.log('  Approval Status Distribution:');
     for (const group of approvalCounts) {
-      console.log(`    - ${group.approvalStatus}: ${group._count}`);
     }
 
     // Get contract counts by status

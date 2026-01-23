@@ -25,7 +25,6 @@ interface Invoice {
   amount: any;
   dueDate: Date;
   status: string;
-  approvalStatus: string;
   customer: {
     id: string;
     name: string;

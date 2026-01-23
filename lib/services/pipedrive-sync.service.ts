@@ -183,7 +183,6 @@ export class PipedriveSyncService {
 Amount: ${invoice.amount} ${invoice.deal.currency || 'USD'}
 Due Date: ${invoice.dueDate.toLocaleDateString()}
 Status: ${invoice.status}
-Approval Status: ${invoice.approvalStatus}
 
 QuickBooks Invoice ID: ${invoice.quickbooks_invoice_id || "Not synced yet"}
       `.trim();

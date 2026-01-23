@@ -244,7 +244,6 @@ export class QuickBooksSyncService {
         quickbooks_invoice_id: qbInvoiceId,
         dealId: existing?.dealId || deal.id,
         customerId: customer.id,
-        approvalStatus: "APPROVED" as const, // QB invoices are pre-approved
         markedOverdueAt: status === "OVERDUE" ? new Date() : existing?.markedOverdueAt || null,
         amountPaid: balance === 0 ? totalAmt : balance < totalAmt && balance > 0 ? totalAmt - balance : 0,
         paidAt: balance < totalAmt && balance >= 0 ? (balance === 0 ? new Date(qbInvoice.TxnDate || new Date()) : new Date()) : null,
@@ -1526,7 +1525,6 @@ export class QuickBooksSyncService {
                 dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
                 status,
                 quickbooks_invoice_id: qbInvoice.Id,
-                approvalStatus: "APPROVED", // QB invoices are pre-approved
                 amountPaid: amountPaidBulk,
                 paidAt: paidAtBulk,
               },
