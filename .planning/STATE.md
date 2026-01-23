@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 ## Current Position
 
 Phase: 2 of 6 (DocuSign Integration)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-23 — Completed 02-01-PLAN.md (DocuSign Webhook Security)
+Last activity: 2026-01-23 — Completed 02-02-PLAN.md (Template-Based Contracts)
 
-Progress: ███████████████░ 93% (14 plans executed)
+Progress: ███████████████░ 94% (15 plans executed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
-- Average duration: 28 minutes
-- Total execution time: 6 hours 31 minutes
+- Total plans completed: 15
+- Average duration: 27 minutes
+- Total execution time: 6 hours 35 minutes
 
 **By Phase:**
 
@@ -33,9 +33,10 @@ Progress: ███████████████░ 93% (14 plans execute
 | 4.1. Deployment Ready | 3/3 | 35 min | 12 min |
 | 3. Finance Workflow Automation | 2/2 | 103 min | 52 min |
 | 4. Insights (BI & Analytics) | 3/3 | 60 min | 20 min |
-| 2. DocuSign Integration | 1/4 | 1 min | 1 min |
+| 2. DocuSign Integration | 2/4 | 5 min | 3 min |
 
 **Recent Trend:**
+- Phase 2: 02-02 (4 min) — Template-based contracts with Composite Templates
 - Phase 2: 02-01 (1 min) — DocuSign webhook security with HMAC verification
 - Phase 4: 04-03 (32 min) — Date range filtering and CSV export
 - Phase 4: 04-02 (18 min) — Financial KPIs and data visualization with Recharts
@@ -88,6 +89,10 @@ Recent decisions affecting current work:
 - Composite event_id for webhook deduplication: `${envelopeId}-${event}-${timestamp}`
 - Return 200 OK for duplicate events to stop DocuSign retries
 - Always get raw request body before JSON parsing for HMAC signature verification
+- Use Composite Templates (serverTemplates + inlineTemplates) for template-based contracts
+- Lock all text tabs containing customer/invoice data to prevent tampering
+- Implement graceful fallback from templates to inline PDF for reliability
+- Optional DOCUSIGN_TEMPLATE_ID env var enables template-based contracts
 
 ### Roadmap Evolution
 
@@ -271,9 +276,9 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed 02-01-PLAN.md (DocuSign Webhook Security)
-Resume file: .planning/phases/02-docusign-integration/02-01-SUMMARY.md
-Next action: Continue Phase 2 (DocuSign Integration) with plan 02-02.
+Stopped at: Completed 02-02-PLAN.md (Template-Based Contracts)
+Resume file: .planning/phases/02-docusign-integration/02-02-SUMMARY.md
+Next action: Continue Phase 2 (DocuSign Integration) with plan 02-03 or 02-04.
 
 ## Sprint 1 Success Criteria
 
