@@ -92,21 +92,6 @@ export async function POST(request: NextRequest) {
     // ============================================
     // PHASE 1: PRE-GENERATE ALL INVOICE METADATA
     // ============================================
-    // Query how many invoices exist for this customer this month (run ONCE)
-    const firstDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
-    const monthStart = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth(), 1);
-    const monthEnd = new Date(firstDueDate.getFullYear(), firstDueDate.getMonth() + 1, 0);
-
-    const existingInvoicesThisMonth = await prisma.invoice.count({
-      where: {
-        customerId: customer.id,
-        createdAt: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
-      },
-    });
-
     // Generate metadata for all invoices upfront to prevent duplicate DocNumbers
     interface InvoiceMetadata {
       number: string;
@@ -123,6 +108,10 @@ export async function POST(request: NextRequest) {
     }
 
     const invoiceMetadata: InvoiceMetadata[] = [];
+
+    // Track how many invoices we've generated per month in this batch
+    // Key: "YYYY-MM", Value: count of invoices in this batch for that month
+    const batchCountByMonth: Record<string, number> = {};
 
     for (let i = 1; i <= invoiceCountToCreate; i++) {
       let invoiceAmount: number;
@@ -173,8 +162,28 @@ export async function POST(request: NextRequest) {
               },
             ];
 
+      // Count existing invoices for THIS invoice's due date month
+      const monthStart = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth(), 1);
+      const monthEnd = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth() + 1, 0);
+
+      const existingInvoicesThisMonth = await prisma.invoice.count({
+        where: {
+          customerId: customer.id,
+          createdAt: {
+            gte: monthStart,
+            lte: monthEnd,
+          },
+        },
+      });
+
+      // Track how many invoices in THIS batch are for the same month
+      const monthKey = `${invoiceDueDate.getFullYear()}-${String(invoiceDueDate.getMonth() + 1).padStart(2, '0')}`;
+      const batchCountForThisMonth = batchCountByMonth[monthKey] || 0;
+      batchCountByMonth[monthKey] = batchCountForThisMonth + 1;
+
       // Generate professional invoice number with sequential numbering
-      const sequence = existingInvoicesThisMonth + i;
+      // Sequence = existing invoices in DB + invoices already generated in this batch for same month
+      const sequence = existingInvoicesThisMonth + batchCountForThisMonth + 1;
       const invoiceNumber = generateInvoiceNumber({
         customerName: customer.name,
         date: invoiceDueDate,
@@ -188,6 +197,15 @@ export async function POST(request: NextRequest) {
         amount: invoiceAmount,
         description: invoiceDescription,
         lineItems: lineItems,
+      });
+
+      console.log(`[INVOICE_CREATE] Generated invoice ${i}/${invoiceCountToCreate}:`, {
+        number: invoiceNumber,
+        dueDate: invoiceDueDate.toISOString().split('T')[0],
+        monthKey,
+        existingInDB: existingInvoicesThisMonth,
+        batchCountForMonth: batchCountForThisMonth,
+        sequence,
       });
     }
 
