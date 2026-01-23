@@ -1217,14 +1217,16 @@ export class QuickbooksService {
   }
 
   /**
-   * Delete Invoice from QuickBooks
-   * Requires SyncToken from the invoice
+   * Void Invoice in QuickBooks
+   * QuickBooks does not support hard delete for invoices.
+   * Instead, we void them which sets balance to $0 and marks as voided.
+   * Requires full invoice object with SyncToken.
    */
-  async deleteInvoice(invoiceId: string): Promise<any> {
+  async voidInvoice(invoiceId: string): Promise<any> {
     try {
-      console.log(`[QuickBooks] Fetching invoice ${invoiceId} for deletion...`);
+      console.log(`[QuickBooks] Fetching invoice ${invoiceId} for voiding...`);
 
-      // First fetch invoice to get SyncToken (QB requires it for delete)
+      // First fetch full invoice (QB requires full object for void operation)
       const invoiceResponse = await this.getInvoice(invoiceId);
       const invoice = invoiceResponse.Invoice;
 
@@ -1234,25 +1236,16 @@ export class QuickbooksService {
 
       console.log(`[QuickBooks] Invoice SyncToken: ${invoice.SyncToken}`);
 
-      // Prepare delete payload
-      const deletePayload = {
-        Id: invoiceId,
-        SyncToken: invoice.SyncToken,
-      };
-
-      console.log(`[QuickBooks] Deleting invoice ${invoiceId}...`);
-      const result = await this.request(`/invoice`, {
+      console.log(`[QuickBooks] Voiding invoice ${invoiceId}...`);
+      const result = await this.request(`/invoice?operation=void`, {
         method: "POST",
-        body: JSON.stringify(deletePayload),
-        headers: {
-          "X-QB-Operation": "Delete",
-        },
+        body: JSON.stringify(invoice),
       });
 
-      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} deleted successfully`);
+      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} voided successfully`);
       return result;
     } catch (error: any) {
-      console.error(`[QuickBooks] ✗ Failed to delete invoice ${invoiceId}:`, error.message || String(error));
+      console.error(`[QuickBooks] ✗ Failed to void invoice ${invoiceId}:`, error.message || String(error));
       throw error;
     }
   }
