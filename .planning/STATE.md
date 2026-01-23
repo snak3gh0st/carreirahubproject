@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 2 of 6 (DocuSign Integration)
 Plan: 4 of 4 in current phase
 Status: Phase complete
-Last activity: 2026-01-23 — Completed quick task 007: Implement installment invoice email scheduling with 5-day pre-send
+Last activity: 2026-01-23 — Completed quick task 008: Add delete invoice button with QuickBooks integration
 
 Progress: ████████████████ 100% (17 plans executed)
 
@@ -316,12 +316,13 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 | 005 | Change invoice numbering to initials and enable auto-send for all roles | 2026-01-22 | 721030f | [005-initials-and-auto-send](.planning/quick/005-initials-and-auto-send/) |
 | 006 | Add comprehensive QB /send endpoint debugging | 2026-01-22 | d0f488a | [006-debug-qb-send](.planning/quick/006-debug-qb-send/) |
 | 007 | Implement installment invoice email scheduling with 5-day pre-send | 2026-01-23 | 8953539 | [007-implement-installment-invoice-email-sche](.planning/quick/007-implement-installment-invoice-email-sche/) |
+| 008 | Add delete invoice button with QuickBooks integration | 2026-01-23 | 5863d7b | [008-add-delete-invoice-button-with-quickbook](.planning/quick/008-add-delete-invoice-button-with-quickbook/) |
 
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed quick task 007 (Installment Invoice Email Scheduling)
-Resume file: .planning/quick/007-implement-installment-invoice-email-sche/007-SUMMARY.md
+Stopped at: Completed quick task 008 (Add delete invoice button with QuickBooks integration)
+Resume file: .planning/quick/008-add-delete-invoice-button-with-quickbook/008-SUMMARY.md
 Next action: Phase 2 complete. Ready to begin Phase 3 (Finance Workflow Automation).
 
 ## Sprint 1 Success Criteria
