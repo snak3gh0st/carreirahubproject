@@ -69,53 +69,30 @@ export class NotificationService {
   }
 
   /**
+   * @deprecated Invoice approval workflow removed in quick-012
    * Send invoice approval request to FINANCE team
    */
   async sendInvoiceApprovalRequest(invoice: Invoice, submitter: User): Promise<void> {
-    const subject = `New Invoice Awaiting Approval - ${invoice.invoiceNumber || invoice.id}`;
-    const html = this.generateInvoiceApprovalRequestEmail(invoice, submitter);
-
-    await this.sendEmail(
-      EMAIL_FINANCE_TEAM,
-      subject,
-      html,
-      NotificationType.INVOICE_APPROVAL_REQUEST,
-      { invoiceId: invoice.id }
-    );
+    console.warn('sendInvoiceApprovalRequest called but approval workflow has been removed');
+    // Method deprecated - approval workflow removed
   }
 
   /**
+   * @deprecated Invoice approval workflow removed in quick-012
    * Send invoice approved notification to submitter
    */
   async sendInvoiceApproved(invoice: Invoice, approver: User): Promise<void> {
-    const subject = `Invoice Approved - ${invoice.invoiceNumber || invoice.id}`;
-    const html = this.generateInvoiceApprovedEmail(invoice, approver);
-
-    // Send to finance team for tracking
-    await this.sendEmail(
-      EMAIL_FINANCE_TEAM,
-      subject,
-      html,
-      NotificationType.INVOICE_APPROVED,
-      { invoiceId: invoice.id }
-    );
+    console.warn('sendInvoiceApproved called but approval workflow has been removed');
+    // Method deprecated - approval workflow removed
   }
 
   /**
+   * @deprecated Invoice approval workflow removed in quick-012
    * Send invoice rejected notification to submitter
    */
   async sendInvoiceRejected(invoice: Invoice, rejector: User, reason: string): Promise<void> {
-    const subject = `Invoice Rejected - ${invoice.invoiceNumber || invoice.id}`;
-    const html = this.generateInvoiceRejectedEmail(invoice, rejector, reason);
-
-    // Send to support team for follow-up
-    await this.sendEmail(
-      EMAIL_SUPPORT_TEAM,
-      subject,
-      html,
-      NotificationType.INVOICE_REJECTED,
-      { invoiceId: invoice.id }
-    );
+    console.warn('sendInvoiceRejected called but approval workflow has been removed');
+    // Method deprecated - approval workflow removed
   }
 
   /**
