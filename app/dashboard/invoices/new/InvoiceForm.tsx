@@ -270,101 +270,125 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
+      {/* Header Card */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">Nova fatura</h1>
-            <p className="text-gray-600">Criar nova fatura no QuickBooks</p>
+            <h1 className="text-3xl font-bold text-gray-900">Nova fatura</h1>
+            <p className="text-gray-600 mt-1">Criar nova fatura no QuickBooks</p>
           </div>
           <Link
             href="/dashboard/invoices"
-            className="text-blue-600 hover:underline"
+            className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-2"
           >
             ← Voltar para faturas
           </Link>
         </div>
-
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white"
-      >
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error Display */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded">
-            {error}
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+            <p className="text-red-700 font-medium">{error}</p>
           </div>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cliente <span className="text-red-500">*</span>
-            </label>
-            <select
-              value={form.customerId}
-              onChange={(e) => handleChange("customerId", e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              required
-            >
-              <option value="">Selecione um cliente</option>
-              {customers.map((customer) => (
-                <option key={customer.id} value={customer.id}>
-                  {customer.name} ({customer.email})
-                </option>
-              ))}
-            </select>
-          </div>
+        {/* Section 1: Customer Information Card */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Informações do Cliente</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cliente <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={form.customerId}
+                onChange={(e) => handleChange("customerId", e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="">Selecione um cliente</option>
+                {customers.map((customer) => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name} ({customer.email})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Negócio <span className="text-gray-400 text-xs">(Opcional)</span>
-            </label>
-            <select
-              value={form.dealId}
-              onChange={(e) => handleChange("dealId", e.target.value)}
-              className="w-full border rounded px-3 py-2"
-              disabled={!form.customerId || filteredDeals.length === 0}
-            >
-              <option value="">
-                {form.customerId
-                  ? filteredDeals.length === 0
-                    ? "Nenhum deal disponível (pode continuar sem deal)"
-                    : "Selecione um deal (opcional)"
-                  : "Selecione um cliente primeiro"}
-            </option>
-              {filteredDeals.map((deal) => (
-                <option key={deal.id} value={deal.id}>
-                  {deal.title}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Negócio <span className="text-gray-400 text-xs">(Opcional)</span>
+              </label>
+              <select
+                value={form.dealId}
+                onChange={(e) => handleChange("dealId", e.target.value)}
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                disabled={!form.customerId || filteredDeals.length === 0}
+              >
+                <option value="">
+                  {form.customerId
+                    ? filteredDeals.length === 0
+                      ? "Nenhum deal disponível (pode continuar sem deal)"
+                      : "Selecione um deal (opcional)"
+                    : "Selecione um cliente primeiro"}
                 </option>
-              ))}
-            </select>
+                {filteredDeals.map((deal) => (
+                  <option key={deal.id} value={deal.id}>
+                    {deal.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">Itens da fatura</h3>
-            <button
-              type="button"
-              onClick={addItem}
-              className="text-sm font-medium text-blue-600 hover:text-blue-700"
-            >
-              + Adicionar item
-            </button>
+        {/* Section 2: Invoice Details Card */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Detalhes da Fatura</h2>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Descrição geral da fatura
+            </label>
+            <input
+              type="text"
+              value={form.description}
+              onChange={(e) => handleChange("description", e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="Ex: Programa de migração, pacote completo"
+            />
+          </div>
+        </div>
+
+        {/* Section 3: Line Items Card */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="border-l-4 border-blue-500 pl-4 mb-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Itens da Fatura</h2>
+              <button
+                type="button"
+                onClick={addItem}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium text-sm"
+              >
+                + Adicionar item
+              </button>
+            </div>
           </div>
 
           {loadingItems ? (
-            <div className="w-full border rounded px-3 py-2 bg-gray-50">
-              Carregando itens...
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-900">
+              <p className="font-medium">Carregando itens do QuickBooks...</p>
             </div>
           ) : serviceItems.length === 0 ? (
-            <div className="w-full border rounded px-3 py-2 bg-yellow-50 text-yellow-800">
-              Nenhum item de serviço disponível. Verifique a configuração do QuickBooks.
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4">
+              <p className="text-yellow-800 font-medium">Nenhum item de serviço disponível. Verifique a configuração do QuickBooks.</p>
             </div>
           ) : serviceItems.some((item) => item.id === "no-items-found") ? (
-            <div className="w-full border rounded px-3 py-2 bg-yellow-50 text-yellow-800">
-              Nenhum item encontrado no QuickBooks. Crie itens de serviço em Produtos e Serviços no QuickBooks.
+            <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4">
+              <p className="text-yellow-800 font-medium">Nenhum item encontrado no QuickBooks. Crie itens de serviço em Produtos e Serviços no QuickBooks.</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -373,14 +397,14 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 const itemTotal = getNumericValue(item.unitPrice) * item.quantity;
 
                 return (
-                  <div key={item.id} className="rounded-lg border p-4 space-y-3">
+                  <div key={item.id} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
                     <div className="flex items-center justify-between">
-                      <p className="font-medium">Item {index + 1}</p>
+                      <p className="font-semibold text-gray-900">Item {index + 1}</p>
                       {items.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeItem(item.id)}
-                          className="text-sm text-red-600 hover:text-red-700"
+                          className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50"
                         >
                           Remover
                         </button>
@@ -389,13 +413,13 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Serviço <span className="text-red-500">*</span>
                         </label>
                         <select
                           value={item.serviceItemId}
                           onChange={(e) => updateItem(item.id, "serviceItemId", e.target.value)}
-                          className="w-full border rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           required
                         >
                           <option value="">Selecione um serviço</option>
@@ -409,7 +433,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Quantidade
                         </label>
                         <input
@@ -419,14 +443,14 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                           onChange={(e) =>
                             updateItem(item.id, "quantity", parseInt(e.target.value) || 1)
                           }
-                          className="w-full border rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Preço unitário (USD)
                         </label>
                         <input
@@ -435,24 +459,24 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                           min="0"
                           value={item.unitPrice}
                           onChange={(e) => updateItem(item.id, "unitPrice", e.target.value)}
-                          className="w-full border rounded px-3 py-2"
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Total do item
                         </label>
-                        <div className="w-full border rounded px-3 py-2 bg-gray-50">
+                        <div className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 font-mono text-lg font-semibold text-gray-900">
                           ${itemTotal.toFixed(2)}
                         </div>
                       </div>
                     </div>
 
                     {selectedItem?.description && (
-                      <div className="text-sm text-gray-600">
-                        <span className="font-medium">Descrição:</span>
-                        <p className="mt-1">{selectedItem.description}</p>
+                      <div className="pt-2 border-t border-gray-300">
+                        <p className="text-sm font-medium text-gray-700">Descrição:</p>
+                        <p className="text-sm text-gray-600 mt-1">{selectedItem.description}</p>
                       </div>
                     )}
                   </div>
@@ -460,72 +484,59 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               })}
             </div>
           )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Desconto (USD)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.discount}
-                onChange={(e) => handleChange("discount", e.target.value)}
-                className="w-full border rounded px-3 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Descrição geral da fatura
-              </label>
-              <input
-                type="text"
-                value={form.description}
-                onChange={(e) => handleChange("description", e.target.value)}
-                className="w-full border rounded px-3 py-2"
-                placeholder="Ex: Programa de migração, pacote completo"
-              />
-            </div>
-          </div>
         </div>
 
-        <div className="border-t pt-4">
-          <h3 className="text-lg font-semibold mb-4">Cálculo da fatura</h3>
+        {/* Section 4: Pricing Summary Card - PROMINENT */}
+        <div className="bg-blue-50 rounded-lg shadow-md p-6 border-l-4 border-blue-500">
+          <h2 className="text-2xl font-bold text-blue-900 mb-6">Resumo da Fatura</h2>
 
-          <div className="bg-gray-50 p-4 rounded mb-6">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Itens selecionados:</span>
-                <span className="font-mono">{items.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Subtotal bruto:</span>
-                <span className="font-mono">${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Desconto aplicado:</span>
-                <span className={discountValue > 0 ? "font-mono text-red-600" : "font-mono text-gray-500"}>
-                  {discountValue > 0 ? `-$${discountValue.toFixed(2)}` : "-$0.00"}
-                </span>
-              </div>
+          {/* Discount Field (moved here) */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Desconto (USD)
+            </label>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.discount}
+              onChange={(e) => handleChange("discount", e.target.value)}
+              className="w-full md:w-1/2 border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Calculation Display */}
+          <div className="bg-white rounded-lg p-5 space-y-3">
+            <div className="flex justify-between text-sm text-gray-700">
+              <span>Itens selecionados:</span>
+              <span className="font-mono font-medium">{items.length}</span>
+            </div>
+            <div className="flex justify-between text-base">
+              <span className="text-gray-700">Subtotal bruto:</span>
+              <span className="font-mono font-semibold text-gray-900">${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-base">
+              <span className="text-gray-700">Desconto aplicado:</span>
+              <span className={discountValue > 0 ? "font-mono font-semibold text-red-600" : "font-mono text-gray-500"}>
+                {discountValue > 0 ? `-$${discountValue.toFixed(2)}` : "-$0.00"}
+              </span>
             </div>
 
-            <div className="mt-4 border-t pt-3">
-              <p className="text-sm font-medium mb-2">Resumo por item</p>
-              <div className="space-y-1">
+            {/* Item Breakdown */}
+            <div className="pt-3 border-t border-blue-200">
+              <p className="text-sm font-semibold text-gray-900 mb-2">Detalhamento por item</p>
+              <div className="space-y-2">
                 {items.map((item, index) => {
                   const itemData = serviceItems.find((svc) => svc.id === item.serviceItemId);
                   const itemTotal = getNumericValue(item.unitPrice) * item.quantity;
 
                   return (
-                    <div key={item.id} className="flex justify-between text-sm">
-                      <span>
+                    <div key={item.id} className="flex justify-between text-sm text-gray-700">
+                      <span className="font-medium">
                         {itemData?.name || `Item ${index + 1}`}
                       </span>
                       <span className="font-mono">
-                        {item.quantity} x ${getNumericValue(item.unitPrice).toFixed(2)} = ${itemTotal.toFixed(2)}
+                        {item.quantity} × ${getNumericValue(item.unitPrice).toFixed(2)} = ${itemTotal.toFixed(2)}
                       </span>
                     </div>
                   );
@@ -533,73 +544,42 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               </div>
             </div>
 
-            <div className="mt-4 border-t pt-3 space-y-2">
-              <div className="flex justify-between font-semibold text-lg">
-                <span>Total da fatura:</span>
-                <span className="font-mono">${total.toFixed(2)}</span>
+            {/* Total Section */}
+            <div className="pt-3 border-t-2 border-blue-300 space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-lg font-bold text-gray-900">Total da fatura:</span>
+                <span className="font-mono text-2xl font-bold text-blue-600">${total.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Entrada (à vista):</span>
-                <span className={entryValue > 0 ? "font-mono text-blue-600" : "font-mono text-gray-500"}>
-                  {entryValue > 0 ? `-$${entryValue.toFixed(2)}` : "-$0.00"}
+              <div className="flex justify-between text-base">
+                <span className="text-gray-700">Entrada (à vista):</span>
+                <span className={entryValue > 0 ? "font-mono font-semibold text-green-600" : "font-mono text-gray-500"}>
+                  {entryValue > 0 ? `-$${entryValue.toFixed(2)}` : "$0.00"}
                 </span>
               </div>
-              <div className="flex justify-between text-sm font-medium">
-                <span>Saldo a parcelar:</span>
-                <span className="font-mono">${remaining.toFixed(2)}</span>
+              <div className="flex justify-between text-base font-medium">
+                <span className="text-gray-900">Saldo a parcelar:</span>
+                <span className="font-mono text-lg text-gray-900">${remaining.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm text-gray-700">
                 <span>Número de parcelas:</span>
-                <span className="font-mono">{installmentsValue || 0}</span>
+                <span className="font-mono font-medium">{installmentsValue || 0}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span>Valor por parcela:</span>
-                <span className="font-mono">${perInstallment.toFixed(2)}</span>
+              <div className="flex justify-between text-base">
+                <span className="text-gray-700">Valor por parcela:</span>
+                <span className="font-mono font-semibold text-blue-600">${perInstallment.toFixed(2)}</span>
               </div>
             </div>
           </div>
 
-          {/* Installment Schedule Preview */}
-          {installmentSchedule.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h4 className="font-medium text-blue-900 mb-3">Cronograma de Parcelas</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-blue-900 mb-3">
-                <div className="flex items-center justify-between">
-                  <span>Primeiro vencimento:</span>
-                  <span className="font-medium">
-                    {firstInstallmentDate
-                      ? new Date(firstInstallmentDate).toLocaleDateString()
-                      : "-"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Total de meses:</span>
-                  <span className="font-medium">{installmentsValue}</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                {installmentSchedule.map((installment) => (
-                  <div key={installment.number} className="flex justify-between text-sm bg-white">
-                    <span>Parcela {installment.number}</span>
-                    <span className="font-medium">${installment.amount.toFixed(2)}</span>
-                    <span className="text-gray-600">{new Date(installment.dueDate).toLocaleDateString()}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-3 pt-2 border-t border-blue-200">
-                <div className="flex justify-between font-medium text-blue-900">
-                  <span>Total parcelado:</span>
-                  <span>${remaining.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          )}
+        </div>
 
-          <h4 className="font-medium mb-3">Configurações de Pagamento</h4>
+        {/* Section 5: Payment Configuration Card */}
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Condições de Pagamento</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Entrada (USD)
               </label>
               <input
@@ -609,12 +589,13 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 max={total}
                 value={form.entryAmount}
                 onChange={(e) => handleChange("entryAmount", e.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0.00"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Número de Parcelas
               </label>
               <input
@@ -622,10 +603,11 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 min="0"
                 value={form.installments}
                 onChange={(e) => handleChange("installments", e.target.value)}
-                className="w-full border rounded px-3 py-2"
+                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                placeholder="0"
               />
               {getNumericValue(form.installments) > 0 && remaining > 0 && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-green-600 mt-2 font-medium">
                   Valor por parcela: ${perInstallment.toFixed(2)}
                 </p>
               )}
@@ -633,33 +615,75 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           </div>
 
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Data de Vencimento
             </label>
             <input
               type="date"
               value={form.dueDate}
               onChange={(e) => handleChange("dueDate", e.target.value)}
-              className="w-full border rounded px-3 py-2"
+              className="w-full md:w-1/2 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               min={new Date().toISOString().split("T")[0]}
             />
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Link
-            href="/dashboard/invoices"
-            className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50"
-          >
-            Cancelar
-          </Link>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {submitting ? "Criando..." : "Criar Invoice"}
-          </button>
+        {/* Section 6: Installment Schedule Enhancement (if applicable) */}
+        {installmentSchedule.length > 0 && (
+          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold text-blue-900 mb-4">Cronograma de Parcelas</h2>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm text-blue-900">
+              <div className="bg-white rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Primeiro vencimento</p>
+                <p className="font-semibold text-base">
+                  {firstInstallmentDate
+                    ? new Date(firstInstallmentDate).toLocaleDateString('pt-BR')
+                    : "-"}
+                </p>
+              </div>
+              <div className="bg-white rounded-lg p-3">
+                <p className="text-xs text-gray-600 mb-1">Total de meses</p>
+                <p className="font-semibold text-base">{installmentsValue}</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {installmentSchedule.map((installment) => (
+                <div key={installment.number} className="bg-white rounded-lg p-3 flex justify-between items-center text-sm">
+                  <span className="font-medium text-gray-900">Parcela {installment.number}</span>
+                  <span className="font-mono font-semibold text-blue-600">${installment.amount.toFixed(2)}</span>
+                  <span className="text-gray-600">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 pt-3 border-t-2 border-blue-300 bg-white rounded-lg p-3">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-blue-900">Total parcelado:</span>
+                <span className="font-mono text-lg font-bold text-blue-600">${remaining.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Form Action Buttons - Enhanced Footer */}
+        <div className="bg-gray-50 rounded-lg p-6 shadow-md">
+          <div className="flex justify-end gap-3">
+            <Link
+              href="/dashboard/invoices"
+              className="px-6 py-3 border-2 border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-100 transition-colors"
+            >
+              Cancelar
+            </Link>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="px-6 py-3 bg-blue-600 text-white rounded-md font-semibold text-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            >
+              {submitting ? "Criando fatura..." : "Criar Invoice"}
+            </button>
+          </div>
         </div>
       </form>
     </div>
