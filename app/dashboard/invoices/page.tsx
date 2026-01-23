@@ -7,6 +7,7 @@ import Link from "next/link";
 import { ApprovalStatusBadge } from "@/components/invoices/approval-status-badge";
 import { Pagination } from "@/components/ui/pagination";
 import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
+import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -812,12 +813,15 @@ export default async function InvoicesPage({
                     Status<SortIndicator field="status" />
                   </Link>
                 </th>
+                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  Actions
+                </th>
               </tr>
             </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                   No invoices found
                 </td>
               </tr>
@@ -892,6 +896,22 @@ export default async function InvoicesPage({
                       >
                         {invoice.status}
                       </span>
+                    </td>
+                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/dashboard/invoices/${invoice.id}`}
+                          className="text-blue-600 hover:underline text-sm"
+                        >
+                          View
+                        </Link>
+                        <DeleteInvoiceButton
+                          invoiceId={invoice.id}
+                          invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                          hasQuickbooksId={!!invoice.quickbooks_invoice_id}
+                          userRole={userRole}
+                        />
+                      </div>
                     </td>
                   </tr>
                 );
