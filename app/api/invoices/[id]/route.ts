@@ -8,7 +8,7 @@ import { z } from "zod";
 const updateInvoiceSchema = z.object({
   amount: z.number().positive().optional(),
   dueDate: z.string().datetime().optional(), // ISO 8601 format
-  description: z.string().optional(),
+  description: z.string().optional(), // For QB CustomerMemo field only (not stored locally)
   lineItems: z.array(z.object({
     description: z.string(),
     amount: z.number().positive(),
@@ -180,10 +180,11 @@ export async function PATCH(
       }
     }
 
-    // Update local database with all changes
+    // Update local database with changes (exclude description which is QB-only)
+    const { description: _desc, lineItems: _items, ...localUpdates } = data;
     const invoice = await prisma.invoice.update({
       where: { id: params.id },
-      data,
+      data: localUpdates,
     });
 
     // Return response with QB sync status
