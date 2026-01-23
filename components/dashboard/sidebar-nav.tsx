@@ -20,6 +20,7 @@ import {
   ChevronRight,
   PlusCircle,
   CheckCircle,
+  FileSignature,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 
@@ -94,6 +95,12 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/invoices",
         label: "Invoices",
         icon: FileText,
+        roles: ["ADMIN", "FINANCE"],
+      },
+      {
+        href: "/dashboard/contracts",
+        label: "Contracts",
+        icon: FileSignature,
         roles: ["ADMIN", "FINANCE"],
       },
       {
@@ -238,7 +245,7 @@ export function SidebarNav({ userRole, collapsed = false }: SidebarNavProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 top-16 sm:top-20 bottom-0 bg-white dark:bg-slate-800 border-r dark:border-slate-700 transition-all duration-300 z-30",
+        "fixed left-0 top-16 sm:top-20 bottom-0 bg-white",
         collapsed ? "w-16" : "w-64",
         "hidden lg:block" // Hidden on mobile, visible on desktop
       )}
@@ -253,7 +260,7 @@ export function SidebarNav({ userRole, collapsed = false }: SidebarNavProps) {
               {!collapsed && (
                 <button
                   onClick={() => toggleSection(section.title)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider hover:text-gray-700 dark:hover:text-gray-300 transition"
+                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-gray-500"
                 >
                   <span>{section.title}</span>
                   {isExpanded ? (
@@ -278,16 +285,16 @@ export function SidebarNav({ userRole, collapsed = false }: SidebarNavProps) {
                         className={cn(
                           "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                           active
-                            ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700",
+                            ? "bg-blue-50"
+                            : "text-gray-700",
                           collapsed && "justify-center"
                         )}
                         title={collapsed ? item.label : undefined}
                       >
-                        <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-blue-600 dark:text-blue-400")} />
+                        <Icon className={cn("h-5 w-5 flex-shrink-0", active && "text-blue-600")} />
                         {!collapsed && <span>{item.label}</span>}
                         {!collapsed && item.badge && (
-                          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                          <span className="ml-auto inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                             {item.badge}
                           </span>
                         )}
