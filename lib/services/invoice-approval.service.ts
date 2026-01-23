@@ -270,6 +270,7 @@ export class InvoiceApprovalService {
       // Extract installment metadata if present
       const installmentMeta = invoice.installments as any;
       const isInstallment = installmentMeta?.seriesId;
+      const isFirstInstallment = installmentMeta?.isFirstInstallment === true;
       const priceLevelId = installmentMeta?.priceLevelId;
       const paymentTermId = installmentMeta?.paymentTermId;
 
@@ -335,7 +336,7 @@ export class InvoiceApprovalService {
             qbInvoiceData.paymentTermId = paymentTermId;
           }
 
-          // Create QB invoice
+          // Create QB invoice (always creates as DRAFT initially)
           const qbInvoice = await quickbooksService.createInvoice(qbInvoiceData);
 
           // Update invoice with QB ID
@@ -347,63 +348,89 @@ export class InvoiceApprovalService {
             },
           });
 
-          // Send invoice via email (only if customer has email)
-          if (invoice.customer.email) {
-            try {
-              console.log(`[INVOICE_APPROVAL] Sending QB invoice ${qbInvoice.Id} to ${invoice.customer.email}...`);
-              await quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email);
-              console.log(`[INVOICE_APPROVAL] ✓ Successfully sent QB invoice email for ${qbInvoice.Id} to ${invoice.customer.email}`);
+          // Determine if we should send email immediately
+          // ONLY send for: first installment OR non-installment invoices
+          const shouldSendEmail = !isInstallment || isFirstInstallment;
 
-              // Log email sent
+          if (shouldSendEmail) {
+            // Send invoice via email (only if customer has email)
+            if (invoice.customer.email) {
+              try {
+                console.log(`[INVOICE_APPROVAL] Sending QB invoice ${qbInvoice.Id} to ${invoice.customer.email}...`);
+                await quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email);
+                console.log(`[INVOICE_APPROVAL] ✓ Successfully sent QB invoice email for ${qbInvoice.Id} to ${invoice.customer.email}`);
+
+                // Log email sent
+                await prisma.integrationLog.create({
+                  data: {
+                    service: "quickbooks",
+                    action: "invoice_email_sent",
+                    status: "SUCCESS",
+                    payload: {
+                      invoiceId,
+                      qbInvoiceId: qbInvoice.Id,
+                      recipientEmail: invoice.customer.email,
+                      context: "approval_flow",
+                      isInstallment,
+                      isFirstInstallment,
+                    } as any,
+                  },
+                });
+              } catch (emailError) {
+                console.error(`[INVOICE_APPROVAL] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, emailError);
+
+                // Log email failure
+                await prisma.integrationLog.create({
+                  data: {
+                    service: "quickbooks",
+                    action: "invoice_email_failed",
+                    status: "ERROR",
+                    error: emailError instanceof Error ? emailError.message : "Unknown error",
+                    payload: {
+                      invoiceId,
+                      qbInvoiceId: qbInvoice.Id,
+                      customerEmail: invoice.customer.email,
+                      context: "approval_flow",
+                    } as any,
+                  },
+                });
+
+                // Don't fail the whole operation if email fails
+              }
+            } else {
+              // Customer has no email - skip email sending but log warning
+              console.warn(`[INVOICE_APPROVAL] ⚠️  Customer ${invoice.customer.name} has no email, skipping invoice email send`);
+
               await prisma.integrationLog.create({
                 data: {
                   service: "quickbooks",
-                  action: "invoice_email_sent",
+                  action: "invoice_email_skipped",
                   status: "SUCCESS",
                   payload: {
                     invoiceId,
                     qbInvoiceId: qbInvoice.Id,
-                    recipientEmail: invoice.customer.email,
+                    customerId: invoice.customer.id,
+                    customerName: invoice.customer.name,
+                    reason: "Customer has no email address",
                     context: "approval_flow",
                   } as any,
                 },
               });
-            } catch (emailError) {
-              console.error(`[INVOICE_APPROVAL] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, emailError);
-
-              // Log email failure
-              await prisma.integrationLog.create({
-                data: {
-                  service: "quickbooks",
-                  action: "invoice_email_failed",
-                  status: "ERROR",
-                  error: emailError instanceof Error ? emailError.message : "Unknown error",
-                  payload: {
-                    invoiceId,
-                    qbInvoiceId: qbInvoice.Id,
-                    customerEmail: invoice.customer.email,
-                    context: "approval_flow",
-                  } as any,
-                },
-              });
-
-              // Don't fail the whole operation if email fails
             }
           } else {
-            // Customer has no email - skip email sending but log warning
-            console.warn(`[INVOICE_APPROVAL] ⚠️  Customer ${invoice.customer.name} has no email, skipping invoice email send`);
+            // Subsequent installment - do NOT send email (will be sent by cron 5 days before due)
+            console.log(`[INVOICE_APPROVAL] Created installment invoice ${qbInvoice.Id} as DRAFT (will email 5 days before due date)`);
 
             await prisma.integrationLog.create({
               data: {
                 service: "quickbooks",
-                action: "invoice_email_skipped",
+                action: "installment_invoice_created_as_draft",
                 status: "SUCCESS",
                 payload: {
                   invoiceId,
                   qbInvoiceId: qbInvoice.Id,
-                  customerId: invoice.customer.id,
-                  customerName: invoice.customer.name,
-                  reason: "Customer has no email address",
+                  dueDate: invoice.dueDate,
+                  isFirstInstallment: false,
                   context: "approval_flow",
                 } as any,
               },
