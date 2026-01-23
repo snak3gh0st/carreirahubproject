@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { contractWorkflowService } from '@/lib/services/contract-workflow.service';
 import { paymentWorkflowService } from '@/lib/services/payment-workflow.service';
 import { ContractStatus } from '@prisma/client';
+import { verifyHmacSignature } from '@/lib/utils/hmac';
 
 /**
  * POST /api/webhooks/docusign
@@ -17,19 +18,27 @@ import { ContractStatus } from '@prisma/client';
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify webhook signature
+    // CRITICAL: Get raw body BEFORE parsing JSON for HMAC verification
+    const rawBody = await request.text();
+
+    // Verify HMAC signature
     const signature = request.headers.get('X-DocuSign-Signature-1');
     const webhookSecret = process.env.DOCUSIGN_WEBHOOK_SECRET;
 
-    if (webhookSecret && signature) {
-      // TODO: Implement HMAC signature verification
-      // For now, we'll just check if the secret exists
-      // In production, you should verify the signature properly
-      console.log('[DOCUSIGN_WEBHOOK] Signature verification placeholder');
+    // In production, require signature verification
+    if (webhookSecret) {
+      const isValid = verifyHmacSignature(rawBody, signature, webhookSecret);
+      if (!isValid) {
+        console.error('[DOCUSIGN_WEBHOOK] Invalid HMAC signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+      console.log('[DOCUSIGN_WEBHOOK] HMAC signature verified');
+    } else {
+      console.warn('[DOCUSIGN_WEBHOOK] DOCUSIGN_WEBHOOK_SECRET not set - skipping signature verification');
     }
 
-    // Parse webhook payload
-    const payload = await request.json();
+    // Parse webhook payload AFTER verification
+    const payload = JSON.parse(rawBody);
     console.log('[DOCUSIGN_WEBHOOK] Received event:', JSON.stringify(payload, null, 2));
 
     const event = payload.event;
@@ -39,6 +48,38 @@ export async function POST(request: NextRequest) {
       console.error('[DOCUSIGN_WEBHOOK] No envelope ID in payload');
       return NextResponse.json({ error: 'Missing envelope ID' }, { status: 400 });
     }
+
+    // Generate unique event ID for deduplication
+    const timestamp = payload.generatedDateTime || new Date().toISOString();
+    const eventId = `${envelopeId}-${event}-${timestamp}`;
+
+    // Check for duplicate events (DocuSign retries up to 45 times over 7 days)
+    const existingEvent = await prisma.webhookEvent.findFirst({
+      where: {
+        service: 'docusign',
+        event_id: eventId,
+      },
+    });
+
+    if (existingEvent && existingEvent.status === 'success') {
+      console.log(`[DOCUSIGN_WEBHOOK] Duplicate event ${eventId} - skipping`);
+      return NextResponse.json({ success: true, duplicate: true }, { status: 200 });
+    }
+
+    // Create WebhookEvent record before processing
+    const webhookEvent = await prisma.webhookEvent.create({
+      data: {
+        service: 'docusign',
+        event_type: event,
+        event_id: eventId,
+        payload: payload as any,
+        headers: { signature: signature || '' } as any,
+        status: 'processing',
+        max_retries: 5,
+      },
+    });
+
+    console.log(`[DOCUSIGN_WEBHOOK] Created webhook event ${webhookEvent.id} for ${eventId}`);
 
     // Find contract by DocuSign envelope ID
     const contract = await prisma.contract.findFirst({
@@ -176,6 +217,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`[DOCUSIGN_WEBHOOK] Successfully processed event '${event}' for contract ${contract.id}`);
 
+    // Mark webhook event as successful
+    await prisma.webhookEvent.update({
+      where: { id: webhookEvent.id },
+      data: { status: 'success', processed_at: new Date() },
+    });
+
     return NextResponse.json({
       success: true,
       message: `Event ${event} processed successfully`,
@@ -184,6 +231,34 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[DOCUSIGN_WEBHOOK] Error processing webhook:', error);
+
+    // Try to mark webhook event as failed if it exists
+    try {
+      const rawBody = await request.clone().text();
+      const payload = JSON.parse(rawBody);
+      const event = payload.event;
+      const envelopeId = payload.data?.envelopeId || payload.envelopeId;
+      const timestamp = payload.generatedDateTime || new Date().toISOString();
+      const eventId = `${envelopeId}-${event}-${timestamp}`;
+
+      const webhookEvent = await prisma.webhookEvent.findFirst({
+        where: { service: 'docusign', event_id: eventId },
+      });
+
+      if (webhookEvent) {
+        await prisma.webhookEvent.update({
+          where: { id: webhookEvent.id },
+          data: {
+            status: 'failed',
+            last_error: error instanceof Error ? error.message : 'Unknown error',
+            retry_count: { increment: 1 },
+          },
+        });
+      }
+    } catch (updateError) {
+      // If we can't update webhook event, just log it
+      console.error('[DOCUSIGN_WEBHOOK] Failed to update webhook event:', updateError);
+    }
 
     // Log error
     await prisma.integrationLog.create({
