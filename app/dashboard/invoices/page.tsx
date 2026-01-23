@@ -905,6 +905,35 @@ export default async function InvoicesPage({
                         >
                           View
                         </Link>
+                        {(() => {
+                          // Check if user can edit this invoice
+                          const isPaidOrVoid = invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID;
+                          const canEditInvoice = (
+                            userRole === "ADMIN" || 
+                            userRole === "FINANCE" || 
+                            (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId)
+                          ) && !isPaidOrVoid;
+
+                          return canEditInvoice ? (
+                            <Link
+                              href={`/dashboard/invoices/${invoice.id}/edit`}
+                              className="text-blue-600 hover:underline text-sm"
+                            >
+                              Edit
+                            </Link>
+                          ) : (
+                            <span
+                              className="text-gray-400 text-sm cursor-not-allowed"
+                              title={
+                                isPaidOrVoid
+                                  ? "Cannot edit paid or voided invoices"
+                                  : "You don't have permission to edit this invoice"
+                              }
+                            >
+                              Edit
+                            </span>
+                          );
+                        })()}
                         <DeleteInvoiceButton
                           invoiceId={invoice.id}
                           invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}

@@ -93,6 +93,13 @@ export default async function InvoiceDetailPage({
   // Check if user can approve
   const canApprove = userRole === "FINANCE" || userRole === "ADMIN";
 
+  // Check if user can edit
+  const canEdit = (
+    userRole === "ADMIN" || 
+    userRole === "FINANCE" || 
+    (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId)
+  ) && invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.VOID;
+
   // Build workflow steps
   const workflowSteps = [
     {
@@ -213,13 +220,28 @@ export default async function InvoiceDetailPage({
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              href={`/dashboard/invoices/${invoice.id}/edit`}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Edit className="w-4 h-4" />
-              Edit
-            </Link>
+            {canEdit ? (
+              <Link
+                href={`/dashboard/invoices/${invoice.id}/edit`}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </Link>
+            ) : (
+              <button
+                disabled
+                title={
+                  invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID
+                    ? `Cannot edit ${String(invoice.status).toLowerCase()} invoices`
+                    : "You don't have permission to edit this invoice"
+                }
+                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 text-sm font-medium rounded-lg cursor-not-allowed opacity-60"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </button>
+            )}
             
             <DeleteInvoiceButton
               invoiceId={invoice.id}
