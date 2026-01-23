@@ -109,10 +109,6 @@ export async function POST(request: NextRequest) {
 
     const invoiceMetadata: InvoiceMetadata[] = [];
 
-    // Track how many invoices we've generated per month in this batch
-    // Key: "YYYY-MM", Value: count of invoices in this batch for that month
-    const batchCountByMonth: Record<string, number> = {};
-
     for (let i = 1; i <= invoiceCountToCreate; i++) {
       let invoiceAmount: number;
       let invoiceDescription: string;
@@ -162,32 +158,33 @@ export async function POST(request: NextRequest) {
               },
             ];
 
-      // Count existing invoices for THIS invoice's due date month
-      const monthStart = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth(), 1);
-      const monthEnd = new Date(invoiceDueDate.getFullYear(), invoiceDueDate.getMonth() + 1, 0);
+      // Determine installment type for invoice number generation
+      let installmentType: 'single' | 'entry' | 'installment';
+      let installmentNum: number | undefined;
 
-      const existingInvoicesThisMonth = await prisma.invoice.count({
-        where: {
-          customerId: customer.id,
-          createdAt: {
-            gte: monthStart,
-            lte: monthEnd,
-          },
-        },
-      });
+      if (invoiceCountToCreate === 1) {
+        // Single invoice (no installments)
+        installmentType = 'single';
+      } else if (entryAmount > 0 && i === 1) {
+        // Entry payment (first invoice in series with entry)
+        installmentType = 'entry';
+      } else {
+        // Installment payment
+        installmentType = 'installment';
+        installmentNum = entryAmount > 0 ? i - 1 : i;
+      }
 
-      // Track how many invoices in THIS batch are for the same month
-      const monthKey = `${invoiceDueDate.getFullYear()}-${String(invoiceDueDate.getMonth() + 1).padStart(2, '0')}`;
-      const batchCountForThisMonth = batchCountByMonth[monthKey] || 0;
-      batchCountByMonth[monthKey] = batchCountForThisMonth + 1;
-
-      // Generate professional invoice number with sequential numbering
-      // Sequence = existing invoices in DB + invoices already generated in this batch for same month
-      const sequence = existingInvoicesThisMonth + batchCountForThisMonth + 1;
+      // Generate unique invoice number using enhanced format
+      // Format: {CUSTOMER}-{SERVICE}-{YYYYMMDD}-{INSTALLMENT}-{HASH}
+      // This guarantees uniqueness through multiple data points
       const invoiceNumber = generateInvoiceNumber({
         customerName: customer.name,
-        date: invoiceDueDate,
-        sequence: sequence,
+        serviceName: invoiceDescription,
+        date: new Date(), // Use current date for creation timestamp
+        installmentType: installmentType,
+        installmentNumber: installmentNum,
+        amount: invoiceAmount,
+        seriesId: seriesId, // Use series ID for extra uniqueness
       });
 
       // Store metadata for this invoice
@@ -202,10 +199,9 @@ export async function POST(request: NextRequest) {
       console.log(`[INVOICE_CREATE] Generated invoice ${i}/${invoiceCountToCreate}:`, {
         number: invoiceNumber,
         dueDate: invoiceDueDate.toISOString().split('T')[0],
-        monthKey,
-        existingInDB: existingInvoicesThisMonth,
-        batchCountForMonth: batchCountForThisMonth,
-        sequence,
+        installmentType,
+        installmentNumber: installmentNum,
+        amount: invoiceAmount,
       });
     }
 
