@@ -439,7 +439,7 @@ Plans:
 
 ### Phase 5: DocuSign Production Setup & Verification
 
-**Goal**: Verify and configure DocuSign JWT authentication in production environment with proper credentials and consent.
+**Goal**: Configure DocuSign production environment with JWT authentication and implement automated contract workflow triggered when invoices are sent.
 
 **Status**: 📋 Planned
 
@@ -450,8 +450,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Production credentials setup (RSA keypair, Integration Key, admin consent, Vercel env vars)
-- [ ] 05-02-PLAN.md — Production testing and automated contract workflow (envelope creation, first-invoice detection, status UI)
+- [ ] 05-01-PLAN.md — Production credentials setup and configuration
+- [ ] 05-02-PLAN.md — Automated contract workflow and production verification
 
 **Scope:**
 - **Production Account Configuration**
