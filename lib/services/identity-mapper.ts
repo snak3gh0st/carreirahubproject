@@ -15,7 +15,12 @@ export interface CustomerData {
   email: string;
   name: string;
   phone?: string;
-  document?: string;
+  ssn?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   externalIds?: ExternalIds;
   metadata?: any;
 }
@@ -31,7 +36,7 @@ export class IdentityMapperService {
    * Reconciliar ou criar Customer baseado em email e IDs externos
    */
   async reconcileCustomer(data: CustomerData): Promise<Customer> {
-    const { email, name, phone, document, externalIds = {}, metadata } = data;
+    const { email, name, phone, ssn, address, city, state, zipCode, country, externalIds = {}, metadata } = data;
 
     // Buscar Customer existente por email
     let customer = await prisma.customer.findUnique({
@@ -45,7 +50,12 @@ export class IdentityMapperService {
       // Atualizar campos básicos se necessário
       if (name && !customer.name) updates.name = name;
       if (phone && !customer.phone) updates.phone = phone;
-      if (document && !customer.document) updates.document = document;
+      if (ssn && !customer.ssn) updates.ssn = ssn;
+      if (address && !customer.address) updates.address = address;
+      if (city && !customer.city) updates.city = city;
+      if (state && !customer.state) updates.state = state;
+      if (zipCode && !customer.zipCode) updates.zipCode = zipCode;
+      if (country && !customer.country) updates.country = country;
 
       // Atualizar IDs externos que não existem
       if (externalIds.pipedrive_id && !customer.pipedrive_id) {
@@ -90,7 +100,12 @@ export class IdentityMapperService {
           email,
           name,
           phone,
-          document,
+          ssn,
+          address,
+          city,
+          state,
+          zipCode,
+          country,
           pipedrive_id: externalIds.pipedrive_id,
           quickbooks_id: externalIds.quickbooks_id,
           stripe_id: externalIds.stripe_id,

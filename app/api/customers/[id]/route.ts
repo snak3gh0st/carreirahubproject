@@ -5,7 +5,12 @@ import { z } from "zod";
 const updateCustomerSchema = z.object({
   name: z.string().min(1).optional(),
   phone: z.string().optional(),
-  document: z.string().optional(),
+  ssn: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zipCode: z.string().optional(),
+  country: z.string().optional(),
   pipedrive_id: z.number().optional(),
   stripe_id: z.string().optional(),
   quickbooks_id: z.string().optional(),

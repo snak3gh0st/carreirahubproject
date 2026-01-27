@@ -10,7 +10,12 @@ export function NewCustomerForm() {
     name: "",
     email: "",
     phone: "",
-    document: "",
+    ssn: "",
+    address: "",
+    city: "",
+    state: "",
+    zipCode: "",
+    country: "USA",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +45,12 @@ export function NewCustomerForm() {
           email: form.email,
           name: form.name,
           phone: form.phone || undefined,
-          document: form.document || undefined,
+          ssn: form.ssn || undefined,
+          address: form.address || undefined,
+          city: form.city || undefined,
+          state: form.state || undefined,
+          zipCode: form.zipCode || undefined,
+          country: form.country || undefined,
         }),
       });
 
@@ -58,7 +68,12 @@ export function NewCustomerForm() {
         name: "",
         email: "",
         phone: "",
-        document: "",
+        ssn: "",
+        address: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        country: "USA",
       });
 
       // Redirect to customer detail after 2 seconds
@@ -191,26 +206,81 @@ export function NewCustomerForm() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Telefone <span className="text-gray-400 text-xs">(Opcional)</span>
+              Phone <span className="text-gray-400 text-xs">(Optional)</span>
             </label>
             <input
               type="text"
               value={form.phone}
               onChange={(e) => handleChange("phone", e.target.value)}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="+55 11 98765-4321"
+              placeholder="+1 (555) 123-4567"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              CPF/CNPJ <span className="text-gray-400 text-xs">(Opcional)</span>
+              SSN <span className="text-gray-400 text-xs">(Optional)</span>
             </label>
             <input
               type="text"
-              value={form.document}
-              onChange={(e) => handleChange("document", e.target.value)}
+              value={form.ssn}
+              onChange={(e) => handleChange("ssn", e.target.value)}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="123.456.789-00"
+              placeholder="xxx-xx-xxxx"
+              maxLength={11}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Address <span className="text-gray-400 text-xs">(Optional)</span>
+          </label>
+          <input
+            type="text"
+            value={form.address}
+            onChange={(e) => handleChange("address", e.target.value)}
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="123 Main Street, Apt 4B"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              City <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.city}
+              onChange={(e) => handleChange("city", e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="New York"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              State <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.state}
+              onChange={(e) => handleChange("state", e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="NY"
+              maxLength={2}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              ZIP Code <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.zipCode}
+              onChange={(e) => handleChange("zipCode", e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="10001"
+              maxLength={10}
             />
           </div>
         </div>

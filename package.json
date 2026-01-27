@@ -22,7 +22,9 @@
     "db:seed": "node scripts/seed-test-data.js",
     "db:clear": "node scripts/clear-database.js",
     "test:quickbooks": "npx tsx scripts/test-quickbooks.ts",
-    "test:workflow": "npx tsx scripts/test-invoice-workflow.ts"
+    "test:workflow": "npx tsx scripts/test-invoice-workflow.ts",
+    "test:docusign": "npx tsx scripts/test-docusign.ts",
+    "docusign:consent": "npx tsx scripts/docusign-consent-url.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.974.0",
@@ -57,6 +59,7 @@
     "lucide-react": "^0.378.0",
     "next": "^14.2.0",
     "next-auth": "^4.24.5",
+    "next-themes": "^0.4.6",
     "openai": "^4.52.0",
     "p-retry": "^7.1.1",
     "papaparse": "^5.5.3",

@@ -318,6 +318,12 @@ export class QuickbooksService {
     email: string;
     name: string;
     phone?: string;
+    ssn?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
   }): Promise<any> {
     // Buscar customer existente
     const query = `SELECT * FROM Customer WHERE PrimaryEmailAddr = '${data.email}'`;
@@ -328,23 +334,42 @@ export class QuickbooksService {
     }
 
     // Criar novo customer
-    const customerData = {
+    const customerData: any = {
       DisplayName: data.name,
       PrimaryEmailAddr: {
         Address: data.email,
       },
+    };
+
+    // Add phone if provided
+    if (data.phone) {
+      customerData.PrimaryPhone = {
+        FreeFormNumber: data.phone,
+      };
+    }
+
+    // Add SSN if provided (stored in Notes field as QB doesn't have a dedicated SSN field)
+    if (data.ssn) {
+      customerData.Notes = `SSN: ${data.ssn}`;
+    }
+
+    // Add billing address if any address data is provided
+    if (data.address || data.city || data.state || data.zipCode || data.country) {
+      customerData.BillAddr = {
+        Line1: data.address || "No address provided",
+        City: data.city || "No city",
+        CountrySubDivisionCode: data.state || "",
+        PostalCode: data.zipCode || "",
+        Country: data.country || "USA",
+      };
+    } else {
       // QB requires BillAddr for email sending to work properly
-      BillAddr: {
+      customerData.BillAddr = {
         City: "USA",
         Country: "USA",
         Line1: "Billing Address",
-      },
-      ...(data.phone && {
-        PrimaryPhone: {
-          FreeFormNumber: data.phone,
-        },
-      }),
-    };
+      };
+    }
 
     const createResult = await this.request("/customer", {
       method: "POST",

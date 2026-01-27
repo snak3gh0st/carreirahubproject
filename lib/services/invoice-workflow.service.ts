@@ -63,7 +63,12 @@ export class InvoiceWorkflowService {
           email: customer.email,
           name: customer.name,
           phone: customer.phone || undefined,
-          document: customer.document || undefined,
+          ssn: customer.ssn || undefined,
+          address: customer.address || undefined,
+          city: customer.city || undefined,
+          state: customer.state || undefined,
+          zipCode: customer.zipCode || undefined,
+          country: customer.country || undefined,
           externalIds: {
             quickbooks_id: customer.quickbooks_id || undefined,
           },

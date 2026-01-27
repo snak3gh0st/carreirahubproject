@@ -151,9 +151,16 @@ model Customer {
   email         String   @unique
   name          String
   phone         String?
-  document      String?  // CPF ou TaxID
+  ssn           String?  // Social Security Number (USA)
   phoneVerified Boolean  @default(false)
   preferredLanguage String? @default("pt-BR")
+  
+  // Address fields
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  country       String?  @default("USA")
 
   // IDs Externos
   pipedrive_id  Int?     @unique
