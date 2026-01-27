@@ -26,9 +26,10 @@ Sprint 1 Phases:
 - [x] **Phase 1: QuickBooks Foundation** - OAuth, customer sync, invoice sync, payment tracking
 - [x] **Phase 1.1: Invoice & Customer Dashboard Enhancement (INSERTED)** - Enhanced UI, graphics, filtering, installment tracking
 - [x] **Phase 4.1: Deployment Ready (INSERTED)** - Loading states, pagination, mobile responsiveness for production deployment
-- [ ] **Phase 2: DocuSign Integration** - Contract generation, signature workflow, document storage
+- [x] **Phase 2: DocuSign Integration** - Contract generation, signature workflow, document storage
 - [x] **Phase 3: Finance Workflow Automation** - End-to-end Deal → Invoice → Contract
 - [x] **Phase 4: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, analytics, date filtering, and CSV export
+- [ ] **Phase 5: DocuSign Production Setup** - Production environment configuration and verification
 
 ## Phase Details
 
@@ -436,10 +437,60 @@ Plans:
 
 ---
 
+### Phase 5: DocuSign Production Setup & Verification
+
+**Goal**: Verify and configure DocuSign JWT authentication in production environment with proper credentials and consent.
+
+**Status**: 📋 Planned
+
+**Depends on**: Phase 2 (DocuSign Integration code complete)
+
+**Research**: None (configuration and verification)
+
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — RSA keypair generation, credential configuration, consent grant setup
+- [ ] 05-02-PLAN.md — Production testing and verification (JWT auth, envelope creation, webhooks)
+
+**Scope:**
+- **Production Account Configuration**
+  - Verify DocuSign production account access
+  - Generate RSA keypair in production account
+  - Configure Integration Key and credentials
+  - Set up OAuth redirect URIs
+  
+- **JWT Authentication Setup**
+  - Configure DOCUSIGN_INTEGRATION_KEY in production
+  - Configure DOCUSIGN_PRIVATE_KEY (RSA key)
+  - Configure DOCUSIGN_USER_ID (production)
+  - Configure DOCUSIGN_ACCOUNT_ID (production)
+  - Grant consent for JWT authentication
+  
+- **Production Testing**
+  - Test JWT authentication flow
+  - Test envelope creation with real credentials
+  - Verify webhook processing
+  - Test contract generation from invoices
+  
+- **Documentation**
+  - Document production setup process
+  - Create troubleshooting guide
+  - Document consent grant procedure
+
+**Success Criteria:**
+- DocuSign JWT authentication working in production
+- Test envelope successfully created
+- Webhooks processing correctly
+- All environment variables configured
+- Consent granted for production account
+
+---
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -449,10 +500,11 @@ Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4
 | 2. DocuSign Integration | 4/4 | ✅ Complete | 2026-01-23 |
 | 3. Finance Workflow Automation | 2/2 | ✅ Complete | 2026-01-15 |
 | 4. Insights (BI & Analytics) | 3/3 | ✅ Complete | 2026-01-15 |
+| 5. DocuSign Production Setup | 0/? | 📋 Planned | - |
 
-**Status:** 6 of 6 phases complete! All 17 plans executed successfully.
+**Status:** 6 of 7 phases complete! 17 plans executed successfully. Phase 5 ready for planning.
 
-**Next Action:** Sprint 1 complete. Run `/gsd:audit-milestone` to verify requirements and cross-phase integration.
+**Next Action:** Run `/gsd-plan-phase 5` to break down DocuSign production setup tasks.
 
 ---
 
