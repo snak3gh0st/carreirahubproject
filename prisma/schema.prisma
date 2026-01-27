@@ -152,6 +152,8 @@ model Customer {
   name          String
   phone         String?
   ssn           String?  // Social Security Number (USA)
+  passport      String?  // Passport Number
+  cpf           String?  // CPF (Brazil Tax ID)
   phoneVerified Boolean  @default(false)
   preferredLanguage String? @default("pt-BR")
   

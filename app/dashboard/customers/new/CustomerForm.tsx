@@ -11,6 +11,8 @@ export function NewCustomerForm() {
     email: "",
     phone: "",
     ssn: "",
+    passport: "",
+    cpf: "",
     address: "",
     city: "",
     state: "",
@@ -46,6 +48,8 @@ export function NewCustomerForm() {
           name: form.name,
           phone: form.phone || undefined,
           ssn: form.ssn || undefined,
+          passport: form.passport || undefined,
+          cpf: form.cpf || undefined,
           address: form.address || undefined,
           city: form.city || undefined,
           state: form.state || undefined,
@@ -69,6 +73,8 @@ export function NewCustomerForm() {
         email: "",
         phone: "",
         ssn: "",
+        passport: "",
+        cpf: "",
         address: "",
         city: "",
         state: "",
@@ -203,19 +209,20 @@ export function NewCustomerForm() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone <span className="text-gray-400 text-xs">(Optional)</span>
-            </label>
-            <input
-              type="text"
-              value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
-              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="+1 (555) 123-4567"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Phone <span className="text-gray-400 text-xs">(Optional)</span>
+          </label>
+          <input
+            type="text"
+            value={form.phone}
+            onChange={(e) => handleChange("phone", e.target.value)}
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="+1 (555) 123-4567"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               SSN <span className="text-gray-400 text-xs">(Optional)</span>
@@ -227,6 +234,31 @@ export function NewCustomerForm() {
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="xxx-xx-xxxx"
               maxLength={11}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Passport <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.passport}
+              onChange={(e) => handleChange("passport", e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Passport number"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              CPF <span className="text-gray-400 text-xs">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={form.cpf}
+              onChange={(e) => handleChange("cpf", e.target.value)}
+              className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="000.000.000-00"
+              maxLength={14}
             />
           </div>
         </div>

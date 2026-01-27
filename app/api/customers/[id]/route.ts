@@ -6,6 +6,8 @@ const updateCustomerSchema = z.object({
   name: z.string().min(1).optional(),
   phone: z.string().optional(),
   ssn: z.string().optional(),
+  passport: z.string().optional(),
+  cpf: z.string().optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),

@@ -319,6 +319,8 @@ export class QuickbooksService {
     name: string;
     phone?: string;
     ssn?: string;
+    passport?: string;
+    cpf?: string;
     address?: string;
     city?: string;
     state?: string;
@@ -348,9 +350,14 @@ export class QuickbooksService {
       };
     }
 
-    // Add SSN if provided (stored in Notes field as QB doesn't have a dedicated SSN field)
-    if (data.ssn) {
-      customerData.Notes = `SSN: ${data.ssn}`;
+    // Add identification documents to Notes field (QB doesn't have dedicated fields)
+    const identificationNotes = [];
+    if (data.ssn) identificationNotes.push(`SSN: ${data.ssn}`);
+    if (data.passport) identificationNotes.push(`Passport: ${data.passport}`);
+    if (data.cpf) identificationNotes.push(`CPF: ${data.cpf}`);
+    
+    if (identificationNotes.length > 0) {
+      customerData.Notes = identificationNotes.join(' | ');
     }
 
     // Add billing address if any address data is provided
