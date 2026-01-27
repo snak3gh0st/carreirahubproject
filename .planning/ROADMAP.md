@@ -450,8 +450,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — RSA keypair generation, credential configuration, consent grant setup
-- [ ] 05-02-PLAN.md — Production testing and verification (JWT auth, envelope creation, webhooks)
+- [ ] 05-01-PLAN.md — Production credentials setup (RSA keypair, Integration Key, admin consent, Vercel env vars)
+- [ ] 05-02-PLAN.md — Production testing and automated contract workflow (envelope creation, first-invoice detection, status UI)
 
 **Scope:**
 - **Production Account Configuration**
