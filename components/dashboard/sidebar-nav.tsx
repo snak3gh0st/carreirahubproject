@@ -21,6 +21,7 @@ import {
   PlusCircle,
   CheckCircle,
   FileSignature,
+  FilePlus,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 
@@ -101,6 +102,12 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/contracts",
         label: "Contracts",
         icon: FileSignature,
+        roles: ["ADMIN", "FINANCE"],
+      },
+      {
+        href: "/dashboard/contracts/new",
+        label: "Create Contract",
+        icon: FilePlus,
         roles: ["ADMIN", "FINANCE"],
       },
       {
