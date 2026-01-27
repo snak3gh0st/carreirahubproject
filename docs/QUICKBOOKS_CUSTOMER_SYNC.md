@@ -24,11 +24,20 @@ When a customer is created in the Carreira AI Hub, the system automatically sync
 | `zipCode` | `BillAddr.PostalCode` | ZIP/Postal code |
 | `country` | `BillAddr.Country` | Country (defaults to "USA") |
 
-### Special Fields
+### Identification Document Fields
 
 | Hub Field | QuickBooks Storage | Notes |
 |-----------|-------------------|-------|
-| `ssn` | `Notes` | SSN is stored in the Notes field as `SSN: xxx-xx-xxxx` because QuickBooks doesn't have a dedicated SSN field |
+| `ssn` | `Notes` | SSN stored as `SSN: xxx-xx-xxxx` |
+| `passport` | `Notes` | Passport stored as `Passport: ABC123456` |
+| `cpf` | `Notes` | CPF (Brazil Tax ID) stored as `CPF: 000.000.000-00` |
+
+**Format in QuickBooks Notes:**
+- Single ID: `SSN: xxx-xx-xxxx`
+- Multiple IDs: `SSN: xxx-xx-xxxx | Passport: ABC123456 | CPF: 000.000.000-00`
+
+**Why Notes field?**  
+QuickBooks Online doesn't have dedicated fields for identification documents. Using the Notes field allows storing multiple IDs in a searchable format.
 
 ## Sync Behavior
 
