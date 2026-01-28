@@ -393,13 +393,14 @@ export async function POST(request: NextRequest) {
 
       // QB does NOT auto-send with EmailStatus: "NeedToSend" - must call /send explicitly
       if (customer.email && shouldSendEmail) {
-        // Wait a moment for QB to fully process the invoice before sending
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait longer for QB to fully process the invoice before sending (increased from 500ms to 1000ms)
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
         try {
           console.log(`[INVOICE_CREATE] Calling QB /send endpoint for invoice ${qbInvoice.Id} to ${customer.email}...`);
+          console.log(`[INVOICE_CREATE] Invoice BillEmail check before send - QB Invoice ID: ${qbInvoice.Id}, Email: ${qbInvoice.BillEmail?.Address || 'NOT SET'}`);
 
-          // Call sendInvoice which calls QB's /send endpoint
+          // Call sendInvoice which calls QB's /send endpoint with retry logic
           // Note: sendInvoice now returns graceful failure instead of throwing
           // This allows invoice creation to complete even if /send fails
           const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
@@ -407,9 +408,8 @@ export async function POST(request: NextRequest) {
           console.log(`[INVOICE_CREATE] QB /send result:`, JSON.stringify(sendResult, null, 2));
 
           // Log send result (success or graceful failure)
-          // Invoice is already marked NeedToSend in QB, so it will be batch-sent automatically
           if (sendResult.success && sendResult.sent) {
-            console.log(`[INVOICE_CREATE] ✓ Invoice email sent immediately via QB API`);
+            console.log(`[INVOICE_CREATE] ✓ Invoice email sent immediately via QB API (attempt ${sendResult.attempt})`);
             await prisma.integrationLog.create({
               data: {
                 service: "quickbooks",
@@ -417,8 +417,11 @@ export async function POST(request: NextRequest) {
                 status: "SUCCESS",
                 payload: {
                   qbInvoiceId: qbInvoice.Id,
+                  invoiceNumber,
                   recipientEmail: customer.email,
                   deliveryInfo: sendResult.deliveryInfo,
+                  emailStatus: sendResult.emailStatus,
+                  sendAttempts: sendResult.attempt,
                   isInstallment: isInstallmentSeries,
                   isEntryInvoice,
                   isSinglePayment,
@@ -426,18 +429,22 @@ export async function POST(request: NextRequest) {
               },
             });
           } else {
-            console.log(`[INVOICE_CREATE] ⓘ Invoice created with NeedToSend status. QB will batch-send automatically.`);
+            // Send failed after retries - create NEEDS_MANUAL_SEND log entry
+            console.log(`[INVOICE_CREATE] ⚠️  Invoice email send failed after ${sendResult.attempts} attempts`);
             await prisma.integrationLog.create({
               data: {
                 service: "quickbooks",
-                action: "invoice_created_batch_send_queued",
-                status: "SUCCESS",
+                action: "invoice_needs_manual_send",
+                status: "NEEDS_MANUAL_SEND",
+                error: sendResult.error,
                 payload: {
                   qbInvoiceId: qbInvoice.Id,
+                  invoiceNumber,
                   recipientEmail: customer.email,
-                  emailStatus: "NeedToSend",
-                  note: "QB /send endpoint unavailable. Invoice queued for batch sending.",
-                  error: sendResult.error,
+                  emailStatus: sendResult.emailStatus,
+                  sendAttempts: sendResult.attempts,
+                  note: "Invoice created but email send failed after retries. Manual send required via QuickBooks UI.",
+                  qbInvoiceUrl: `https://app.qbo.intuit.com/app/invoice?txnId=${qbInvoice.Id}`,
                   isInstallment: isInstallmentSeries,
                   isEntryInvoice,
                   isSinglePayment,
@@ -452,12 +459,15 @@ export async function POST(request: NextRequest) {
           await prisma.integrationLog.create({
             data: {
               service: "quickbooks",
-              action: "invoice_created_send_error",
-              status: "WARNING",
+              action: "invoice_needs_manual_send",
+              status: "NEEDS_MANUAL_SEND",
               error: sendError.message || "Send error",
-               payload: {
+              payload: {
                 qbInvoiceId: qbInvoice.Id,
+                invoiceNumber,
                 recipientEmail: customer.email,
+                note: "Invoice created but email send failed. Manual send required via QuickBooks UI.",
+                qbInvoiceUrl: `https://app.qbo.intuit.com/app/invoice?txnId=${qbInvoice.Id}`,
                 isInstallment: isInstallmentSeries,
                 isEntryInvoice,
                 isSinglePayment,

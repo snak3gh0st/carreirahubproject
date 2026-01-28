@@ -729,69 +729,102 @@ export class QuickbooksService {
       console.log(`[QuickBooks] Override email: ${email}`);
     }
 
-    try {
-      if (!this.accessToken) {
-        throw new Error("Quickbooks access token not configured");
+    // Retry logic: 2 attempts with 1s delay
+    const maxAttempts = 2;
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        if (!this.accessToken) {
+          throw new Error("Quickbooks access token not configured");
+        }
+
+        if (!this.companyId || this.companyId.trim() === "") {
+          throw new Error("Quickbooks company ID not configured");
+        }
+
+        console.log(`[QuickBooks] Send attempt ${attempt}/${maxAttempts}`);
+
+        // If this is a retry (attempt > 1), try updating BillEmail first
+        if (attempt > 1 && email) {
+          console.log(`[QuickBooks] Retry attempt - updating BillEmail to ${email} before send`);
+          try {
+            await this.updateInvoiceBillEmail(invoiceId, email);
+            console.log(`[QuickBooks] BillEmail updated successfully`);
+          } catch (updateError: any) {
+            console.warn(`[QuickBooks] Failed to update BillEmail on retry:`, updateError.message);
+            // Continue with send attempt anyway
+          }
+        }
+
+        // Build endpoint - use Method 2 if explicit email provided, otherwise Method 1
+        let endpoint = `/invoice/${invoiceId}/send`;
+        if (email) {
+          endpoint += `?sendTo=${encodeURIComponent(email)}&minorversion=75`;
+          console.log(`[QuickBooks] Using Method 2 (explicit email with minorversion=75)`);
+        } else {
+          console.log(`[QuickBooks] Using Method 1 (BillEmail from invoice)`);
+        }
+
+        const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
+        console.log(`[QuickBooks] Calling: POST ${url}`);
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${this.accessToken}`,
+            "Accept": "application/json",
+            "Content-Type": "application/octet-stream",  // CRITICAL: Per QB API docs
+          },
+          body: "",  // Empty body as per QB API documentation
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
+          throw new Error(`QB /send failed (${response.status}): ${errorText}`);
+        }
+
+        const result = await response.json();
+
+        console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully on attempt ${attempt}`);
+        console.log(`[QuickBooks] EmailStatus: ${result.Invoice?.EmailStatus}`);
+        console.log(`[QuickBooks] DeliveryInfo:`, JSON.stringify(result.Invoice?.DeliveryInfo, null, 2));
+
+        return {
+          success: true,
+          sent: true,
+          emailStatus: result.Invoice?.EmailStatus,
+          deliveryInfo: result.Invoice?.DeliveryInfo,
+          attempt,
+          result
+        };
+      } catch (error: any) {
+        lastError = error;
+        console.error(`[QuickBooks] ✗ Send attempt ${attempt}/${maxAttempts} failed:`, error.message || String(error));
+
+        // If not last attempt, wait 1s before retry
+        if (attempt < maxAttempts) {
+          console.log(`[QuickBooks] Waiting 1s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
-
-      if (!this.companyId || this.companyId.trim() === "") {
-        throw new Error("Quickbooks company ID not configured");
-      }
-
-      // Build endpoint - use Method 2 if explicit email provided, otherwise Method 1
-      let endpoint = `/invoice/${invoiceId}/send`;
-      if (email) {
-        endpoint += `?sendTo=${encodeURIComponent(email)}&minorversion=75`;
-        console.log(`[QuickBooks] Using Method 2 (explicit email with minorversion=75)`);
-      } else {
-        console.log(`[QuickBooks] Using Method 1 (BillEmail from invoice)`);
-      }
-
-      const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
-      console.log(`[QuickBooks] Calling: POST ${url}`);
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${this.accessToken}`,
-          "Accept": "application/json",
-          "Content-Type": "application/octet-stream",  // CRITICAL: Per QB API docs
-        },
-        body: "",  // Empty body as per QB API documentation
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
-        throw new Error(`QB /send failed (${response.status}): ${errorText}`);
-      }
-
-      const result = await response.json();
-
-      console.log(`[QuickBooks] ✓ Invoice ${invoiceId} sent successfully`);
-      console.log(`[QuickBooks] EmailStatus: ${result.Invoice?.EmailStatus}`);
-      console.log(`[QuickBooks] DeliveryInfo:`, JSON.stringify(result.Invoice?.DeliveryInfo, null, 2));
-
-      return {
-        success: true,
-        sent: true,
-        emailStatus: result.Invoice?.EmailStatus,
-        deliveryInfo: result.Invoice?.DeliveryInfo,
-        result
-      };
-    } catch (error: any) {
-      console.error(`[QuickBooks] ✗ Failed to send invoice ${invoiceId}:`, error.message || String(error));
-
-      // Log but don't throw - allow invoice creation to complete
-      // The invoice is already set to NeedToSend, QB will batch-send it automatically
-      return {
-        success: false,
-        sent: false,
-        emailStatus: "NeedToSend",
-        error: error.message || String(error),
-        note: "Invoice created successfully and marked NeedToSend. QB will batch-send automatically. Immediate send via /send endpoint failed."
-      };
     }
+
+    // All attempts failed
+    console.error(`[QuickBooks] ✗ All ${maxAttempts} send attempts failed for invoice ${invoiceId}`);
+    console.error(`[QuickBooks] Last error:`, lastError?.message || String(lastError));
+
+    // Log but don't throw - allow invoice creation to complete
+    // The invoice is already set to NeedToSend, QB will batch-send it automatically
+    return {
+      success: false,
+      sent: false,
+      emailStatus: "NeedToSend",
+      error: lastError?.message || String(lastError),
+      attempts: maxAttempts,
+      note: "Invoice created successfully and marked NeedToSend. QB will batch-send automatically. Immediate send via /send endpoint failed after retries."
+    };
   }
 
   /**
