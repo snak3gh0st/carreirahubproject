@@ -315,10 +315,27 @@ export async function POST(request: NextRequest) {
         docNumber: invoiceNumber, // Custom professional invoice number
         lineItems: lineItems.map((item) => ({
           description: item.description,
-          amount: item.amount,
+          amount: Math.max(0.01, Number(item.amount.toFixed(2))), // Ensure positive amount
           itemRef: item.serviceItemId,
         })),
       };
+
+      // Validate QB invoice data before API call
+      if (!qbInvoiceData.lineItems || qbInvoiceData.lineItems.length === 0) {
+        throw new Error('Invoice must have at least one line item');
+      }
+
+      for (const item of qbInvoiceData.lineItems) {
+        if (!item.itemRef || item.itemRef === 'demo-service-1' || item.itemRef === 'demo-service-2') {
+          console.error('[INVOICE_CREATE] Invalid itemRef:', item.itemRef);
+          throw new Error(`Invalid service item ID: ${item.itemRef}. Please select a valid QuickBooks service item.`);
+        }
+        if (!item.amount || item.amount <= 0) {
+          throw new Error(`Invalid amount for line item: ${item.amount}`);
+        }
+      }
+
+      console.log('[INVOICE_CREATE] QB Invoice payload:', JSON.stringify(qbInvoiceData, null, 2));
 
       // Create invoice in QuickBooks WITH BillEmail set during creation
       const qbInvoice = await quickbooksService.createInvoiceWithBillEmail(qbInvoiceData);

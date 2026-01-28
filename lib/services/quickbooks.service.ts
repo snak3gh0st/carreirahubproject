@@ -475,15 +475,36 @@ export class QuickbooksService {
     console.log(`[QuickBooks] Creating invoice WITH BillEmail: ${data.customerEmail}`);
     console.log(`[QuickBooks] Invoice payload:`, JSON.stringify(invoiceData, null, 2));
 
-    const result = await this.request("/invoice", {
-      method: "POST",
-      body: JSON.stringify(invoiceData),
-    });
+    try {
+      const result = await this.request("/invoice", {
+        method: "POST",
+        body: JSON.stringify(invoiceData),
+      });
 
-    console.log(`[QuickBooks] Created invoice ${result.Invoice?.Id} with BillEmail: ${result.Invoice?.BillEmail?.Address}`);
-    console.log(`[QuickBooks] Invoice EmailStatus: ${result.Invoice?.EmailStatus}`);
+      console.log(`[QuickBooks] Created invoice ${result.Invoice?.Id} with BillEmail: ${result.Invoice?.BillEmail?.Address}`);
+      console.log(`[QuickBooks] Invoice EmailStatus: ${result.Invoice?.EmailStatus}`);
 
-    return result.Invoice;
+      return result.Invoice;
+    } catch (error: any) {
+      console.error(`[QuickBooks] Invoice creation failed:`);
+      console.error(`[QuickBooks] Request payload:`, JSON.stringify(invoiceData, null, 2));
+
+      // Parse QB error response if available
+      if (error.responseText) {
+        try {
+          const errorBody = JSON.parse(error.responseText);
+          console.error(`[QuickBooks] QB Error Response:`, JSON.stringify(errorBody, null, 2));
+          if (errorBody.Fault?.Error) {
+            for (const err of errorBody.Fault.Error) {
+              console.error(`[QuickBooks] Error ${err.code}: ${err.Message} - ${err.Detail}`);
+            }
+          }
+        } catch {
+          console.error(`[QuickBooks] Raw error text:`, error.responseText);
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -1092,22 +1113,70 @@ export class QuickbooksService {
 
   /**
    * Buscar todos os Price Levels do QuickBooks
+   * 
+   * Note: PriceLevel entity is not available in all QuickBooks editions:
+   * - QuickBooks Simple Start: Does NOT support price levels
+   * - QuickBooks Essentials: Does NOT support price levels
+   * - QuickBooks Plus: Supports price levels
+   * - QuickBooks Advanced: Supports price levels
+   * 
+   * If the account doesn't have PriceLevel enabled, returns empty array instead of throwing.
+   * 
+   * IMPORTANT: This method bypasses the standard request() method to avoid logging errors
+   * for unsupported entities. This prevents pollution of IntegrationLog with expected errors.
    */
   async getPriceLevels(maxResults: number = 1000): Promise<any[]> {
     const query = `SELECT * FROM PriceLevel WHERE Active = true MAXRESULTS ${maxResults}`;
-    console.log(`[QuickBooks] Executando query: ${query}`);
-    const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
-    console.log(`[QuickBooks] Resposta da query PriceLevel:`, JSON.stringify(result, null, 2));
-
-    let priceLevels = result.QueryResponse?.PriceLevel || [];
-    console.log(`[QuickBooks] Total de price levels encontrados: ${priceLevels.length}`);
-
-    // Se não houver price levels no array, pode ser que venha como objeto único
-    if (!Array.isArray(priceLevels) && priceLevels.Id) {
-      priceLevels = [priceLevels];
+    
+    // Direct fetch to avoid error logging for unsupported entities
+    if (!this.accessToken || !this.companyId || this.companyId.trim() === "") {
+      console.warn(`[QuickBooks] Cannot query PriceLevel - missing credentials`);
+      return [];
     }
 
-    return priceLevels;
+    const url = `${this.baseUrl}/v3/company/${this.companyId}/query?query=${encodeURIComponent(query)}`;
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "Authorization": `Bearer ${this.accessToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        
+        // Check if error is "Metadata not found for Entity: PriceLevel"
+        const isPriceLevelNotSupported = 
+          errorText.includes("Metadata not found for Entity: PriceLevel");
+        
+        if (response.status === 400 && isPriceLevelNotSupported) {
+          console.log(`[QuickBooks] PriceLevel entity not supported in this QuickBooks account (Simple Start/Essentials edition). Returning empty array.`);
+          return [];
+        }
+        
+        // For other errors, use standard request method to get proper error handling
+        console.error(`[QuickBooks] Unexpected error querying PriceLevel: ${response.status} ${errorText}`);
+        throw new Error(`QuickBooks PriceLevel query failed: ${response.status}`);
+      }
+
+      const result = await response.json();
+      let priceLevels = result.QueryResponse?.PriceLevel || [];
+
+      // Se não houver price levels no array, pode ser que venha como objeto único
+      if (!Array.isArray(priceLevels) && priceLevels.Id) {
+        priceLevels = [priceLevels];
+      }
+
+      console.log(`[QuickBooks] Found ${priceLevels.length} price levels`);
+      return priceLevels;
+    } catch (error: any) {
+      // Silent failure for unsupported entity - already logged above
+      console.warn(`[QuickBooks] PriceLevel query skipped (entity not supported)`);
+      return [];
+    }
   }
 
   /**
