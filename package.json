@@ -24,7 +24,8 @@
     "test:quickbooks": "npx tsx scripts/test-quickbooks.ts",
     "test:workflow": "npx tsx scripts/test-invoice-workflow.ts",
     "test:docusign": "npx tsx scripts/test-docusign.ts",
-    "docusign:consent": "npx tsx scripts/docusign-consent-url.ts"
+    "docusign:consent": "npx tsx scripts/docusign-consent-url.ts",
+    "verify:docusign": "npx tsx scripts/verify-docusign-credentials.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.974.0",
