@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 5 of 8 (DocuSign Production Setup & Verification)
 Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-01-28 — Completed quick task 014: Fix installment invoice due date calculation
+Last activity: 2026-01-28 — Completed quick task 017: Fix installment date calculation with month-aware logic
 
 Progress: ████████████████░░ 89% (18 plans executed)
 
@@ -357,12 +357,13 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 | 012 | Remove invoice approval workflow completely | 2026-01-23 | d64c73d | [012-remove-invoice-approval-workflow-complet](.planning/quick/012-remove-invoice-approval-workflow-complet/) |
 | 013 | Improve invoice creator form UI/UX layout | 2026-01-23 | 51183ed | [013-improve-invoice-creator-form-ui-ux-layou](.planning/quick/013-improve-invoice-creator-form-ui-ux-layou/) |
 | 014 | Fix installment invoice due date calculation | 2026-01-28 | 4c2000d | [014-fix-installment-invoice-due-date-calcula](.planning/quick/014-fix-installment-invoice-due-date-calcula/) |
+| 017 | Fix installment date calculation with month-aware logic | 2026-01-28 | d47892e | [017-fix-installment-date-calculation-to-use-](.planning/quick/017-fix-installment-date-calculation-to-use-/) |
 
 ## Session Continuity
 
 Last session: 2026-01-28
-Stopped at: Completed quick-014 (Fix installment invoice due date calculation)
-Resume file: .planning/quick/014-fix-installment-invoice-due-date-calcula/014-SUMMARY.md
+Stopped at: Completed quick-017 (Fix installment date calculation with month-aware logic)
+Resume file: .planning/quick/017-fix-installment-date-calculation-to-use-/017-SUMMARY.md
 Next action: Resume Phase 5 - Execute Plan 05-02 (JWT Authentication Test and Production Verification)
 
 ## Sprint 1 Success Criteria
