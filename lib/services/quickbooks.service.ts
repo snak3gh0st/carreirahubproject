@@ -444,8 +444,16 @@ export class QuickbooksService {
       amount: number;
       itemRef?: string;
     }>;
+    discount?: number;  // Discount amount to apply
+    billingAddress?: {
+      line1?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    };
   }): Promise<any> {
-    const invoiceData = {
+    const invoiceData: any = {
       CustomerRef: {
         value: data.customerId,
       },
@@ -471,6 +479,31 @@ export class QuickbooksService {
         Description: item.description,
       })),
     };
+
+    // Add discount line item if discount is provided and > 0
+    if (data.discount && data.discount > 0) {
+      console.log(`[QuickBooks] Adding discount line item: $${data.discount}`);
+      invoiceData.Line.push({
+        Amount: data.discount,
+        DetailType: "DiscountLineDetail",
+        DiscountLineDetail: {
+          PercentBased: false,  // Fixed amount discount
+        },
+        Description: "Discount applied",
+      });
+    }
+
+    // Add billing address if provided
+    if (data.billingAddress) {
+      console.log(`[QuickBooks] Adding billing address to invoice:`, data.billingAddress);
+      invoiceData.BillAddr = {
+        Line1: data.billingAddress.line1 || "",
+        City: data.billingAddress.city || "",
+        CountrySubDivisionCode: data.billingAddress.state || "",
+        PostalCode: data.billingAddress.postalCode || "",
+        Country: data.billingAddress.country || "USA",
+      };
+    }
 
     console.log(`[QuickBooks] Creating invoice WITH BillEmail: ${data.customerEmail}`);
     console.log(`[QuickBooks] Invoice payload:`, JSON.stringify(invoiceData, null, 2));

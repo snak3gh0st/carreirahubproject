@@ -318,7 +318,23 @@ export async function POST(request: NextRequest) {
           amount: Math.max(0.01, Number(item.amount.toFixed(2))), // Ensure positive amount
           itemRef: item.serviceItemId,
         })),
+        // Add discount for this specific invoice if it's a single invoice with discount
+        discount: (invoiceCountToCreate === 1 && discount > 0) ? discount : undefined,
+        // Add billing address from customer record
+        billingAddress: {
+          line1: customer.address || undefined,
+          city: customer.city || undefined,
+          state: customer.state || undefined,
+          postalCode: customer.zipCode || undefined,
+          country: customer.country || "USA",
+        },
       };
+
+      console.log('[INVOICE_CREATE] QB Invoice data with discount and billing address:', {
+        invoiceNumber,
+        discount: qbInvoiceData.discount,
+        billingAddress: qbInvoiceData.billingAddress,
+      });
 
       // Validate QB invoice data before API call
       if (!qbInvoiceData.lineItems || qbInvoiceData.lineItems.length === 0) {
