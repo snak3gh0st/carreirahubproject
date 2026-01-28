@@ -6,6 +6,60 @@ import { Queue, Worker, QueueEvents } from "bullmq";
  * Responsabilidade: Gerenciar filas de processamento assíncrono e retry automático
  */
 
+/**
+ * Validates if Redis is properly configured with a real hostname
+ *
+ * Returns { configured: true } if Redis URL is valid and resolvable
+ * Returns { configured: false, reason: string } if Redis URL is missing, invalid, or uses placeholder hostname
+ */
+export function isRedisConfigured(): { configured: boolean; reason?: string } {
+  // Check if REDIS_URL exists
+  if (!process.env.REDIS_URL) {
+    return { configured: false, reason: "REDIS_URL environment variable not set" };
+  }
+
+  // Try to parse as URL
+  let url: URL;
+  try {
+    url = new URL(process.env.REDIS_URL);
+  } catch {
+    return { configured: false, reason: `Invalid REDIS_URL format: ${process.env.REDIS_URL}` };
+  }
+
+  // Check for placeholder hostnames (common patterns)
+  const hostname = url.hostname.toLowerCase();
+  const placeholderPatterns = [
+    "placeholder",
+    "your-redis-host",
+    "redis-host",
+    "example.com",
+    "example",
+    ""
+  ];
+
+  for (const pattern of placeholderPatterns) {
+    if (hostname === pattern || hostname.includes("placeholder") || hostname.includes("example")) {
+      return {
+        configured: false,
+        reason: `REDIS_URL uses placeholder hostname: ${url.hostname}`
+      };
+    }
+  }
+
+  // Validate port is valid number
+  const port = parseInt(url.port || "6379");
+  if (isNaN(port) || port < 1 || port > 65535) {
+    return { configured: false, reason: `Invalid port in REDIS_URL: ${url.port}` };
+  }
+
+  // Empty hostname check
+  if (!url.hostname || url.hostname.trim() === "") {
+    return { configured: false, reason: "REDIS_URL has empty hostname" };
+  }
+
+  return { configured: true };
+}
+
 // Configuração do Redis (usando connection options ao invés de instância)
 function getConnectionOptions() {
   // Only parse Redis URL at runtime, not build time
@@ -15,6 +69,14 @@ function getConnectionOptions() {
 
   try {
     const url = new URL(process.env.REDIS_URL);
+
+    // Validate hostname is not a placeholder
+    const validation = isRedisConfigured();
+    if (!validation.configured) {
+      console.warn(`[QUEUE] ${validation.reason}. Falling back to localhost.`);
+      return { host: "localhost", port: 6379, maxRetriesPerRequest: null };
+    }
+
     return {
       host: url.hostname,
       port: parseInt(url.port || "6379"),
