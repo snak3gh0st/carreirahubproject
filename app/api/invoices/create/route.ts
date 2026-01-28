@@ -329,19 +329,23 @@ export async function POST(request: NextRequest) {
 
       // Determine if this invoice should be emailed immediately
       // LOGIC:
-      // - Single invoice: Send immediately
-      // - Entry invoice (i=1 when entry exists): Send immediately
-      // - First installment (i=2 when entry exists, i=1 when no entry): Send immediately OR schedule
-      // - Subsequent installments: DRAFT (send 5 days before due date)
+      // - Single invoice (no installments): Send immediately
+      // - Entry invoice: Send immediately (customer needs to pay TODAY)
+      // - ALL installments (including first): DRAFT (send 5 days before due date)
+      // - Exception: No-entry first installment due TODAY → send immediately
       const isInstallmentSeries = invoiceCountToCreate > 1;
       const isEntryInvoice = entryAmount > 0 && i === 1;
       const isFirstInstallment = entryAmount > 0 ? i === 2 : i === 1;
-      const shouldSendEmail = isEntryInvoice || isFirstInstallment;
+      const isSingleInvoice = invoiceCountToCreate === 1;
+      const isNoEntryFirstInstallmentDueToday = !entryAmount && i === 1 && invoiceDueDate.toDateString() === new Date().toDateString();
+      const shouldSendEmail = isSingleInvoice || isEntryInvoice || isNoEntryFirstInstallmentDueToday;
 
       console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
         isInstallmentSeries,
+        isSingleInvoice,
         isEntryInvoice,
         isFirstInstallment,
+        isNoEntryFirstInstallmentDueToday,
         shouldSendEmail,
         description: invoiceDescription,
       });
