@@ -135,6 +135,12 @@ const navigationSections: NavSection[] = [
         roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
       },
       {
+        href: "/dashboard/customers/new",
+        label: "Create Customer",
+        icon: PlusCircle,
+        roles: ["ADMIN", "FINANCE"],
+      },
+      {
         href: "/dashboard/insights",
         label: "Insights",
         icon: BarChart3,
