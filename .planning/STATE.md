@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 5 of 8 (DocuSign Production Setup & Verification)
 Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-01-28 — Completed quick task 017: Fix installment date calculation with month-aware logic
+Last activity: 2026-01-28 — Completed quick task 018: Fix single payment invoice email timing based on due date
 
 Progress: ████████████████░░ 89% (18 plans executed)
 
@@ -363,7 +363,7 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 ## Session Continuity
 
 Last session: 2026-01-28
-Stopped at: Completed quick-018 (Fix single payment invoice email timing)
+Stopped at: Completed quick-018 (Fix single payment invoice email timing based on due date)
 Resume file: .planning/quick/018-quando-a-invoice-criada-sem-installments/018-SUMMARY.md
 Next action: Resume Phase 5 - Execute Plan 05-02 (JWT Authentication Test and Production Verification)
 
