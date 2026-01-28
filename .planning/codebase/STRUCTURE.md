@@ -1,235 +1,288 @@
 # Codebase Structure
 
-**Analysis Date:** 2026-01-09
+**Analysis Date:** 2026-01-27
 
 ## Directory Layout
 
 ```
 CarreiraUSAHUB/
-├── app/                           # Next.js App Router pages and API routes
-│   ├── api/                       # REST API endpoints
-│   │   ├── auth/                  # NextAuth.js endpoints
-│   │   ├── customers/             # Customer CRUD
-│   │   ├── leads/                 # Lead CRUD + qualification
-│   │   ├── invoices/              # Invoice CRUD + workflows
-│   │   ├── chat/                  # AI chatbot endpoint
-│   │   ├── webhooks/              # External webhook handlers
-│   │   │   ├── pipedrive/         # Pipedrive webhooks (lead, deal, person)
-│   │   │   ├── quickbooks/        # QuickBooks webhooks
-│   │   │   ├── stripe/            # Stripe webhooks
-│   │   │   ├── docusign/          # DocuSign webhooks
-│   │   │   ├── retell/            # Retell AI webhooks
-│   │   │   └── whatsapp/          # Twilio WhatsApp webhooks
-│   │   └── cron/                  # Vercel cron job handlers
-│   │       ├── quickbooks-sync/   # QuickBooks bidirectional sync (every 6h)
-│   │       ├── process-queue/     # BullMQ queue processor (every 5m)
-│   │       ├── collection-calls/  # Automated collection calls (daily)
-│   │       ├── payment-reminders/ # Payment reminder emails (daily)
-│   │       └── overdue-invoices/  # Overdue invoice detection (daily)
-│   ├── dashboard/                 # Dashboard UI (minimal)
-│   ├── layout.tsx                 # Root layout with theme provider
-│   └── globals.css                # Global Tailwind styles
-│
-├── lib/                           # Shared utilities and services
-│   ├── services/                  # Business logic services
-│   │   ├── ai.service.ts          # OpenAI integration for chatbot & qualification
-│   │   ├── lead.service.ts        # Lead CRUD and state management
-│   │   ├── sdr.service.ts         # SDR qualification orchestration
-│   │   ├── customer.service.ts    # Customer CRUD
-│   │   ├── invoice-workflow.service.ts # Invoice generation workflow
-│   │   ├── invoice-approval.service.ts # Invoice approval logic
-│   │   ├── pipedrive.service.ts   # Pipedrive API wrapper
-│   │   ├── quickbooks.service.ts  # QuickBooks OAuth & API
-│   │   ├── quickbooks-sync.service.ts # Bidirectional sync with QB
-│   │   ├── stripe.service.ts      # Stripe payment processing
-│   │   ├── docusign.service.ts    # DocuSign contract handling
-│   │   ├── identity-mapper.ts     # Customer deduplication engine (CRITICAL)
-│   │   ├── email.service.ts       # Resend email service
-│   │   ├── whatsapp.service.ts    # Twilio WhatsApp messaging
-│   │   ├── retell.service.ts      # RetellAI voice bot integration
-│   │   ├── collection.service.ts  # Collection call orchestration
-│   │   └── payment-workflow.service.ts # Payment processing workflow
-│   │
-│   ├── utils/                     # Utility functions
-│   │   ├── queue.ts               # BullMQ queue definitions and processor
-│   │   ├── logger.ts              # IntegrationLog wrapper
-│   │   ├── webhook-validation.ts  # Webhook signature verification
-│   │   ├── error-handler.ts       # Centralized error handling
-│   │   └── helpers.ts             # Other utility functions
-│   │
-│   ├── auth.ts                    # NextAuth.js configuration
-│   ├── db.ts                      # Prisma Client initialization
-│   └── prompts/                   # System prompts for AI
-│       ├── customer-service.ts    # Chatbot prompt
-│       └── lead-qualification.ts  # Lead qualification prompt
-│
-├── components/                    # React components
-│   ├── dashboard/                 # Dashboard-specific components
-│   ├── ui/                        # Shadcn UI components
-│   ├── theme-provider.tsx         # Theme context provider
-│   └── theme-toggle.tsx           # Dark mode toggle
-│
-├── prisma/                        # Database schema and migrations
-│   ├── schema.prisma              # Database model definitions (605 lines)
-│   ├── migrations/                # Version-controlled migrations
-│   └── seed/                      # Database seed scripts
-│
-├── scripts/                       # Utility scripts
-│   ├── create-test-user.ts        # Create test user for development
-│   ├── seed-test-data.ts          # Seed database with test data
-│   ├── test-quickbooks.ts         # Test QuickBooks integration
-│   ├── test-invoice-workflow.ts   # Test invoice generation
-│   ├── clear-database.js          # Clear all data (destructive)
-│   └── create-views.ts            # Create SQL materialized views for BI
-│
-├── public/                        # Static assets
-├── package.json                   # Dependencies and scripts
-├── tsconfig.json                  # TypeScript configuration
-├── tailwind.config.ts             # Tailwind CSS configuration
-├── .env                           # Environment variables (CONTAINS SECRETS!)
-├── .env.local                     # Local overrides (gitignored)
-├── CLAUDE.md                      # Claude Code instructions
-├── middleware.ts                  # NextAuth middleware (route protection)
-├── vercel.json                    # Vercel cron job configuration
-└── README.md                      # Project documentation
+├── app/                          # Next.js 14 App Router (UI + API routes)
+│   ├── api/                      # API endpoints (webhooks, CRUD, cron)
+│   ├── auth/                     # Authentication pages
+│   ├── dashboard/                # Protected dashboard pages
+│   ├── payment/                  # Public payment pages
+│   └── page.tsx                  # Root entry point (redirect logic)
+├── components/                   # React components (reusable UI)
+├── lib/                          # Core application logic
+│   ├── services/                 # Business logic services
+│   ├── utils/                    # Utility functions
+│   ├── middleware/               # Custom middleware
+│   ├── prompts/                  # AI prompt templates
+│   ├── auth.ts                   # NextAuth configuration
+│   └── db.ts                     # Prisma singleton client
+├── prisma/                       # Database schema and migrations
+│   ├── schema.prisma             # Database models and enums
+│   └── migrations/               # SQL migration history
+├── scripts/                      # CLI scripts (user creation, testing)
+├── .planning/                    # GSD planning documents
+│   └── codebase/                 # Architecture, conventions, testing docs
+├── middleware.ts                 # Next.js middleware (auth + RBAC)
+├── package.json                  # Dependencies and npm scripts
+├── vercel.json                   # Vercel deployment config (cron jobs)
+└── CLAUDE.md                     # Project context for Claude Code
 ```
 
 ## Directory Purposes
 
+**app/**
+- Purpose: Next.js App Router root - UI pages and API routes
+- Contains: Route handlers, React Server Components, Client Components
+- Key files: `page.tsx` (pages), `route.ts` (API endpoints), `layout.tsx` (page layouts)
+
 **app/api/**
-- Purpose: REST API endpoints
-- Contains: Route handlers (GET/POST/PATCH/DELETE functions)
-- Key files: `webhooks/*/route.ts`, `cron/*/route.ts`, customer/lead/invoice CRUD
-- Subdirectories: Organized by resource (customers, leads, invoices, etc.)
+- Purpose: Backend API endpoints for UI and external webhooks
+- Contains: Next.js route handlers organized by resource or integration
+- Key files: `app/api/webhooks/pipedrive/lead/route.ts`, `app/api/quickbooks/sync/route.ts`
+
+**app/api/webhooks/**
+- Purpose: Webhook receivers for external services
+- Contains: Pipedrive, QuickBooks, Stripe, DocuSign, Twilio webhook handlers
+- Key files: `pipedrive/lead/route.ts`, `pipedrive/deal/route.ts`, `quickbooks/route.ts`
+
+**app/api/cron/**
+- Purpose: Scheduled jobs triggered by Vercel Cron
+- Contains: QuickBooks token refresh, invoice reminders, collection calls
+- Key files: `quickbooks-sync/route.ts`, `payment-reminders/route.ts`, `overdue-invoices/route.ts`
+
+**app/dashboard/**
+- Purpose: Protected admin/staff dashboard pages
+- Contains: CRUD interfaces for customers, leads, deals, invoices, contracts
+- Key files: `page.tsx` (main dashboard), `customers/page.tsx`, `invoices/page.tsx`
 
 **lib/services/**
-- Purpose: Business logic encapsulation
-- Contains: Service classes with static singleton exports
-- Key files: `identity-mapper.ts` (CRITICAL - customer deduplication), `ai.service.ts`, `lead.service.ts`
-- Pattern: Each service handles one domain (leads, customers, integrations)
+- Purpose: Business logic and external API integrations
+- Contains: Singleton service classes with typed methods
+- Key files: `identity-mapper.ts`, `quickbooks.service.ts`, `sdr.service.ts`, `invoice-workflow.service.ts`
 
 **lib/utils/**
-- Purpose: Shared utilities and infrastructure
-- Contains: Queue management, logging, webhook validation, error handling
-- Key files: `queue.ts` (BullMQ setup), `logger.ts` (IntegrationLog), `webhook-validation.ts`
+- Purpose: Reusable utility functions and cross-cutting concerns
+- Contains: Queue management, webhook handling, logging, retry logic, circuit breakers
+- Key files: `queue.ts`, `webhook-handler.ts`, `logger.ts`, `circuit-breaker.ts`
 
-**prisma/**
-- Purpose: Database schema and migrations
-- Contains: Prisma schema with 20+ models, migrations, type definitions
-- Key files: `schema.prisma` (605 lines) - defines all database tables
-- Pattern: Push-based in dev, migration-based in production
+**lib/middleware/**
+- Purpose: Custom middleware for webhooks
+- Contains: Webhook retry logic
+- Key files: `webhook-retry.ts`
 
-**scripts/**
-- Purpose: Development and testing utilities
-- Contains: Database seeding, testing scripts, view creation
-- Usage: Run via npm scripts (`npm run create-test-user`, `npm run seed`, etc.)
+**lib/prompts/**
+- Purpose: AI prompt templates for chatbot and lead qualification
+- Contains: OpenAI system prompts
+- Key files: `customer-service.ts`, `lead-qualification.ts`
 
 **components/**
-- Purpose: React UI components
-- Contains: Dashboard components, Shadcn UI library, theme provider
-- Note: Minimal - system is API-first, mostly server-side rendering
+- Purpose: Reusable React components
+- Contains: UI components (dashboard KPI cards, tables, forms, theme toggles)
+- Key files: `dashboard/dashboard-kpi-card.tsx`, `ui/*`, `invoices/*`
+
+**prisma/**
+- Purpose: Database schema and migration management
+- Contains: Prisma schema definition, SQL migrations
+- Key files: `schema.prisma`, `migrations/`
+
+**scripts/**
+- Purpose: CLI scripts for database seeding, testing, user management
+- Contains: TypeScript scripts run via `tsx`
+- Key files: `create-test-user.ts`, `test-quickbooks.ts`, `docusign-debug.ts`
+
+**.planning/codebase/**
+- Purpose: GSD documentation for codebase understanding
+- Contains: Architecture, conventions, testing, stack, integrations
+- Key files: `ARCHITECTURE.md`, `STRUCTURE.md`, `CONVENTIONS.md`, `TESTING.md`
 
 ## Key File Locations
 
 **Entry Points:**
-- `app/layout.tsx` - Root layout with theme provider, Toaster (Sonner)
-- `middleware.ts` - NextAuth middleware protecting dashboard routes
-- `vercel.json` - Cron job scheduling configuration
+- `app/page.tsx`: Root entry - redirects based on auth status
+- `app/dashboard/page.tsx`: Main dashboard with KPIs
+- `app/api/auth/[...nextauth]/route.ts`: NextAuth handler
+- `middleware.ts`: Route protection middleware (RBAC)
 
 **Configuration:**
-- `tsconfig.json` - TypeScript strict mode enabled
-- `tailwind.config.ts` - Tailwind CSS with dark mode support
-- `prisma/schema.prisma` - Complete database schema
-- `.env` - All environment variables (87+ required)
+- `lib/auth.ts`: NextAuth configuration (JWT, roles, callbacks)
+- `lib/db.ts`: Prisma Client singleton
+- `prisma/schema.prisma`: Database schema (24 models, 10 enums)
+- `package.json`: Dependencies, npm scripts
+- `vercel.json`: Vercel cron jobs, deployment settings
+- `.env`: Environment variables (secrets, API keys, database URLs)
 
 **Core Logic:**
-- `lib/services/identity-mapper.ts` - Customer deduplication (CRITICAL)
-- `lib/services/invoice-workflow.service.ts` - Invoice generation flow
-- `lib/utils/queue.ts` - BullMQ queue definitions and processor
-- `app/api/webhooks/pipedrive/deal/route.ts` - Deal won workflow trigger
+- `lib/services/identity-mapper.ts`: Customer deduplication engine
+- `lib/services/sdr.service.ts`: Lead qualification orchestrator
+- `lib/services/invoice-workflow.service.ts`: Deal Won → Invoice + Contract workflow
+- `lib/services/quickbooks.service.ts`: QuickBooks API client
+- `lib/utils/queue.ts`: BullMQ queue definitions
 
-**Integration:**
-- `app/api/webhooks/*/route.ts` - 8 webhook endpoints (Pipedrive, QB, Stripe, etc.)
-- `app/api/cron/*/route.ts` - 7 cron jobs for background processing
-- `lib/services/*.service.ts` - 17 service files for external APIs
-
-**Database:**
-- `lib/db.ts` - Prisma Client initialization
-- `prisma/schema.prisma` - Schema with enums, models, relations
+**Testing:**
+- `scripts/test-quickbooks.ts`: QuickBooks integration test
+- `scripts/test-admin-login.ts`: Auth flow test
+- Not yet present: Unit test files (no `*.test.ts` or `*.spec.ts` found)
 
 ## Naming Conventions
 
 **Files:**
-- kebab-case for all files: `lead.service.ts`, `identity-mapper.ts`, `webhook-validation.ts`
-- `route.ts` for API endpoints (Next.js convention)
-- Component files: PascalCase when exporting default (`ThemeToggle.tsx`)
-- `.test.ts` or `.spec.ts` for tests (not detected - no tests found yet)
+- API routes: `route.ts` (Next.js 14 App Router convention)
+- Pages: `page.tsx` (Next.js 14 App Router convention)
+- Services: `*.service.ts` (lowercase with dashes, e.g., `sdr.service.ts`)
+- Components: `PascalCase.tsx` (e.g., `DashboardKPICard.tsx`) or `kebab-case.tsx` (e.g., `dashboard-kpi-card.tsx`)
+- Utilities: `kebab-case.ts` (e.g., `webhook-handler.ts`)
+- Scripts: `kebab-case.ts` (e.g., `create-test-user.ts`)
 
 **Directories:**
-- kebab-case for all directories: `lib/utils/`, `app/api/`, `lib/services/`
-- Plural for collections: `services/`, `webhooks/`, `cron/`, `migrations/`
-- Singular for feature: `app/dashboard/`, `app/chat/`
+- API routes: `kebab-case` (e.g., `api/quickbooks/sync/`)
+- Dashboard pages: `kebab-case` (e.g., `dashboard/invoices/`)
+- Dynamic routes: `[param]` (e.g., `customers/[id]/page.tsx`)
+- Services: Single directory `services/`
+- Components: Grouped by feature (e.g., `components/dashboard/`, `components/invoices/`)
 
-**TypeScript:**
-- PascalCase for classes and types: `LeadService`, `IdentityMapper`, `CreateLeadData`
-- camelCase for variables and functions: `leadService`, `createLead()`, `reconcileCustomer()`
-- UPPER_SNAKE_CASE for constants
-
-**Database:**
-- snake_case for field names: `created_at`, `updated_at`, `pipedrive_id`, `quickbooks_id`
-- PascalCase for enum values: `DRAFT`, `SENT`, `QUALIFIED`, `WON`
+**Code:**
+- Variables: `camelCase` (e.g., `leadId`, `customerData`)
+- Functions: `camelCase` (e.g., `reconcileCustomer`, `qualifyLead`)
+- Classes: `PascalCase` (e.g., `SDRService`, `IdentityMapperService`)
+- Constants: `SCREAMING_SNAKE_CASE` (e.g., `QUALIFICATION_THRESHOLD`)
+- Enums: `PascalCase` (e.g., `LeadStatus`, `InvoiceStatus`)
+- Prisma models: `PascalCase` (e.g., `Customer`, `Deal`, `Invoice`)
 
 ## Where to Add New Code
 
-**New API Endpoint:**
-- Implementation: `app/api/[resource]/route.ts`
-- Pattern: Validate input (Zod), call service, return JSON
-- Protection: Check auth via `getServerSession()` in middleware or route
+**New Feature:**
+- Primary code: `lib/services/new-feature.service.ts` (business logic)
+- Tests: `lib/services/new-feature.service.test.ts` (not yet established)
+- API route: `app/api/new-feature/route.ts` (HTTP endpoint)
+- Dashboard page: `app/dashboard/new-feature/page.tsx` (UI)
 
-**New Service:**
-- Implementation: `lib/services/[domain].service.ts`
-- Pattern: Class with methods, static singleton export (`export const myService = new MyService()`)
-- Database: Import `prisma` from `@/lib/db`
-- Logging: Use `integrationLogger` from `@/lib/utils/logger`
+**New Component/Module:**
+- Implementation: `components/{feature}/{ComponentName}.tsx`
+- Reusable UI: `components/ui/{component}.tsx`
+- Dashboard-specific: `components/dashboard/{component}.tsx`
 
-**New Webhook:**
-- Implementation: `app/api/webhooks/[service]/route.ts`
-- Pattern: Validate signature, process payload, enqueue jobs, log
-- Security: MUST validate webhook signature from external service
+**Utilities:**
+- Shared helpers: `lib/utils/{utility-name}.ts`
+- Middleware: `lib/middleware/{middleware-name}.ts`
 
-**New Cron Job:**
-- Implementation: `app/api/cron/[job-name]/route.ts`
-- Configuration: Add to `vercel.json` under `crons` array
-- Schedule: Use cron expression (e.g., `0 9 * * *` = 9 AM daily)
-
-**New Queue Job:**
-- Definition: Add queue name to `lib/utils/queue.ts`
-- Processor: Add handler in `lib/utils/queue.ts` switch statement
-- Usage: Call `queue.add()` from services/routes
+**New External Integration:**
+1. Create service: `lib/services/{integration}.service.ts`
+2. Add external ID field to `Customer` model in `prisma/schema.prisma`
+3. Update `IdentityMapperService.reconcileCustomer()` in `lib/services/identity-mapper.ts`
+4. Create webhook endpoint: `app/api/webhooks/{integration}/route.ts`
+5. Add queue: `lib/utils/queue.ts` (new queue definition)
+6. Log operations: Use `integrationLogger` from `lib/utils/logger.ts`
 
 **New Database Model:**
-- Schema: Edit `prisma/schema.prisma`
-- Generation: Run `npm run db:generate`
-- Migration: Run `npm run db:migrate` (production) or `npm run db:push` (development)
+1. Add model to `prisma/schema.prisma`
+2. Run `npm run db:generate` (generate Prisma Client)
+3. Run `npm run db:push` (dev) or `npm run db:migrate` (production)
+4. Create service if complex logic: `lib/services/{model}.service.ts`
+5. Create API routes: `app/api/{model}/route.ts`
+
+**New Webhook Handler:**
+1. Create route: `app/api/webhooks/{service}/{event}/route.ts`
+2. Use pattern:
+   - Validate signature (`lib/utils/webhook-validation.ts`)
+   - Call `acceptWebhook()` from `lib/utils/webhook-handler.ts`
+   - Return `200 OK` immediately
+   - Process asynchronously in queue worker
+3. Add processing logic to `lib/utils/queue-processor.ts`
+
+**New Cron Job:**
+1. Create route: `app/api/cron/{job-name}/route.ts`
+2. Add to `vercel.json` cron schedule
+3. Protect with `CRON_SECRET` check (Vercel header)
+4. Use services from `lib/services/` for business logic
 
 ## Special Directories
 
+**node_modules/**
+- Purpose: NPM dependencies
+- Generated: Yes (via `npm install`)
+- Committed: No (in `.gitignore`)
+
+**.next/**
+- Purpose: Next.js build output
+- Generated: Yes (via `npm run build` or `npm run dev`)
+- Committed: No (in `.gitignore`)
+
 **prisma/migrations/**
-- Purpose: Version-controlled database changes
-- Source: Auto-generated by Prisma when running `prisma migrate dev`
-- Committed: Yes (source of truth for production)
+- Purpose: SQL migration history
+- Generated: Yes (via `npm run db:migrate`)
+- Committed: Yes (version-controlled migrations)
 
 **.planning/**
-- Purpose: This directory - project planning and architecture docs
-- Created: By `/gsd:map-codebase` command
-- Committed: Yes (helps with onboarding and planning)
+- Purpose: GSD planning and documentation
+- Generated: No (manually created by GSD commands)
+- Committed: Yes (project documentation)
 
-**.env and .env.local**
-- Purpose: Environment variables (secrets, API keys, URLs)
-- Committed: No - .gitignore blocks them
-- Structure: `.env` for base config, `.env.local` for local overrides
+**.vercel/**
+- Purpose: Vercel deployment cache
+- Generated: Yes (by Vercel CLI)
+- Committed: No (in `.gitignore`)
+
+**scripts/**
+- Purpose: Development and maintenance scripts
+- Generated: No (manually written)
+- Committed: Yes
+- Usage: Run via `tsx scripts/{script-name}.ts` or `npm run {script-name}`
+
+## Import Path Aliases
+
+**Path alias configured:**
+- `@/` → Project root (`/Users/pauloloureiro/Desktop/Work/Sigma/Projects/CarreiraUSAHUB`)
+- Configured in: `tsconfig.json` (`"paths": { "@/*": ["./*"] }`)
+
+**Import patterns:**
+- Prisma Client: `import { prisma } from "@/lib/db"`
+- Services: `import { sdrService } from "@/lib/services/sdr.service"`
+- Utils: `import { acceptWebhook } from "@/lib/utils/webhook-handler"`
+- Components: `import { DashboardKPICard } from "@/components/dashboard/dashboard-kpi-card"`
+- Auth: `import { authOptions } from "@/lib/auth"`
+- Prisma types: `import { UserRole, LeadStatus } from "@prisma/client"`
+
+## API Route Organization
+
+**Pattern:** RESTful resources with nested actions
+
+**Examples:**
+- `app/api/customers/route.ts` → GET (list), POST (create)
+- `app/api/customers/[id]/route.ts` → GET (read), PATCH (update), DELETE
+- `app/api/leads/[id]/qualify/route.ts` → POST (action on resource)
+- `app/api/invoices/[id]/approve/route.ts` → POST (action)
+- `app/api/webhooks/pipedrive/lead/route.ts` → POST (webhook receiver)
+- `app/api/cron/quickbooks-sync/route.ts` → GET (cron job)
+
+**HTTP Methods:**
+- GET: Read operations, list resources
+- POST: Create resources, trigger actions
+- PATCH: Update resources (partial)
+- DELETE: Delete resources
+
+## Dashboard Page Organization
+
+**Pattern:** Resource-based with nested CRUD pages
+
+**Examples:**
+- `app/dashboard/page.tsx` → Main dashboard (KPIs)
+- `app/dashboard/customers/page.tsx` → List customers
+- `app/dashboard/customers/[id]/page.tsx` → View customer details
+- `app/dashboard/customers/new/page.tsx` → Create customer form
+- `app/dashboard/invoices/page.tsx` → List invoices
+- `app/dashboard/invoices/[id]/page.tsx` → View invoice
+- `app/dashboard/invoices/[id]/edit/page.tsx` → Edit invoice
+- `app/dashboard/invoices/new/page.tsx` → Create invoice
+
+**Layout hierarchy:**
+- Root layout: `app/layout.tsx` (not found - likely using default)
+- Dashboard layout: `app/dashboard/layout.tsx` (if exists, wraps all dashboard pages)
+- Nested layouts: `app/dashboard/{resource}/layout.tsx`
 
 ---
 
-*Structure analysis: 2026-01-09*
-*Update when directory structure changes*
+*Structure analysis: 2026-01-27*

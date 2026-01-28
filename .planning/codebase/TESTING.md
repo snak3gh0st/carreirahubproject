@@ -1,224 +1,295 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-01-09
+**Analysis Date:** 2026-01-27
 
 ## Test Framework
 
 **Runner:**
-- Not detected - No test framework configured
-- No `jest.config.js`, `vitest.config.ts`, or similar found
+- None detected (no Jest, Vitest, or other test runner configured)
 
 **Assertion Library:**
-- Not applicable - No tests found
+- Not applicable (no test files found)
 
 **Run Commands:**
 ```bash
-# Not configured yet
-npm test                              # Would run tests (currently no-op)
-npm run test:quickbooks              # Manual integration test script
+# No test commands configured
+# package.json has no "test" script
 ```
+
+**Status:** No automated testing infrastructure currently in place.
 
 ## Test File Organization
 
 **Location:**
-- Not established - No test files detected in codebase
-- Tests should follow pattern: co-located with source files
+- No `*.test.ts` or `*.spec.ts` files found in codebase
+- No `__tests__` directories detected
 
-**Naming:**
-- Recommended: `*.test.ts` or `*.spec.ts` alongside source
-- Example: `lib/services/lead.service.test.ts`
+**Testing Strategy:**
+- Manual testing via scripts in `scripts/` directory
+- Integration testing via live API calls
 
-**Structure:**
-- Recommended pattern not yet established
-- Consider: src/services/ → src/services/*.test.ts
+## Manual Testing Scripts
 
-## Test Structure
+**Location:** `scripts/` directory (39 TypeScript scripts)
 
-**Suite Organization (Recommended for future):**
+**Key Testing Scripts:**
+
+**`test-quickbooks.ts`** (342 lines):
+- Integration test for QuickBooks API
+- Tests: Connection, Company Info, Customers, Invoices, Items, Payments, Full Sync
+- Pattern: Sequential test execution with result tracking
 ```typescript
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-
-describe("LeadService", () => {
-  describe("createLead", () => {
-    it("should create a new lead with valid data", () => {
-      // arrange
-      // act
-      // assert
-    });
-
-    it("should throw on missing email", () => {
-      // test
-    });
-  });
-});
+interface TestResult {
+  name: string;
+  success: boolean;
+  data?: any;
+  error?: string;
+  duration?: number;
+}
 ```
 
-**Patterns:**
-- Use beforeEach/afterEach for setup/teardown
-- Arrange/Act/Assert comments recommended
-- One assertion focus per test (multiple expects OK)
+**`test-invoice-workflow.ts`:**
+- Tests invoice generation workflow
+- Validates Deal Won → Invoice creation flow
+
+**`test-docusign.ts`:**
+- Tests DocuSign integration
+- Contract generation and signing flow
+
+**`test-user-login.ts`:**
+- Tests authentication flow
+- Validates bcrypt password verification
+
+**Execution Pattern:**
+```bash
+npm run test:quickbooks  # Run QuickBooks integration test
+npm run test:workflow    # Test invoice workflow
+npm run test:docusign    # Test DocuSign integration
+npm run user:test-login  # Test user authentication
+```
+
+## Testing Patterns (from Scripts)
+
+**Structure:**
+```typescript
+async function testIntegration(): Promise<void> {
+  console.log("🧪 Starting tests...\n");
+  const results: TestResult[] = [];
+  
+  // Test 1: Configuration
+  try {
+    // Test logic
+    results.push({ name: "Test Name", success: true });
+  } catch (error) {
+    results.push({ name: "Test Name", success: false, error: error.message });
+  }
+  
+  // Summary
+  const passed = results.filter(r => r.success).length;
+  console.log(`📈 Result: ${passed}/${results.length} tests passed`);
+  
+  process.exit(passed === results.length ? 0 : 1);
+}
+```
+
+**Assertions:**
+- Manual boolean checks
+- Success/failure tracked in result objects
+- No assertion library (uses native conditionals)
+
+## Testing Approach
+
+**Integration Testing:**
+- Live API calls to external services
+- Real database connections (Neon PostgreSQL)
+- Environment variable dependent
+
+**Test Data:**
+```bash
+npm run db:seed          # Seed test data
+npm run db:clear         # Clear all data
+npm run user:create      # Create test user
+```
+
+**Manual Verification:**
+- Console logging with emojis for visibility (✓, ✗, 🧪, 📊)
+- Timing measurements included - e.g., `duration: ${duration}ms`
+- Sample data output for inspection
+
+## Error Testing
+
+**Pattern:**
+```typescript
+try {
+  const result = await service.operation();
+  console.log(`   ✓ Success:`, result);
+} catch (error: any) {
+  console.log(`   ✗ Error: ${error.message}`);
+  // Continue testing (don't fail fast)
+}
+```
+
+**Error Handling:**
+- All errors caught and logged
+- Tests continue even after failures
+- Final summary shows pass/fail count
 
 ## Mocking
 
-**Framework:**
-- Not configured - Would use Vitest `vi` or Jest mocking when implemented
+**Framework:** None (no mocking library detected)
 
-**Patterns (Recommended):**
+**Approach:**
+- No mocking used in current testing strategy
+- Tests run against real services and database
+- API keys required for tests to pass
+
+**Configuration Checks:**
 ```typescript
-// Mock database
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    lead: {
-      create: vi.fn(),
-      findUnique: vi.fn(),
-    },
-  },
-}));
+const hasClientId = !!process.env.QUICKBOOKS_CLIENT_ID;
+const hasAccessToken = !!process.env.QUICKBOOKS_ACCESS_TOKEN;
 
-// Mock external service
-vi.mock("@/lib/services/ai.service", () => ({
-  aiService: {
-    qualifyLead: vi.fn(),
-  },
-}));
-```
-
-**What to Mock:**
-- Database operations (Prisma)
-- External API calls (Pipedrive, QuickBooks, Stripe, OpenAI)
-- Third-party services (Resend, Twilio, DocuSign)
-
-**What NOT to Mock:**
-- Business logic in services
-- Utility functions
-- Error handling code
-
-## Fixtures and Factories
-
-**Test Data (Recommended):**
-```typescript
-// Factory function
-function createTestLead(overrides?: Partial<Lead>): Lead {
-  return {
-    id: "lead-123",
-    email: "test@example.com",
-    name: "Test Lead",
-    status: LeadStatus.NEW,
-    ...overrides,
-  };
+if (!hasAccessToken) {
+  console.warn("⚠️  Configuration incomplete. Some tests may fail.");
 }
-
-// Fixture file
-// scripts/fixtures/test-leads.ts
-export const mockLeads = [
-  createTestLead({ status: LeadStatus.QUALIFIED }),
-  createTestLead({ status: LeadStatus.UNQUALIFIED }),
-];
 ```
-
-**Location (Recommended):**
-- Factory functions in test files
-- Shared fixtures in `scripts/fixtures/` or `tests/fixtures/`
 
 ## Coverage
 
-**Requirements:**
-- Not enforced - No coverage target configured
-- Recommended: Start with 70%+ for critical paths
+**Requirements:** None enforced
 
-**Configuration:**
-- Would use Vitest or Jest coverage plugin when configured
+**View Coverage:**
+- Not applicable (no coverage tooling)
 
-**View Coverage (Recommended):**
-```bash
-npm run test:coverage
-open coverage/index.html
-```
+**Current Status:**
+- No code coverage metrics available
+- Manual testing covers critical paths only
+- Focus on integration testing over unit testing
 
 ## Test Types
 
-**Unit Tests (Recommended):**
-- Test single function/service in isolation
-- Mock all external dependencies
-- Fast execution (<100ms per test)
-- Examples: service methods, utility functions
+**Unit Tests:**
+- Not implemented
+- No isolated function testing
 
-**Integration Tests (Recommended):**
-- Test multiple modules together
-- Mock external services (APIs), use real database
-- Examples: webhook handlers, service workflows
+**Integration Tests:**
+- Primary testing strategy
+- Scripts test full workflows end-to-end
+- External API integration validated
 
 **E2E Tests:**
-- Not currently implemented
-- Could use Playwright for browser automation
-- Not urgent given API-first architecture
+- Not implemented
+- No browser automation (Playwright, Cypress, etc.)
 
-## Manual Integration Testing
-
-**Existing Scripts:**
-- `scripts/test-quickbooks.ts` - Tests QuickBooks OAuth and API
-- `scripts/test-invoice-workflow.ts` - Tests invoice generation
-- Pattern: TypeScript scripts run with `npx ts-node`
-
-**Usage:**
-```bash
-npm run test:quickbooks              # Run QB integration test
-npm run test:invoice                 # Run invoice workflow test
-```
-
-## Common Patterns (Future Implementation)
+## Common Patterns
 
 **Async Testing:**
 ```typescript
-it("should fetch lead with async operation", async () => {
-  const result = await leadService.getLeadById("123");
-  expect(result).toBeDefined();
-});
+async function testOperation(): Promise<void> {
+  const startTime = Date.now();
+  
+  try {
+    const result = await service.operation();
+    const duration = Date.now() - startTime;
+    
+    console.log(`   ✓ Operation succeeded (${duration}ms)`);
+  } catch (error) {
+    console.log(`   ✗ Operation failed:`, error.message);
+  }
+}
 ```
 
-**Error Testing:**
+**Sequential Testing:**
 ```typescript
-it("should throw on missing lead", () => {
-  expect(() => leadService.getLeadById(null)).toThrow("Lead not found");
-});
+// Test 1
+await test1();
 
-// Async error
-it("should reject on database error", async () => {
-  await expect(leadService.createLead(invalidData)).rejects.toThrow();
-});
+// Test 2 (depends on Test 1)
+await test2();
+
+// Test 3
+await test3();
 ```
 
-**Webhook Testing:**
+**Result Aggregation:**
 ```typescript
-it("should validate webhook signature", () => {
-  const isValid = validatePipedriveWebhookSignature(
-    payload,
-    signature,
-    secret
-  );
-  expect(isValid).toBe(true);
-});
+const results: TestResult[] = [];
+
+// Run tests
+results.push(await runTest1());
+results.push(await runTest2());
+
+// Summary
+const passed = results.filter(r => r.success).length;
+const failed = results.filter(r => !r.success).length;
+
+console.log(`📊 SUMMARY: ${passed}/${results.length} passed`);
 ```
 
-## Missing Test Coverage
+## Development Testing Tools
 
-**Critical Areas (High Priority):**
-- Webhook processing: Pipedrive deal/lead, QuickBooks, Stripe, DocuSign
-- Identity Mapper: Customer deduplication across systems
-- Invoice workflow: Generation, approval, payment tracking
-- Queue processing: BullMQ job handling and retries
+**Database Utilities:**
+```bash
+npm run db:studio        # Open Prisma Studio (GUI)
+npm run db:views         # Create analytical views
+npm run db:seed          # Seed test data
+npm run db:clear         # Clear all data (destructive)
+```
 
-**Important Areas (Medium Priority):**
-- Lead qualification: AI scoring logic
-- API endpoints: Input validation, auth checks
-- Service layer: Business logic and state transitions
+**User Management:**
+```bash
+npm run user:create      # Create test user
+npm run user:delete      # Delete user
+npm run user:list        # List all users
+npm run user:password    # Update password
+```
 
-**Nice-to-Have (Low Priority):**
-- Utility functions
-- Error handling edge cases
-- UI components
+**Integration Debugging:**
+```bash
+npm run test:quickbooks  # Test QuickBooks API
+npm run test:workflow    # Test invoice workflow
+npm run test:docusign    # Test DocuSign API
+```
+
+## Testing Recommendations
+
+**Gaps Identified:**
+1. No unit test infrastructure (Jest/Vitest needed)
+2. No automated test suite for CI/CD
+3. No mocking for external API calls
+4. No test coverage metrics
+5. No component testing (React Testing Library)
+6. No E2E browser testing
+
+**Current Strengths:**
+1. Comprehensive integration test scripts
+2. Clear test output with timing
+3. Real-world API validation
+4. Database seeding utilities
+5. Manual test documentation via script names
+
+**Best Practice for Adding Tests:**
+
+Given the service-oriented architecture, recommended approach:
+
+1. **Unit Tests (Priority):**
+   - Test pure functions in `lib/utils/` (e.g., `hmac.ts`, `invoice-number.ts`)
+   - Test business logic in services (mock Prisma/external APIs)
+   - Use Jest or Vitest
+
+2. **Integration Tests (Keep Current Approach):**
+   - Continue using scripts for full workflow validation
+   - Add to CI/CD as smoke tests
+
+3. **API Route Tests:**
+   - Use `@next/test-utils` or similar
+   - Mock external services but use real database (test env)
+
+4. **Component Tests:**
+   - React Testing Library for UI components
+   - Test user interactions, not implementation
 
 ---
 
-*Testing analysis: 2026-01-09*
-*Implement test framework and patterns before scaling*
+*Testing analysis: 2026-01-27*
+
+**Note:** This codebase currently uses a **manual integration testing strategy** via scripts. While effective for validating external integrations, adding automated unit and component tests would improve development velocity and catch regressions earlier.
