@@ -167,28 +167,37 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     const installments = getNumericValue(form.installments);
     const remaining = Math.max(0, total - entryAmount);
 
-    if (installments <= 0 || remaining <= 0) return [];
-
-    const installmentAmount = remaining / installments;
     const schedule = [];
     const baseDate = form.dueDate ? new Date(form.dueDate) : new Date();
 
-    for (let i = 0; i < installments; i++) {
-      // Create fresh date for each installment to prevent mutation
-      const installmentDate = new Date(baseDate);
-      // Calculate months offset for each installment
-      // i=0 (Parcela 1): due today (combined with entry if exists, or standalone)
-      // i=1 (Parcela 2): due +1 month
-      // i=2 (Parcela 3): due +2 months
-      const monthsToAdd = i;
-      installmentDate.setMonth(baseDate.getMonth() + monthsToAdd);
-
+    // Add entry as separate first item (if exists)
+    if (entryAmount > 0) {
       schedule.push({
-        number: i + 1,
-        amount: Number(installmentAmount.toFixed(2)),
-        dueDate: installmentDate.toISOString().split('T')[0],
-        description: `Parcela ${i + 1} de ${installments}`,
+        number: 0, // Special marker for entry
+        amount: entryAmount,
+        dueDate: baseDate.toISOString().split('T')[0],
+        description: 'Entrada (à vista)',
+        isEntry: true,
       });
+    }
+
+    // Add installments starting from NEXT MONTH
+    if (installments > 0 && remaining > 0) {
+      const installmentAmount = remaining / installments;
+      
+      for (let i = 0; i < installments; i++) {
+        const installmentDate = new Date(baseDate);
+        // Installments start NEXT MONTH: i=0 → +1 month, i=1 → +2 months
+        installmentDate.setMonth(baseDate.getMonth() + (i + 1));
+        
+        schedule.push({
+          number: i + 1,
+          amount: Number(installmentAmount.toFixed(2)),
+          dueDate: installmentDate.toISOString().split('T')[0],
+          description: `Parcela ${i + 1} de ${installments}`,
+          isEntry: false,
+        });
+      }
     }
 
     return schedule;
@@ -656,18 +665,41 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
             <div className="space-y-2">
               {installmentSchedule.map((installment) => (
-                <div key={installment.number} className="bg-white rounded-lg p-3 flex justify-between items-center text-sm">
-                  <span className="font-medium text-gray-900">Parcela {installment.number}</span>
-                  <span className="font-mono font-semibold text-blue-600">${installment.amount.toFixed(2)}</span>
-                  <span className="text-gray-600">{new Date(installment.dueDate).toLocaleDateString('pt-BR')}</span>
+                <div 
+                  key={installment.number} 
+                  className={`rounded-lg p-3 flex justify-between items-center text-sm ${
+                    installment.isEntry 
+                      ? 'bg-green-50 border border-green-300' 
+                      : 'bg-white'
+                  }`}
+                >
+                  <span className={`font-medium ${
+                    installment.isEntry ? 'text-green-900' : 'text-gray-900'
+                  }`}>
+                    {installment.description}
+                  </span>
+                  <span className={`font-mono font-semibold ${
+                    installment.isEntry ? 'text-green-600' : 'text-blue-600'
+                  }`}>
+                    ${installment.amount.toFixed(2)}
+                  </span>
+                  <span className="text-gray-600">
+                    {new Date(installment.dueDate).toLocaleDateString('pt-BR')}
+                  </span>
                 </div>
               ))}
             </div>
 
             <div className="mt-4 pt-3 border-t-2 border-blue-300 bg-white rounded-lg p-3">
               <div className="flex justify-between items-center">
-                <span className="font-semibold text-blue-900">Total parcelado:</span>
-                <span className="font-mono text-lg font-bold text-blue-600">${remaining.toFixed(2)}</span>
+                <span className="font-semibold text-blue-900">Total de todas as faturas:</span>
+                <span className="font-mono text-lg font-bold text-blue-600">
+                  ${(entryValue + remaining).toFixed(2)}
+                </span>
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                {entryValue > 0 && `Entrada: $${entryValue.toFixed(2)} + `}
+                {installmentsValue} parcela(s): ${remaining.toFixed(2)}
               </div>
             </div>
           </div>
