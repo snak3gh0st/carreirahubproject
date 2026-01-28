@@ -7,6 +7,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 import { contractWorkflowService } from "@/lib/services/contract-workflow.service";
+import { addMonths } from "@/lib/utils/date";
 
 const createInvoiceSchema = z.object({
   customerId: z.string(),
@@ -135,8 +136,7 @@ export async function POST(request: NextRequest) {
         // Calculate due date: i=2 → +1 month, i=3 → +2 months
         const baseDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
         const monthsToAdd = i - 1; // i=2 → +1 month
-        invoiceDueDate = new Date(baseDueDate);
-        invoiceDueDate.setMonth(baseDueDate.getMonth() + monthsToAdd);
+        invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
       } else if (installmentCount > 0) {
         // INSTALLMENT INVOICE (no entry): i=1 → Installment 1, i=2 → Installment 2
         const installmentAmount = totalAmount / installmentCount;
@@ -146,8 +146,7 @@ export async function POST(request: NextRequest) {
         // Calculate due date: i=1 → +0 months, i=2 → +1 month
         const baseDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
         const monthsToAdd = i - 1;
-        invoiceDueDate = new Date(baseDueDate);
-        invoiceDueDate.setMonth(baseDueDate.getMonth() + monthsToAdd);
+        invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
       } else {
         // Single invoice (no installments, no entry split)
         invoiceAmount = totalAmount;

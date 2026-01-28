@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { addMonths } from "@/lib/utils/date";
 
 interface Customer {
   id: string;
@@ -186,9 +187,8 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       const installmentAmount = remaining / installments;
       
       for (let i = 0; i < installments; i++) {
-        const installmentDate = new Date(baseDate);
         // Installments start NEXT MONTH: i=0 → +1 month, i=1 → +2 months
-        installmentDate.setMonth(baseDate.getMonth() + (i + 1));
+        const installmentDate = addMonths(baseDate, i + 1);
         
         schedule.push({
           number: i + 1,
