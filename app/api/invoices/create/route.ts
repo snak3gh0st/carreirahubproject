@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
     const entryAmount = data.entryAmount || 0;
     const installmentCount = data.installments || 0;
     const remaining = Math.max(0, totalAmount - entryAmount);
+    const isSinglePayment = entryAmount === 0 && installmentCount === 0;
 
     // Generate series ID for linking installments
     const seriesId = `SERIES-${Date.now()}`;
@@ -328,24 +329,32 @@ export async function POST(request: NextRequest) {
 
       // Determine if this invoice should be emailed immediately
       // LOGIC:
-      // - Single invoice (no installments): Send immediately
       // - Entry invoice: Send immediately (customer needs to pay TODAY)
+      // - Single payment (a vista) due TODAY: Send immediately
+      // - Single payment (a vista) due FUTURE: Schedule (DRAFT status, cron sends 5 days before)
       // - ALL installments (including first): DRAFT (send 5 days before due date)
-      // - Exception: No-entry first installment due TODAY → send immediately
       const isInstallmentSeries = invoiceCountToCreate > 1;
       const isEntryInvoice = entryAmount > 0 && i === 1;
-      const isFirstInstallment = entryAmount > 0 ? i === 2 : i === 1;
-      const isSingleInvoice = invoiceCountToCreate === 1;
-      const isNoEntryFirstInstallmentDueToday = !entryAmount && i === 1 && invoiceDueDate.toDateString() === new Date().toDateString();
-      const shouldSendEmail = isSingleInvoice || isEntryInvoice || isNoEntryFirstInstallmentDueToday;
+      const isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries;
+
+      // Check if due date is today or in the past (needs immediate send)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const dueDay = new Date(invoiceDueDate);
+      dueDay.setHours(0, 0, 0, 0);
+      const isDueTodayOrPast = dueDay <= today;
+
+      // Single payment with future due date should be scheduled, not sent immediately
+      const shouldSendEmail = isEntryInvoice || (isSingleInvoice && isDueTodayOrPast);
 
       console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
         isInstallmentSeries,
         isSingleInvoice,
+        isSinglePayment,
         isEntryInvoice,
-        isFirstInstallment,
-        isNoEntryFirstInstallmentDueToday,
+        isDueTodayOrPast,
         shouldSendEmail,
+        dueDate: invoiceDueDate.toISOString().split('T')[0],
         description: invoiceDescription,
       });
 
@@ -379,7 +388,7 @@ export async function POST(request: NextRequest) {
                   deliveryInfo: sendResult.deliveryInfo,
                   isInstallment: isInstallmentSeries,
                   isEntryInvoice,
-                  isFirstInstallment,
+                  isSinglePayment,
                 } as any,
               },
             });
@@ -398,7 +407,7 @@ export async function POST(request: NextRequest) {
                   error: sendResult.error,
                   isInstallment: isInstallmentSeries,
                   isEntryInvoice,
-                  isFirstInstallment,
+                  isSinglePayment,
                 } as any,
               },
             });
@@ -418,27 +427,30 @@ export async function POST(request: NextRequest) {
                 recipientEmail: customer.email,
                 isInstallment: isInstallmentSeries,
                 isEntryInvoice,
-                isFirstInstallment,
+                isSinglePayment,
               } as any,
             },
           });
         }
       } else if (customer.email && !shouldSendEmail) {
-        // Subsequent installment - DO NOT send email now (will be sent 5 days before due date)
-        console.log(`[INVOICE_CREATE] ⏱️  Installment invoice ${i}/${invoiceCountToCreate} created as DRAFT. Email will be sent 5 days before due date: ${invoiceDueDate.toISOString().split('T')[0]}`);
+        // Single payment with future due date OR installment - schedule for later
+        const sendDate = new Date(invoiceDueDate.getTime() - 5 * 24 * 60 * 60 * 1000);
+        const invoiceType = isSinglePayment ? 'single payment (a vista)' : 'installment';
+        console.log(`[INVOICE_CREATE] Scheduled ${invoiceType} invoice ${i}/${invoiceCountToCreate} for ${sendDate.toISOString().split('T')[0]} (5 days before due: ${invoiceDueDate.toISOString().split('T')[0]})`);
 
         await prisma.integrationLog.create({
           data: {
             service: "quickbooks",
-            action: "installment_invoice_scheduled",
+            action: isSinglePayment ? "single_payment_invoice_scheduled" : "installment_invoice_scheduled",
             status: "SUCCESS",
             payload: {
               qbInvoiceId: qbInvoice.Id,
               recipientEmail: customer.email,
               dueDate: invoiceDueDate.toISOString(),
-              installmentNumber: i,
+              isSinglePayment,
+              installmentNumber: isSinglePayment ? null : i,
               totalInstallments: invoiceCountToCreate,
-              scheduledSendDate: new Date(invoiceDueDate.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+              scheduledSendDate: sendDate.toISOString(),
             } as any,
           },
         });
@@ -456,7 +468,7 @@ export async function POST(request: NextRequest) {
               customerName: customer.name,
               isInstallment: isInstallmentSeries,
               isEntryInvoice,
-              isFirstInstallment,
+              isSinglePayment,
             } as any,
           },
         });
