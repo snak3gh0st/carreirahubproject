@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { prisma } from "@/lib/db";
+import { isRedisConfigured } from "@/lib/utils/queue";
 
 /**
  * Queue Monitoring Service
@@ -346,6 +347,20 @@ export async function monitorAllQueues(
   totalStuckJobs: number;
   totalIssuesAcrossQueues: number;
 }> {
+  // Check if Redis is properly configured before attempting to connect
+  const redisCheck = isRedisConfigured();
+  if (!redisCheck.configured) {
+    console.warn(`[QUEUE_MONITOR] Redis not configured: ${redisCheck.reason}. Skipping queue monitoring.`);
+
+    return {
+      results: {},
+      totalStaleJobs: 0,
+      totalDeadJobs: 0,
+      totalStuckJobs: 0,
+      totalIssuesAcrossQueues: 0,
+    };
+  }
+
   const results: Record<
     string,
     {

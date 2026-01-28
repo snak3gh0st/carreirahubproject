@@ -1,5 +1,6 @@
 import { Queue, Worker } from "bullmq";
 import { prisma } from "@/lib/db";
+import { isRedisConfigured } from "@/lib/utils/queue";
 
 /**
  * Queue Processor for Vercel Serverless Environment
@@ -528,6 +529,20 @@ export async function processAllQueues(): Promise<{
   totalExecutionTimeMs: number;
   queuesProcessed: number;
 }> {
+  // Check if Redis is properly configured before attempting to connect
+  const redisCheck = isRedisConfigured();
+  if (!redisCheck.configured) {
+    console.warn(`[QUEUE] Redis not configured: ${redisCheck.reason}. Skipping queue processing.`);
+
+    return {
+      queueResults: {},
+      totalJobsProcessed: 0,
+      totalJobsFailed: 0,
+      totalExecutionTimeMs: 0,
+      queuesProcessed: 0,
+    };
+  }
+
   const timer = new ExecutionTimer(8000);
   const queueResults: Record<string, any> = {};
   let totalJobsProcessed = 0;
