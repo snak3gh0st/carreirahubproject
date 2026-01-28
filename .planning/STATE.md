@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 5 of 8 (DocuSign Production Setup & Verification)
 Plan: 1 of 2 in current phase
 Status: In progress
-Last activity: 2026-01-28 — Completed 05-01-PLAN.md (DocuSign Production Credentials Configuration)
+Last activity: 2026-01-28 — Completed quick task 014: Fix installment invoice due date calculation
 
 Progress: ████████████████░░ 89% (18 plans executed)
 
