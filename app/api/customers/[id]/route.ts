@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { quickbooksService } from "@/lib/services/quickbooks.service";
 
 const updateCustomerSchema = z.object({
   name: z.string().min(1).optional(),
@@ -62,7 +63,7 @@ export async function GET(
 
 /**
  * PATCH /api/customers/[id]
- * Atualizar customer
+ * Atualizar customer with QuickBooks sync
  */
 export async function PATCH(
   request: NextRequest,
@@ -72,12 +73,74 @@ export async function PATCH(
     const body = await request.json();
     const data = updateCustomerSchema.parse(body);
 
+    // Update customer in database
     const customer = await prisma.customer.update({
       where: { id: params.id },
       data,
     });
 
-    return NextResponse.json(customer);
+    // Prepare QuickBooks sync response
+    let quickbooksSync = {
+      synced: false,
+      message: "QuickBooks não conectado",
+    };
+
+    // If customer has QuickBooks ID, sync changes
+    if (customer.quickbooks_id) {
+      try {
+        // Initialize QuickBooks service
+        await quickbooksService.initialize();
+
+        // Prepare updates object (only include fields that were changed)
+        const qbUpdates: any = {};
+
+        if (data.name !== undefined) {
+          qbUpdates.name = data.name;
+        }
+        if (data.phone !== undefined) {
+          qbUpdates.phone = data.phone;
+        }
+        if (data.address !== undefined) {
+          qbUpdates.address = data.address;
+        }
+        if (data.city !== undefined) {
+          qbUpdates.city = data.city;
+        }
+        if (data.state !== undefined) {
+          qbUpdates.state = data.state;
+        }
+        if (data.zipCode !== undefined) {
+          qbUpdates.zipCode = data.zipCode;
+        }
+
+        // Only sync if there are QB-relevant fields to update
+        if (Object.keys(qbUpdates).length > 0) {
+          console.log(`[API] Syncing customer ${customer.id} to QuickBooks...`, qbUpdates);
+          await quickbooksService.updateCustomer(customer.quickbooks_id, qbUpdates);
+          quickbooksSync = {
+            synced: true,
+            message: "Sincronizado com QuickBooks",
+          };
+          console.log(`[API] ✓ Customer ${customer.id} synced to QuickBooks successfully`);
+        } else {
+          quickbooksSync = {
+            synced: false,
+            message: "Nenhum campo relevante para sincronizar com QuickBooks",
+          };
+        }
+      } catch (qbError: any) {
+        console.error(`[API] Error syncing customer ${customer.id} to QuickBooks:`, qbError);
+        quickbooksSync = {
+          synced: false,
+          message: `Erro ao sincronizar com QuickBooks: ${qbError.message || "Erro desconhecido"}`,
+        };
+      }
+    }
+
+    return NextResponse.json({
+      customer,
+      quickbooksSync,
+    });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

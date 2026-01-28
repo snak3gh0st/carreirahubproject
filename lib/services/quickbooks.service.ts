@@ -1239,6 +1239,83 @@ export class QuickbooksService {
   }
 
   /**
+   * Update customer information in QuickBooks
+   * Requires reading customer first to get SyncToken
+   */
+  async updateCustomer(
+    customerId: string,
+    updates: {
+      name?: string;
+      phone?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      zipCode?: string;
+    }
+  ): Promise<any> {
+    console.log(`[QuickBooks] Updating customer ${customerId}...`, updates);
+
+    // Read current customer to get SyncToken (required for updates)
+    const customerResponse = await this.getCustomerById(customerId);
+
+    if (!customerResponse || !customerResponse.Customer) {
+      throw new Error(`Customer ${customerId} not found in QuickBooks`);
+    }
+
+    const customer = customerResponse.Customer;
+
+    // Build update data with sparse update pattern (only changed fields)
+    const updateData: any = {
+      Id: customer.Id,
+      SyncToken: customer.SyncToken,
+    };
+
+    // Update name fields if provided
+    if (updates.name) {
+      // Parse name into GivenName and FamilyName
+      // Split by last space: "John Smith Jr" -> GivenName="John Smith", FamilyName="Jr"
+      const nameParts = updates.name.trim().split(/\s+/);
+
+      if (nameParts.length === 1) {
+        // Only one word, use it as both GivenName and FamilyName
+        updateData.GivenName = nameParts[0];
+        updateData.FamilyName = nameParts[0];
+      } else {
+        // Multiple words: last word is FamilyName, rest is GivenName
+        updateData.FamilyName = nameParts[nameParts.length - 1];
+        updateData.GivenName = nameParts.slice(0, -1).join(" ");
+      }
+
+      updateData.DisplayName = updates.name;
+    }
+
+    // Update phone if provided
+    if (updates.phone) {
+      updateData.PrimaryPhone = {
+        FreeFormNumber: updates.phone,
+      };
+    }
+
+    // Update billing address if any address field provided
+    if (updates.address || updates.city || updates.state || updates.zipCode) {
+      updateData.BillAddr = {
+        Line1: updates.address || customer.BillAddr?.Line1 || "",
+        City: updates.city || customer.BillAddr?.City || "",
+        CountrySubDivisionCode: updates.state || customer.BillAddr?.CountrySubDivisionCode || "",
+        PostalCode: updates.zipCode || customer.BillAddr?.PostalCode || "",
+      };
+    }
+
+    const result = await this.request("/customer", {
+      method: "POST",
+      body: JSON.stringify(updateData),
+    });
+
+    console.log(`[QuickBooks] ✓ Customer ${customerId} updated successfully`);
+    return result.Customer;
+  }
+
+  /**
    * Ensure customer has correct email in QuickBooks
    * Checks if email matches, updates if different
    * Returns true if email was correct or successfully updated
