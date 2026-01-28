@@ -171,31 +171,58 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     const schedule = [];
     const baseDate = form.dueDate ? new Date(form.dueDate) : new Date();
 
-    // Add entry as separate first item (if exists)
-    if (entryAmount > 0) {
+    // CASE 1: Single payment (a vista) - no entry, no installments
+    if (entryAmount === 0 && installments === 0 && total > 0) {
       schedule.push({
-        number: 0, // Special marker for entry
+        number: 1,
+        amount: total,
+        dueDate: baseDate.toISOString().split('T')[0],
+        description: 'Pagamento a vista (completo)',
+        isEntry: false,
+        isSinglePayment: true,
+      });
+      return schedule;
+    }
+
+    // CASE 2: Entry only (no installments)
+    if (entryAmount > 0 && installments === 0) {
+      schedule.push({
+        number: 0,
         amount: entryAmount,
         dueDate: baseDate.toISOString().split('T')[0],
-        description: 'Entrada (à vista)',
+        description: 'Entrada (a vista)',
         isEntry: true,
+        isSinglePayment: false,
+      });
+      return schedule;
+    }
+
+    // CASE 3: Entry + installments
+    if (entryAmount > 0) {
+      schedule.push({
+        number: 0,
+        amount: entryAmount,
+        dueDate: baseDate.toISOString().split('T')[0],
+        description: 'Entrada (a vista)',
+        isEntry: true,
+        isSinglePayment: false,
       });
     }
 
-    // Add installments starting from NEXT MONTH
+    // CASE 4: Installments (with or without entry)
     if (installments > 0 && remaining > 0) {
       const installmentAmount = remaining / installments;
-      
+
       for (let i = 0; i < installments; i++) {
-        // Installments start NEXT MONTH: i=0 → +1 month, i=1 → +2 months
         const installmentDate = addMonths(baseDate, i + 1);
-        
+
         schedule.push({
           number: i + 1,
           amount: Number(installmentAmount.toFixed(2)),
           dueDate: installmentDate.toISOString().split('T')[0],
           description: `Parcela ${i + 1} de ${installments}`,
           isEntry: false,
+          isSinglePayment: false,
         });
       }
     }
@@ -279,8 +306,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const installmentsValue = getNumericValue(form.installments);
   const remaining = Math.max(0, total - entryValue);
   const perInstallment = installmentsValue > 0 ? remaining / installmentsValue : 0;
-  const installmentSchedule =
-    installmentsValue > 0 && remaining > 0 ? generateInstallmentSchedule() : [];
+  const installmentSchedule = generateInstallmentSchedule();
   const firstInstallmentDate = installmentSchedule[0]?.dueDate;
 
   return (
@@ -643,65 +669,103 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           </div>
         </div>
 
-        {/* Section 6: Installment Schedule Enhancement (if applicable) */}
+        {/* Section 6: Payment Schedule (installments, entry, or single payment) */}
         {installmentSchedule.length > 0 && (
-          <div className="bg-blue-50 border-l-4 border-blue-500 rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-blue-900 mb-4">Cronograma de Parcelas</h2>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm text-blue-900">
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-xs text-gray-600 mb-1">Primeiro vencimento</p>
-                <p className="font-semibold text-base">
-                  {firstInstallmentDate
-                    ? new Date(firstInstallmentDate).toLocaleDateString('pt-BR')
-                    : "-"}
-                </p>
-              </div>
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-xs text-gray-600 mb-1">Total de meses</p>
-                <p className="font-semibold text-base">{installmentsValue}</p>
-              </div>
-            </div>
+          <div className={`rounded-lg shadow-md p-6 border-l-4 ${
+            installmentSchedule[0]?.isSinglePayment
+              ? 'bg-green-50 border-green-500'
+              : 'bg-blue-50 border-blue-500'
+          }`}>
+            <h2 className={`text-xl font-semibold mb-4 ${
+              installmentSchedule[0]?.isSinglePayment ? 'text-green-900' : 'text-blue-900'
+            }`}>
+              {installmentSchedule[0]?.isSinglePayment
+                ? 'Pagamento a Vista'
+                : 'Cronograma de Parcelas'}
+            </h2>
 
-            <div className="space-y-2">
-              {installmentSchedule.map((installment) => (
-                <div 
-                  key={installment.number} 
-                  className={`rounded-lg p-3 flex justify-between items-center text-sm ${
-                    installment.isEntry 
-                      ? 'bg-green-50 border border-green-300' 
-                      : 'bg-white'
-                  }`}
-                >
-                  <span className={`font-medium ${
-                    installment.isEntry ? 'text-green-900' : 'text-gray-900'
-                  }`}>
-                    {installment.description}
-                  </span>
-                  <span className={`font-mono font-semibold ${
-                    installment.isEntry ? 'text-green-600' : 'text-blue-600'
-                  }`}>
-                    ${installment.amount.toFixed(2)}
-                  </span>
-                  <span className="text-gray-600">
-                    {new Date(installment.dueDate).toLocaleDateString('pt-BR')}
+
+            {/* For single payment, show a simpler view */}
+            {installmentSchedule[0]?.isSinglePayment ? (
+              <div className="bg-white rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-semibold text-gray-900">Fatura unica</p>
+                    <p className="text-sm text-gray-600">
+                      Vencimento: {new Date(installmentSchedule[0].dueDate).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <span className="font-mono text-2xl font-bold text-green-600">
+                    ${installmentSchedule[0].amount.toFixed(2)}
                   </span>
                 </div>
-              ))}
-            </div>
+                <div className="mt-3 pt-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-600">
+                    {new Date(installmentSchedule[0].dueDate).toDateString() === new Date().toDateString()
+                      ? 'A fatura sera enviada por email imediatamente apos a criacao.'
+                      : 'A fatura sera enviada por email 5 dias antes do vencimento.'}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              // Existing installment schedule code
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 text-sm text-blue-900">
+                  <div className="bg-white rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">Primeiro vencimento</p>
+                    <p className="font-semibold text-base">
+                      {firstInstallmentDate
+                        ? new Date(firstInstallmentDate).toLocaleDateString('pt-BR')
+                        : "-"}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3">
+                    <p className="text-xs text-gray-600 mb-1">Total de meses</p>
+                    <p className="font-semibold text-base">{installmentsValue}</p>
+                  </div>
+                </div>
 
-            <div className="mt-4 pt-3 border-t-2 border-blue-300 bg-white rounded-lg p-3">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-blue-900">Total de todas as faturas:</span>
-                <span className="font-mono text-lg font-bold text-blue-600">
-                  ${(entryValue + remaining).toFixed(2)}
-                </span>
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                {entryValue > 0 && `Entrada: $${entryValue.toFixed(2)} + `}
-                {installmentsValue} parcela(s): ${remaining.toFixed(2)}
-              </div>
-            </div>
+                <div className="space-y-2">
+                  {installmentSchedule.map((installment) => (
+                    <div
+                      key={installment.number}
+                      className={`rounded-lg p-3 flex justify-between items-center text-sm ${
+                        installment.isEntry
+                          ? 'bg-green-50 border border-green-300'
+                          : 'bg-white'
+                      }`}
+                    >
+                      <span className={`font-medium ${
+                        installment.isEntry ? 'text-green-900' : 'text-gray-900'
+                      }`}>
+                        {installment.description}
+                      </span>
+                      <span className={`font-mono font-semibold ${
+                        installment.isEntry ? 'text-green-600' : 'text-blue-600'
+                      }`}>
+                        ${installment.amount.toFixed(2)}
+                      </span>
+                      <span className="text-gray-600">
+                        {new Date(installment.dueDate).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 pt-3 border-t-2 border-blue-300 bg-white rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-blue-900">Total de todas as faturas:</span>
+                    <span className="font-mono text-lg font-bold text-blue-600">
+                      ${(entryValue + remaining).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {entryValue > 0 && `Entrada: $${entryValue.toFixed(2)} + `}
+                    {installmentsValue} parcela(s): ${remaining.toFixed(2)}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
