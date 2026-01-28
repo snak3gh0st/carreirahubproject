@@ -36,12 +36,17 @@ export function extractEventId(service: string, payload: any): string | null {
       );
 
     case "quickbooks":
-      // Combine realmId + entity ID for uniqueness
-      // Example: { eventNotifications: [{ realmId: "123", dataChangeEvent: { entities: [{ id: "456" }] } }] }
-      const realmId = payload?.eventNotifications?.[0]?.realmId;
-      const entityId =
+      // NEW: Transformed payload from webhook route (Jan 2026 refactor)
+      // Structure: { realmId, entity: { id, name, operation } }
+      if (payload?.realmId && payload?.entity?.id) {
+        return `${payload.realmId}-${payload.entity.id}`;
+      }
+      // LEGACY: Original QuickBooks webhook payload structure
+      // Structure: { eventNotifications: [{ realmId, dataChangeEvent: { entities: [{ id }] } }] }
+      const legacyRealmId = payload?.eventNotifications?.[0]?.realmId;
+      const legacyEntityId =
         payload?.eventNotifications?.[0]?.dataChangeEvent?.entities?.[0]?.id;
-      return realmId && entityId ? `${realmId}-${entityId}` : null;
+      return legacyRealmId && legacyEntityId ? `${legacyRealmId}-${legacyEntityId}` : null;
 
     case "stripe":
       // Stripe events have top-level id field
