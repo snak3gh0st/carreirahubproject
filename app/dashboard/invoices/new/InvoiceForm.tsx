@@ -174,8 +174,14 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     const baseDate = form.dueDate ? new Date(form.dueDate) : new Date();
 
     for (let i = 0; i < installments; i++) {
+      // Create fresh date for each installment to prevent mutation
       const installmentDate = new Date(baseDate);
-      installmentDate.setMonth(baseDate.getMonth() + i + (entryAmount > 0 ? 1 : 0));
+      // Calculate months offset for each installment
+      // i=0 (Parcela 1): due today (combined with entry if exists, or standalone)
+      // i=1 (Parcela 2): due +1 month
+      // i=2 (Parcela 3): due +2 months
+      const monthsToAdd = i;
+      installmentDate.setMonth(baseDate.getMonth() + monthsToAdd);
 
       schedule.push({
         number: i + 1,
