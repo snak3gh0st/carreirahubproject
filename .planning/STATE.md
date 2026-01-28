@@ -358,12 +358,13 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 | 013 | Improve invoice creator form UI/UX layout | 2026-01-23 | 51183ed | [013-improve-invoice-creator-form-ui-ux-layou](.planning/quick/013-improve-invoice-creator-form-ui-ux-layou/) |
 | 014 | Fix installment invoice due date calculation | 2026-01-28 | 4c2000d | [014-fix-installment-invoice-due-date-calcula](.planning/quick/014-fix-installment-invoice-due-date-calcula/) |
 | 017 | Fix installment date calculation with month-aware logic | 2026-01-28 | d47892e | [017-fix-installment-date-calculation-to-use-](.planning/quick/017-fix-installment-date-calculation-to-use-/) |
+| 018 | Fix single payment invoice email timing based on due date | 2026-01-28 | 4284c4c | [018-quando-a-invoice-criada-sem-installments](.planning/quick/018-quando-a-invoice-criada-sem-installments/) |
 
 ## Session Continuity
 
 Last session: 2026-01-28
-Stopped at: Completed quick-017 (Fix installment date calculation with month-aware logic)
-Resume file: .planning/quick/017-fix-installment-date-calculation-to-use-/017-SUMMARY.md
+Stopped at: Completed quick-018 (Fix single payment invoice email timing)
+Resume file: .planning/quick/018-quando-a-invoice-criada-sem-installments/018-SUMMARY.md
 Next action: Resume Phase 5 - Execute Plan 05-02 (JWT Authentication Test and Production Verification)
 
 ## Sprint 1 Success Criteria
