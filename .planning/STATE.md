@@ -356,13 +356,14 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 | 011 | Implement invoice edit functionality with QuickBooks sparse update | 2026-01-23 | a4b43cc | [011-implement-invoice-edit-functionality-wit](.planning/quick/011-implement-invoice-edit-functionality-wit/) |
 | 012 | Remove invoice approval workflow completely | 2026-01-23 | d64c73d | [012-remove-invoice-approval-workflow-complet](.planning/quick/012-remove-invoice-approval-workflow-complet/) |
 | 013 | Improve invoice creator form UI/UX layout | 2026-01-23 | 51183ed | [013-improve-invoice-creator-form-ui-ux-layou](.planning/quick/013-improve-invoice-creator-form-ui-ux-layou/) |
+| 014 | Fix installment invoice due date calculation | 2026-01-28 | 4c2000d | [014-fix-installment-invoice-due-date-calcula](.planning/quick/014-fix-installment-invoice-due-date-calcula/) |
 
 ## Session Continuity
 
 Last session: 2026-01-28
-Stopped at: Completed 05-01-PLAN.md (DocuSign Production Credentials Configuration)
-Resume file: .planning/phases/05-docusign-production-setup--verification/05-01-SUMMARY.md
-Next action: Execute Plan 05-02 (JWT Authentication Test and Production Verification)
+Stopped at: Completed quick-014 (Fix installment invoice due date calculation)
+Resume file: .planning/quick/014-fix-installment-invoice-due-date-calcula/014-SUMMARY.md
+Next action: Resume Phase 5 - Execute Plan 05-02 (JWT Authentication Test and Production Verification)
 
 ## Sprint 1 Success Criteria
 
