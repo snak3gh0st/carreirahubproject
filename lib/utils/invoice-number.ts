@@ -1,25 +1,29 @@
 /**
  * Invoice Number Generator - Enhanced Unique Format
+ * 
+ * IMPORTANT: QuickBooks has a 21 character limit for invoice numbers (DocNumber field)
  *
- * Format: {CUSTOMER}-{SERVICE}-{YYYYMMDD}-{INSTALLMENT}-{HASH}
+ * Format: {CUSTOMER}-{SERVICE}-{YYMMDD}-{INSTALLMENT}-{HASH}
+ * Max Length: 20 characters (fits within QB's 21 char limit)
  * 
  * Examples:
- *   - "PT-SRV-20260123-S-A3F2" (Single invoice)
- *   - "PM-CON-20260123-E-B7C4" (Entry payment)
- *   - "PM-CON-20260123-I1-D9E1" (Installment 1)
- *   - "PM-CON-20260123-I2-F2A8" (Installment 2)
+ *   - "PT-SR-260123-S-A3F" (Single invoice) = 18 chars
+ *   - "PM-CO-260123-E-B7C" (Entry payment) = 18 chars
+ *   - "PM-CO-260123-I1-D9E" (Installment 1) = 19 chars
+ *   - "PM-CO-260123-I2-F2A" (Installment 2) = 19 chars
  *
  * Components:
- *   - CUSTOMER: 2-4 char customer initials
- *   - SERVICE: 2-3 char service code from service name
- *   - YYYYMMDD: Creation date (guaranteed unique per day)
+ *   - CUSTOMER: 3 char customer initials (limited from 2-4)
+ *   - SERVICE: 2 char service code (limited from 2-3)
+ *   - YYMMDD: Creation date - 6 chars (shortened from YYYYMMDD)
  *   - INSTALLMENT: S (Single), E (Entry), I1-I9 (Installment number)
- *   - HASH: 4 char unique hash from timestamp + data
+ *   - HASH: 3 char unique hash (limited from 4)
  *
  * This format guarantees uniqueness through multiple layers:
  * 1. Customer + Service + Date combination is highly unique
  * 2. Installment type differentiates within same series
  * 3. Hash provides final collision-proof guarantee
+ * 4. Format is optimized to fit QuickBooks' 21 character DocNumber limit
  */
 
 export interface InvoiceNumberOptions {
@@ -159,8 +163,8 @@ export function generateInvoiceNumber(options: InvoiceNumberOptions): string {
   const customerCode = generateCustomerCode(customerName);
   const serviceCode = generateServiceCode(serviceName);
 
-  // Date component (YYYYMMDD)
-  const year = date.getFullYear();
+  // Date component (YYMMDD) - shortened to 6 chars to fit QB's 21 char limit
+  const year = String(date.getFullYear()).slice(-2); // Last 2 digits of year
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   const dateStr = `${year}${month}${day}`;
@@ -190,8 +194,17 @@ export function generateInvoiceNumber(options: InvoiceNumberOptions): string {
     seriesId,
   });
 
-  // Combine: {CUSTOMER}-{SERVICE}-{YYYYMMDD}-{INSTALLMENT}-{HASH}
-  return `${customerCode}-${serviceCode}-${dateStr}-${installmentCode}-${hash}`;
+  // Combine: {CUSTOMER}-{SERVICE}-{YYMMDD}-{INSTALLMENT}-{HASH}
+  // QuickBooks has 21 char limit for DocNumber
+  // Max format: XXXX-XXX-YYMMDD-IX-XXXX = 4+1+3+1+6+1+2+1+4 = 23 chars (too long!)
+  // Optimized: XXX-XX-YYMMDD-IX-XXX = 3+1+2+1+6+1+2+1+3 = 20 chars (fits!)
+  
+  // Limit components to fit within 21 chars
+  const limitedCustomerCode = customerCode.substring(0, 3);
+  const limitedServiceCode = serviceCode.substring(0, 2);
+  const limitedHash = hash.substring(0, 3);
+  
+  return `${limitedCustomerCode}-${limitedServiceCode}-${dateStr}-${installmentCode}-${limitedHash}`;
 }
 
 /**

@@ -1,14 +1,16 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { DashboardHeader } from "@/components/dashboard/dashboard-header";
-import { SidebarNav } from "@/components/dashboard/sidebar-nav";
-import { SkipToContent } from "@/components/skip-to-content";
+import { ProfessionalSidebar } from "@/components/dashboard/professional-sidebar";
 
 /**
- * Layout compartilhado para todas as páginas do dashboard
- *
- * Fornece navegação consistente e header com suporte mobile
+ * Professional Dashboard Layout
+ * 
+ * Matches Pencil Design:
+ * - Fixed 240px sidebar (left)
+ * - Logo, navigation, user profile, Sigma footer
+ * - Main content area (soft gray background)
+ * - No top header
  */
 export default async function DashboardLayout({
   children,
@@ -36,18 +38,22 @@ export default async function DashboardLayout({
   }
 
   const userRole = (session.user as any).role;
+  const userName = (session.user as any).name || "User";
+  const userEmail = (session.user as any).email || "";
+  
   console.log("[DashboardLayout] User role:", userRole);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SkipToContent />
-      <DashboardHeader session={session} userRole={userRole} />
+      {/* Professional Sidebar - Matches Pencil Design */}
+      <ProfessionalSidebar 
+        userRole={userRole}
+        userName={userName}
+        userEmail={userEmail}
+      />
 
-      {/* Sidebar Navigation - Desktop Only */}
-      <SidebarNav userRole={userRole} />
-
-      {/* Conteúdo com margem para sidebar */}
-      <main id="main-content" className="min-h-screen lg:pl-64 transition-all duration-300">
+      {/* Main Content Area - 240px left padding for sidebar */}
+      <main className="min-h-screen pl-60">
         {children}
       </main>
     </div>
