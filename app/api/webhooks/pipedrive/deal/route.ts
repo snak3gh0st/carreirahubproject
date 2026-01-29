@@ -2,21 +2,24 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { validatePipedriveWebhookSignature } from "@/lib/utils/webhook-validation";
 import { acceptWebhook, webhookResponse } from "@/lib/utils/webhook-handler";
-import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
 import { integrationLogger } from "@/lib/utils/logger";
 
 /**
  * POST /api/webhooks/pipedrive/deal
  *
- * Webhook receiver for Deal Won in Pipedrive
+ * Webhook receiver for Deal status changes in Pipedrive
  *
+ * CORRECT WORKFLOW: Invoice creation drives deal updates, not vice versa
+ * This webhook ONLY updates Hub deal status to match Pipedrive
+ * 
  * Pattern:
  * 1. Validate signature
  * 2. Accept webhook (store in DB)
- * 3. If Deal is WON, trigger Finance workflow
- * 4. Return 200 OK immediately (async processing)
+ * 3. Update Hub deal status to match Pipedrive
+ * 4. Return 200 OK immediately
  *
- * Finance workflow (Deal Won → Invoice + Contract) runs asynchronously
+ * NOTE: Deal won does NOT trigger invoice creation
+ * Invoices are created in Hub → Update Pipedrive deal → Contract signed → Mark deal won
  */
 export async function POST(request: NextRequest) {
   let rawBody = "";
@@ -98,40 +101,41 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    // Check if Deal is WON and trigger Finance workflow
-    if (body.current && body.current.status === "WON") {
+    // Update deal status in Hub if deal status changed
+    // IMPORTANT: Invoice creation drives deal updates, not vice versa
+    // Deal won webhook should ONLY update Hub deal status to match Pipedrive
+    if (body.current && body.current.status) {
       const dealId = body.current.id;
+      const status = body.current.status; // "OPEN", "WON", "LOST", etc.
 
-      // Log workflow start
-      await integrationLogger.logSuccess(
-        "WORKFLOW",
-        "DEAL_WON_TRIGGER",
-        { dealId, pipedriveId: dealId }
-      );
-
-      // Trigger workflow asynchronously (don't wait for completion)
       // Find deal in our database by Pipedrive ID
       const deal = await prisma.deal.findUnique({
         where: { pipedrive_deal_id: dealId },
       });
 
       if (deal) {
-        // Trigger workflow in background (async, non-blocking)
-        invoiceWorkflowService.processDealWon(deal.id).catch((error) => {
-          console.error(`[Workflow] Failed to process Deal Won for ${deal.id}:`, error);
-          integrationLogger.logError(
-            "WORKFLOW",
-            "PROCESS_DEAL_WON_FAILED",
-            error instanceof Error ? error : new Error(String(error)),
-            { dealId: deal.id }
-          );
+        // Update Hub deal status to match Pipedrive (simple sync)
+        await prisma.deal.update({
+          where: { id: deal.id },
+          data: { 
+            status: status,
+            lastPipedriveSyncAt: new Date()
+          }
         });
-      } else {
-        console.warn(`[Workflow] Deal ${dealId} not found in database, skipping workflow`);
+
         await integrationLogger.logSuccess(
-          "WORKFLOW",
+          "PIPEDRIVE",
+          "DEAL_STATUS_UPDATED",
+          { dealId: deal.id, pipedriveId: dealId, status }
+        );
+
+        console.log(`[Pipedrive Webhook Deal] Updated deal ${deal.id} status to ${status}`);
+      } else {
+        console.log(`[Pipedrive Webhook Deal] Deal ${dealId} not found in database, no update needed`);
+        await integrationLogger.logSuccess(
+          "PIPEDRIVE",
           "DEAL_NOT_FOUND",
-          { pipedriveId: dealId }
+          { pipedriveId: dealId, status }
         );
       }
     }
