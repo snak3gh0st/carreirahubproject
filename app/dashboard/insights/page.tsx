@@ -86,17 +86,23 @@ export default function InsightsPage() {
   const searchParams = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
 
-  // FILTER AUDIT: Get filter params from URL
-  // ✅ WORKING: dateRange, from, to - properly passed to API
+  // Get ALL filter params from URL
   const dateRange = searchParams.get("dateRange");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
-  
-  // ❌ BROKEN: These filters exist in DashboardFilters but are NOT read here
-  // segment, invoiceStatus, dealStatus are not retrieved from URL
-  // This means they won't be passed to the API even if user selects them
+  const segment = searchParams.get("segment");
+  const invoiceStatus = searchParams.get("invoiceStatus");
+  const dealStatus = searchParams.get("dealStatus");
 
-  // FILTER AUDIT: Fetch BI dashboard data with filters
+  // Calculate active filter count for visual indicator
+  const activeFilterCount = [
+    dateRange && dateRange !== "allTime",
+    segment && segment !== "all",
+    invoiceStatus,
+    dealStatus,
+  ].filter(Boolean).length;
+
+  // Fetch BI dashboard data with ALL filters
   const {
     data,
     isLoading,
@@ -104,18 +110,17 @@ export default function InsightsPage() {
     error,
     refetch,
   } = useQuery<BIDashboardData>({
-    // ❌ BROKEN: Query key missing segment, invoiceStatus, dealStatus
-    // This means changing those filters won't trigger a refetch
-    queryKey: ["bi-dashboard", dateRange, from, to],
+    // Include ALL filter params in query key to trigger refetch on any change
+    queryKey: ["bi-dashboard", dateRange, from, to, segment, invoiceStatus, dealStatus],
     queryFn: async () => {
       const params = new URLSearchParams();
-      // ✅ WORKING: Date filters properly sent to API
+      // Add all filter params to API request
       if (dateRange) params.set("dateRange", dateRange);
       if (from) params.set("from", from);
       if (to) params.set("to", to);
-      
-      // ❌ BROKEN: Missing segment, invoiceStatus, dealStatus params
-      // Even if we read them from URL, they're not being sent to the API
+      if (segment) params.set("segment", segment);
+      if (invoiceStatus) params.set("invoiceStatus", invoiceStatus);
+      if (dealStatus) params.set("dealStatus", dealStatus);
 
       const url = `/api/analytics/bi-dashboard${params.toString() ? `?${params.toString()}` : ""}`;
       const response = await fetch(url);
@@ -195,8 +200,15 @@ export default function InsightsPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <DashboardFilters onFiltersChange={() => refetch()} />
+      {/* Filters with active count badge */}
+      <div className="relative mb-6">
+        <DashboardFilters onFiltersChange={() => refetch()} />
+        {activeFilterCount > 0 && (
+          <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+            {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"} active
+          </div>
+        )}
+      </div>
 
       {/* Alerts Widget (fixed position) */}
       <AlertsWidget />
