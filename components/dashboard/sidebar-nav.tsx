@@ -86,6 +86,12 @@ const navigationSections: NavSection[] = [
         icon: FileText,
         roles: ["ADMIN", "SALES"],
       },
+      {
+        href: "/dashboard/contracts/new",
+        label: "Create Contract",
+        icon: FilePlus,
+        roles: ["ADMIN", "SALES"],
+      },
     ],
   },
   {
