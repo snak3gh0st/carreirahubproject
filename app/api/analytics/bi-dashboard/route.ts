@@ -31,9 +31,16 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    // FILTER AUDIT: Parse query parameters
+    // ✅ WORKING: Date range filters
     const dateRange = searchParams.get("dateRange");
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
+    
+    // ❌ BROKEN: These query params are NOT parsed
+    // segment - customer segment filter (active/inactive/churned)
+    // invoiceStatus - multi-select invoice status filter
+    // dealStatus - multi-select deal status filter
 
     let startDate: Date | null = null;
     let endDate: Date | null = null;
@@ -68,9 +75,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // ✅ WORKING: Date filter applied to queries
     const dateFilter = startDate && endDate
       ? { gte: startDate, lte: endDate }
       : undefined;
+
+    // ❌ BROKEN: Missing filter construction for:
+    // - Customer segment filter (need to build where clause based on invoice activity)
+    // - Invoice status filter (need to add status IN array to invoice queries)
+    // - Deal status filter (need to add status IN array to deal queries)
 
     const revenueTrendStartDate = startDate || subMonths(startOfMonth(now), 12);
 

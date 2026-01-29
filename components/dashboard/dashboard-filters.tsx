@@ -103,13 +103,17 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
   };
 
   const applyFilters = () => {
+    // FILTER AUDIT: Build URL params from filter state
     const params = new URLSearchParams();
 
+    // ✅ WORKING: Date range filters properly set in URL
     params.set("dateRange", dateRange);
     if (showCustomDateRange && fromDate && toDate) {
       params.set("from", fromDate);
       params.set("to", toDate);
     }
+    
+    // ⚠️ PARTIALLY WORKING: These are set in URL but backend doesn't process them
     params.set("segment", segment);
     if (invoiceStatuses.length > 0) {
       params.set("invoiceStatus", invoiceStatuses.join(","));
@@ -120,6 +124,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
 
     router.push(`?${params.toString()}`);
 
+    // ⚠️ ISSUE: Callback fires but insights page doesn't read these params from URL
     onFiltersChange?.({
       dateRange,
       from: fromDate,

@@ -86,12 +86,17 @@ export default function InsightsPage() {
   const searchParams = useSearchParams();
   const [isExporting, setIsExporting] = useState(false);
 
-  // Get filter params from URL
+  // FILTER AUDIT: Get filter params from URL
+  // ✅ WORKING: dateRange, from, to - properly passed to API
   const dateRange = searchParams.get("dateRange");
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+  
+  // ❌ BROKEN: These filters exist in DashboardFilters but are NOT read here
+  // segment, invoiceStatus, dealStatus are not retrieved from URL
+  // This means they won't be passed to the API even if user selects them
 
-  // Fetch BI dashboard data with filters
+  // FILTER AUDIT: Fetch BI dashboard data with filters
   const {
     data,
     isLoading,
@@ -99,12 +104,18 @@ export default function InsightsPage() {
     error,
     refetch,
   } = useQuery<BIDashboardData>({
+    // ❌ BROKEN: Query key missing segment, invoiceStatus, dealStatus
+    // This means changing those filters won't trigger a refetch
     queryKey: ["bi-dashboard", dateRange, from, to],
     queryFn: async () => {
       const params = new URLSearchParams();
+      // ✅ WORKING: Date filters properly sent to API
       if (dateRange) params.set("dateRange", dateRange);
       if (from) params.set("from", from);
       if (to) params.set("to", to);
+      
+      // ❌ BROKEN: Missing segment, invoiceStatus, dealStatus params
+      // Even if we read them from URL, they're not being sent to the API
 
       const url = `/api/analytics/bi-dashboard${params.toString() ? `?${params.toString()}` : ""}`;
       const response = await fetch(url);
