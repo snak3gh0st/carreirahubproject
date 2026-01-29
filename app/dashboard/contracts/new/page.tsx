@@ -33,12 +33,22 @@ interface Invoice {
   };
 }
 
+interface DocuSignTemplate {
+  templateId: string;
+  name: string;
+  description: string;
+  created: string;
+  lastModified: string;
+  shared: boolean;
+}
+
 export default function CreateContractPage() {
   const router = useRouter();
   
   // Form state
   const [customerId, setCustomerId] = useState('');
   const [invoiceId, setInvoiceId] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [signerName, setSignerName] = useState('');
   const [signerEmail, setSignerEmail] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('30');
@@ -47,10 +57,12 @@ export default function CreateContractPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
+  const [templates, setTemplates] = useState<DocuSignTemplate[]>([]);
   
   // UI state
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch customers and invoices on mount
@@ -80,6 +92,32 @@ export default function CreateContractPage() {
     }
     
     fetchData();
+  }, []);
+
+  // Fetch DocuSign templates
+  useEffect(() => {
+    async function fetchTemplates() {
+      try {
+        setLoadingTemplates(true);
+        
+        const templatesRes = await fetch('/api/docusign/templates');
+        if (!templatesRes.ok) {
+          console.warn('Failed to fetch DocuSign templates:', await templatesRes.text());
+          // Don't throw - templates are optional, default template will be used
+          return;
+        }
+        const templatesData = await templatesRes.json();
+        setTemplates(templatesData.templates || []);
+        
+      } catch (err) {
+        console.error('Error fetching templates:', err);
+        // Don't set error - templates are optional
+      } finally {
+        setLoadingTemplates(false);
+      }
+    }
+    
+    fetchTemplates();
   }, []);
 
   // Auto-populate signer info when customer is selected
@@ -126,6 +164,11 @@ export default function CreateContractPage() {
       return;
     }
     
+    if (!templateId) {
+      setError('Please select a contract template');
+      return;
+    }
+    
     if (!signerEmail || !signerName) {
       setError('Signer name and email are required');
       return;
@@ -143,6 +186,7 @@ export default function CreateContractPage() {
         body: JSON.stringify({
           customerId,
           invoiceId: invoiceId || undefined,
+          templateId: templateId || undefined,
           signerName,
           signerEmail,
           expiresInDays: parseInt(expiresInDays),
@@ -234,6 +278,48 @@ export default function CreateContractPage() {
               </p>
             </div>
 
+            {/* DocuSign Template Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="template">Contract Template *</Label>
+              <Select 
+                value={templateId} 
+                onValueChange={setTemplateId}
+                disabled={loadingTemplates}
+              >
+                <SelectTrigger id="template">
+                  <SelectValue placeholder={loadingTemplates ? "Loading templates..." : "Select a template"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.length === 0 && !loadingTemplates && (
+                    <SelectItem value="" disabled>
+                      No templates available
+                    </SelectItem>
+                  )}
+                  {templates.map(template => (
+                    <SelectItem key={template.templateId} value={template.templateId}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Select the DocuSign template to use for this contract
+              </p>
+              {templates.length > 0 && templateId && (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                  <p className="text-xs text-gray-600">
+                    <span className="font-medium">Template:</span>{' '}
+                    {templates.find(t => t.templateId === templateId)?.name}
+                  </p>
+                  {templates.find(t => t.templateId === templateId)?.description && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {templates.find(t => t.templateId === templateId)?.description}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Invoice Selection (Optional) */}
             <div className="space-y-2">
               <Label htmlFor="invoice">Link to Invoice (Optional)</Label>
@@ -310,7 +396,7 @@ export default function CreateContractPage() {
             <div className="flex gap-3 pt-4 border-t">
               <Button
                 type="submit"
-                disabled={loading || !customerId}
+                disabled={loading || !customerId || !templateId}
                 className="flex-1"
               >
                 {loading ? (

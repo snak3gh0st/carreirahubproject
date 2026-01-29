@@ -123,6 +123,7 @@ export async function GET(request: NextRequest) {
  * - signerName: string (required)
  * - signerEmail: string (required)
  * - expiresInDays: number (default: 30)
+ * - templateId: string (optional) - DocuSign template ID. If provided, uses this specific template.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -132,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { customerId, invoiceId, signerName, signerEmail, expiresInDays = 30 } = body;
+    const { customerId, invoiceId, signerName, signerEmail, expiresInDays = 30, templateId } = body;
 
     // Validation
     if (!customerId) {
@@ -223,17 +224,43 @@ export async function POST(request: NextRequest) {
       // Send to DocuSign
       let envelopeId: string;
       
-      // Create a minimal invoice object if not provided (for DocuSign template)
-      const invoiceForDocuSign = invoice || {
-        id: `manual-${contract.id}`,
-        invoiceNumber: `MANUAL-${Date.now()}`,
-        amount: '0.00',
-        dueDate: expiresAt,
-        customerId: customer.id,
-      } as any;
+      if (templateId) {
+        // Use specific template selected by user
+        console.log(`[API_CONTRACTS] Creating envelope from selected template: ${templateId}`);
+        
+        // Build custom fields from invoice data if available
+        const customFields: Record<string, string> = {};
+        if (invoice) {
+          customFields['customer_name'] = customer.name;
+          customFields['customer_email'] = customer.email;
+          customFields['invoice_number'] = invoice.invoiceNumber || '';
+          customFields['invoice_amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
+          customFields['invoice_due_date'] = new Date(invoice.dueDate).toLocaleDateString('en-US');
+        } else {
+          customFields['customer_name'] = customer.name;
+          customFields['customer_email'] = customer.email;
+        }
+        
+        envelopeId = await docusignService.createEnvelopeFromSelectedTemplate(
+          templateId,
+          signerEmail,
+          signerName,
+          customFields
+        );
+      } else {
+        // Fallback to default template (legacy behavior)
+        // Create a minimal invoice object if not provided (for DocuSign template)
+        const invoiceForDocuSign = invoice || {
+          id: `manual-${contract.id}`,
+          invoiceNumber: `MANUAL-${Date.now()}`,
+          amount: '0.00',
+          dueDate: expiresAt,
+          customerId: customer.id,
+        } as any;
 
-      // Use invoice-based template creation (DocuSign service requires invoice)
-      envelopeId = await docusignService.createEnvelopeFromTemplate(invoiceForDocuSign, customer);
+        // Use invoice-based template creation (DocuSign service requires invoice)
+        envelopeId = await docusignService.createEnvelopeFromTemplate(invoiceForDocuSign, customer);
+      }
 
       // Update contract with DocuSign envelope ID and status
       const updatedContract = await prisma.contract.update({

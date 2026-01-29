@@ -904,6 +904,130 @@ export class DocuSignService {
   }
 
   /**
+   * List available DocuSign templates
+   * Returns templates that commercial users can select from
+   */
+  async listTemplates(): Promise<Array<{
+    templateId: string;
+    name: string;
+    description: string;
+    created: string;
+    lastModified: string;
+    shared: boolean;
+  }>> {
+    try {
+      const token = await this.getAccessToken();
+      const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}/templates?count=100&order_by=name`;
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DOCUSIGN] Failed to list templates:', response.status, errorText);
+        throw new Error(`Failed to list templates: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const templates = data.envelopeTemplates || [];
+
+      return templates.map((template: any) => ({
+        templateId: template.templateId,
+        name: template.name,
+        description: template.description || '',
+        created: template.created,
+        lastModified: template.lastModified,
+        shared: template.shared === 'true' || template.shared === true,
+      }));
+
+    } catch (error) {
+      console.error('[DOCUSIGN] Error listing templates:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create envelope from a specific template ID
+   * Allows commercial users to select which template to use
+   */
+  async createEnvelopeFromSelectedTemplate(
+    templateId: string,
+    signerEmail: string,
+    signerName: string,
+    customFields?: Record<string, string>
+  ): Promise<string> {
+    try {
+      const token = await this.getAccessToken();
+      console.log(`[DOCUSIGN] Creating envelope from selected template ${templateId}`);
+
+      // Build envelope definition using the selected template
+      const envelopeDefinition: any = {
+        status: 'sent',
+        compositeTemplates: [
+          {
+            serverTemplates: [
+              {
+                sequence: '1',
+                templateId: templateId,
+              },
+            ],
+            inlineTemplates: [
+              {
+                sequence: '1',
+                recipients: {
+                  signers: [
+                    {
+                      email: signerEmail,
+                      name: signerName,
+                      recipientId: '1',
+                      roleName: 'Client', // Must match template role name
+                      tabs: customFields ? {
+                        textTabs: Object.entries(customFields).map(([label, value]) => ({
+                          tabLabel: label,
+                          value: value,
+                          locked: 'true',
+                        })),
+                      } : undefined,
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      };
+
+      const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}/envelopes`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(envelopeDefinition),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[DOCUSIGN] Failed to create envelope from selected template:', response.status, errorText);
+        throw new Error(`Failed to create envelope: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log(`[DOCUSIGN] Envelope created from selected template: ${result.envelopeId}`);
+      
+      return result.envelopeId;
+
+    } catch (error) {
+      console.error('[DOCUSIGN] Error creating envelope from selected template:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Download document
    */
   async downloadDocument(
