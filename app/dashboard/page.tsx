@@ -13,6 +13,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   AlertCircle,
+  RefreshCw,
+  BarChart,
 } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
 import { useEffect, useState } from "react";
@@ -229,64 +231,63 @@ export default function DashboardPage() {
         </div>
 
         {/* ========== QUICK ACTIONS ========== */}
-        <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">
             Quick Actions
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link
-              href="/dashboard/leads"
-              className="group relative overflow-hidden rounded-lg border border-gray-200"
+              href="/dashboard/invoices/new"
+              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
             >
-              <div className="relative">
-                <p className="font-semibold text-gray-900">Leads</p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  Manage pipeline
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-primary-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    Create Invoice
+                  </h3>
+                  <p className="text-base text-gray-500">
+                    Generate new invoice for customers
+                  </p>
+                </div>
               </div>
             </Link>
             <Link
-              href="/dashboard/deals"
-              className="group relative overflow-hidden rounded-lg border border-gray-200"
+              href="/dashboard/quickbooks/sync"
+              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
             >
-              <div className="relative">
-                <p className="font-semibold text-gray-900">Deals</p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  Track sales
-                </p>
-              </div>
-            </Link>
-            <Link
-              href="/dashboard/invoices"
-              className="group relative overflow-hidden rounded-lg border border-gray-200"
-            >
-              <div className="relative">
-                <p className="font-semibold text-gray-900">Invoices</p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  View & create
-                </p>
-              </div>
-            </Link>
-            <Link
-              href="/dashboard/customers"
-              className="group relative overflow-hidden rounded-lg border border-gray-200"
-            >
-              <div className="relative">
-                <p className="font-semibold text-gray-900">Customers</p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  Manage accounts
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-success-50 rounded-lg flex items-center justify-center">
+                  <RefreshCw className="h-5 w-5 text-success-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    Sync QuickBooks
+                  </h3>
+                  <p className="text-base text-gray-500">
+                    Update invoices and customers
+                  </p>
+                </div>
               </div>
             </Link>
             <Link
               href="/dashboard/insights"
-              className="group relative overflow-hidden rounded-lg border border-gray-200"
+              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
             >
-              <div className="relative">
-                <p className="font-semibold text-gray-900">Insights</p>
-                <p className="text-xs sm:text-sm text-gray-600">
-                  Analytics & BI
-                </p>
+              <div className="flex items-start gap-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center">
+                  <BarChart className="h-5 w-5 text-warning-600" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                    View Reports
+                  </h3>
+                  <p className="text-base text-gray-500">
+                    Business insights and analytics
+                  </p>
+                </div>
               </div>
             </Link>
           </div>
