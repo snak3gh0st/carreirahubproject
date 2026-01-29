@@ -11,18 +11,18 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 ## Current Position
 
 Phase: 6 of 8 (Pipedrive Integration Respecting the Whole Workflow of the Hub)
-Plan: 1 of 4 in current phase
+Plan: 2 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-29 — Completed 06-01-PLAN.md (Fix Backwards Workflow and Establish Lead Entry)
+Last activity: 2026-01-29 — Completed 06-02-PLAN.md (Customer Creation Sync to QB + Pipedrive)
 
-Progress: ███████████████████ 95% (20 plans executed)
+Progress: ███████████████████ 96% (21 plans executed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 20
-- Average duration: 21 minutes
-- Total execution time: 6 hours 59 minutes
+- Total plans completed: 21
+- Average duration: 20 minutes
+- Total execution time: 7 hours 1 minute
 
 **By Phase:**
 
@@ -35,9 +35,10 @@ Progress: ███████████████████ 95% (20 plan
 | 4. Insights (BI & Analytics) | 3/3 | 60 min | 20 min |
 | 2. DocuSign Integration | 4/4 | 14 min | 4 min |
 | 5. DocuSign Production Setup | 2/2 | 12 min | 6 min |
-| 6. Pipedrive Integration | 1/4 | 3 min | 3 min |
+| 6. Pipedrive Integration | 2/4 | 5 min | 2.5 min |
 
 **Recent Trend:**
+- Phase 6: 06-02 (2 min) — Customer creation sync to QB + Pipedrive
 - Phase 6: 06-01 (3 min) — Fix backwards workflow and establish lead entry
 - Phase 5: 05-02 (continuation) — Automated contract workflow with production verification
 - Phase 5: 05-01 (12 min) — DocuSign production credentials configuration with RSA keypair
@@ -59,7 +60,7 @@ Progress: ███████████████████ 95% (20 plan
 - Phase 3: Finance Workflow Automation ✅ Complete
 - Phase 4: Insights (BI & Analytics) ✅ Complete
 - Phase 5: DocuSign Production Setup & Verification ✅ Complete (2 of 2 plans)
-- Phase 6: Pipedrive Integration 🔄 In Progress (1 of 4 plans)
+- Phase 6: Pipedrive Integration 🔄 In Progress (2 of 4 plans)
 
 ## Accumulated Context
 
@@ -127,6 +128,10 @@ Recent decisions affecting current work:
 - PIPEDRIVE added to LeadSource enum for lead tracking
 - Webhook loop prevention via 5-second debounce on lastPipedriveSyncAt
 - QB-first workflow: Check QB customer exists → link Pipedrive → else create Lead
+- Dual-sync pattern: Commercial creates customer → syncs to QB THEN Pipedrive
+- Graceful degradation: Pipedrive sync failure doesn't block customer creation
+- Response enrichment: syncedSystems object indicates which integrations succeeded
+- Pipedrive API format: email as array, phone as array with primary flag (fixed in createPerson)
 
 ### Roadmap Evolution
 
@@ -385,9 +390,9 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 ## Session Continuity
 
 Last session: 2026-01-29
-Stopped at: Completed 06-01-PLAN.md (Fix Backwards Workflow and Establish Lead Entry)
-Resume file: .planning/phases/06-pipedrive-integration-respecting-the-whole-workflow-of-the-hub/06-01-SUMMARY.md
-Next action: Execute 06-02-PLAN.md (Customer creation sync to QB + Pipedrive)
+Stopped at: Completed 06-02-PLAN.md (Customer Creation Sync to QB + Pipedrive)
+Resume file: .planning/phases/06-pipedrive-integration-respecting-the-whole-workflow-of-the-hub/06-02-SUMMARY.md
+Next action: Execute 06-03-PLAN.md (Invoice creation → Pipedrive deal update)
 
 ## Sprint 1 Success Criteria
 
