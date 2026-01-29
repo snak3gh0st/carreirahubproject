@@ -5,6 +5,9 @@ import { redirect, notFound } from "next/navigation";
 import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
 import { DeleteInvoiceButtonCustomer } from "@/components/customers/delete-invoice-button-customer";
+import { StatCard } from "@/components/ui/stat-card";
+import { Badge } from "@/components/ui/badge";
+import { User, Mail, Phone, FileText, DollarSign, AlertCircle } from "lucide-react";
 
 /**
  * Customer Detail Page
@@ -151,165 +154,113 @@ export default async function CustomerDetailPage({
   };
 
   return (
-    <div className="container mx-auto p-6">
-      {/* Back Button */}
-      <div className="mb-6">
-        <Link
-          href="/dashboard/customers"
-          className="text-blue-600 hover:underline flex items-center gap-2"
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
-          Voltar para Clientes
-        </Link>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-6 md:p-8 max-w-7xl">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-6">
+          <Link href="/dashboard/customers" className="hover:text-primary-600 transition-colors">
+            Customers
+          </Link>
+          <span>›</span>
+          <span className="text-gray-900 font-medium">{customer.name}</span>
+        </div>
+
+        {/* Customer Header */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary-100 text-primary-600">
+                  <User className="h-6 w-6" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-display font-semibold text-gray-900">{customer.name}</h1>
+                  <div className="flex gap-2 mt-2">
+                    {customer.quickbooks_id && (
+                      <Badge variant="success">QuickBooks</Badge>
+                    )}
+                    {customer.pipedrive_id && (
+                      <Badge variant="info">Pipedrive</Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2 text-gray-700">
+                <p className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                  <span>{customer.email}</span>
+                </p>
+                {customer.phone && (
+                  <p className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    <span>{customer.phone}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href={`/dashboard/customers/${customer.id}/edit`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-display font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                Edit Customer
+              </Link>
+              <Link
+                href={`/dashboard/invoices/new?customerId=${customer.id}`}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-display font-semibold text-white hover:bg-primary-700 transition"
+              >
+                <FileText className="w-4 h-4" />
+                Create Invoice
+              </Link>
+            </div>
+        </div>
       </div>
 
-      {/* Customer Header */}
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2">{customer.name}</h1>
-            <div className="space-y-1 text-gray-600">
-              <p className="flex items-center gap-2">
-                <svg
-                  className="h-4 w-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                  />
-                </svg>
-                {customer.email}
-              </p>
-              {customer.phone && (
-                <p className="flex items-center gap-2">
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                    />
-                  </svg>
-                  {customer.phone}
-                </p>
+        {/* Financial Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            label="Total Invoiced"
+            value={formatCurrency(totalInvoiced)}
+            description={`${totalInvoices} invoices`}
+            icon={<FileText className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Paid"
+            value={formatCurrency(paidAmount)}
+            description={`${paidCount} invoices (${totalInvoices > 0 ? Math.round((paidCount / totalInvoices) * 100) : 0}%)`}
+            icon={<DollarSign className="h-5 w-5" />}
+          />
+          <StatCard
+            label="Pending"
+            value={formatCurrency(pendingAmount)}
+            description={`${pendingCount} invoices`}
+          />
+          <StatCard
+            label="Overdue"
+            value={formatCurrency(overdueAmount)}
+            description={`${overdueCount} invoices`}
+            icon={overdueCount > 0 ? <AlertCircle className="h-5 w-5 text-error-500" /> : undefined}
+            className={overdueCount > 0 ? "border-error-500 bg-error-50" : undefined}
+          />
+        </div>
+
+        {/* Installment Plan Summary with Visual Indicators */}
+        <div className={`p-6 rounded-lg border mb-6 ${
+          overdueCount > 0
+            ? 'bg-error-50 border-error-200'
+            : 'bg-white border-gray-200'
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <div>
+              <h2 className="text-xl font-display font-semibold text-gray-900">Installment Plan Summary</h2>
+              {overdueCount > 0 && (
+                <Badge variant="error" className="mt-2">
+                  <AlertCircle className="h-3 w-3 mr-1 inline" />
+                  {overdueCount} Overdue
+                </Badge>
               )}
             </div>
-          </div>
-          {/* Source Badges */}
-          <div className="flex gap-2">
-            {customer.quickbooks_id && (
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm font-medium">
-                QuickBooks
-              </span>
-            )}
-            {customer.pipedrive_id && (
-              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm font-medium">
-                Pipedrive
-              </span>
-            )}
-          </div>
-          {/* Action Buttons */}
-          <div className="flex gap-3">
-            <Link
-              href={`/dashboard/customers/${customer.id}/edit`}
-              className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Editar Cliente
-            </Link>
-            <Link
-              href={`/dashboard/invoices/new?customerId=${customer.id}`}
-              className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
-            >
-              Criar invoice para este cliente
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Financial Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Total Invoiced */}
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">
-            Total Invoiced
-          </h3>
-          <p className="text-3xl font-bold text-blue-600">{formatCurrency(totalInvoiced)}</p>
-          <p className="text-sm text-gray-500 mt-1">{totalInvoices} invoices</p>
-        </div>
-
-        {/* Paid */}
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Paid</h3>
-          <p className="text-3xl font-bold text-green-600">
-            {formatCurrency(paidAmount)}
-          </p>
-          <p className="text-sm text-green-600 mt-1">
-            {paidCount} invoices ({totalInvoices > 0 ? Math.round((paidCount / totalInvoices) * 100) : 0}%)
-          </p>
-        </div>
-
-        {/* Pending */}
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-yellow-500">
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Pending</h3>
-          <p className="text-3xl font-bold text-yellow-600">
-            {formatCurrency(pendingAmount)}
-          </p>
-          <p className="text-sm text-yellow-600 mt-1">{pendingCount} invoices</p>
-        </div>
-
-        {/* Overdue */}
-        <div className={`bg-white p-6 rounded-lg shadow border-l-4 ${overdueCount > 0 ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}>
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Overdue</h3>
-          <p className="text-3xl font-bold text-red-600">
-            {formatCurrency(overdueAmount)}
-          </p>
-          <p className="text-sm text-red-600 mt-1">
-            {overdueCount} invoices
-            {overdueCount > 0 && <span className="ml-2">⚠️</span>}
-          </p>
-        </div>
-      </div>
-
-      {/* Installment Plan Summary with Visual Indicators */}
-      <div className={`p-6 rounded-lg shadow mb-6 ${
-        overdueCount > 0
-          ? 'bg-gradient-to-r from-red-50 to-white border-2 border-red-200'
-          : 'bg-white border border-gray-200'
-      }`}>
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <div>
-            <h2 className="text-xl font-bold">Installment Plan Summary</h2>
-            {overdueCount > 0 && (
-              <span className="inline-block mt-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
-                ⚠️ {overdueCount} Overdue
-              </span>
-            )}
-          </div>
 
           {/* Payment Status Pie Chart */}
           <div className="flex items-center gap-4">
@@ -520,6 +471,7 @@ export default async function CustomerDetailPage({
             </table>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
