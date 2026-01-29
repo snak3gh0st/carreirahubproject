@@ -12,8 +12,9 @@ import {
   Target,
   ArrowUpRight,
   ArrowDownRight,
+  AlertCircle,
 } from "lucide-react";
-import { DashboardKPICard } from "@/components/dashboard/dashboard-kpi-card";
+import { StatCard } from "@/components/ui/stat-card";
 import { useEffect, useState } from "react";
 
 /**
@@ -189,110 +190,40 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* ========== SALES & REVENUE SECTION ========== */}
-        <div className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-            <TrendingUp className="h-6 w-6 text-blue-600" />
-            Sales & Revenue
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <DashboardKPICard
-              title="Total Deals"
-              value={metrics.sales.totalDeals}
-              icon={ShoppingCart}
-              color="blue"
-              subtitle="All-time"
-            />
-            <DashboardKPICard
-              title="Deals Won This Month"
-              value={metrics.sales.wonDealsThisMonth}
-              icon={Target}
-              color="green"
-              subtitle="This month"
-            />
-            <DashboardKPICard
-              title="Conversion Rate"
-              value={`${metrics.sales.conversionRate}%`}
-              icon={ArrowUpRight}
-              color="purple"
-              subtitle="Leads → Deals"
-            />
-            <DashboardKPICard
-              title="Pipeline Value"
-              value={formatCurrency(metrics.sales.pipelineValue)}
-              icon={DollarSign}
-              color="orange"
-              subtitle="Open deals"
-            />
-          </div>
-        </div>
-
         {/* ========== FINANCE SECTION ========== */}
         <div className="mb-8">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
             <DollarSign className="h-6 w-6 text-green-600" />
             Finance Metrics
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <DashboardKPICard
-              title="Total Revenue"
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <StatCard
+              label="Total Revenue"
               value={formatCurrency(metrics.finance.totalRevenue)}
-              icon={DollarSign}
-              color="green"
-              trend={{ value: parseFloat(metrics.finance.revenueGrowth), direction: "up", label: "MoM" }}
-              subtitle="All-time paid"
+              change={`+${metrics.finance.revenueGrowth}%`}
+              trend={parseFloat(metrics.finance.revenueGrowth) > 0 ? "up" : parseFloat(metrics.finance.revenueGrowth) < 0 ? "down" : "neutral"}
+              description="from last month"
+              icon={<DollarSign className="h-5 w-5 text-success-600" />}
             />
-            <DashboardKPICard
-              title="Total Invoiced"
-              value={formatCurrency(metrics.finance.totalInvoiced)}
-              icon={FileText}
-              color="blue"
-              subtitle="Outstanding + Paid"
+            <StatCard
+              label="Total Invoices"
+              value={formatNumber(metrics.finance.totalInvoices)}
+              description={`${metrics.finance.totalInvoices - metrics.finance.overdueCount} paid`}
+              icon={<FileText className="h-5 w-5 text-primary-600" />}
             />
-            <DashboardKPICard
-              title="Collection Rate"
-              value={`${metrics.finance.collectionRate}%`}
-              icon={TrendingUp}
-              color="purple"
-              subtitle="Paid / Invoiced"
-            />
-            <DashboardKPICard
-              title="Overdue Amount"
-              value={formatCurrency(metrics.finance.overdueAmount)}
-              icon={ArrowDownRight}
-              color="red"
-              subtitle={`${metrics.finance.overdueCount} invoices`}
-            />
-          </div>
-        </div>
-
-        {/* ========== CUSTOMER SECTION ========== */}
-        <div className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-            <Users className="h-6 w-6 text-indigo-600" />
-            Customer Metrics
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <DashboardKPICard
-              title="Total Customers"
+            <StatCard
+              label="Active Customers"
               value={formatNumber(metrics.customers.totalCustomers)}
-              icon={Users}
-              color="indigo"
-              subtitle="All-time"
+              change={`+${metrics.customers.newCustomersThisMonth}`}
+              trend="up"
+              description="new this month"
+              icon={<Users className="h-5 w-5 text-info-600" />}
             />
-            <DashboardKPICard
-              title="New Customers (This Month)"
-              value={metrics.customers.newCustomersThisMonth}
-              icon={Users}
-              color="green"
-              subtitle="New acquisitions"
-            />
-            <DashboardKPICard
-              title="Avg Customer Value"
-              value={formatCurrency(metrics.customers.avgCustomerValue)}
-              icon={DollarSign}
-              color="orange"
-              subtitle="Total revenue / customers"
+            <StatCard
+              label="Overdue Invoices"
+              value={formatCurrency(metrics.finance.overdueAmount)}
+              description={`${metrics.finance.overdueCount} invoices need attention`}
+              icon={<AlertCircle className="h-5 w-5 text-error-600" />}
             />
           </div>
         </div>
