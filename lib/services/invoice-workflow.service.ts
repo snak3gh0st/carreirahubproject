@@ -6,6 +6,7 @@ import { workflowStatusService } from "./workflow-status.service";
 import { financeService } from "./finance.service";
 import { integrationLogger } from "@/lib/utils/logger";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
+import { pipedriveService } from "./pipedrive.service";
 
 /**
  * Invoice Workflow Service
@@ -315,6 +316,132 @@ export class InvoiceWorkflowService {
     }
 
     return invoice.id;
+  }
+
+  /**
+   * Sync invoice to Pipedrive deal
+   * Invoice created (Hub/QB) → Update Pipedrive deal amount
+   * Auto-creates deal if customer has pipedrive_id but no linked deal
+   */
+  async syncInvoiceToPipedriveDeal(invoiceId: string): Promise<void> {
+    try {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        include: {
+          customer: true,
+          deal: true
+        }
+      });
+
+      if (!invoice || !invoice.customer) {
+        throw new Error("Invoice or customer not found");
+      }
+
+      const customer = invoice.customer;
+
+      // Skip if customer has no Pipedrive person
+      if (!customer.pipedrive_id) {
+        console.log(`[INVOICE_WORKFLOW] Customer ${customer.id} has no Pipedrive ID, skipping deal sync`);
+        return;
+      }
+
+      // Find or create Pipedrive deal
+      let deal = invoice.deal;
+
+      if (!deal) {
+        // Check if customer has other open deals we can update
+        deal = await prisma.deal.findFirst({
+          where: {
+            customerId: customer.id,
+            status: "OPEN"
+          }
+        });
+
+        if (deal) {
+          // Link invoice to existing deal
+          await prisma.invoice.update({
+            where: { id: invoiceId },
+            data: { dealId: deal.id }
+          });
+        } else {
+          // Create new deal in Pipedrive
+          const pipedriveDealsResponse = await pipedriveService.createDeal({
+            title: `Invoice #${invoice.invoiceNumber || "Pending"}`,
+            person_id: customer.pipedrive_id,
+            value: Number(invoice.amount),
+            currency: "USD"
+          });
+
+          // Store deal in Hub using upsert to prevent race conditions
+          deal = await prisma.deal.upsert({
+            where: { pipedrive_deal_id: pipedriveDealsResponse.id },
+            create: {
+              title: `Invoice #${invoice.invoiceNumber || "Pending"}`,
+              value: invoice.amount,
+              currency: "USD",
+              status: "OPEN",
+              pipedrive_deal_id: pipedriveDealsResponse.id,
+              customerId: customer.id,
+              lastPipedriveSyncAt: new Date()
+            },
+            update: {
+              value: invoice.amount,
+              lastPipedriveSyncAt: new Date()
+            }
+          });
+
+          // Link invoice to new deal
+          await prisma.invoice.update({
+            where: { id: invoiceId },
+            data: { dealId: deal.id }
+          });
+
+          console.log(`[INVOICE_WORKFLOW] Created Pipedrive deal ${pipedriveDealsResponse.id} for invoice ${invoiceId}`);
+        }
+      }
+
+      // Update deal value in Pipedrive
+      if (deal.pipedrive_deal_id) {
+        await pipedriveService.updateDeal(deal.pipedrive_deal_id, {
+          value: Number(invoice.amount),
+          currency: "USD"
+        });
+
+        // Add note about invoice
+        await pipedriveService.addNoteToDeal(
+          deal.pipedrive_deal_id,
+          `📄 Invoice #${invoice.invoiceNumber || "Pending"} created\n` +
+          `Amount: $${invoice.amount}\n` +
+          `Due: ${invoice.dueDate.toLocaleDateString()}\n` +
+          `Status: ${invoice.status}`
+        );
+
+        // Update Hub deal
+        await prisma.deal.update({
+          where: { id: deal.id },
+          data: {
+            value: invoice.amount,
+            lastPipedriveSyncAt: new Date()
+          }
+        });
+
+        await integrationLogger.logSuccess("PIPEDRIVE", "DEAL_SYNCED", {
+          dealId: deal.id,
+          invoiceId: invoice.id,
+          pipedrive_deal_id: deal.pipedrive_deal_id,
+          amount: invoice.amount
+        });
+      }
+    } catch (error) {
+      await integrationLogger.logError(
+        "PIPEDRIVE",
+        "DEAL_SYNC_FAILED",
+        error instanceof Error ? error : new Error(String(error)),
+        { invoiceId }
+      );
+      // Don't throw - invoice creation should succeed even if Pipedrive sync fails
+      console.error(`[INVOICE_WORKFLOW] Failed to sync invoice ${invoiceId} to Pipedrive:`, error);
+    }
   }
 
 }
