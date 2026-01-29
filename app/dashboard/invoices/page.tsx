@@ -4,9 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
+import { format } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
 import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
+import { Badge } from "@/components/ui/badge";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -217,162 +219,116 @@ export default async function InvoicesPage({
     return sortOrder === "asc" ? " ↑" : " ↓";
   };
 
+  // Helper function to get status badge variant
+  function getStatusVariant(status: InvoiceStatus): "success" | "warning" | "error" | "info" | "default" {
+    switch (status) {
+      case "PAID": return "success";
+      case "SENT": return "info";
+      case "OVERDUE": return "error";
+      case "PARTIALLY_PAID": return "warning";
+      default: return "default";
+    }
+  }
+
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Invoices & Financeiro</h1>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/dashboard/invoices/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-          >
-            Criar Invoice
-          </Link>
-        </div>
-      </div>
-
-      {/* Status Distribution Bar Chart */}
-      <div className="bg-white p-6 rounded-lg shadow mb-6">
-        <h3 className="text-sm font-medium text-gray-500 mb-3">
-          Invoice Status Distribution
-        </h3>
-        <div className="flex w-full h-8 rounded-lg overflow-hidden">
-          {(() => {
-            const totalCount = Object.values(statsMap).reduce((s, v) => s + v.count, 0);
-            const draftPercent = ((statsMap.DRAFT?.count || 0) / totalCount) * 100;
-            const sentPercent = ((statsMap.SENT?.count || 0) / totalCount) * 100;
-            const paidPercent = ((statsMap.PAID?.count || 0) / totalCount) * 100;
-            const overduePercent = ((statsMap.OVERDUE?.count || 0) / totalCount) * 100;
-
-            return (
-              <>
-                {draftPercent > 0 && (
-                  <div
-                    className="bg-gray-400 flex items-center justify-center text-white text-xs font-medium"
-                    style={{ width: `${draftPercent}%` }}
-                    title={`Draft: ${statsMap.DRAFT?.count || 0} (${draftPercent.toFixed(1)}%)`}
-                  >
-                    {draftPercent > 10 && `${draftPercent.toFixed(0)}%`}
-                  </div>
-                )}
-                {sentPercent > 0 && (
-                  <div
-                    className="bg-blue-500 flex items-center justify-center text-white text-xs font-medium"
-                    style={{ width: `${sentPercent}%` }}
-                    title={`Sent: ${statsMap.SENT?.count || 0} (${sentPercent.toFixed(1)}%)`}
-                  >
-                    {sentPercent > 10 && `${sentPercent.toFixed(0)}%`}
-                  </div>
-                )}
-                {paidPercent > 0 && (
-                  <div
-                    className="bg-green-500 flex items-center justify-center text-white text-xs font-medium"
-                    style={{ width: `${paidPercent}%` }}
-                    title={`Paid: ${statsMap.PAID?.count || 0} (${paidPercent.toFixed(1)}%)`}
-                  >
-                    {paidPercent > 10 && `${paidPercent.toFixed(0)}%`}
-                  </div>
-                )}
-                {overduePercent > 0 && (
-                  <div
-                    className="bg-red-500 flex items-center justify-center text-white text-xs font-medium"
-                    style={{ width: `${overduePercent}%` }}
-                    title={`Overdue: ${statsMap.OVERDUE?.count || 0} (${overduePercent.toFixed(1)}%)`}
-                  >
-                    {overduePercent > 10 && `${overduePercent.toFixed(0)}%`}
-                  </div>
-                )}
-              </>
-            );
-          })()}
-        </div>
-        <div className="flex justify-between mt-2 text-xs text-gray-600">
-          <span>Draft: {statsMap.DRAFT?.count || 0}</span>
-          <span>Sent: {statsMap.SENT?.count || 0}</span>
-          <span>Paid: {statsMap.PAID?.count || 0}</span>
-          <span>Overdue: {statsMap.OVERDUE?.count || 0}</span>
-        </div>
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Total Invoices</h3>
-          <p className="text-3xl font-bold mt-2">
-            {Object.values(statsMap).reduce((s, v) => s + v.count, 0)}
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            {qbInvoices} from QuickBooks
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Total Value</h3>
-          <p className="text-3xl font-bold mt-2">
-            ${totalAmount.toLocaleString()}
-          </p>
-          {/* TODO: Add trend indicators when historical snapshots available */}
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Paid</h3>
-          <p className="text-3xl font-bold mt-2 text-green-600">
-            ${paidAmount.toLocaleString()}
-          </p>
-          <p className="text-sm text-green-600 mt-1">
-            {statsMap.PAID?.count || 0} invoices
-          </p>
-          {/* Progress bar showing paid proportion */}
-          <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-            <div
-              className="bg-green-600 h-1 rounded-full transition-all"
-              style={{
-                width: `${Math.min(100, (paidAmount / totalAmount) * 100)}%`,
-              }}
-              title={`${((paidAmount / totalAmount) * 100).toFixed(1)}% of total value`}
-            ></div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-display font-semibold text-gray-900">
+              Invoices
+            </h1>
+            <Link
+              href="/dashboard/invoices/new"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create Invoice
+            </Link>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Pending</h3>
-          <p className="text-3xl font-bold mt-2 text-yellow-600">
-            ${pendingAmount.toLocaleString()}
-          </p>
-          <p className="text-sm text-yellow-600 mt-1">
-            {(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} invoices
-          </p>
-          {/* Progress bar showing pending proportion */}
-          <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-            <div
-              className="bg-yellow-500 h-1 rounded-full transition-all"
-              style={{
-                width: `${Math.min(100, (pendingAmount / totalAmount) * 100)}%`,
-              }}
-              title={`${((pendingAmount / totalAmount) * 100).toFixed(1)}% of total value`}
-            ></div>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-sm font-medium text-gray-500">Overdue</h3>
-          <p className="text-3xl font-bold mt-2 text-red-600">
-            ${overdueAmount.toLocaleString()}
-          </p>
-          <p className="text-sm text-red-600 mt-1">
-            {statsMap.OVERDUE?.count || 0} invoices
-          </p>
-          {/* Progress bar showing overdue proportion */}
-          <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-            <div
-              className="bg-red-600 h-1 rounded-full transition-all"
-              style={{
-                width: `${Math.min(100, (overdueAmount / totalAmount) * 100)}%`,
-              }}
-              title={`${((overdueAmount / totalAmount) * 100).toFixed(1)}% of total value`}
-            ></div>
-          </div>
-        </div>
-      </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        {/* Summary Stats - KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Total Invoices</p>
+            <p className="text-3xl font-bold text-gray-900 tabular-nums">
+              {Object.values(statsMap).reduce((s, v) => s + v.count, 0)}
+            </p>
+            <p className="text-sm text-gray-700 mt-1">
+              {qbInvoices} from QuickBooks
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Total Value</p>
+            <p className="text-3xl font-bold text-gray-900 tabular-nums">
+              ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Paid</p>
+            <p className="text-3xl font-bold text-success-600 tabular-nums">
+              ${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-sm text-gray-700 mt-1">
+              {statsMap.PAID?.count || 0} invoices
+            </p>
+            {/* Progress bar showing paid proportion */}
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div
+                className="bg-success-600 h-1 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, (paidAmount / totalAmount) * 100)}%`,
+                }}
+                title={`${((paidAmount / totalAmount) * 100).toFixed(1)}% of total value`}
+              ></div>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Pending</p>
+            <p className="text-3xl font-bold text-warning-600 tabular-nums">
+              ${pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-sm text-gray-700 mt-1">
+              {(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} invoices
+            </p>
+            {/* Progress bar showing pending proportion */}
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div
+                className="bg-warning-500 h-1 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, (pendingAmount / totalAmount) * 100)}%`,
+                }}
+                title={`${((pendingAmount / totalAmount) * 100).toFixed(1)}% of total value`}
+              ></div>
+            </div>
+          </div>
+          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Overdue</p>
+            <p className="text-3xl font-bold text-error-600 tabular-nums">
+              ${overdueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-sm text-gray-700 mt-1">
+              {statsMap.OVERDUE?.count || 0} invoices
+            </p>
+            {/* Progress bar showing overdue proportion */}
+            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
+              <div
+                className="bg-error-600 h-1 rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, (overdueAmount / totalAmount) * 100)}%`,
+                }}
+                title={`${((overdueAmount / totalAmount) * 100).toFixed(1)}% of total value`}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="flex flex-wrap items-center gap-4 mb-4">
           {/* Search */}
           <form method="GET" className="flex-1 min-w-[200px]">
@@ -411,10 +367,10 @@ export default async function InvoicesPage({
               href={`/dashboard/invoices${search ? `?search=${search}` : ""}${
                 searchParams.status ? `&status=${searchParams.status}` : ""
               }`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 text-sm font-display font-medium rounded-lg transition-colors ${
                 !source
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               All
@@ -423,10 +379,10 @@ export default async function InvoicesPage({
               href={`/dashboard/invoices?source=quickbooks${
                 search ? `&search=${search}` : ""
               }${searchParams.status ? `&status=${searchParams.status}` : ""}`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 text-sm font-display font-medium rounded-lg transition-colors ${
                 source === "quickbooks"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               QuickBooks ({qbInvoices})
@@ -565,8 +521,8 @@ export default async function InvoicesPage({
         </details>
       </div>
 
-      {/* Status Filter Tabs */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        {/* Status Filter Tabs */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-gray-600 mr-2">Status:</span>
           <Link
@@ -605,8 +561,8 @@ export default async function InvoicesPage({
         </div>
       </div>
 
-      {/* Quick Filter Chips */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+        {/* Quick Filter Chips */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-2">
           <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
         </div>
@@ -692,193 +648,138 @@ export default async function InvoicesPage({
         </div>
       </div>
 
-      {/* Invoice List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide momentum-scroll">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  <Link
-                    href={buildSortUrl("invoiceNumber")}
-                    className="hover:text-gray-900 cursor-pointer"
-                  >
-                    Invoice #<SortIndicator field="invoiceNumber" />
-                  </Link>
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Customer
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  <Link
-                    href={buildSortUrl("amount")}
-                    className="hover:text-gray-900 cursor-pointer"
-                  >
-                    Amount<SortIndicator field="amount" />
-                  </Link>
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  <Link
-                    href={buildSortUrl("dueDate")}
-                    className="hover:text-gray-900 cursor-pointer"
-                  >
-                    Due Date<SortIndicator field="dueDate" />
-                  </Link>
-                </th>
-                <th className="hidden md:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Source
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  <Link
-                    href={buildSortUrl("status")}
-                    className="hover:text-gray-900 cursor-pointer"
-                  >
-                    Status<SortIndicator field="status" />
-                  </Link>
-                </th>
-                <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {invoices.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                  No invoices found
-                </td>
-              </tr>
-            ) : (
-              invoices.map((invoice) => {
-                const isOverdue =
-                  invoice.status !== InvoiceStatus.PAID &&
-                  invoice.status !== InvoiceStatus.VOID &&
-                  new Date(invoice.dueDate) < new Date();
-
-                return (
-                  <tr key={invoice.id} className="md:hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                    <td className="px-4 md:px-6 py-4 md:py-4 whitespace-nowrap">
-                      <Link
-                        href={`/dashboard/invoices/${invoice.id}`}
-                        className="text-blue-600 hover:underline font-medium min-h-[44px] flex items-center"
-                      >
-                        {invoice.invoiceNumber || invoice.id.slice(0, 8)}
-                      </Link>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/dashboard/customers/${invoice.customer.id}`}
-                        className="text-blue-600 hover:underline min-h-[44px] flex flex-col justify-center"
-                      >
-                        <div>{invoice.customer.name}</div>
-                        <div className="text-xs text-gray-500 md:block hidden">
-                          {invoice.customer.email}
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap font-medium">
-                      ${Number(invoice.amount).toLocaleString()}
-                    </td>
-                    <td
-                      className={`px-4 md:px-6 py-4 whitespace-nowrap text-sm ${
-                        isOverdue ? "text-red-600 font-medium" : "text-gray-500"
-                      }`}
+        {/* Invoice List */}
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    <Link
+                      href={buildSortUrl("invoiceNumber")}
+                      className="hover:text-gray-900 cursor-pointer"
                     >
-                      {new Date(invoice.dueDate).toLocaleDateString()}
-                      {isOverdue && (
-                        <div className="text-xs text-red-500">Overdue</div>
-                      )}
-                    </td>
-                    <td className="hidden md:table-cell px-6 py-4 whitespace-nowrap">
-                      {invoice.quickbooks_invoice_id ? (
-                        <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
-                          QuickBooks
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                          Manual
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <span
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          invoice.status === InvoiceStatus.PAID
-                            ? "bg-green-100 text-green-800"
-                            : invoice.status === InvoiceStatus.OVERDUE || isOverdue
-                            ? "bg-red-100 text-red-800"
-                            : invoice.status === InvoiceStatus.SENT
-                            ? "bg-blue-100 text-blue-800"
-                            : invoice.status === InvoiceStatus.PARTIALLY_PAID
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                      Invoice #<SortIndicator field="invoiceNumber" />
+                    </Link>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    <Link
+                      href={buildSortUrl("amount")}
+                      className="hover:text-gray-900 cursor-pointer"
+                    >
+                      Amount<SortIndicator field="amount" />
+                    </Link>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    <Link
+                      href={buildSortUrl("dueDate")}
+                      className="hover:text-gray-900 cursor-pointer"
+                    >
+                      Date<SortIndicator field="dueDate" />
+                    </Link>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {invoices.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    No invoices found
+                  </td>
+                </tr>
+              ) : (
+                invoices.map((invoice) => {
+                  const isOverdue =
+                    invoice.status !== InvoiceStatus.PAID &&
+                    invoice.status !== InvoiceStatus.VOID &&
+                    new Date(invoice.dueDate) < new Date();
+
+                  return (
+                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <Link
                           href={`/dashboard/invoices/${invoice.id}`}
-                          className="text-blue-600 hover:underline text-sm"
+                          className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
                         >
-                          View
+                          {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                         </Link>
-                        {(() => {
-                          // Check if user can edit this invoice
-                          const isPaidOrVoid = invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID;
-                          const canEditInvoice = (
-                            userRole === "ADMIN" || 
-                            userRole === "FINANCE" || 
-                            (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId)
-                          ) && !isPaidOrVoid;
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-display text-gray-900">{invoice.customer.name}</div>
+                        <div className="text-xs text-gray-500">{invoice.customer.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-display font-semibold text-gray-900 tabular-nums">
+                        ${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={getStatusVariant(invoice.status)}>
+                          {invoice.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 tabular-nums">
+                        {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <div className="flex items-center gap-3">
+                          <Link
+                            href={`/dashboard/invoices/${invoice.id}`}
+                            className="text-primary-600 hover:text-primary-700 font-medium"
+                          >
+                            View
+                          </Link>
+                          {(() => {
+                            // Check if user can edit this invoice
+                            const isPaidOrVoid = invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID;
+                            const canEditInvoice = (
+                              userRole === "ADMIN" || 
+                              userRole === "FINANCE" || 
+                              (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId)
+                            ) && !isPaidOrVoid;
 
-                          return canEditInvoice ? (
-                            <Link
-                              href={`/dashboard/invoices/${invoice.id}/edit`}
-                              className="text-blue-600 hover:underline text-sm"
-                            >
-                              Edit
-                            </Link>
-                          ) : (
-                            <span
-                              className="text-gray-400 text-sm cursor-not-allowed"
-                              title={
-                                isPaidOrVoid
-                                  ? "Cannot edit paid or voided invoices"
-                                  : "You don't have permission to edit this invoice"
-                              }
-                            >
-                              Edit
-                            </span>
-                          );
-                        })()}
-                        <DeleteInvoiceButton
-                          invoiceId={invoice.id}
-                          invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
-                          hasQuickbooksId={!!invoice.quickbooks_invoice_id}
-                          userRole={userRole}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-          </table>
+                            return canEditInvoice ? (
+                              <Link
+                                href={`/dashboard/invoices/${invoice.id}/edit`}
+                                className="text-primary-600 hover:text-primary-700 font-medium"
+                              >
+                                Edit
+                              </Link>
+                            ) : null;
+                          })()}
+                          <DeleteInvoiceButton
+                            invoiceId={invoice.id}
+                            invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                            hasQuickbooksId={!!invoice.quickbooks_invoice_id}
+                            userRole={userRole}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={totalInvoices}
+            itemsPerPage={ITEMS_PER_PAGE}
+            baseUrl="/dashboard/invoices"
+            searchParams={paginationParams}
+          />
         </div>
-
-        {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalItems={totalInvoices}
-          itemsPerPage={ITEMS_PER_PAGE}
-          baseUrl="/dashboard/invoices"
-          searchParams={paginationParams}
-        />
       </div>
     </div>
   );
