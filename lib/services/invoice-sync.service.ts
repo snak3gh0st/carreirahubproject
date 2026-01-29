@@ -139,6 +139,15 @@ export class InvoiceSyncService {
                     } as any,
                   },
                 });
+
+                // Trigger contract workflow with delay (fire-and-forget)
+                // This spawns async work, doesn't block response
+                const { contractWorkflowService } = await import('@/lib/services/contract-workflow.service');
+                contractWorkflowService.triggerContractAfterDelay(invoiceId, 7).catch(err => {
+                  console.error('[INVOICE_SYNC] Failed to schedule contract generation:', err);
+                  // Don't fail invoice send if contract scheduling fails
+                  // Finance team can manually trigger contract via UI if needed
+                });
               } catch (emailError) {
                 console.error(`[INVOICE_SYNC] ✗ Failed to send QB invoice email for ${qbInvoice.Id}:`, emailError);
 
