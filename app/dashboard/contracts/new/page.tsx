@@ -185,7 +185,7 @@ export default function CreateContractPage() {
         },
         body: JSON.stringify({
           customerId,
-          invoiceId: invoiceId || undefined,
+          invoiceId: invoiceId && invoiceId !== 'none' ? invoiceId : undefined,
           templateId: templateId || undefined,
           signerName,
           signerEmail,
@@ -290,16 +290,17 @@ export default function CreateContractPage() {
                   <SelectValue placeholder={loadingTemplates ? "Loading templates..." : "Select a template"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.length === 0 && !loadingTemplates && (
-                    <SelectItem value="" disabled>
+                  {templates.length === 0 && !loadingTemplates ? (
+                    <SelectItem value="no-templates" disabled>
                       No templates available
                     </SelectItem>
+                  ) : (
+                    templates.map(template => (
+                      <SelectItem key={template.templateId} value={template.templateId}>
+                        {template.name}
+                      </SelectItem>
+                    ))
                   )}
-                  {templates.map(template => (
-                    <SelectItem key={template.templateId} value={template.templateId}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
@@ -332,7 +333,7 @@ export default function CreateContractPage() {
                   <SelectValue placeholder={customerId ? "Select an invoice" : "Select customer first"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No invoice</SelectItem>
+                  <SelectItem value="none">No invoice</SelectItem>
                   {filteredInvoices.map(invoice => (
                     <SelectItem key={invoice.id} value={invoice.id}>
                       {invoice.invoiceNumber || invoice.id} - ${invoice.amount} ({invoice.status})
