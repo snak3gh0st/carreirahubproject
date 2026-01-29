@@ -3,13 +3,19 @@
  * This script checks for required env vars without calling DocuSign API
  */
 
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 const REQUIRED_VARS = [
   'DOCUSIGN_INTEGRATION_KEY',
   'DOCUSIGN_USER_ID',
   'DOCUSIGN_ACCOUNT_ID',
   'DOCUSIGN_PRIVATE_KEY',
   'DOCUSIGN_BASE_URL',
-  'DOCUSIGN_WEBHOOK_SECRET'
+];
+
+const OPTIONAL_VARS = [
+  'DOCUSIGN_WEBHOOK_SECRET'  // Optional - only needed if HMAC is configured in DocuSign Connect
 ];
 
 const GUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -51,6 +57,17 @@ function verifyCredentials() {
         console.error(`✗ ${varName}: Invalid URL (expected https://*.docusign.net)`);
         allValid = false;
       }
+    } else {
+      console.log(`✓ ${varName}: Present`);
+    }
+  }
+  
+  // Check optional variables
+  console.log('\nOptional variables:');
+  for (const varName of OPTIONAL_VARS) {
+    const value = process.env[varName];
+    if (!value) {
+      console.log(`⚠ ${varName}: Not set (optional - HMAC verification disabled)`);
     } else {
       console.log(`✓ ${varName}: Present`);
     }
