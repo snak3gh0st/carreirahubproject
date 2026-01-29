@@ -181,11 +181,11 @@ export default function DashboardPage() {
       <div className="container mx-auto px-4 sm:px-6 py-8">
         {/* Page Header with Greeting */}
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
-            {getGreeting()}, {firstName}! 👋
+          <h1 className="text-5xl font-semibold text-gray-900 mb-2">
+            {getGreeting()}, {firstName}
           </h1>
-          <p className="text-gray-600">
-            Visão geral do seu negócio
+          <p className="text-lg text-gray-500">
+            Here's what's happening with your business today
           </p>
         </div>
 
