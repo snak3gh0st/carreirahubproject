@@ -9,14 +9,20 @@ import { validatePipedriveWebhookSignature } from "@/lib/utils/webhook-validatio
  *
  * Webhook receiver para Person updates no Pipedrive
  *
+ * CORRECT WORKFLOW: Matches Pipedrive persons to existing QuickBooks customers by email
+ * QuickBooks is financial source of truth - persons link to QB customers, not create them
+ *
  * Gatilho: Person atualizado no Pipedrive
  *
  * Fluxo:
  * 1. Validar assinatura do webhook
  * 2. Extrair Person ID do payload
- * 3. Check for conflict (recently synced from Hub)
- * 4. Buscar dados completos do Person via Pipedrive API
- * 5. Usar Identity Mapper para reconciliar Customer
+ * 3. Buscar dados completos do Person via Pipedrive API
+ * 4. Check for existing QB customer by email
+ *    - If QB customer exists → Link pipedrive_id to customer
+ *    - If customer exists without QB → Link pipedrive_id
+ *    - If no customer exists → Create Lead (not Customer - no QB sync yet)
+ * 5. Debounce check prevents webhook loops (5-second window)
  * 6. Logar em IntegrationLog
  */
 export async function POST(request: NextRequest) {
@@ -107,11 +113,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // CONFLICT DETECTION: Check if customer was recently synced from our Hub (prevent webhook loops)
+    // CRITICAL: Check for existing QuickBooks customer by email FIRST
+    // This establishes correct workflow: QB customer exists → link Pipedrive
+    // If no QB customer → create Lead (not Customer - no QB sync yet)
     const existingCustomer = await prisma.customer.findUnique({
       where: { email },
+      select: {
+        id: true,
+        email: true,
+        quickbooks_id: true,
+        pipedrive_id: true,
+        lastPipedriveSyncAt: true,
+      },
     });
 
+    // DEBOUNCE: Prevent webhook loops
     if (existingCustomer?.lastPipedriveSyncAt) {
       const timeSinceSync = Date.now() - existingCustomer.lastPipedriveSyncAt.getTime();
       const DEBOUNCE_MS = 5000; // 5 seconds
@@ -127,39 +143,120 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 4. Usar Identity Mapper para reconciliar Customer
-    const customer = await identityMapper.reconcileCustomer({
-      email,
-      name: personData.name || "Unknown",
-      phone: personData.phone?.[0]?.value,
-      externalIds: {
-        pipedrive_id: personId,
-      },
-      metadata: {
-        pipedrive_person_data: personData,
+    // CASE 1: Customer exists with QuickBooks ID (QB customer found)
+    if (existingCustomer && existingCustomer.quickbooks_id) {
+      // Link Pipedrive person to existing QB customer
+      await prisma.customer.update({
+        where: { id: existingCustomer.id },
+        data: {
+          pipedrive_id: personId,
+          lastPipedriveSyncAt: new Date(),
+        },
+      });
+
+      await prisma.integrationLog.create({
+        data: {
+          service: "PIPEDRIVE",
+          action: "PERSON_LINKED_TO_QB_CUSTOMER",
+          status: "SUCCESS",
+          payload: {
+            eventType,
+            personId,
+            customerId: existingCustomer.id,
+            quickbooks_id: existingCustomer.quickbooks_id,
+            email,
+          } as any,
+        },
+      });
+
+      console.log(
+        `[Pipedrive Webhook Person] Linked Pipedrive person ${personId} to existing QB customer ${existingCustomer.id}`
+      );
+
+      return NextResponse.json({
+        success: true,
+        customerId: existingCustomer.id,
+        message: "Linked Pipedrive person to existing QB customer",
+      });
+    }
+
+    // CASE 2: Customer exists WITHOUT QuickBooks ID (manual Hub entry)
+    if (existingCustomer && !existingCustomer.quickbooks_id) {
+      // Link Pipedrive person to Hub customer
+      await prisma.customer.update({
+        where: { id: existingCustomer.id },
+        data: {
+          pipedrive_id: personId,
+          lastPipedriveSyncAt: new Date(),
+        },
+      });
+
+      await prisma.integrationLog.create({
+        data: {
+          service: "PIPEDRIVE",
+          action: "PERSON_LINKED_TO_HUB_CUSTOMER",
+          status: "SUCCESS",
+          payload: {
+            eventType,
+            personId,
+            customerId: existingCustomer.id,
+            email,
+          } as any,
+        },
+      });
+
+      console.log(
+        `[Pipedrive Webhook Person] Linked Pipedrive person ${personId} to Hub customer ${existingCustomer.id} (no QB sync)`
+      );
+
+      return NextResponse.json({
+        success: true,
+        customerId: existingCustomer.id,
+        message: "Linked Pipedrive person to Hub customer (no QB sync)",
+      });
+    }
+
+    // CASE 3: No customer exists - Create Lead (NOT Customer)
+    // Leads are prospects without QB customer records yet
+    const lead = await prisma.lead.create({
+      data: {
+        email,
+        name: personData.name || "Unknown",
+        phone: personData.phone?.[0]?.value,
+        pipedrive_person_id: personId,
+        status: "NEW",
+        source: "PIPEDRIVE",
+        metadata: {
+          pipedrive_person_data: personData,
+        } as any,
       },
     });
 
-    // 5. Logar em IntegrationLog
     await prisma.integrationLog.create({
       data: {
         service: "PIPEDRIVE",
-        action: "WEBHOOK_PERSON_UPDATED",
+        action: "LEAD_CREATED_FROM_PERSON",
         status: "SUCCESS",
         payload: {
           eventType,
           personId,
-          customerId: customer.id,
+          leadId: lead.id,
           email,
         } as any,
       },
     });
 
+    console.log(
+      `[Pipedrive Webhook Person] Created Lead ${lead.id} from Pipedrive person ${personId}`
+    );
+
     return NextResponse.json({
       success: true,
-      customerId: customer.id,
-      message: "Person processed successfully",
+      leadId: lead.id,
+      message: "Created Lead from Pipedrive person (no QB customer exists)",
     });
+
+
   } catch (error) {
     console.error("Error in Pipedrive person webhook:", error);
 
