@@ -10,19 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 
 ## Current Position
 
-Phase: 5 of 8 (DocuSign Production Setup & Verification)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-01-29 — Completed 05-02-PLAN.md (Automated Contract Workflow & Production Verification)
+Phase: 6 of 8 (Pipedrive Integration Respecting the Whole Workflow of the Hub)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-01-29 — Completed 06-01-PLAN.md (Fix Backwards Workflow and Establish Lead Entry)
 
-Progress: ██████████████████ 94% (19 plans executed)
+Progress: ███████████████████ 95% (20 plans executed)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 19
-- Average duration: 22 minutes
-- Total execution time: 6 hours 56 minutes (not tracking continuation time)
+- Total plans completed: 20
+- Average duration: 21 minutes
+- Total execution time: 6 hours 59 minutes
 
 **By Phase:**
 
@@ -35,8 +35,10 @@ Progress: ██████████████████ 94% (19 plans e
 | 4. Insights (BI & Analytics) | 3/3 | 60 min | 20 min |
 | 2. DocuSign Integration | 4/4 | 14 min | 4 min |
 | 5. DocuSign Production Setup | 2/2 | 12 min | 6 min |
+| 6. Pipedrive Integration | 1/4 | 3 min | 3 min |
 
 **Recent Trend:**
+- Phase 6: 06-01 (3 min) — Fix backwards workflow and establish lead entry
 - Phase 5: 05-02 (continuation) — Automated contract workflow with production verification
 - Phase 5: 05-01 (12 min) — DocuSign production credentials configuration with RSA keypair
 - Phase 2: 02-04 (5 min) — Contract management dashboard with status filtering
@@ -44,7 +46,6 @@ Progress: ██████████████████ 94% (19 plans e
 - Phase 2: 02-02 (4 min) — Template-based contracts with Composite Templates
 - Phase 2: 02-01 (1 min) — DocuSign webhook security with HMAC verification
 - Phase 4: 04-03 (32 min) — Date range filtering and CSV export
-- Phase 4: 04-02 (18 min) — Financial KPIs and data visualization with Recharts
 
 ## Sprint 1 Roadmap
 
@@ -58,7 +59,7 @@ Progress: ██████████████████ 94% (19 plans e
 - Phase 3: Finance Workflow Automation ✅ Complete
 - Phase 4: Insights (BI & Analytics) ✅ Complete
 - Phase 5: DocuSign Production Setup & Verification ✅ Complete (2 of 2 plans)
-- Phase 6: Pipedrive Integration 📋 Planned
+- Phase 6: Pipedrive Integration 🔄 In Progress (1 of 4 plans)
 
 ## Accumulated Context
 
@@ -117,6 +118,15 @@ Recent decisions affecting current work:
 - Series prefix extraction using customer initials for duplicate prevention
 - Fire-and-forget contract scheduling - failures don't block invoice send
 - Different invoice series (customer initials) allows new contracts for different programs
+
+**From Phase 6 (Pipedrive Integration):**
+- Removed invoice creation from deal won webhook (backwards workflow fixed)
+- Deal webhook only updates Hub deal status to match Pipedrive (no financial operations)
+- QuickBooks customer matching by email happens FIRST before creating entities
+- Persons without QB customers become Leads, not Customers
+- PIPEDRIVE added to LeadSource enum for lead tracking
+- Webhook loop prevention via 5-second debounce on lastPipedriveSyncAt
+- QB-first workflow: Check QB customer exists → link Pipedrive → else create Lead
 
 ### Roadmap Evolution
 
@@ -375,9 +385,9 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 ## Session Continuity
 
 Last session: 2026-01-29
-Stopped at: Completed 05-02-PLAN.md (Automated Contract Workflow & Production Verification)
-Resume file: .planning/phases/05-docusign-production-setup--verification/05-02-SUMMARY.md
-Next action: Execute Phase 6 (Pipedrive Integration) - 4 plans in 3 waves to complete hub workflow
+Stopped at: Completed 06-01-PLAN.md (Fix Backwards Workflow and Establish Lead Entry)
+Resume file: .planning/phases/06-pipedrive-integration-respecting-the-whole-workflow-of-the-hub/06-01-SUMMARY.md
+Next action: Execute 06-02-PLAN.md (Customer creation sync to QB + Pipedrive)
 
 ## Sprint 1 Success Criteria
 
