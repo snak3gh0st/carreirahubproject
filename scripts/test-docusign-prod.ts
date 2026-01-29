@@ -1,3 +1,6 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { docusignService } from '@/lib/services/docusign.service';
 
 async function testDocuSignAuth() {
