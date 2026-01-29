@@ -11,6 +11,7 @@ import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InvoiceFilters } from "@/components/invoices/invoice-filters";
 import { FileText, TrendingUp, AlertCircle } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
@@ -285,107 +286,14 @@ export default async function InvoicesPage({
           />
         </div>
 
-      {/* Filter Bar - Simplified like mockup */}
+      {/* Filter Bar - Client Component */}
       <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-          {/* Left side - Filter dropdowns */}
-          <div className="flex flex-wrap items-center gap-3 flex-1">
-            {/* Status Filter Dropdown */}
-            <div className="min-w-[160px]">
-              <select
-                value={searchParams.status || ""}
-                onChange={(e) => {
-                  const params = new URLSearchParams();
-                  if (search) params.set("search", search);
-                  if (source) params.set("source", source);
-                  if (e.target.value) params.set("status", e.target.value);
-                  window.location.href = `/dashboard/invoices${params.toString() ? '?' + params.toString() : ''}`;
-                }}
-                className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-              >
-                <option value="">All Status</option>
-                {Object.entries(statsMap).map(([status, data]) => (
-                  <option key={status} value={status}>
-                    {status} ({data.count})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date Range Quick Filter */}
-            <div className="min-w-[160px]">
-              <select
-                value={(() => {
-                  const today = new Date();
-                  const todayStr = today.toISOString().split('T')[0];
-                  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-                  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-                  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-                  
-                  if (searchParams.dueDateFrom === todayStr && searchParams.dueDateTo === weekFromNow) return "week";
-                  if (searchParams.dueDateFrom === monthStart && searchParams.dueDateTo === monthEnd) return "month";
-                  return "";
-                })()}
-                onChange={(e) => {
-                  const params = new URLSearchParams();
-                  if (search) params.set("search", search);
-                  if (source) params.set("source", source);
-                  if (searchParams.status) params.set("status", searchParams.status);
-                  
-                  if (e.target.value === "week") {
-                    const today = new Date();
-                    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-                    params.set("dueDateFrom", today.toISOString().split('T')[0]);
-                    params.set("dueDateTo", weekFromNow.toISOString().split('T')[0]);
-                  } else if (e.target.value === "month") {
-                    const today = new Date();
-                    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-                    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-                    params.set("dueDateFrom", monthStart.toISOString().split('T')[0]);
-                    params.set("dueDateTo", monthEnd.toISOString().split('T')[0]);
-                  }
-                  
-                  window.location.href = `/dashboard/invoices${params.toString() ? '?' + params.toString() : ''}`;
-                }}
-                className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
-              >
-                <option value="">All Time</option>
-                <option value="week">Due This Week</option>
-                <option value="month">Due This Month</option>
-              </select>
-            </div>
-
-            {/* Search */}
-            <form method="GET" className="flex-1 min-w-[200px]">
-              {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
-              {source && <input type="hidden" name="source" value={source} />}
-              {searchParams.dueDateFrom && <input type="hidden" name="dueDateFrom" value={searchParams.dueDateFrom} />}
-              {searchParams.dueDateTo && <input type="hidden" name="dueDateTo" value={searchParams.dueDateTo} />}
-              <div className="relative">
-                <input
-                  type="text"
-                  name="search"
-                  defaultValue={search}
-                  placeholder="Search invoices..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 text-sm rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                />
-                <svg
-                  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </div>
-            </form>
-          </div>
-        </div>
+        <InvoiceFilters
+          statsMap={statsMap}
+          currentStatus={searchParams.status}
+          currentSearch={search}
+          currentSource={source}
+        />
 
         {/* Advanced Filters - Collapsible */}
         <details className="border-t border-gray-200 pt-4 mt-4">
