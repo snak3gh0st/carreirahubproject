@@ -411,6 +411,7 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 023 | Fix invoice creation: discount not applied, billing address incorrect, email not sent | 2026-01-28 | 6b5c931 | [023-fix-invoice-creation-discount-not-applie](.planning/quick/023-fix-invoice-creation-discount-not-applie/) |
 | 024 | Fix QuickBooks webhook event ID extraction | 2026-01-28 | 57c919c | [024-fix-quickbooks-webhook-event-id-extracti](.planning/quick/024-fix-quickbooks-webhook-event-id-extracti/) |
 | 025 | Add contract generator with DocuSign template selection | 2026-01-29 | fa0f362 | [025-add-contract-generator-page-for-commerci](.planning/quick/025-add-contract-generator-page-for-commerci/) |
+| 026 | Review and redo insights page with proper filters | 2026-01-29 | 757c61c | [026-review-and-redo-insights-page-with-prope](.planning/quick/026-review-and-redo-insights-page-with-prope/) |
 
 ## Session Continuity
 
