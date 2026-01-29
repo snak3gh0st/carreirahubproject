@@ -507,13 +507,14 @@ Plans:
 
 **Depends on:** Phase 5
 
-**Plans:** 4 plans
+**Plans:** 5 plans
 
 Plans:
 - [ ] 06-01-PLAN.md — Fix backwards webhook workflow and establish lead entry (Wave 1)
 - [ ] 06-02-PLAN.md — Customer creation sync to QB + Pipedrive (Wave 1)
 - [ ] 06-03-PLAN.md — Invoice creation → Pipedrive deal update (Wave 2)
-- [ ] 06-04-PLAN.md — Contract signed → Deal won + Commercial notification (Wave 3)
+- [ ] 06-04-PLAN.md — Notification infrastructure and Pipedrive markDealAsWon (Wave 3)
+- [ ] 06-05-PLAN.md — Contract signed → Deal won integration (Wave 3)
 
 **Details:**
 
