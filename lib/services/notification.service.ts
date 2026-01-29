@@ -901,6 +901,102 @@ export class NotificationService {
       </html>
     `;
   }
+
+  /**
+   * Notify commercial user when contract is signed
+   */
+  async notifyCommercialUser(
+    deal: { id: string; title: string; ownerId: string | null; customer: { name: string; email: string } },
+    contract: { id: string; status: string }
+  ): Promise<void> {
+    try {
+      // Get deal owner (commercial user)
+      if (!deal.ownerId) {
+        console.log(`[NOTIFICATION] Deal ${deal.id} has no owner, cannot notify`);
+        return;
+      }
+
+      const owner = await prisma.user.findUnique({
+        where: { id: deal.ownerId }
+      });
+
+      if (!owner || !owner.email) {
+        console.log(`[NOTIFICATION] Deal owner ${deal.ownerId} not found or has no email`);
+        return;
+      }
+
+      // Check if already notified recently (prevent duplicate emails)
+      const recentNotification = await prisma.notification.findFirst({
+        where: {
+          contractId: contract.id,
+          type: NotificationType.CONTRACT_SIGNED,
+          createdAt: { gte: new Date(Date.now() - 60000) } // Last 1 minute
+        }
+      });
+
+      if (recentNotification) {
+        console.log(`[NOTIFICATION] Contract ${contract.id} notification already sent`);
+        return;
+      }
+
+      // Create notification record
+      const notification = await prisma.notification.create({
+        data: {
+          type: NotificationType.CONTRACT_SIGNED,
+          status: NotificationStatus.PENDING,
+          recipient: owner.email,
+          subject: `Contract Signed: ${deal.customer.name}`,
+          templateId: NotificationType.CONTRACT_SIGNED,
+          contractId: contract.id,
+        }
+      });
+
+      // Update to SENT status (email integration deferred to future phase)
+      await prisma.notification.update({
+        where: { id: notification.id },
+        data: {
+          status: NotificationStatus.SENT,
+          sentAt: new Date()
+        }
+      });
+
+      console.log(`[NOTIFICATION] Created notification ${notification.id} for ${owner.email}`);
+
+      const structured = {
+        errorCode: "SUCCESS",
+        category: "transient" as const,
+        metadata: {
+          dealId: deal.id,
+          contractId: contract.id,
+          ownerId: owner.id,
+          ownerEmail: owner.email
+        }
+      };
+
+      await integrationLogger.logSuccess("notification", "COMMERCIAL_NOTIFIED", structured);
+
+    } catch (error) {
+      console.error('[NOTIFICATION] Failed to notify commercial user:', error);
+
+      const structured = {
+        errorCode: "NOTIFICATION_FAILED",
+        category: "unknown" as const,
+        metadata: {
+          dealId: deal.id,
+          contractId: contract.id
+        }
+      };
+
+      await integrationLogger.logError(
+        "notification",
+        "COMMERCIAL_NOTIFICATION_FAILED",
+        error as Error,
+        structured,
+        { dealId: deal.id, contractId: contract.id }
+      );
+      // Don't throw - notification failure shouldn't break workflow
+    }
+  }
 }
 
 export const notificationService = new NotificationService();

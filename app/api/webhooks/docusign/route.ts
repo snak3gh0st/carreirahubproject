@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { contractWorkflowService } from '@/lib/services/contract-workflow.service';
 import { paymentWorkflowService } from '@/lib/services/payment-workflow.service';
+import { pipedriveService } from '@/lib/services/pipedrive.service';
+import { notificationService } from '@/lib/services/notification.service';
 import { ContractStatus } from '@prisma/client';
 import { verifyHmacSignature } from '@/lib/utils/hmac';
+import { integrationLogger } from '@/lib/utils/logger';
 
 /**
  * POST /api/webhooks/docusign
@@ -229,6 +232,64 @@ export async function POST(request: NextRequest) {
                 payload: { contractId: contract.id, invoiceId: contract.invoice.id } as any,
               },
             });
+          }
+        }
+
+        // NEW: Mark Pipedrive deal as WON and notify commercial user
+        if (contract.dealId) {
+          try {
+            const deal = await prisma.deal.findUnique({
+              where: { id: contract.dealId },
+              include: { customer: true }
+            });
+
+            if (deal && deal.customer && deal.pipedrive_deal_id) {
+              // Mark deal as WON in Pipedrive
+              await pipedriveService.markDealAsWon(deal.pipedrive_deal_id);
+              
+              // Add signed contract note to Pipedrive deal
+              const contractUrl = contract.signedS3Url || contract.signedUrl || "No URL";
+              await pipedriveService.addNoteToDeal(
+                deal.pipedrive_deal_id,
+                `✅ Contract signed! Download: ${contractUrl}`
+              );
+              
+              // Update Hub deal status
+              await prisma.deal.update({
+                where: { id: deal.id },
+                data: { 
+                  status: "WON",
+                  lastPipedriveSyncAt: new Date()
+                }
+              });
+
+              await integrationLogger.logSuccess("PIPEDRIVE", "DEAL_MARKED_WON", {
+                dealId: deal.id,
+                contractId: contract.id,
+                pipedrive_deal_id: deal.pipedrive_deal_id
+              });
+
+              // Notify commercial user (properly typed for notificationService)
+              const dealForNotification = {
+                id: deal.id,
+                title: deal.title,
+                ownerId: deal.ownerId,
+                customer: {
+                  name: deal.customer.name,
+                  email: deal.customer.email
+                }
+              };
+              await notificationService.notifyCommercialUser(dealForNotification, contract);
+            }
+          } catch (error) {
+            // Log but don't fail webhook processing
+            await integrationLogger.logError(
+              "PIPEDRIVE",
+              "DEAL_WON_SYNC_FAILED",
+              error instanceof Error ? error : new Error(String(error)),
+              { contractId: contract.id }
+            );
+            console.error("[DOCUSIGN_WEBHOOK] Pipedrive sync failed (non-blocking):", error);
           }
         }
         break;
