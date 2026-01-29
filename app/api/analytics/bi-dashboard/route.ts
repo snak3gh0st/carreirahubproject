@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { InvoiceStatus, DealStatus } from "@prisma/client";
 import { startOfMonth, subMonths, subDays, startOfYear, format } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -31,16 +32,23 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    // FILTER AUDIT: Parse query parameters
-    // ✅ WORKING: Date range filters
+    // Parse query parameters
     const dateRange = searchParams.get("dateRange");
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
     
-    // ❌ BROKEN: These query params are NOT parsed
-    // segment - customer segment filter (active/inactive/churned)
-    // invoiceStatus - multi-select invoice status filter
-    // dealStatus - multi-select deal status filter
+    // Parse new filter params
+    const segment = searchParams.get("segment") || "all";
+    const invoiceStatusParam = searchParams.get("invoiceStatus");
+    const dealStatusParam = searchParams.get("dealStatus");
+    
+    // Parse multi-select filters (comma-separated strings)
+    const invoiceStatusFilter = invoiceStatusParam
+      ? invoiceStatusParam.split(",").filter(Boolean)
+      : [];
+    const dealStatusFilter = dealStatusParam
+      ? dealStatusParam.split(",").filter(Boolean)
+      : [];
 
     let startDate: Date | null = null;
     let endDate: Date | null = null;
@@ -75,15 +83,67 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // ✅ WORKING: Date filter applied to queries
+    // Date filter applied to queries
     const dateFilter = startDate && endDate
       ? { gte: startDate, lte: endDate }
       : undefined;
 
-    // ❌ BROKEN: Missing filter construction for:
-    // - Customer segment filter (need to build where clause based on invoice activity)
-    // - Invoice status filter (need to add status IN array to invoice queries)
-    // - Deal status filter (need to add status IN array to deal queries)
+    // Build customer segment filter
+    // Segment definitions:
+    // - active: customers with invoices in last 90 days
+    // - inactive: customers with invoices but none in last 90 days (>90 days, <180 days)
+    // - churned: customers with last invoice >180 days ago
+    // - all: no filter
+    let customerIdFilter: { in: string[] } | undefined = undefined;
+    
+    if (segment !== "all") {
+      const now = new Date();
+      const ninetyDaysAgo = subDays(now, 90);
+      const oneEightyDaysAgo = subDays(now, 180);
+      
+      if (segment === "active") {
+        // Customers with invoices in last 90 days
+        const activeCustomers = await prisma.invoice.findMany({
+          where: { createdAt: { gte: ninetyDaysAgo } },
+          distinct: ["customerId"],
+          select: { customerId: true },
+        });
+        const customerIds = activeCustomers.map((inv) => inv.customerId);
+        customerIdFilter = customerIds.length > 0 ? { in: customerIds } : undefined;
+      } else if (segment === "inactive") {
+        // Customers with invoices between 90-180 days ago
+        const inactiveCustomers = await prisma.invoice.findMany({
+          where: {
+            createdAt: { gte: oneEightyDaysAgo, lt: ninetyDaysAgo },
+          },
+          distinct: ["customerId"],
+          select: { customerId: true },
+        });
+        const customerIds = inactiveCustomers.map((inv) => inv.customerId);
+        customerIdFilter = customerIds.length > 0 ? { in: customerIds } : undefined;
+      } else if (segment === "churned") {
+        // Customers with last invoice >180 days ago
+        const churnedCustomers = await prisma.invoice.findMany({
+          where: { createdAt: { lt: oneEightyDaysAgo } },
+          distinct: ["customerId"],
+          select: { customerId: true },
+        });
+        const customerIds = churnedCustomers.map((inv) => inv.customerId);
+        customerIdFilter = customerIds.length > 0 ? { in: customerIds } : undefined;
+      }
+    }
+
+    // Build invoice status filter (cast to enum type for Prisma)
+    const invoiceStatusWhereClause =
+      invoiceStatusFilter.length > 0
+        ? { in: invoiceStatusFilter as InvoiceStatus[] }
+        : undefined;
+
+    // Build deal status filter (cast to enum type for Prisma)
+    const dealStatusWhereClause =
+      dealStatusFilter.length > 0
+        ? { in: dealStatusFilter as DealStatus[] }
+        : undefined;
 
     const revenueTrendStartDate = startDate || subMonths(startOfMonth(now), 12);
 
@@ -113,8 +173,9 @@ export async function GET(request: NextRequest) {
       // Total Revenue (sum of amountPaid from PAID invoices)
       prisma.invoice.aggregate({
         where: {
-          status: "PAID",
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: "PAID" }),
           ...(dateFilter && { paidAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         _sum: { amountPaid: true },
       }),
@@ -122,8 +183,9 @@ export async function GET(request: NextRequest) {
       // Overdue Amount (invoices status OVERDUE)
       prisma.invoice.aggregate({
         where: {
-          status: "OVERDUE",
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: "OVERDUE" }),
           ...(dateFilter && { createdAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         _sum: { amount: true },
       }),
@@ -131,8 +193,9 @@ export async function GET(request: NextRequest) {
       // Total Invoiced (sum of all non-draft, non-void invoices)
       prisma.invoice.aggregate({
         where: {
-          status: { notIn: ["DRAFT", "VOID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { notIn: ["DRAFT", "VOID"] } }),
           ...(dateFilter && { createdAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         _sum: { amount: true },
       }),
@@ -140,8 +203,9 @@ export async function GET(request: NextRequest) {
       // Total Paid (sum of amountPaid from PAID or PARTIALLY_PAID invoices)
       prisma.invoice.aggregate({
         where: {
-          status: { in: ["PAID", "PARTIALLY_PAID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["PAID", "PARTIALLY_PAID"] } }),
           ...(dateFilter && { paidAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         _sum: { amountPaid: true },
       }),
@@ -149,8 +213,9 @@ export async function GET(request: NextRequest) {
       // Pending Amount (total invoiced - total paid)
       prisma.invoice.aggregate({
         where: {
-          status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }),
           ...(dateFilter && { createdAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         _sum: { amount: true },
       }),
@@ -159,6 +224,8 @@ export async function GET(request: NextRequest) {
       prisma.invoice.findMany({
         where: {
           createdAt: dateFilter || { gte: subDays(now, 90) },
+          ...(invoiceStatusWhereClause && { status: invoiceStatusWhereClause }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         distinct: ["customerId"],
         select: { customerId: true },
@@ -166,18 +233,24 @@ export async function GET(request: NextRequest) {
 
       // New Customers (created in period)
       prisma.customer.count({
-        where: dateFilter ? { createdAt: dateFilter } : {},
+        where: {
+          ...(dateFilter && { createdAt: dateFilter }),
+          ...(customerIdFilter && { id: customerIdFilter }),
+        },
       }),
 
       // Total Deals
       prisma.deal.count({
-        where: dateFilter ? { createdAt: dateFilter } : {},
+        where: {
+          ...(dateFilter && { createdAt: dateFilter }),
+          ...(dealStatusWhereClause && { status: dealStatusWhereClause }),
+        },
       }),
 
       // Won Deals
       prisma.deal.count({
         where: {
-          status: "WON",
+          ...(dealStatusWhereClause ? { status: dealStatusWhereClause } : { status: "WON" }),
           ...(dateFilter && { createdAt: dateFilter }),
         },
       }),
@@ -193,7 +266,11 @@ export async function GET(request: NextRequest) {
       // Invoice Status Distribution
       prisma.invoice.groupBy({
         by: ["status"],
-        where: dateFilter ? { createdAt: dateFilter } : undefined,
+        where: {
+          ...(dateFilter && { createdAt: dateFilter }),
+          ...(invoiceStatusWhereClause && { status: invoiceStatusWhereClause }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
+        },
         _count: { id: true },
         _sum: { amount: true },
       }),
@@ -201,7 +278,10 @@ export async function GET(request: NextRequest) {
       // Deal Status Distribution
       prisma.deal.groupBy({
         by: ["status"],
-        where: dateFilter ? { createdAt: dateFilter } : undefined,
+        where: {
+          ...(dateFilter && { createdAt: dateFilter }),
+          ...(dealStatusWhereClause && { status: dealStatusWhereClause }),
+        },
         _count: { id: true },
         _sum: { value: true },
       }),
@@ -209,11 +289,12 @@ export async function GET(request: NextRequest) {
       // Revenue by Month (from paid or partially paid invoices)
       prisma.invoice.findMany({
         where: {
-          status: { in: ["PAID", "PARTIALLY_PAID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["PAID", "PARTIALLY_PAID"] } }),
           paidAt: {
             gte: revenueTrendStartDate,
             ...(endDate && { lte: endDate }),
           },
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         select: { paidAt: true, amountPaid: true },
         orderBy: { paidAt: "asc" },
@@ -226,6 +307,8 @@ export async function GET(request: NextRequest) {
             gte: revenueTrendStartDate,
             ...(endDate && { lte: endDate }),
           },
+          ...(invoiceStatusWhereClause && { status: invoiceStatusWhereClause }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         select: { createdAt: true },
       }),
@@ -234,8 +317,9 @@ export async function GET(request: NextRequest) {
       prisma.invoice.groupBy({
         by: ["customerId"],
         where: {
-          status: { in: ["PAID", "PARTIALLY_PAID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["PAID", "PARTIALLY_PAID"] } }),
           ...(dateFilter && { paidAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         _sum: { amountPaid: true },
         orderBy: { _sum: { amountPaid: "desc" } },
@@ -261,7 +345,9 @@ export async function GET(request: NextRequest) {
       // Deals Pipeline by Status
       prisma.deal.groupBy({
         by: ["status"],
-        where: { status: { in: ["OPEN", "WON", "LOST"] } },
+        where: {
+          ...(dealStatusWhereClause ? { status: dealStatusWhereClause } : { status: { in: ["OPEN", "WON", "LOST"] } }),
+        },
         _count: { id: true },
         _sum: { value: true },
       }),
@@ -269,7 +355,8 @@ export async function GET(request: NextRequest) {
       // Invoice Aging (days overdue distribution)
       prisma.invoice.findMany({
         where: {
-          status: { in: ["OVERDUE", "SENT", "PARTIALLY_PAID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["OVERDUE", "SENT", "PARTIALLY_PAID"] } }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         select: {
           amount: true,
@@ -287,8 +374,9 @@ export async function GET(request: NextRequest) {
       // Services sold (from invoice line items)
       prisma.invoice.findMany({
         where: {
-          status: { notIn: ["DRAFT", "VOID"] },
+          ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { notIn: ["DRAFT", "VOID"] } }),
           ...(dateFilter && { createdAt: dateFilter }),
+          ...(customerIdFilter && { customerId: customerIdFilter }),
         },
         select: {
           lineItems: true,
