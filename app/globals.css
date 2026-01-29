@@ -1,5 +1,5 @@
-/* Google Fonts - Inter (Primary) and JetBrains Mono (Monospace) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+/* Google Fonts - Space Grotesk (Display), Inter (Body), and JetBrains Mono (Code) */
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
 
 @tailwind base;
 @tailwind components;

@@ -77,6 +77,9 @@ const config = {
           DEFAULT: 'var(--info-600)',
         },
         
+        // Sigma Intel Brand Color
+        'sigma-blue': '#29ABE2',
+        
         // Neutral Grays
         gray: {
           50: 'var(--gray-50)',
@@ -128,6 +131,7 @@ const config = {
          ======================================== */
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Courier New', 'monospace'],
       },
       
