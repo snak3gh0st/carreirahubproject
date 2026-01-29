@@ -10,12 +10,12 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 
 ## Current Position
 
-Phase: 6 of 8 (Pipedrive Integration Respecting the Whole Workflow of the Hub)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-01-29 — Completed 06-05-PLAN.md (Contract Signed → Pipedrive Deal Won + Notifications)
+Phase: 8 of 8 (Pipedrive Integration) - MILESTONE COMPLETE ✅
+Plan: 5 of 5 in current phase
+Status: Phase complete ✅ Verified (17/17 must-haves passing)
+Last activity: 2026-01-29 — Completed Phase 6 (Pipedrive Integration) - All 5 plans executed
 
-Progress: ████████████████████ 100% (23 plans executed)
+Progress: ████████████████████ 100% (24 plans executed - SPRINT 1 COMPLETE)
 
 ## Performance Metrics
 
@@ -35,7 +35,7 @@ Progress: ████████████████████ 100% (23 
 | 4. Insights (BI & Analytics) | 3/3 | 60 min | 20 min |
 | 2. DocuSign Integration | 4/4 | 14 min | 4 min |
 | 5. DocuSign Production Setup | 2/2 | 12 min | 6 min |
-| 6. Pipedrive Integration | 4/4 | 15 min | 3.75 min |
+| 6. Pipedrive Integration | 5/5 | 19 min | 3.8 min |
 
 **Recent Trend:**
 - Phase 6: 06-05 (4 min) — Contract signed → Pipedrive deal won + notifications
@@ -63,7 +63,7 @@ Progress: ████████████████████ 100% (23 
 - Phase 3: Finance Workflow Automation ✅ Complete
 - Phase 4: Insights (BI & Analytics) ✅ Complete
 - Phase 5: DocuSign Production Setup & Verification ✅ Complete (2 of 2 plans)
-- Phase 6: Pipedrive Integration 🔄 In Progress (2 of 4 plans)
+- Phase 6: Pipedrive Integration ✅ Complete (5 of 5 plans)
 
 ## Accumulated Context
 
@@ -118,6 +118,18 @@ Recent decisions affecting current work:
 - Credential verification script exits with code 0 (ready) or 1 (needs fixing) for CI/CD integration
 - Manual setup required for RSA keypair generation and admin consent (cannot be automated due to DocuSign security requirements)
 - Use setTimeout for 7-minute delayed contract triggering (MVP approach - production hardening documented for future)
+
+**From Phase 6 (Pipedrive Integration):**
+- Deal won webhook no longer creates invoices (backwards workflow removed)
+- Invoice creation drives deal updates, not vice versa
+- Email-based customer matching checks QB first before creating entities
+- Persons without QB customers become Leads (not Customers)
+- Customer creation syncs to both QB and Pipedrive with graceful degradation
+- Pipedrive sync failures logged but don't block operations
+- Fire-and-forget pattern for Pipedrive syncs (doesn't block API responses)
+- Only first invoice in series creates Pipedrive deal (prevents duplicates from installments)
+- 1-minute notification deduplication window prevents webhook retry noise
+- Upsert pattern for deal creation prevents race conditions
 - First invoice detection based on invoice number ending with -001
 - Series prefix extraction using customer initials for duplicate prevention
 - Fire-and-forget contract scheduling - failures don't block invoice send
@@ -357,10 +369,20 @@ None. Phase 1 (QuickBooks Foundation) complete and working in production.
 - ✅ Real-time contract status display on invoice detail page
 - ✅ Production workflow verified end-to-end by user
 
+**Phase 6 Complete - Pipedrive Integration Delivered:**
+- ✅ Fixed backwards workflow (deal won no longer creates invoices)
+- ✅ Customer creation syncs to both QB + Pipedrive
+- ✅ Invoice creation triggers Pipedrive deal sync
+- ✅ Contract signed marks deal as WON and notifies commercial user
+- ✅ Complete end-to-end workflow: Lead → Customer → Invoice → Deal → Contract → Won → Notification
+- ✅ Phase verified with 17/17 must-haves passing
+
+**Sprint 1 Milestone Complete - All 8 Phases Delivered:**
+All phase goals achieved. Hub workflow complete from lead entry to deal won notification.
+
 **Next Steps:**
-1. Execute Phase 6 (Pipedrive Integration) to complete the hub workflow
-2. Connect CRM to existing QuickBooks and DocuSign integrations
-3. Establish correct workflow: Lead → Customer → Invoice → Contract → Deal Won
+1. `/gsd-audit-milestone` - Optional comprehensive audit across phases
+2. `/gsd-complete-milestone` - Archive Sprint 1 and prepare for Sprint 2
 
 ## Quick Tasks Completed
 
