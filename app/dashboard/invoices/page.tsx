@@ -9,6 +9,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
 import { Badge } from "@/components/ui/badge";
+import { StatCard } from "@/components/ui/stat-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FileText, TrendingUp, AlertCircle } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -252,400 +255,294 @@ export default async function InvoicesPage({
         </div>
 
         {/* Summary Stats - KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Total Invoices</p>
-            <p className="text-3xl font-bold text-gray-900 tabular-nums">
-              {Object.values(statsMap).reduce((s, v) => s + v.count, 0)}
-            </p>
-            <p className="text-sm text-gray-700 mt-1">
-              {qbInvoices} from QuickBooks
-            </p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Total Value</p>
-            <p className="text-3xl font-bold text-gray-900 tabular-nums">
-              ${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Paid</p>
-            <p className="text-3xl font-bold text-success-600 tabular-nums">
-              ${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-sm text-gray-700 mt-1">
-              {statsMap.PAID?.count || 0} invoices
-            </p>
-            {/* Progress bar showing paid proportion */}
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div
-                className="bg-success-600 h-1 rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (paidAmount / totalAmount) * 100)}%`,
-                }}
-                title={`${((paidAmount / totalAmount) * 100).toFixed(1)}% of total value`}
-              ></div>
-            </div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Pending</p>
-            <p className="text-3xl font-bold text-warning-600 tabular-nums">
-              ${pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-sm text-gray-700 mt-1">
-              {(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} invoices
-            </p>
-            {/* Progress bar showing pending proportion */}
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div
-                className="bg-warning-500 h-1 rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (pendingAmount / totalAmount) * 100)}%`,
-                }}
-                title={`${((pendingAmount / totalAmount) * 100).toFixed(1)}% of total value`}
-              ></div>
-            </div>
-          </div>
-          <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Overdue</p>
-            <p className="text-3xl font-bold text-error-600 tabular-nums">
-              ${overdueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-sm text-gray-700 mt-1">
-              {statsMap.OVERDUE?.count || 0} invoices
-            </p>
-            {/* Progress bar showing overdue proportion */}
-            <div className="w-full bg-gray-200 rounded-full h-1 mt-2">
-              <div
-                className="bg-error-600 h-1 rounded-full transition-all"
-                style={{
-                  width: `${Math.min(100, (overdueAmount / totalAmount) * 100)}%`,
-                }}
-                title={`${((overdueAmount / totalAmount) * 100).toFixed(1)}% of total value`}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-4 mb-4">
-          {/* Search */}
-          <form method="GET" className="flex-1 min-w-[200px]">
-            {searchParams.status && (
-              <input type="hidden" name="status" value={searchParams.status} />
-            )}
-            {source && <input type="hidden" name="source" value={source} />}
-            <div className="relative">
-              <input
-                type="text"
-                name="search"
-                defaultValue={search}
-                placeholder="Search by invoice #, customer name, or email..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-              <svg
-                className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </form>
-
-          {/* Source Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Source:</span>
-            <Link
-              href={`/dashboard/invoices${search ? `?search=${search}` : ""}${
-                searchParams.status ? `&status=${searchParams.status}` : ""
-              }`}
-              className={`px-4 py-2 text-sm font-display font-medium rounded-lg transition-colors ${
-                !source
-                  ? "bg-primary-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              All
-            </Link>
-            <Link
-              href={`/dashboard/invoices?source=quickbooks${
-                search ? `&search=${search}` : ""
-              }${searchParams.status ? `&status=${searchParams.status}` : ""}`}
-              className={`px-4 py-2 text-sm font-display font-medium rounded-lg transition-colors ${
-                source === "quickbooks"
-                  ? "bg-primary-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              QuickBooks ({qbInvoices})
-            </Link>
-          </div>
-        </div>
-
-        {/* Mobile Filter Button */}
-        <div className="md:hidden border-t pt-4">
-          <MobileFilterModal
-            currentFilters={{
-              dueDateFrom: searchParams.dueDateFrom,
-              dueDateTo: searchParams.dueDateTo,
-              minAmount: searchParams.minAmount,
-              maxAmount: searchParams.maxAmount,
-              paymentMethod: searchParams.paymentMethod,
-            }}
-            preserveParams={{
-              search: search,
-              source: source,
-              status: searchParams.status || "",
-              sortBy: sortBy !== "createdAt" ? sortBy : "",
-              sortOrder: sortOrder !== "desc" ? sortOrder : "",
-            }}
-            filterType="invoices"
-            activeFilterCount={activeFilterCount}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            label="Total Invoices"
+            value={Object.values(statsMap).reduce((s, v) => s + v.count, 0).toString()}
+            description={`${qbInvoices} from QuickBooks`}
+          />
+          <StatCard
+            label="Paid"
+            value={`$${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            change={totalAmount > 0 ? `${((paidAmount / totalAmount) * 100).toFixed(1)}% of total` : undefined}
+            trend="up"
+            icon={<TrendingUp className="w-5 h-5" />}
+            description={`${statsMap.PAID?.count || 0} invoices`}
+          />
+          <StatCard
+            label="Pending"
+            value={`$${pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            change={totalAmount > 0 ? `${((pendingAmount / totalAmount) * 100).toFixed(1)}% of total` : undefined}
+            description={`${(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} invoices`}
+          />
+          <StatCard
+            label="Overdue"
+            value={`$${overdueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            change={totalAmount > 0 ? `${((overdueAmount / totalAmount) * 100).toFixed(1)}% of total` : undefined}
+            trend="down"
+            icon={<AlertCircle className="w-5 h-5" />}
+            description={`${statsMap.OVERDUE?.count || 0} invoices`}
           />
         </div>
 
-        {/* Advanced Filters (Desktop) */}
-        <details className="hidden md:block border-t pt-4">
-          <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
-            <span>Advanced Filters</span>
+      {/* Filter Bar - Simplified like mockup */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+          {/* Left side - Filter dropdowns */}
+          <div className="flex flex-wrap items-center gap-3 flex-1">
+            {/* Status Filter Dropdown */}
+            <div className="min-w-[160px]">
+              <select
+                value={searchParams.status || ""}
+                onChange={(e) => {
+                  const params = new URLSearchParams();
+                  if (search) params.set("search", search);
+                  if (source) params.set("source", source);
+                  if (e.target.value) params.set("status", e.target.value);
+                  window.location.href = `/dashboard/invoices${params.toString() ? '?' + params.toString() : ''}`;
+                }}
+                className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              >
+                <option value="">All Status</option>
+                {Object.entries(statsMap).map(([status, data]) => (
+                  <option key={status} value={status}>
+                    {status} ({data.count})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Date Range Quick Filter */}
+            <div className="min-w-[160px]">
+              <select
+                value={(() => {
+                  const today = new Date();
+                  const todayStr = today.toISOString().split('T')[0];
+                  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+                  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+                  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+                  
+                  if (searchParams.dueDateFrom === todayStr && searchParams.dueDateTo === weekFromNow) return "week";
+                  if (searchParams.dueDateFrom === monthStart && searchParams.dueDateTo === monthEnd) return "month";
+                  return "";
+                })()}
+                onChange={(e) => {
+                  const params = new URLSearchParams();
+                  if (search) params.set("search", search);
+                  if (source) params.set("source", source);
+                  if (searchParams.status) params.set("status", searchParams.status);
+                  
+                  if (e.target.value === "week") {
+                    const today = new Date();
+                    const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                    params.set("dueDateFrom", today.toISOString().split('T')[0]);
+                    params.set("dueDateTo", weekFromNow.toISOString().split('T')[0]);
+                  } else if (e.target.value === "month") {
+                    const today = new Date();
+                    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+                    params.set("dueDateFrom", monthStart.toISOString().split('T')[0]);
+                    params.set("dueDateTo", monthEnd.toISOString().split('T')[0]);
+                  }
+                  
+                  window.location.href = `/dashboard/invoices${params.toString() ? '?' + params.toString() : ''}`;
+                }}
+                className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+              >
+                <option value="">All Time</option>
+                <option value="week">Due This Week</option>
+                <option value="month">Due This Month</option>
+              </select>
+            </div>
+
+            {/* Search */}
+            <form method="GET" className="flex-1 min-w-[200px]">
+              {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
+              {source && <input type="hidden" name="source" value={source} />}
+              {searchParams.dueDateFrom && <input type="hidden" name="dueDateFrom" value={searchParams.dueDateFrom} />}
+              {searchParams.dueDateTo && <input type="hidden" name="dueDateTo" value={searchParams.dueDateTo} />}
+              <div className="relative">
+                <input
+                  type="text"
+                  name="search"
+                  defaultValue={search}
+                  placeholder="Search invoices..."
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 text-sm rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                />
+                <svg
+                  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        {/* Advanced Filters - Collapsible */}
+        <details className="border-t border-gray-200 pt-4 mt-4">
+          <summary className="cursor-pointer text-sm font-display font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
+            <span>More Filters</span>
             {activeFilterCount > 0 && (
-              <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+              <span className="px-2 py-0.5 bg-primary-600 text-white text-xs font-semibold rounded-full">
                 {activeFilterCount}
               </span>
             )}
           </summary>
-          <form method="GET" className="mt-4">
-            {/* Preserve existing filters */}
-            {search && <input type="hidden" name="search" value={search} />}
-            {source && <input type="hidden" name="source" value={source} />}
-            {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
-            {sortBy !== "createdAt" && <input type="hidden" name="sortBy" value={sortBy} />}
-            {sortOrder !== "desc" && <input type="hidden" name="sortOrder" value={sortOrder} />}
+          
+          <div className="mt-4 space-y-4">
+            {/* Quick Filters Chips */}
+            <div>
+              <label className="block text-xs font-display font-medium text-gray-500 uppercase tracking-wide mb-2">
+                Quick Filters
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(() => {
+                  const today = new Date();
+                  const todayStr = today.toISOString().split('T')[0];
+                  const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+                  const weekFromNowStr = weekFromNow.toISOString().split('T')[0];
+                  
+                  const isHighValueActive = searchParams.minAmount === "10000";
+                  const isFromQBActive = source === "quickbooks";
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Date Range */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Due Date From
-                </label>
-                <input
-                  type="date"
-                  name="dueDateFrom"
-                  defaultValue={searchParams.dueDateFrom}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
+                  return (
+                    <>
+                      {/* High Value */}
+                      <Link
+                        href={isHighValueActive ? "/dashboard/invoices" : `/dashboard/invoices?minAmount=10000${search ? `&search=${search}` : ""}${searchParams.status ? `&status=${searchParams.status}` : ""}`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-display font-medium transition whitespace-nowrap ${
+                          isHighValueActive
+                            ? "bg-primary-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        High Value (&gt;$10k)
+                      </Link>
+
+                      {/* From QuickBooks */}
+                      <Link
+                        href={isFromQBActive ? "/dashboard/invoices" : `/dashboard/invoices?source=quickbooks${search ? `&search=${search}` : ""}${searchParams.status ? `&status=${searchParams.status}` : ""}`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-display font-medium transition whitespace-nowrap ${
+                          isFromQBActive
+                            ? "bg-success-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        From QuickBooks ({qbInvoices})
+                      </Link>
+                    </>
+                  );
+                })()}
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Due Date To
-                </label>
-                <input
-                  type="date"
-                  name="dueDateTo"
-                  defaultValue={searchParams.dueDateTo}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
+            </div>
+
+            {/* Advanced Filter Form */}
+            <form method="GET">
+              {search && <input type="hidden" name="search" value={search} />}
+              {source && <input type="hidden" name="source" value={source} />}
+              {searchParams.status && <input type="hidden" name="status" value={searchParams.status} />}
+              {sortBy !== "createdAt" && <input type="hidden" name="sortBy" value={sortBy} />}
+              {sortOrder !== "desc" && <input type="hidden" name="sortOrder" value={sortOrder} />}
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Custom Date Range */}
+                <div>
+                  <label className="block text-xs font-display font-medium text-gray-700 mb-1">
+                    Due Date From
+                  </label>
+                  <input
+                    type="date"
+                    name="dueDateFrom"
+                    defaultValue={searchParams.dueDateFrom}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-display font-medium text-gray-700 mb-1">
+                    Due Date To
+                  </label>
+                  <input
+                    type="date"
+                    name="dueDateTo"
+                    defaultValue={searchParams.dueDateTo}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+
+                {/* Payment Method */}
+                <div>
+                  <label className="block text-xs font-display font-medium text-gray-700 mb-1">
+                    Payment Method
+                  </label>
+                  <select
+                    name="paymentMethod"
+                    defaultValue={searchParams.paymentMethod || ""}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="">All</option>
+                    <option value="CARD">Card</option>
+                    <option value="BANK_TRANSFER">Bank Transfer</option>
+                    <option value="CASH">Cash</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+
+                {/* Amount Range */}
+                <div>
+                  <label className="block text-xs font-display font-medium text-gray-700 mb-1">
+                    Min Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    name="minAmount"
+                    defaultValue={searchParams.minAmount}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-display font-medium text-gray-700 mb-1">
+                    Max Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    name="maxAmount"
+                    defaultValue={searchParams.maxAmount}
+                    placeholder="Unlimited"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
               </div>
 
-              {/* Amount Range */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Amount ($)
-                </label>
-                <input
-                  type="number"
-                  name="minAmount"
-                  defaultValue={searchParams.minAmount}
-                  placeholder="0"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Amount ($)
-                </label>
-                <input
-                  type="number"
-                  name="maxAmount"
-                  defaultValue={searchParams.maxAmount}
-                  placeholder="Unlimited"
-                  step="0.01"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              {/* Payment Method */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Method
-                </label>
-                <select
-                  name="paymentMethod"
-                  defaultValue={searchParams.paymentMethod || ""}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 mt-4">
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-primary-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-primary-700 transition-colors"
                 >
-                  <option value="">All</option>
-                  <option value="CARD">Card</option>
-                  <option value="BANK_TRANSFER">Bank Transfer</option>
-                  <option value="CASH">Cash</option>
-                  <option value="OTHER">Other</option>
-                </select>
+                  Apply Filters
+                </button>
+                <Link
+                  href="/dashboard/invoices"
+                  className="px-5 py-2 text-gray-700 text-sm font-display font-medium hover:text-gray-900 transition-colors"
+                >
+                  Clear All
+                </Link>
               </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-3 mt-4">
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
-              >
-                Apply Filters
-              </button>
-              <Link
-                href="/dashboard/invoices"
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 transition"
-              >
-                Clear Filters
-              </Link>
-            </div>
-          </form>
+            </form>
+          </div>
         </details>
-      </div>
-
-        {/* Status Filter Tabs */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-gray-600 mr-2">Status:</span>
-          <Link
-            href={`/dashboard/invoices${source ? `?source=${source}` : ""}${
-              search ? `${source ? "&" : "?"}search=${search}` : ""
-            }`}
-            className={`px-3 py-1 rounded-md text-sm font-medium ${
-              !searchParams.status
-                ? "bg-gray-800 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-            }`}
-          >
-            All
-          </Link>
-          {Object.entries(statsMap).map(([status, data]) => (
-            <Link
-              key={status}
-              href={`/dashboard/invoices?status=${status}${
-                source ? `&source=${source}` : ""
-              }${search ? `&search=${search}` : ""}`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                searchParams.status === status
-                  ? status === "PAID"
-                    ? "bg-green-600 text-white"
-                    : status === "OVERDUE"
-                    ? "bg-red-600 text-white"
-                    : status === "SENT"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-              }`}
-            >
-              {status} ({data.count})
-            </Link>
-          ))}
-        </div>
-      </div>
-
-        {/* Quick Filter Chips */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
-        </div>
-        <div className="flex md:flex-wrap gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-2 px-2">
-          {(() => {
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            const weekFromNow = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-            const weekFromNowStr = weekFromNow.toISOString().split('T')[0];
-            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-            const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
-
-            const isOverdueActive = searchParams.status === "OVERDUE";
-            const isDueThisWeekActive = searchParams.dueDateFrom === todayStr && searchParams.dueDateTo === weekFromNowStr;
-            const isDueThisMonthActive = searchParams.dueDateFrom === monthStart && searchParams.dueDateTo === monthEnd;
-            const isHighValueActive = searchParams.minAmount === "10000";
-            const isFromQBActive = source === "quickbooks";
-
-            return (
-              <>
-                {/* Overdue */}
-                <Link
-                  href={isOverdueActive ? "/dashboard/invoices" : `/dashboard/invoices?status=OVERDUE`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isOverdueActive
-                      ? "bg-red-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  Overdue
-                </Link>
-
-                {/* Due This Week */}
-                <Link
-                  href={isDueThisWeekActive ? "/dashboard/invoices" : `/dashboard/invoices?dueDateFrom=${todayStr}&dueDateTo=${weekFromNowStr}`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isDueThisWeekActive
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  Due This Week
-                </Link>
-
-                {/* Due This Month */}
-                <Link
-                  href={isDueThisMonthActive ? "/dashboard/invoices" : `/dashboard/invoices?dueDateFrom=${monthStart}&dueDateTo=${monthEnd}`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isDueThisMonthActive
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  Due This Month
-                </Link>
-
-                {/* High Value */}
-                <Link
-                  href={isHighValueActive ? "/dashboard/invoices" : `/dashboard/invoices?minAmount=10000`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isHighValueActive
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  High Value (&gt;$10k)
-                </Link>
-
-                {/* From QuickBooks */}
-                <Link
-                  href={isFromQBActive ? "/dashboard/invoices" : `/dashboard/invoices?source=quickbooks`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isFromQBActive
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  From QuickBooks
-                </Link>
-              </>
-            );
-          })()}
-        </div>
       </div>
 
         {/* Invoice List */}
@@ -692,8 +589,12 @@ export default async function InvoicesPage({
             <tbody className="bg-white divide-y divide-gray-200">
               {invoices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No invoices found
+                  <td colSpan={6} className="p-0">
+                    <EmptyState
+                      icon={<FileText className="w-16 h-16" />}
+                      title="No invoices found"
+                      description="Try adjusting your filters or create a new invoice to get started."
+                    />
                   </td>
                 </tr>
               ) : (
