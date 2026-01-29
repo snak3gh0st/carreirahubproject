@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Pagination } from "@/components/ui/pagination";
 import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
+import { StatCard } from "@/components/ui/stat-card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Users, TrendingUp, AlertCircle } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -237,16 +241,53 @@ export default async function CustomersPage({
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Customers</h1>
-        <Link
-          href="/dashboard/customers/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
-        >
-          Add Customer
-        </Link>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-display font-semibold text-gray-900">
+              Customers
+            </h1>
+            <Link
+              href="/dashboard/customers/new"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Customer
+            </Link>
+          </div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <StatCard
+            label="Total Customers"
+            value={stats._count.id.toString()}
+            icon={<Users className="w-5 h-5" />}
+          />
+          <StatCard
+            label="With Invoices"
+            value={customersWithInvoices.toString()}
+            change={`${((customersWithInvoices / stats._count.id) * 100).toFixed(1)}% of total`}
+            trend="up"
+            icon={<TrendingUp className="w-5 h-5" />}
+          />
+          <StatCard
+            label="From QuickBooks"
+            value={qbCustomers.toString()}
+            description="Synced from QB"
+          />
+          <StatCard
+            label="With Overdue"
+            value={customersWithOverdue.toString()}
+            trend="down"
+            icon={<AlertCircle className="w-5 h-5" />}
+            description={customersWithOverdue > 0 ? "Need attention" : "All good"}
+          />
+        </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -585,12 +626,12 @@ export default async function CustomersPage({
       </div>
 
       {/* Customer List */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto scrollbar-hide momentum-scroll">
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 <Link
                   href={buildSortUrl("name")}
                   className="hover:text-gray-900 cursor-pointer"
@@ -598,7 +639,7 @@ export default async function CustomersPage({
                   Name<SortIndicator field="name" />
                 </Link>
               </th>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 <Link
                   href={buildSortUrl("email")}
                   className="hover:text-gray-900 cursor-pointer"
@@ -606,33 +647,29 @@ export default async function CustomersPage({
                   Email<SortIndicator field="email" />
                 </Link>
               </th>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Phone
               </th>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                Source
-              </th>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Invoices
               </th>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Balance
               </th>
-              <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                <Link
-                  href={buildSortUrl("createdAt")}
-                  className="hover:text-gray-900 cursor-pointer"
-                >
-                  Created<SortIndicator field="createdAt" />
-                </Link>
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                Status
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {customers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                  No customers found
+                <td colSpan={6} className="p-0">
+                  <EmptyState
+                    icon={<Users className="w-16 h-16" />}
+                    title="No customers found"
+                    description="Get started by adding your first customer or adjust your filters."
+                  />
                 </td>
               </tr>
             ) : (
@@ -744,6 +781,7 @@ export default async function CustomersPage({
           baseUrl="/dashboard/customers"
           searchParams={paginationParams}
         />
+      </div>
       </div>
     </div>
   );
