@@ -469,6 +469,153 @@ export class ContractWorkflowService {
   }
 
   /**
+   * Detect if this is the first invoice for this customer in this invoice series
+   * 
+   * Invoice series examples:
+   * - "JD-2026-01-001" -> series prefix "JD" (customer initials)
+   * - "AB-2026-01-001" -> series prefix "AB"
+   * 
+   * First invoice: invoice number ends in -001 (first in series)
+   */
+  async isFirstInvoiceInSeries(invoiceId: string): Promise<{
+    isFirst: boolean;
+    seriesPrefix: string | null;
+    existingContract: any | null;
+  }> {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      include: { customer: true }
+    });
+    
+    if (!invoice || !invoice.invoiceNumber) {
+      return { isFirst: false, seriesPrefix: null, existingContract: null };
+    }
+    
+    // Extract series prefix from invoice number (e.g., "JD-2026-01-001" -> "JD")
+    const match = invoice.invoiceNumber.match(/^([A-Z]+)-/);
+    const seriesPrefix = match ? match[1] : null;
+    
+    if (!seriesPrefix) {
+      console.log(`[CONTRACT_WORKFLOW] No series prefix detected in invoice number: ${invoice.invoiceNumber}`);
+      return { isFirst: false, seriesPrefix: null, existingContract: null };
+    }
+    
+    // Check if invoice number ends with -001 (first invoice)
+    const isFirst = invoice.invoiceNumber.endsWith('-001');
+    
+    if (!isFirst) {
+      console.log(`[CONTRACT_WORKFLOW] Not first invoice in series (${invoice.invoiceNumber})`);
+      return { isFirst: false, seriesPrefix, existingContract: null };
+    }
+    
+    // Check if customer already has contract for this series
+    const invoicesInSeries = await prisma.invoice.findMany({
+      where: {
+        customerId: invoice.customerId,
+        invoiceNumber: { startsWith: `${seriesPrefix}-` }
+      },
+      select: { id: true }
+    });
+    
+    const existingContract = await prisma.contract.findFirst({
+      where: {
+        customerId: invoice.customerId,
+        invoiceId: {
+          in: invoicesInSeries.map(i => i.id)
+        }
+      }
+    });
+    
+    if (existingContract) {
+      console.log(`[CONTRACT_WORKFLOW] Customer already has contract for series ${seriesPrefix}: ${existingContract.id}`);
+    }
+    
+    return { isFirst: true, seriesPrefix, existingContract };
+  }
+
+  /**
+   * Trigger contract generation after 5-10 minute delay
+   * Only for first invoice in series, with duplicate prevention
+   * 
+   * MVP Implementation: Uses setTimeout (7 minutes)
+   * Production Note: setTimeout may not be reliable in Vercel serverless (10s timeout)
+   * Future production hardening: Use Vercel Cron + database flag or BullMQ queue
+   */
+  async triggerContractAfterDelay(invoiceId: string, delayMinutes: number = 7): Promise<void> {
+    console.log(`[CONTRACT_WORKFLOW] Scheduling contract generation for invoice ${invoiceId} in ${delayMinutes} minutes`);
+    
+    // Use setTimeout for delay (MVP approach)
+    // Better approach for production: Use Vercel Cron or external queue
+    setTimeout(async () => {
+      try {
+        console.log(`[CONTRACT_WORKFLOW] Delay complete, checking if contract should be generated for invoice ${invoiceId}`);
+        
+        // Check if this is first invoice and no existing contract
+        const { isFirst, seriesPrefix, existingContract } = await this.isFirstInvoiceInSeries(invoiceId);
+        
+        if (!isFirst) {
+          console.log(`[CONTRACT_WORKFLOW] Skipping contract - not first invoice in series`);
+          return;
+        }
+        
+        if (existingContract) {
+          console.log(`[CONTRACT_WORKFLOW] Skipping contract - customer already has contract for series ${seriesPrefix}`);
+          
+          // TODO: Alert commercial team about duplicate attempt
+          // await notificationService.alertCommercialTeam({
+          //   type: 'DUPLICATE_CONTRACT_ATTEMPT',
+          //   invoiceId,
+          //   existingContractId: existingContract.id,
+          //   seriesPrefix
+          // });
+          
+          return;
+        }
+        
+        // All checks passed - generate contract
+        console.log(`[CONTRACT_WORKFLOW] Generating contract for first invoice ${invoiceId} in series ${seriesPrefix}`);
+        
+        const invoice = await prisma.invoice.findUnique({
+          where: { id: invoiceId },
+          include: { 
+            customer: true, 
+            deal: true 
+          }
+        });
+        
+        if (!invoice) {
+          console.error(`[CONTRACT_WORKFLOW] Invoice ${invoiceId} not found`);
+          return;
+        }
+        
+        // Generate and send contract
+        await this.sendContractOnApproval(invoice as any);
+        
+        console.log(`[CONTRACT_WORKFLOW] Contract sent successfully for invoice ${invoiceId}`);
+        
+      } catch (error) {
+        console.error(`[CONTRACT_WORKFLOW] Failed to generate contract after delay:`, error);
+        
+        // Don't throw - invoice is already sent, just log error
+        // Finance team can manually retry contract generation
+        const { integrationLogger } = await import("@/lib/utils/logger");
+        await integrationLogger.logError(
+          'contract-workflow',
+          'delayed_contract_generation',
+          error as Error,
+          { 
+            errorCode: "DELAYED_CONTRACT_FAILED",
+            category: "unknown",
+          },
+          { invoiceId }
+        );
+      }
+    }, delayMinutes * 60 * 1000);
+    
+    console.log(`[CONTRACT_WORKFLOW] Contract generation scheduled`);
+  }
+
+  /**
    * Get contract status by ID
    */
   async getContractStatus(contractId: string): Promise<any> {
