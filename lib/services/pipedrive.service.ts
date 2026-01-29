@@ -135,9 +135,34 @@ export class PipedriveService {
     email?: string;
     phone?: string;
   }): Promise<any> {
-    return this.request("/persons", {
-      method: "POST",
-      body: JSON.stringify(data),
+    return this.circuitBreaker.execute(async () => {
+      const response = await fetch(
+        `${this.baseUrl}/persons`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: data.name,
+            email: data.email ? [data.email] : undefined, // Pipedrive expects array
+            phone: data.phone ? [{ value: data.phone, primary: true }] : undefined
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Pipedrive API error: ${response.status} - ${error}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(`Pipedrive createPerson failed: ${result.error}`);
+      }
+
+      return result.data;
     });
   }
 
