@@ -30,6 +30,7 @@ Sprint 1 Phases:
 - [x] **Phase 3: Finance Workflow Automation** - End-to-end Deal → Invoice → Contract
 - [x] **Phase 4: Insights (BI & Analytics)** - Comprehensive BI dashboard with KPIs, charts, analytics, date filtering, and CSV export
 - [ ] **Phase 5: DocuSign Production Setup** - Production environment configuration and verification
+- [ ] **Phase 6: Pipedrive Integration** - Complete CRM integration respecting the whole workflow of the hub
 
 ## Phase Details
 
@@ -487,10 +488,47 @@ Plans:
 
 ---
 
+### Phase 6: Pipedrive Integration Respecting the Whole Workflow of the Hub
+
+**Goal:** Integrate Pipedrive CRM with the Hub's complete workflow, ensuring QuickBooks remains the source of truth for financial data while Pipedrive manages lead/deal lifecycle.
+
+**Status**: 📋 Planned
+
+**Depends on:** Phase 5
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Fix backwards webhook workflow and establish lead entry (Wave 1)
+- [ ] 06-02-PLAN.md — Customer creation sync to QB + Pipedrive (Wave 1)
+- [ ] 06-03-PLAN.md — Invoice creation → Pipedrive deal update (Wave 2)
+- [ ] 06-04-PLAN.md — Contract signed → Deal won + Commercial notification (Wave 3)
+
+**Details:**
+
+**Correct Workflow Sequence:**
+1. Lead Entry: Pipedrive person → Hub → Match by email with QB customers
+2. Customer Creation: Hub → Sync to BOTH QB + Pipedrive
+3. Invoice Creation: Hub/QB → Updates Pipedrive deal amount (auto-creates deal if needed)
+4. Contract Signed: DocuSign → Marks Pipedrive deal as WON → Notifies commercial user
+
+**Key Fixes:**
+- CRITICAL: Removes invoice creation from deal won webhook (backwards logic)
+- Establishes correct workflow: Invoice drives deal updates, not vice versa
+- Maintains QuickBooks as financial source of truth
+- Graceful degradation if Pipedrive unavailable
+
+**Wave Structure:**
+- Wave 1 (parallel): Fix deal webhook, enhance person webhook, customer sync
+- Wave 2: Invoice → deal sync (depends on customer sync)
+- Wave 3: Contract → deal won + notifications (depends on deal sync)
+
+---
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -500,11 +538,12 @@ Phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5
 | 2. DocuSign Integration | 4/4 | ✅ Complete | 2026-01-23 |
 | 3. Finance Workflow Automation | 2/2 | ✅ Complete | 2026-01-15 |
 | 4. Insights (BI & Analytics) | 3/3 | ✅ Complete | 2026-01-15 |
-| 5. DocuSign Production Setup | 0/? | 📋 Planned | - |
+| 5. DocuSign Production Setup | 1/2 | 🔄 In Progress | - |
+| 6. Pipedrive Integration | 0/4 | 📋 Planned | - |
 
-**Status:** 6 of 7 phases complete! 17 plans executed successfully. Phase 5 ready for planning.
+**Status:** 6 of 8 phases complete! 18 plans executed successfully. Phase 6 planned with 4 plans in 3 waves.
 
-**Next Action:** Run `/gsd-plan-phase 5` to break down DocuSign production setup tasks.
+**Next Action:** Complete Phase 5 Plan 05-02, then execute Phase 6 with `/gsd-execute-phase 6`
 
 ---
 
