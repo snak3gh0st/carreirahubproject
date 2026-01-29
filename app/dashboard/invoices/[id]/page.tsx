@@ -10,7 +10,8 @@ import { PaymentStatusCard } from "@/components/invoices/payment-status-card";
 import { CollectionCallButton } from "@/components/invoices/collection-call-button";
 import { CollectionCallHistory } from "@/components/invoices/collection-call-history";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
-import { Edit, Download, ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Edit, Download, ArrowLeft, FileText, DollarSign, Calendar } from "lucide-react";
 
 /**
  * Invoice Detail Page with full workflow status
@@ -185,148 +186,162 @@ export default async function InvoiceDetailPage({
     },
   ];
 
+  // Badge variant for status
+  const statusVariant = invoice.status === InvoiceStatus.PAID 
+    ? "success" 
+    : isOverdue 
+    ? "error" 
+    : invoice.status === InvoiceStatus.SENT 
+    ? "info" 
+    : "default";
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Back Link */}
-      <Link
-        href="/dashboard/invoices"
-        className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to Invoices
-      </Link>
-
-      {/* Header Section with Actions */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-          {/* Title */}
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-bold text-gray-900">
-              Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
-            </h1>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            {canEdit ? (
-              <Link
-                href={`/dashboard/invoices/${invoice.id}/edit`}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <Edit className="w-4 h-4" />
-                Edit
-              </Link>
-            ) : (
-              <button
-                disabled
-                title={
-                  invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID
-                    ? `Cannot edit ${String(invoice.status).toLowerCase()} invoices`
-                    : "You don't have permission to edit this invoice"
-                }
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-300 text-gray-500 text-sm font-medium rounded-lg cursor-not-allowed opacity-60"
-              >
-                <Edit className="w-4 h-4" />
-                Edit
-              </button>
-            )}
-            
-            <DeleteInvoiceButton
-              invoiceId={invoice.id}
-              invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
-              hasQuickbooksId={!!invoice.quickbooks_invoice_id}
-              userRole={userRole}
-            />
-
-            {invoice.pdfUrl && (
-              <a
-                href={invoice.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gray-600 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Download PDF
-              </a>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Key Financial Information - Prominent Display */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Amount Card */}
-        <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
-          <p className="text-sm font-medium text-gray-600 mb-2">Total Amount</p>
-          <p className="text-4xl font-bold text-gray-900">
-            {Number(invoice.amount).toLocaleString("en-US", {
-              style: "currency",
-              currency: "USD",
-            })}
-          </p>
-        </div>
-
-        {/* Status Card */}
-        <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${
-          invoice.status === InvoiceStatus.PAID
-            ? "border-green-500"
-            : isOverdue
-            ? "border-red-500"
-            : invoice.status === InvoiceStatus.SENT
-            ? "border-blue-500"
-            : "border-gray-300"
-        }`}>
-          <p className="text-sm font-medium text-gray-600 mb-2">Status</p>
-          <span
-            className={`inline-block px-4 py-2 text-lg font-bold rounded-lg ${
-              invoice.status === InvoiceStatus.PAID
-                ? "bg-green-100 text-green-800"
-                : isOverdue
-                ? "bg-red-100 text-red-800"
-                : invoice.status === InvoiceStatus.SENT
-                ? "bg-blue-100 text-blue-800"
-                : "bg-gray-100 text-gray-800"
-            }`}
-          >
-            {invoice.status}
-            {isOverdue && invoice.status !== InvoiceStatus.PAID && " (Overdue)"}
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto p-6 md:p-8 max-w-7xl space-y-6">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Link href="/dashboard/invoices" className="hover:text-primary-600 transition-colors">
+            Invoices
+          </Link>
+          <span>›</span>
+          <span className="text-gray-900 font-medium">
+            {invoice.invoiceNumber || invoice.id.slice(0, 8)}
           </span>
         </div>
 
-        {/* Due Date Card */}
-        <div className={`bg-white rounded-lg shadow p-6 border-l-4 ${
-          isOverdue && invoice.status !== InvoiceStatus.PAID ? "border-orange-500" : "border-gray-300"
-        }`}>
-          <p className="text-sm font-medium text-gray-600 mb-2">Due Date</p>
-          <p className={`text-3xl font-bold ${
-            isOverdue && invoice.status !== InvoiceStatus.PAID ? "text-red-600" : "text-gray-900"
-          }`}>
-            {new Date(invoice.dueDate).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric"
-            })}
-          </p>
-          {isOverdue && invoice.status !== InvoiceStatus.PAID && (
-            <p className="text-sm font-semibold text-red-600 mt-1">
-              Overdue by {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
-            </p>
-          )}
+        {/* Header Section with Actions */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            {/* Title and Status */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-3xl font-display font-semibold text-gray-900">
+                  Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                </h1>
+                <Badge variant={statusVariant}>
+                  {invoice.status}
+                  {isOverdue && invoice.status !== InvoiceStatus.PAID && " (Overdue)"}
+                </Badge>
+              </div>
+              <p className="text-gray-600">
+                Customer: <Link href={`/dashboard/customers/${invoice.customer.id}`} className="text-primary-600 hover:text-primary-700 font-medium">{invoice.customer.name}</Link>
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              {canEdit ? (
+                <Link
+                  href={`/dashboard/invoices/${invoice.id}/edit`}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Invoice
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  title={
+                    invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID
+                      ? `Cannot edit ${String(invoice.status).toLowerCase()} invoices`
+                      : "You don't have permission to edit this invoice"
+                  }
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-300 text-gray-500 text-sm font-display font-semibold rounded-lg cursor-not-allowed opacity-60"
+                >
+                  <Edit className="w-4 h-4" />
+                  Edit Invoice
+                </button>
+              )}
+
+              {invoice.pdfUrl && (
+                <a
+                  href={invoice.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 text-gray-700 text-sm font-display font-semibold rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  Download PDF
+                </a>
+              )}
+              
+              <DeleteInvoiceButton
+                invoiceId={invoice.id}
+                invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                hasQuickbooksId={!!invoice.quickbooks_invoice_id}
+                userRole={userRole}
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Approval Section */}
-      {/* Workflow Timeline */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Workflow Progress</h2>
-        <WorkflowTimeline steps={workflowSteps} />
-      </div>
+        {/* Key Financial Information */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Amount Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Total Amount</p>
+              <DollarSign className="h-5 w-5 text-gray-400" />
+            </div>
+            <p className="text-4xl font-bold text-gray-900 tabular-nums">
+              {Number(invoice.amount).toLocaleString("en-US", {
+                style: "currency",
+                currency: "USD",
+              })}
+            </p>
+          </div>
 
-      {/* Main Content: Two-Column Layout (Invoice Details + Customer Info) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Invoice Details */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Invoice Details</h2>
+          {/* Due Date Card */}
+          <div className={`bg-white border rounded-lg p-6 ${
+            isOverdue && invoice.status !== InvoiceStatus.PAID ? "border-error-500 bg-error-50" : "border-gray-200"
+          }`}>
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Due Date</p>
+              <Calendar className="h-5 w-5 text-gray-400" />
+            </div>
+            <p className={`text-3xl font-bold tabular-nums ${
+              isOverdue && invoice.status !== InvoiceStatus.PAID ? "text-error-600" : "text-gray-900"
+            }`}>
+              {new Date(invoice.dueDate).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric"
+              })}
+            </p>
+            {isOverdue && invoice.status !== InvoiceStatus.PAID && (
+              <p className="text-sm font-semibold text-error-600 mt-2">
+                Overdue by {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
+              </p>
+            )}
+          </div>
+
+          {/* Created Date Card */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <div className="flex items-start justify-between mb-2">
+              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Created Date</p>
+              <FileText className="h-5 w-5 text-gray-400" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900 tabular-nums">
+              {new Date(invoice.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric"
+              })}
+            </p>
+          </div>
+        </div>
+
+        {/* Workflow Timeline */}
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 className="text-xl font-display font-semibold text-gray-900 mb-6">Workflow Progress</h2>
+          <WorkflowTimeline steps={workflowSteps} />
+        </div>
+
+        {/* Main Content: Two-Column Layout (Invoice Details + Customer Info) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column: Invoice Details */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-xl font-display font-semibold text-gray-900 mb-6">Invoice Details</h2>
           <div className="space-y-6">
             {/* Basic Info Grid */}
             <div className="grid grid-cols-2 gap-4">
@@ -673,6 +688,7 @@ export default async function InvoiceDetailPage({
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
