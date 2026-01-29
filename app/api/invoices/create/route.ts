@@ -7,6 +7,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 import { contractWorkflowService } from "@/lib/services/contract-workflow.service";
+import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
 import { addMonths } from "@/lib/utils/date";
 
 const createInvoiceSchema = z.object({
@@ -614,6 +615,14 @@ export async function POST(request: NextRequest) {
           },
         });
       }
+    }
+
+    // NEW: Sync first invoice to Pipedrive deal (fire-and-forget)
+    if (invoiceCountToCreate > 0 && invoices[0]) {
+      const firstInvoice = invoices[0];
+      invoiceWorkflowService.syncInvoiceToPipedriveDeal(firstInvoice.id).catch((error) => {
+        console.error("[INVOICE_CREATE] Pipedrive sync failed (non-blocking):", error);
+      });
     }
 
     return NextResponse.json({
