@@ -6,6 +6,7 @@ import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
 import { format } from "date-fns";
 import { DeleteInvoiceButtonCustomer } from "@/components/customers/delete-invoice-button-customer";
+import { DeleteCustomerButton } from "@/components/customers/delete-customer-button";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { User, Mail, Phone, FileText, DollarSign, AlertCircle } from "lucide-react";
@@ -224,6 +225,12 @@ export default async function CustomerDetailPage({
               >
                 Edit Customer
               </Link>
+              <DeleteCustomerButton
+                customerId={customer.id}
+                customerName={customer.name}
+                quickbooksId={customer.quickbooks_id}
+                userRole={userRole}
+              />
               <Link
                 href={`/dashboard/contracts/new?customerId=${customer.id}`}
                 className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-display font-medium rounded-lg hover:bg-gray-50 transition-colors"
