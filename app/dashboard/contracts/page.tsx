@@ -128,6 +128,13 @@ export default function ContractsPage() {
             <h1 className="text-3xl font-display font-semibold text-gray-900">Contracts</h1>
             <p className="text-gray-600 mt-1">Manage DocuSign contracts and track signature status</p>
           </div>
+          <Link
+            href="/dashboard/contracts/new"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+          >
+            <Plus className="h-5 w-5" />
+            <span className="hidden sm:inline">Create Contract</span>
+          </Link>
         </div>
 
         {/* KPI Cards */}
