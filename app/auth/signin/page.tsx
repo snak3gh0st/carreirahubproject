@@ -39,8 +39,10 @@ function SignInForm() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="max-w-md w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-4 sm:px-6 py-8">
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="max-w-md w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Carreira AI Hub
@@ -108,6 +110,8 @@ function SignInForm() {
             💡 Usuário de teste: admin@carreirausa.com
           </p>
         </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -116,7 +120,7 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
         <div className="text-gray-600">Carregando...</div>
       </div>
     }>
