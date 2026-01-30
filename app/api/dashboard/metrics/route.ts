@@ -100,7 +100,10 @@ export async function GET(request: NextRequest) {
         where: invoiceWhereInvoiceStatus,
       }),
       prisma.invoice.findMany({
-        where: invoiceWhereInvoiceStatus,
+        where: {
+          ...invoiceWhereInvoiceStatus,
+          ...invoiceWhereCreatedAt,
+        },
         select: {
           status: true,
           dueDate: true,
@@ -111,7 +114,9 @@ export async function GET(request: NextRequest) {
           customerId: true,
         },
       }),
-      prisma.customer.count(),
+      prisma.customer.count({
+        where: dateFilter ? { createdAt: dateFilter } : {},
+      }),
       prisma.customer.count({
         where: { createdAt: { gte: startOfMonth } },
       }),
