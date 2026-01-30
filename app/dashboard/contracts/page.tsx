@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { format } from 'date-fns';
 import { StatCard } from '@/components/ui/stat-card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -106,18 +107,11 @@ export default function ContractsPage() {
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return format(new Date(dateStr), 'MMM dd, yyyy');
   };
 
   const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(parseFloat(amount));
+    return `$${Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const totalContracts = Object.values(counts).reduce((a, b) => a + b, 0);
@@ -168,8 +162,8 @@ export default function ContractsPage() {
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => updateFilters('', searchTerm)}
-              className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                !activeStatus ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
+                !activeStatus ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
               All ({totalContracts})
@@ -181,10 +175,10 @@ export default function ContractsPage() {
                 <button
                   key={status}
                   onClick={() => updateFilters(status, searchTerm)}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                     activeStatus === status
                       ? 'bg-primary-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   {config.label} ({count})
@@ -200,11 +194,11 @@ export default function ContractsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by customer name or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && updateFilters(activeStatus, searchTerm)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Search by customer name or email..."
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
         </div>
@@ -274,8 +268,8 @@ export default function ContractsPage() {
                           <tr key={contract.id} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div>
-                                <div className="font-medium text-gray-900">{contract.signerName}</div>
-                                <div className="text-sm text-gray-500">{contract.signerEmail}</div>
+                                <div className="text-sm font-display font-medium text-gray-900">{contract.signerName}</div>
+                                <div className="text-xs text-gray-500">{contract.signerEmail}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -283,11 +277,11 @@ export default function ContractsPage() {
                                 <div>
                                   <Link
                                     href={`/dashboard/invoices/${contract.invoice.id}`}
-                                    className="text-primary-600 hover:text-primary-700 font-medium"
+                                    className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
                                   >
                                     {contract.invoice.invoiceNumber || contract.invoice.id.slice(0, 8)}
                                   </Link>
-                                  <div className="text-sm text-gray-500 tabular-nums">
+                                  <div className="text-xs text-gray-500 tabular-nums font-display font-semibold">
                                     {formatCurrency(contract.invoice.amount)}
                                   </div>
                                 </div>
@@ -300,13 +294,13 @@ export default function ContractsPage() {
                                 {config.label}
                               </Badge>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-display text-gray-900 tabular-nums">
                               {formatDate(contract.sentAt)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-display text-gray-900 tabular-nums">
                               {formatDate(contract.expiresAt)}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 tabular-nums">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-display text-gray-900 tabular-nums">
                               {contract.reminderCount}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
