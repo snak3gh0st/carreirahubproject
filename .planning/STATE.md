@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 9 of 9 (Professional UI/UX Enhancement) - IN PROGRESS
 Plan: 4 of 5 in current phase (partial completion)
 Status: In progress - Invoices List redesigned, 5 pages remain
-Last activity: 2026-01-30 - Completed quick task 032: Fix broken QuickBooks sync link on dashboard
+Last activity: 2026-01-30 - Completed quick task 033: Improve invoice customer selection UX and add customer deletion
 
 Progress: █████████████████████ 100% Sprint 1 + ▓▓▓▓░ Phase 9 (28/29 plans executed, 09-04 partial)
 
@@ -429,12 +429,13 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 028 | Update login page to match dashboard layout | 2026-01-30 | fd48bc7 | [028-update-login-page-to-match-dashboard-lay](.planning/quick/028-update-login-page-to-match-dashboard-lay/) |
 | 030 | Debug QuickBooks invoice creation 400 Bad Request error | 2026-01-30 | ed9ad65 | [030-debug-quickbooks-invoice-creation-400-ba](.planning/quick/030-debug-quickbooks-invoice-creation-400-ba/) |
 | 032 | Fix broken QuickBooks sync link and ensure Settings button visible | 2026-01-30 | 1c1619f | [032-fix-broken-quickbooks-sync-link-and-ensu](.planning/quick/032-fix-broken-quickbooks-sync-link-and-ensu/) |
+| 033 | Improve invoice customer selection UX and add customer deletion | 2026-01-30 | f4f32d3 | [033-improve-invoice-customer-selection-ui-an](.planning/quick/033-improve-invoice-customer-selection-ui-an/) |
 
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed Quick Task 032 (Fix QuickBooks sync link on dashboard)
-Resume file: .planning/quick/032-fix-broken-quickbooks-sync-link-and-ensu/032-SUMMARY.md
+Stopped at: Completed Quick Task 033 (Improve invoice customer selection UX and add customer deletion)
+Resume file: .planning/quick/033-improve-invoice-customer-selection-ui-an/033-SUMMARY.md
 Next action: Quick Task 029 at verification checkpoint (contract creation + preview)
 
 ## Sprint 1 Success Criteria
