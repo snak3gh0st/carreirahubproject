@@ -174,10 +174,11 @@ export function ProfessionalSidebar({
           {/* Logout Button */}
           <button
             onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-            className="p-2 text-gray-400 hover:text-white hover:bg-secondary-gray rounded-lg transition-colors"
+            className="p-2 text-white hover:text-gold-500 hover:bg-secondary-gray rounded-lg transition-colors"
             title="Logout"
+            aria-label="Logout"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-5 w-5" />
           </button>
         </div>
 
