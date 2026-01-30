@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { format } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,20 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CreditCard, Plus } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
+
+type BadgeVariant = "success" | "warning" | "error" | "info" | "default";
+
+function getPaymentMethodVariant(method: string | null): BadgeVariant {
+  if (!method) return "default";
+  switch (method.toUpperCase()) {
+    case "CARD":
+    case "CREDIT_CARD": return "info";
+    case "BANK_TRANSFER":
+    case "ACH": return "success";
+    case "CASH": return "warning";
+    default: return "default";
+  }
+}
 
 /**
  * Dashboard de Payments
@@ -272,7 +287,7 @@ export default async function PaymentsPage({
         </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
         <div className="flex flex-wrap items-center gap-4 mb-4">
           {/* Search */}
           <form method="GET" className="flex-1 min-w-[200px]">
@@ -286,7 +301,7 @@ export default async function PaymentsPage({
                 name="search"
                 defaultValue={search}
                 placeholder="Search by transaction ref, customer name, or email..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
               />
               <svg
                 className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
@@ -306,13 +321,13 @@ export default async function PaymentsPage({
 
           {/* Source Filter */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Source:</span>
+            <span className="text-sm font-display font-medium text-gray-700">Source:</span>
             <Link
               href={`/dashboard/payments${search ? `?search=${search}` : ""}`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                 !source
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               All
@@ -321,10 +336,10 @@ export default async function PaymentsPage({
               href={`/dashboard/payments?source=quickbooks${
                 search ? `&search=${search}` : ""
               }`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                 source === "quickbooks"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               QuickBooks ({qbPayments})
@@ -333,10 +348,10 @@ export default async function PaymentsPage({
               href={`/dashboard/payments?source=manual${
                 search ? `&search=${search}` : ""
               }`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                 source === "manual"
-                  ? "bg-gray-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               Manual ({manualPayments})
@@ -686,14 +701,10 @@ export default async function PaymentsPage({
                       className="hover:bg-gray-50 cursor-pointer transition-colors"
                       onClick={() => (window.location.href = `/dashboard/payments/${payment.id}`)}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(payment.paymentDate).toLocaleDateString("en-US", { 
-                          month: "short", 
-                          day: "numeric", 
-                          year: "numeric" 
-                        })}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-display text-gray-900 tabular-nums">
+                        {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
                       </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-mono text-gray-700">
                             {payment.referenceNumber || payment.id.slice(0, 8)}
@@ -725,20 +736,39 @@ export default async function PaymentsPage({
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-col">
+                          <Link
+                            href={`/dashboard/customers/${payment.customer.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
+                          >
+                            {payment.customer.name}
+                          </Link>
+                          <span className="text-xs text-gray-500">{payment.customer.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link
-                          href={`/dashboard/customers/${payment.customer.id}`}
+                          href={`/dashboard/invoices/${payment.invoice.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-primary-600 hover:text-primary-700 font-medium"
+                          className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
                         >
-                          {payment.customer.name}
+                          {payment.invoice.invoiceNumber || payment.invoice.id.slice(0, 8)}
                         </Link>
-                        <div className="text-xs text-gray-500">{payment.customer.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-display font-semibold text-gray-900 tabular-nums">
+                        ${Number(payment.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Badge variant={getPaymentMethodVariant(payment.paymentMethod)}>
+                          {payment.paymentMethod || "N/A"}
+                        </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Link
                           href={`/dashboard/invoices/${payment.invoice.id}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-primary-600 hover:text-primary-700 font-medium"
+                          className="text-gold-600 hover:text-gold-700 font-medium"
                         >
                           {payment.invoice.invoiceNumber || payment.invoice.id.slice(0, 8)}
                         </Link>
