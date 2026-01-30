@@ -183,15 +183,15 @@ export default function InsightsPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-4xl font-bold text-gray-900">
-              Business Intelligence Dashboard
+              Business Insights
             </h1>
-            <p className="text-gray-600">
-              Comprehensive analytics powered by QuickBooks data
+            <p className="text-gray-600 mt-1">
+              High-impact metrics and visual analytics for strategic decision-making
             </p>
           </div>
           <Link
             href="/dashboard/analytics"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm"
             title="View QuickBooks analytics including receivables and aging"
           >
             <Database className="w-5 h-5" />
@@ -227,39 +227,16 @@ export default function InsightsPage() {
         </div>
       )}
 
-      {/* Main KPI Grid - 4 rows x 4 columns */}
+      {/* Core KPI Grid - 2 rows x 4 columns (8 high-impact metrics) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Revenue KPIs */}
+        {/* Row 1: Financial Health */}
         <KpiCard
           title="Total Revenue"
           value={data ? formatCurrency(data.kpis.totalRevenue) : "$0"}
-          subtitle="Total paid invoices"
+          subtitle={data ? `${formatPercentage(data.kpis.collectionRate)} collection rate` : "0% collection"}
           icon={<div className="text-green-500"><DollarSign className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
-        <KpiCard
-          title="Total Invoiced"
-          value={data ? formatCurrency(data.kpis.totalInvoiced) : "$0"}
-          subtitle="All outstanding + paid"
-          icon={<div className="text-blue-500"><FileText className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Total Paid"
-          value={data ? formatCurrency(data.kpis.totalPaid) : "$0"}
-          subtitle="Collected payments"
-          icon={<div className="text-green-600"><TrendingUp className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Pending Amount"
-          value={data ? formatCurrency(data.kpis.pendingAmount) : "$0"}
-          subtitle="Awaiting payment"
-          icon={<div className="text-yellow-500"><AlertCircle className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-
-        {/* Financial Health KPIs */}
         <KpiCard
           title="Overdue Amount"
           value={data ? formatCurrency(data.kpis.overdueAmount) : "$0"}
@@ -269,110 +246,58 @@ export default function InsightsPage() {
           isLoading={isLoading}
         />
         <KpiCard
-          title="Collection Rate"
-          value={data ? formatPercentage(data.kpis.collectionRate) : "0%"}
-          subtitle="Paid vs invoiced"
-          icon={<div className="text-blue-500"><TrendingUp className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Avg Customer Value"
-          value={data ? formatCurrency(data.kpis.avgCustomerValue) : "$0"}
-          subtitle="Per active customer"
-          icon={<div className="text-purple-500"><Users className="w-5 h-5" /></div>}
+          title="Avg Days to Payment"
+          value={data ? `${data.kpis.avgDaysToPayment}d` : "0d"}
+          subtitle="Payment cycle time"
+          icon={<div className="text-orange-500"><AlertCircle className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
         <KpiCard
           title="Active Customers"
           value={data ? formatInteger(data.kpis.activeCustomers) : "0"}
-          subtitle="Last 90 days"
+          subtitle={data ? `${formatCurrency(data.kpis.avgCustomerValue)} avg value` : "$0 avg"}
           icon={<div className="text-indigo-500"><Users className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
 
-        {/* Sales KPIs */}
-        <KpiCard
-          title="Total Deals"
-          value={data ? formatInteger(data.kpis.totalDeals) : "0"}
-          subtitle="All pipeline"
-          icon={<div className="text-orange-500"><ShoppingCart className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
+        {/* Row 2: Sales & Growth */}
         <KpiCard
           title="Won Deals"
           value={data ? formatInteger(data.kpis.wonDeals) : "0"}
-          subtitle={data ? `${formatPercentage(data.kpis.winRate)} win rate` : "0%"}
+          subtitle={data ? `${formatPercentage(data.kpis.winRate)} win rate • ${formatCurrency(data.kpis.avgDealValue)} avg` : "0%"}
           icon={<div className="text-green-600"><Target className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
         <KpiCard
-          title="Avg Deal Value"
-          value={data ? formatCurrency(data.kpis.avgDealValue) : "$0"}
-          subtitle="Per won deal"
-          icon={<div className="text-green-500"><DollarSign className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Total Leads"
-          value={data ? formatInteger(data.kpis.totalLeads) : "0"}
-          subtitle={data ? `${formatInteger(data.kpis.qualifiedLeads)} qualified` : "0 qualified"}
+          title="Lead Qualification"
+          value={data ? formatPercentage(data.kpis.leadQualificationRate) : "0%"}
+          subtitle={data ? `${data.kpis.qualifiedLeads} of ${data.kpis.totalLeads} leads` : "0 qualified"}
           icon={<div className="text-cyan-500"><Users className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-
-        {/* Additional Invoice KPIs */}
-        <KpiCard
-          title="Total Invoices"
-          value={data ? formatInteger(data.kpis.totalInvoices) : "0"}
-          subtitle="In period"
-          icon={<div className="text-blue-500"><FileText className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Paid Invoices"
-          value={data ? formatPercentage(data.kpis.paidInvoicePercentage) : "0%"}
-          subtitle={data ? `${data.kpis.paidInvoiceCount} invoices` : "0 invoices"}
-          icon={<div className="text-green-500"><TrendingUp className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Avg Days to Payment"
-          value={data ? `${data.kpis.avgDaysToPayment}d` : "0d"}
-          subtitle="Days outstanding"
-          icon={<div className="text-orange-500"><AlertCircle className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
         <KpiCard
           title="Revenue Concentration"
           value={data ? formatPercentage(data.kpis.revenueConcentration) : "0%"}
           subtitle="From top 20% customers"
-          icon={<div className="text-purple-500"><Users className="w-5 h-5" /></div>}
+          icon={<div className="text-purple-500"><TrendingUp className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
         <KpiCard
-          title="Overdue Invoices"
-          value={data ? formatPercentage(data.kpis.overdueInvoicePercentage) : "0%"}
-          subtitle={data ? `${data.kpis.overdueInvoiceCount} invoices` : "0 invoices"}
-          valueColor="text-red-600"
-          icon={<div className="text-red-500"><AlertCircle className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Unique Services"
+          title="Service Diversity"
           value={data ? formatInteger(data.kpis.uniqueServices) : "0"}
-          subtitle="Services offered"
+          subtitle="Unique services sold"
           icon={<div className="text-indigo-500"><ShoppingCart className="w-5 h-5" /></div>}
           isLoading={isLoading}
         />
       </div>
 
-      {/* Charts Grid - 2x2 */}
+      {/* Priority Charts Grid - High-value visualizations first */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Revenue Trend Line Chart */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Revenue Trend (12 Months)</h3>
+        {/* Revenue Trend - MOST IMPORTANT */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend (12 Months)</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
+            <div className="h-80 animate-pulse bg-gray-200 rounded" />
           ) : data?.charts.revenueTrend?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={data.charts.revenueTrend}>
@@ -389,100 +314,32 @@ export default function InsightsPage() {
           )}
         </div>
 
-        {/* Invoice Count Trend */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Invoice Count Trend</h3>
+        {/* Lead Funnel - CRITICAL MISSING VISUALIZATION */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Lead Conversion Funnel</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
-          ) : data?.charts.invoiceCountTrend?.length ? (
+            <div className="h-80 animate-pulse bg-gray-200 rounded" />
+          ) : data?.charts.leadFunnel?.length ? (
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.charts.invoiceCountTrend}>
+              <BarChart data={data.charts.leadFunnel} layout="horizontal">
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
+                <XAxis type="number" />
+                <YAxis dataKey="stage" type="category" width={100} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="count" stroke={chartColors.invoiceCount} strokeWidth={2} name="Invoices Created" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
-        </div>
-
-        {/* Invoice Status Pie */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Invoice Distribution by Status</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
-          ) : data?.charts.invoiceStatus?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={data.charts.invoiceStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {data.charts.invoiceStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
-        </div>
-
-        {/* Deal Status Pie */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Deal Distribution by Status</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
-          ) : data?.charts.dealStatus?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={data.charts.dealStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-                  {data.charts.dealStatus.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `$${(value as number).toLocaleString()}` } />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
-        </div>
-
-        {/* Top Customers Bar Chart */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Top 10 Customers by Revenue</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
-          ) : data?.charts.topCustomers?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.topCustomers}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-                <Bar dataKey="value" fill={chartColors.revenue} name="Total Revenue" />
+                <Bar dataKey="value" fill="#3b82f6" name="Leads" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
+            <div className="h-80 flex items-center justify-center text-gray-500">No lead data</div>
           )}
         </div>
-      </div>
 
-      {/* Invoice Aging & Pipeline Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Invoice Aging */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Invoice Aging Distribution</h3>
+        {/* Invoice Aging - Financial health indicator */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Aging Distribution</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
+            <div className="h-80 animate-pulse bg-gray-200 rounded" />
           ) : data?.charts.invoiceAging?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.charts.invoiceAging}>
@@ -499,22 +356,20 @@ export default function InsightsPage() {
           )}
         </div>
 
-        {/* Sales Pipeline */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Sales Pipeline Value by Status</h3>
+        {/* Top Customers - Concentration risk */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Customers by Revenue</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
-          ) : data?.charts.dealsPipeline?.length ? (
+            <div className="h-80 animate-pulse bg-gray-200 rounded" />
+          ) : data?.charts.topCustomers?.length ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.dealsPipeline}>
+              <BarChart data={data.charts.topCustomers}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="status" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
+                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
+                <YAxis />
                 <Tooltip formatter={(value) => formatCurrency(value as number)} />
                 <Legend />
-                <Bar yAxisId="left" dataKey="deals" fill="#3b82f6" name="Deal Count" />
-                <Bar yAxisId="right" dataKey="value" fill="#10b981" name="Pipeline Value" />
+                <Bar dataKey="value" fill={chartColors.revenue} name="Total Revenue" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
@@ -522,11 +377,11 @@ export default function InsightsPage() {
           )}
         </div>
 
-        {/* Top Services Sold */}
-        <div className="bg-white">
-          <h3 className="text-lg font-semibold text-gray-900">Top Services Sold by Quantity</h3>
+        {/* Top Services - Product mix analysis */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Services by Quantity & Revenue</h3>
           {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200" />
+            <div className="h-80 animate-pulse bg-gray-200 rounded" />
           ) : data?.charts.topServices?.length ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={data.charts.topServices}>
@@ -549,7 +404,32 @@ export default function InsightsPage() {
             <div className="h-80 flex items-center justify-center text-gray-500">No service data</div>
           )}
         </div>
+
+        {/* Sales Pipeline - Deal visibility */}
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Pipeline Value by Status</h3>
+          {isLoading ? (
+            <div className="h-80 animate-pulse bg-gray-200 rounded" />
+          ) : data?.charts.dealsPipeline?.length ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data.charts.dealsPipeline}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="status" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip formatter={(value) => formatCurrency(value as number)} />
+                <Legend />
+                <Bar yAxisId="left" dataKey="deals" fill="#3b82f6" name="Deal Count" />
+                <Bar yAxisId="right" dataKey="value" fill="#10b981" name="Pipeline Value" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
+          )}
+        </div>
       </div>
+
+
 
       {/* Export Button */}
       <div className="flex justify-end">
