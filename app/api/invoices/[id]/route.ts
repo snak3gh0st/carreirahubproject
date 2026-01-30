@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 
+export const dynamic = "force-dynamic";
+
 const updateInvoiceSchema = z.object({
   amount: z.number().positive().optional(),
   dueDate: z.string().datetime().optional(), // ISO 8601 format

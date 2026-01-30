@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/debug/check-qb-email-status
  * Check if QuickBooks emails are being sent by reviewing IntegrationLog

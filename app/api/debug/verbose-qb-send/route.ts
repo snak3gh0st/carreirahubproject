@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { quickbooksService, SendInvoiceResult } from '@/lib/services/quickbooks.service';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/debug/verbose-qb-send?invoiceId=xxx&approach=1
  *

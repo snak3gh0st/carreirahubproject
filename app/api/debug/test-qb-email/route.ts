@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { quickbooksService } from '@/lib/services/quickbooks.service';
 import { prisma } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/debug/test-qb-email?invoiceId=xxx
  * Test sending QB invoice via email

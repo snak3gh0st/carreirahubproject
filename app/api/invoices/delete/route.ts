@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 /**
  * DELETE /api/invoices/delete
  * Void an invoice in QuickBooks by ID

@@ -10,6 +10,8 @@ import { contractWorkflowService } from "@/lib/services/contract-workflow.servic
 import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
 import { addMonths } from "@/lib/utils/date";
 
+export const dynamic = "force-dynamic";
+
 const createInvoiceSchema = z.object({
   customerId: z.string(),
   dealId: z.string().optional(),
