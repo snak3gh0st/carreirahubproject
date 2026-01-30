@@ -371,10 +371,11 @@ export class QuickbooksService {
       };
     } else {
       // QB requires BillAddr for email sending to work properly
+      // Use minimal valid address structure when no address data provided
       customerData.BillAddr = {
-        City: "USA",
+        Line1: "Not Provided",
+        City: "Not Provided",
         Country: "USA",
-        Line1: "Billing Address",
       };
     }
 
