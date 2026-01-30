@@ -425,13 +425,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 024 | Fix QuickBooks webhook event ID extraction | 2026-01-28 | 57c919c | [024-fix-quickbooks-webhook-event-id-extracti](.planning/quick/024-fix-quickbooks-webhook-event-id-extracti/) |
 | 025 | Add contract generator with DocuSign template selection | 2026-01-29 | fa0f362 | [025-add-contract-generator-page-for-commerci](.planning/quick/025-add-contract-generator-page-for-commerci/) |
 | 026 | Review and redo insights page with proper filters | 2026-01-29 | 757c61c | [026-review-and-redo-insights-page-with-prope](.planning/quick/026-review-and-redo-insights-page-with-prope/) |
+| 027 | Add logout button to dashboard and update login page layout | 2026-01-30 | 513bfec | [027-add-logout-button-to-dashboard-and-updat](.planning/quick/027-add-logout-button-to-dashboard-and-updat/) |
 
 ## Session Continuity
 
-Last session: 2026-01-29
-Stopped at: Completed 09-04-PLAN.md Task 1 (Invoices List redesign, 5 tasks deferred)
-Resume file: .planning/phases/09-professional-ui-ux-enhancement/09-04-SUMMARY.md
-Next action: User decision - Create 09-04B plan for remaining 5 pages OR execute 09-05
+Last session: 2026-01-30
+Stopped at: Completed Quick Task 027 (Logout button visibility + login page redesign)
+Resume file: .planning/quick/027-add-logout-button-to-dashboard-and-updat/027-SUMMARY.md
+Next action: User decision - Continue Phase 9 work OR execute other quick tasks
 
 ## Sprint 1 Success Criteria
 
