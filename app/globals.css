@@ -228,6 +228,15 @@
 }
 
 @layer utilities {
+  /*
+   * Keyboard Shortcuts:
+   * - Tab: Navigate between interactive elements
+   * - Shift+Tab: Navigate backwards
+   * - Enter/Space: Activate buttons and links
+   * - Escape: Close modals and dropdowns (when implemented)
+   * - /: Focus search input (when implemented)
+   */
+  
   /* Screen reader only content */
   .sr-only {
     position: absolute;
@@ -251,20 +260,27 @@
     @apply sr-only-off;
   }
 
-  /* Accessible focus state */
-  :focus-visible {
-    @apply outline-none ring-2 ring-offset-2 ring-blue-500;
+  /* Enhanced accessible focus indicators for keyboard navigation */
+  *:focus-visible {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
-
-  /* Improved form focus states */
-  input:focus,
-  textarea:focus,
-  select:focus,
-  button:focus {
-    @apply outline-none ring-2 ring-offset-2 ring-blue-500 ring-offset-white;
-  }  /* Ensure links are keyboard accessible */
-  a:focus-visible {
-    @apply outline-none ring-2 ring-offset-2 ring-blue-500;
+  
+  /* Remove default outline, rely on focus-visible */
+  *:focus:not(:focus-visible) {
+    outline: none;
+  }
+  
+  /* Enhanced focus for interactive elements with shadow */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--primary-500);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.1);
   }
   
   /* Animation utilities */

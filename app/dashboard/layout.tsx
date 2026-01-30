@@ -53,7 +53,7 @@ export default async function DashboardLayout({
       />
 
       {/* Main Content Area - 240px left padding for sidebar */}
-      <main className="min-h-screen pl-60">
+      <main id="main-content" className="min-h-screen pl-60">
         {children}
       </main>
     </div>
