@@ -22,6 +22,10 @@ export default withAuth(
     // Rotas do dashboard requerem autenticação
     if (path.startsWith("/dashboard")) {
       // Rotas específicas por role
+      if (path.startsWith("/dashboard/settings") && userRole !== "ADMIN") {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+
       if (path.startsWith("/dashboard/leads") && userRole !== "ADMIN" && userRole !== "SDR" && userRole !== "SALES") {
         return NextResponse.redirect(new URL("/dashboard", req.url));
       }
