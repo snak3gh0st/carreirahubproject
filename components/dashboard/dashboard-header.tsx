@@ -83,12 +83,12 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
               </span>
             </div>
 
-            {/* Logout Button - Desktop Only */}
+            {/* Logout Button - Tablet and Desktop */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-              className="hidden lg:flex items-center gap-2 text-gray-700"
+              className="hidden md:flex items-center gap-2 text-gray-700"
             >
               <LogOut className="h-4 w-4" />
               <span className="text-sm">Logout</span>
