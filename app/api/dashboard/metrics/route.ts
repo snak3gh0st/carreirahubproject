@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
       : {};
 
     const dealWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
+    
+    // For revenue metrics, filter by when payment was received (paidAt), not when invoice was created
+    // This ensures "Last 30 Days" shows revenue RECEIVED in last 30 days, not invoices CREATED in last 30 days
+    const invoiceWherePaidAt = dateFilter ? { paidAt: dateFilter } : {};
+    
+    // For invoice counts, we still use createdAt to show invoices created in the period
     const invoiceWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
 
     // Fetch all data in parallel
@@ -76,7 +82,8 @@ export async function GET(request: NextRequest) {
       wonDeals,
       wonDealsThisMonth,
       totalInvoices,
-      allInvoices,
+      paidInvoicesInPeriod,
+      allInvoicesForOverdue,
       allCustomers,
       newCustomersThisMonth,
       allDeals,
@@ -99,11 +106,25 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count({
         where: invoiceWhereInvoiceStatus,
       }),
+      // Fetch invoices for revenue calculations - filter by paidAt for accurate revenue metrics
       prisma.invoice.findMany({
         where: {
           ...invoiceWhereInvoiceStatus,
-          ...invoiceWhereCreatedAt,
+          ...invoiceWherePaidAt,
         },
+        select: {
+          status: true,
+          dueDate: true,
+          amount: true,
+          amountPaid: true,
+          paidAt: true,
+          createdAt: true,
+          customerId: true,
+        },
+      }),
+      // Fetch ALL invoices for overdue calculations (no date filter - current state metric)
+      prisma.invoice.findMany({
+        where: invoiceWhereInvoiceStatus,
         select: {
           status: true,
           dueDate: true,
@@ -129,17 +150,18 @@ export async function GET(request: NextRequest) {
     // Calculate financial metrics
     const today = new Date();
 
-    // Total Revenue = sum of amountPaid from PAID invoices
-    const paidInvoices = allInvoices.filter((inv) => inv.status === InvoiceStatus.PAID);
+    // Total Revenue = sum of amountPaid from PAID invoices IN THE SELECTED PERIOD (filtered by paidAt)
+    const paidInvoices = paidInvoicesInPeriod.filter((inv) => inv.status === InvoiceStatus.PAID);
     const totalRevenue = paidInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
 
-    // Total Paid = sum of amountPaid from invoices with payments (PAID or PARTIALLY_PAID)
-    const paidOrPartialInvoices = allInvoices.filter(
+    // Total Paid = sum of amountPaid from invoices with payments IN THE SELECTED PERIOD (PAID or PARTIALLY_PAID)
+    const paidOrPartialInvoices = paidInvoicesInPeriod.filter(
       (inv) => inv.status === InvoiceStatus.PAID || inv.status === InvoiceStatus.PARTIALLY_PAID
     );
     const totalPaid = paidOrPartialInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
 
-    const overdueInvoices = allInvoices.filter(
+    // Overdue calculations use ALL invoices (current state, not filtered by date)
+    const overdueInvoices = allInvoicesForOverdue.filter(
       (inv) =>
         inv.status !== InvoiceStatus.PAID &&
         inv.status !== InvoiceStatus.VOID &&
@@ -147,7 +169,8 @@ export async function GET(request: NextRequest) {
     );
     const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
 
-    const totalInvoiced = allInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
+    // Total invoiced and pending use period-filtered invoices
+    const totalInvoiced = paidInvoicesInPeriod.reduce((sum, inv) => sum + Number(inv.amount), 0);
     const pendingAmount = totalInvoiced - totalPaid;
     const collectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
 
@@ -161,9 +184,9 @@ export async function GET(request: NextRequest) {
     // Calculate customer metrics
     const avgCustomerValue = allCustomers > 0 ? totalRevenue / allCustomers : 0;
 
-    // Month-over-month comparison for growth indicators
+    // Month-over-month comparison for growth indicators (use ALL invoices, not filtered by period)
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const invoicesPaidLastMonth = allInvoices.filter(
+    const invoicesPaidLastMonth = allInvoicesForOverdue.filter(
       (inv) =>
         inv.status === InvoiceStatus.PAID &&
         inv.paidAt &&
@@ -171,7 +194,7 @@ export async function GET(request: NextRequest) {
         new Date(inv.paidAt) < startOfMonth
     ).length;
 
-    const invoicesPaidThisMonth = allInvoices.filter(
+    const invoicesPaidThisMonth = allInvoicesForOverdue.filter(
       (inv) =>
         inv.status === InvoiceStatus.PAID &&
         inv.paidAt &&
