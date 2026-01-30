@@ -280,7 +280,7 @@ export default function DashboardPage() {
               </div>
             </Link>
             <Link
-              href="/dashboard/quickbooks/sync"
+              href="/dashboard/settings/integrations"
               className="group block bg-white rounded-lg border border-gray-200 p-6 hover:border-gold-200 hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start gap-4">
