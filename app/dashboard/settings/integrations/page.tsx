@@ -34,6 +34,8 @@ export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectResult, setDisconnectResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     loadStatus();
@@ -55,7 +57,44 @@ export default function IntegrationsPage() {
   };
 
   const handleQuickBooksConnect = async () => {
+    setDisconnectResult(null);
     window.location.href = '/api/quickbooks/auth/connect';
+  };
+
+  const handleQuickBooksDisconnect = async () => {
+    try {
+      setDisconnecting(true);
+      setDisconnectResult(null);
+      
+      const response = await fetch('/api/quickbooks/auth/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        setDisconnectResult({
+          type: 'success',
+          message: 'QuickBooks desconectado com sucesso!',
+        });
+        // Reload status to update UI
+        await loadStatus();
+      } else {
+        const error = await response.json();
+        setDisconnectResult({
+          type: 'error',
+          message: error.error || 'Erro ao desconectar QuickBooks',
+        });
+      }
+    } catch (error) {
+      setDisconnectResult({
+        type: 'error',
+        message: 'Erro ao desconectar QuickBooks: ' + (error instanceof Error ? error.message : String(error)),
+      });
+    } finally {
+      setDisconnecting(false);
+    }
   };
 
   const handleTestPipedrive = async () => {
@@ -123,9 +162,26 @@ export default function IntegrationsPage() {
                 )}
               </p>
             </div>
-            <Button onClick={handleQuickBooksConnect}>
-              {status?.quickbooks.isAuthenticated ? 'Reconectar' : 'Conectar'}
-            </Button>
+            <div className="flex gap-2">
+              {status?.quickbooks.isAuthenticated ? (
+                <>
+                  <Button onClick={handleQuickBooksConnect} disabled={disconnecting}>
+                    Reconectar
+                  </Button>
+                  <Button 
+                    onClick={handleQuickBooksDisconnect} 
+                    variant="destructive" 
+                    disabled={disconnecting}
+                  >
+                    {disconnecting ? 'Desconectando...' : 'Desconectar'}
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={handleQuickBooksConnect}>
+                  Conectar
+                </Button>
+              )}
+            </div>
           </div>
 
           {status?.quickbooks.isAuthenticated && (
@@ -143,6 +199,14 @@ export default function IntegrationsPage() {
                 </div>
               )}
             </>
+          )}
+
+          {disconnectResult && (
+            <Alert className={disconnectResult.type === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
+              <AlertDescription>
+                {disconnectResult.message}
+              </AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
