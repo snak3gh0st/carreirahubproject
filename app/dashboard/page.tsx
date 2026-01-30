@@ -1,7 +1,7 @@
 "use client"
 
 import { useSession } from "next-auth/react";
-import { redirect } from "next/navigation";
+import { redirect, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   TrendingUp,
@@ -17,6 +17,7 @@ import {
   BarChart,
 } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
+import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
 import { useEffect, useState } from "react";
 
 /**
@@ -27,6 +28,7 @@ import { useEffect, useState } from "react";
  */
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
   const [metrics, setMetrics] = useState({
     sales: {
       wonDealsThisMonth: 0,
@@ -56,11 +58,29 @@ export default function DashboardPage() {
     },
   });
 
+  // Get filter params from URL (default to thisYear instead of allTime)
+  const dateRange = searchParams.get("dateRange") || "thisYear";
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
+  const segment = searchParams.get("segment");
+  const invoiceStatus = searchParams.get("invoiceStatus");
+  const dealStatus = searchParams.get("dealStatus");
+
   // Fetch comprehensive metrics from API - MUST be before any conditional returns
   useEffect(() => {
     async function fetchMetrics() {
       try {
-        const response = await fetch("/api/dashboard/metrics", {
+        // Build query params with filters
+        const params = new URLSearchParams();
+        if (dateRange) params.set("dateRange", dateRange);
+        if (from) params.set("from", from);
+        if (to) params.set("to", to);
+        if (segment) params.set("segment", segment);
+        if (invoiceStatus) params.set("invoiceStatus", invoiceStatus);
+        if (dealStatus) params.set("dealStatus", dealStatus);
+
+        const url = `/api/dashboard/metrics${params.toString() ? `?${params.toString()}` : ""}`;
+        const response = await fetch(url, {
           cache: "no-store",
           credentials: "include",
         });
@@ -78,7 +98,7 @@ export default function DashboardPage() {
     if (session) {
       fetchMetrics();
     }
-  }, [session]);
+  }, [session, dateRange, from, to, segment, invoiceStatus, dealStatus]);
 
   // Format currency helper
   const formatCurrency = (value: number) =>
@@ -190,6 +210,13 @@ export default function DashboardPage() {
           <p className="text-lg text-gray-500">
             Here's what's happening with your business today
           </p>
+        </div>
+
+        {/* ========== FILTERS SECTION ========== */}
+        <div className="mb-8">
+          <DashboardFilters onFiltersChange={() => {
+            // Metrics will auto-refresh via useEffect dependency on filter params
+          }} />
         </div>
 
         {/* ========== FINANCE SECTION ========== */}
