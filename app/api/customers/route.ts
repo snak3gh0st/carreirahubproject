@@ -147,6 +147,16 @@ export async function POST(request: NextRequest) {
           data: { quickbooks_id: String(qbCustomer.Id) },
         });
 
+        // **REALTIME SYNC**: Immediately sync customer back from QuickBooks
+        try {
+          const { quickbooksSyncService } = await import('@/lib/services/quickbooks-sync.service');
+          await quickbooksSyncService.syncSingleCustomer(String(qbCustomer.Id));
+          console.log(`[CUSTOMER_CREATE] Customer ${qbCustomer.Id} synced from QuickBooks`);
+        } catch (syncError) {
+          console.error(`[CUSTOMER_CREATE] Failed to sync customer ${qbCustomer.Id} from QuickBooks:`, syncError);
+          // Don't fail customer creation if sync fails
+        }
+
         // Log success
         await prisma.integrationLog.create({
           data: {

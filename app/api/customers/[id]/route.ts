@@ -117,6 +117,17 @@ export async function PATCH(
         if (Object.keys(qbUpdates).length > 0) {
           console.log(`[API] Syncing customer ${customer.id} to QuickBooks...`, qbUpdates);
           await quickbooksService.updateCustomer(customer.quickbooks_id, qbUpdates);
+          
+          // **REALTIME SYNC**: Immediately sync customer back from QuickBooks
+          try {
+            const { quickbooksSyncService } = await import('@/lib/services/quickbooks-sync.service');
+            await quickbooksSyncService.syncSingleCustomer(customer.quickbooks_id);
+            console.log(`[API] Customer ${customer.quickbooks_id} synced from QuickBooks`);
+          } catch (syncError) {
+            console.error(`[API] Failed to sync customer ${customer.quickbooks_id} from QuickBooks:`, syncError);
+            // Don't fail update if sync fails
+          }
+          
           quickbooksSync = {
             synced: true,
             message: "Sincronizado com QuickBooks",

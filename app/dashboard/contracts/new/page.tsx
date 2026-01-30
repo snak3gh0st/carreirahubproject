@@ -53,6 +53,15 @@ export default function CreateContractPage() {
   const [signerEmail, setSignerEmail] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('30');
   
+  // Get customerId from URL query params
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const customerIdParam = params.get('customerId');
+    if (customerIdParam) {
+      setCustomerId(customerIdParam);
+    }
+  }, []);
+  
   // Data state
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);

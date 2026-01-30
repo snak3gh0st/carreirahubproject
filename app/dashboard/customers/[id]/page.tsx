@@ -225,6 +225,13 @@ export default async function CustomerDetailPage({
                 Edit Customer
               </Link>
               <Link
+                href={`/dashboard/contracts/new?customerId=${customer.id}`}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-display font-medium rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <FileText className="w-4 h-4" />
+                Create Contract
+              </Link>
+              <Link
                 href={`/dashboard/invoices/new?customerId=${customer.id}`}
                 className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-primary-700 transition-colors"
               >

@@ -301,6 +301,16 @@ export class InvoiceWorkflowService {
       },
     });
 
+    // **REALTIME SYNC**: Immediately sync invoice back from QuickBooks
+    try {
+      const { quickbooksSyncService } = await import('@/lib/services/quickbooks-sync.service');
+      await quickbooksSyncService.syncSingleInvoice(qbInvoice.Id);
+      console.log(`[INVOICE_WORKFLOW] Invoice ${qbInvoice.Id} synced from QuickBooks`);
+    } catch (syncError) {
+      console.error(`[INVOICE_WORKFLOW] Failed to sync invoice ${qbInvoice.Id} from QuickBooks:`, syncError);
+      // Don't fail invoice creation if sync fails - cron will catch it later
+    }
+
     // Enviar invoice por email
     if (customer.email) {
       await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);

@@ -541,6 +541,18 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // **REALTIME SYNC**: Immediately sync invoice back from QuickBooks to get latest status
+      if (qbInvoiceId) {
+        try {
+          const { quickbooksSyncService } = await import('@/lib/services/quickbooks-sync.service');
+          await quickbooksSyncService.syncSingleInvoice(qbInvoiceId);
+          console.log(`[INVOICE_CREATE] Invoice ${qbInvoiceId} synced from QuickBooks`);
+        } catch (syncError) {
+          console.error(`[INVOICE_CREATE] Failed to sync invoice ${qbInvoiceId} from QuickBooks:`, syncError);
+          // Don't fail invoice creation if sync fails - cron will catch it later
+        }
+      }
+
       invoices.push(invoice);
 
       // Log to IntegrationLog if synced to QB
