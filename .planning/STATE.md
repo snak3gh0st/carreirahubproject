@@ -430,12 +430,13 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 030 | Debug QuickBooks invoice creation 400 Bad Request error | 2026-01-30 | ed9ad65 | [030-debug-quickbooks-invoice-creation-400-ba](.planning/quick/030-debug-quickbooks-invoice-creation-400-ba/) |
 | 032 | Fix broken QuickBooks sync link and ensure Settings button visible | 2026-01-30 | 1c1619f | [032-fix-broken-quickbooks-sync-link-and-ensu](.planning/quick/032-fix-broken-quickbooks-sync-link-and-ensu/) |
 | 033 | Improve invoice customer selection UX and add customer deletion | 2026-01-30 | f4f32d3 | [033-improve-invoice-customer-selection-ui-an](.planning/quick/033-improve-invoice-customer-selection-ui-an/) |
+| 034 | Fix invoice date timezone bug and first installment calculation | 2026-01-30 | c6ccaa0 | [034-fix-invoice-date-timezone-bug-and-first-](.planning/quick/034-fix-invoice-date-timezone-bug-and-first-/) |
 
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed Quick Task 033 (Improve invoice customer selection UX and add customer deletion)
-Resume file: .planning/quick/033-improve-invoice-customer-selection-ui-an/033-SUMMARY.md
+Stopped at: Completed Quick Task 034 (Fix invoice date timezone bug and first installment calculation)
+Resume file: .planning/quick/034-fix-invoice-date-timezone-bug-and-first-/034-SUMMARY.md
 Next action: Quick Task 029 at verification checkpoint (contract creation + preview)
 
 ## Sprint 1 Success Criteria
