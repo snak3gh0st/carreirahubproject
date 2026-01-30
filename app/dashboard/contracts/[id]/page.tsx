@@ -19,6 +19,8 @@ interface Contract {
   reminderCount: number;
   signedUrl: string | null;
   signedS3Key: string | null;
+  signedS3Url: string | null;
+  signedS3UrlExpiresAt: string | null;
   customer: {
     id: string;
     name: string;
@@ -213,6 +215,37 @@ export default function ContractDetailPage() {
           </button>
         )}
       </div>
+
+      {/* Contract Preview - Only for signed contracts */}
+      {contract.status === 'SIGNED' && contract.signedS3Url && (
+        <div className="mb-6 bg-white rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Contract Preview</h2>
+            <a
+              href={contract.signedS3Url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+            >
+              View in New Tab &rarr;
+            </a>
+          </div>
+          <div className="relative w-full">
+            <iframe
+              src={contract.signedS3Url}
+              className="w-full border border-gray-200 rounded-lg"
+              style={{ height: '600px', minHeight: '600px' }}
+              title="Contract Preview"
+              onError={() => {
+                setMessage({ type: 'error', text: 'Failed to load PDF preview. Please use the download button or open in new tab.' });
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Tip: Use the download button above for the best viewing experience, or click &quot;View in New Tab&quot; to open in a separate window.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contract Info */}
