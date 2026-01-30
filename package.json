@@ -26,7 +26,9 @@
     "test:docusign": "npx tsx scripts/test-docusign.ts",
     "test:docusign-prod": "npx tsx scripts/test-docusign-prod.ts",
     "docusign:consent": "npx tsx scripts/docusign-consent-url.ts",
-    "verify:docusign": "npx tsx scripts/verify-docusign-credentials.ts"
+    "verify:docusign": "npx tsx scripts/verify-docusign-credentials.ts",
+    "test:system": "npx tsx scripts/test-system-comprehensive.ts",
+    "test:system:api": "npx tsx scripts/test-system-comprehensive.ts --api-only"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.974.0",
