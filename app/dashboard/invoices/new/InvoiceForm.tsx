@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { addMonths } from "@/lib/utils/date";
+import { addMonths, parseLocalDate } from "@/lib/utils/date";
 
 interface Customer {
   id: string;
@@ -197,7 +197,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     const remaining = Math.max(0, total - entryAmount);
 
     const schedule = [];
-    const baseDate = form.dueDate ? new Date(form.dueDate) : new Date();
+    const baseDate = form.dueDate ? parseLocalDate(form.dueDate) : new Date();
 
     // CASE 1: Single payment (a vista) - no entry, no installments
     if (entryAmount === 0 && installments === 0 && total > 0) {
@@ -242,7 +242,9 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       const installmentAmount = remaining / installments;
 
       for (let i = 0; i < installments; i++) {
-        const installmentDate = addMonths(baseDate, i + 1);
+        // Fix: When no entrada, first installment should use chosen date (i=0 → +0 months)
+        const monthsToAdd = entryAmount > 0 ? i + 1 : i;
+        const installmentDate = addMonths(baseDate, monthsToAdd);
 
         schedule.push({
           number: i + 1,
@@ -740,6 +742,11 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               {getNumericValue(form.installments) > 0 && remaining > 0 && (
                 <p className="text-sm text-green-600 mt-2 font-medium">
                   Valor por parcela: ${perInstallment.toFixed(2)}
+                </p>
+              )}
+              {getNumericValue(form.installments) > 0 && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Total de pagamentos: {getNumericValue(form.entryAmount) > 0 ? '1 entrada + ' : ''}{getNumericValue(form.installments)} parcela{getNumericValue(form.installments) > 1 ? 's' : ''} = {getNumericValue(form.entryAmount) > 0 ? getNumericValue(form.installments) + 1 : getNumericValue(form.installments)} pagamento{(getNumericValue(form.entryAmount) > 0 ? getNumericValue(form.installments) + 1 : getNumericValue(form.installments)) > 1 ? 's' : ''}
                 </p>
               )}
             </div>
