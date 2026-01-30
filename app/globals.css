@@ -8,34 +8,34 @@
 @layer base {
   :root {
     /* ========================================
-       FINANCE-FOCUSED COLOR PALETTE
+       CARREIRA USA - GOLD & WHITE THEME
        ======================================== */
     
-    /* Primary Blue - Trust, Finance, Professional */
-    --primary-50: #EFF6FF;
-    --primary-100: #DBEAFE;
-    --primary-200: #BFDBFE;
-    --primary-300: #93C5FD;
-    --primary-400: #60A5FA;
-    --primary-500: #0F52BA;  /* Main brand color */
-    --primary-600: #0C42A0;
-    --primary-700: #093686;
-    --primary-800: #072A6C;
-    --primary-900: #051E52;
+    /* Primary Gold - Luxury, Success, Achievement (Carreira USA Brand) */
+    --primary-50: #FFFBEB;    /* Lightest cream */
+    --primary-100: #FEF3C7;   /* Light gold cream */
+    --primary-200: #FDE68A;   /* Soft gold */
+    --primary-300: #FCD34D;   /* Medium gold */
+    --primary-400: #FBBF24;   /* Vibrant gold */
+    --primary-500: #D4AF37;   /* Main brand color - Classic Gold */
+    --primary-600: #B8941F;   /* Deep gold */
+    --primary-700: #9C7A19;   /* Darker gold */
+    --primary-800: #806114;   /* Rich gold */
+    --primary-900: #64470F;   /* Deepest gold */
     
     /* Success Green - Payments, Growth, Positive */
-    --success-50: #ECFDF5;
-    --success-100: #D1FAE5;
-    --success-500: #059669;
-    --success-600: #047857;
-    --success-700: #065F46;
+    --success-50: #F0FDF4;
+    --success-100: #DCFCE7;
+    --success-500: #22C55E;   /* Brighter modern green */
+    --success-600: #16A34A;
+    --success-700: #15803D;
     
-    /* Warning Amber - Alerts, Pending, Attention */
-    --warning-50: #FFFBEB;
-    --warning-100: #FEF3C7;
-    --warning-500: #F59E0B;
-    --warning-600: #D97706;
-    --warning-700: #B45309;
+    /* Warning Orange - Alerts, Pending, Attention (complementing gold) */
+    --warning-50: #FFF7ED;
+    --warning-100: #FFEDD5;
+    --warning-500: #F97316;   /* Vibrant orange */
+    --warning-600: #EA580C;
+    --warning-700: #C2410C;
     
     /* Error Red - Overdue, Critical, Errors */
     --error-50: #FEF2F2;
@@ -219,6 +219,12 @@
   code, pre, .font-mono {
     font-family: 'JetBrains Mono', 'Courier New', monospace;
   }
+  
+  /* Animation keyframes */
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
 }
 
 @layer utilities {
@@ -259,6 +265,27 @@
   }  /* Ensure links are keyboard accessible */
   a:focus-visible {
     @apply outline-none ring-2 ring-offset-2 ring-blue-500;
+  }
+  
+  /* Animation utilities */
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(
+      90deg,
+      var(--gray-200) 0%,
+      var(--gray-100) 50%,
+      var(--gray-200) 100%
+    );
+    background-size: 1000px 100%;
+  }
+  
+  .transition-lift {
+    transition: transform var(--transition-base) var(--easing-default),
+                box-shadow var(--transition-base) var(--easing-default);
+  }
+  
+  .transition-lift:hover {
+    transform: translateY(-2px);
   }
 
   /* Mobile utilities */

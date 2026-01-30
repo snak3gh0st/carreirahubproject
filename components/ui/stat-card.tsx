@@ -49,19 +49,21 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "bg-white border border-gray-200 rounded-lg p-6",
-        "hover:shadow-md transition-shadow duration-200",
+        "bg-white border border-gray-200 rounded-xl p-6",
+        "hover:border-gold-200 hover:shadow-lg hover:scale-[1.01] transition-all duration-200",
         className
       )}
     >
       {/* Header with label and optional icon */}
-      <div className="flex items-start justify-between mb-2">
-        <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+      <div className="flex items-start justify-between mb-3">
+        <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">
           {label}
         </p>
         {icon && (
-          <div className="flex-shrink-0 text-gray-400">
-            {icon}
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gold-50">
+            <div className="text-gold-600">
+              {icon}
+            </div>
           </div>
         )}
       </div>

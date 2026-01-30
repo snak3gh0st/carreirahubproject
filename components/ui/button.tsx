@@ -22,14 +22,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800 disabled:opacity-50 focus:ring-primary-500",
-  secondary: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 active:bg-gray-100 disabled:opacity-50 focus:ring-primary-500",
-  outline: "bg-transparent border border-primary-600 text-primary-600 hover:bg-primary-50 active:bg-primary-100 disabled:opacity-50 focus:ring-primary-500",
-  ghost: "bg-transparent text-gray-600 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-50 focus:ring-gray-400",
-  destructive: "bg-error-600 text-white hover:bg-error-700 active:bg-error-800 disabled:opacity-50 focus:ring-error-500",
+  primary: "bg-gold-600 text-white hover:bg-gold-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-gold-500 shadow-sm",
+  secondary: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-gold-500",
+  outline: "bg-transparent border border-gold-600 text-gold-600 hover:bg-gold-50 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-gold-500",
+  ghost: "bg-transparent text-gray-600 hover:bg-gray-100 disabled:opacity-50 focus:ring-gray-400",
+  destructive: "bg-error-600 text-white hover:bg-error-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-error-500 shadow-sm",
   // Legacy aliases for backward compatibility
-  success: "bg-success-600 text-white hover:bg-success-700 active:bg-success-800 disabled:opacity-50 focus:ring-success-500",
-  danger: "bg-error-600 text-white hover:bg-error-700 active:bg-error-800 disabled:opacity-50 focus:ring-error-500",
+  success: "bg-success-600 text-white hover:bg-success-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-success-500 shadow-sm",
+  danger: "bg-error-600 text-white hover:bg-error-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-error-500 shadow-sm",
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
@@ -56,8 +56,8 @@ export function Button({
       className={cn(
         // Base styles
         "inline-flex items-center justify-center gap-2 font-medium rounded-md",
-        // Transitions
-        "transition-colors duration-200",
+        // Transitions (lift animation on hover)
+        "transition-all duration-200 ease-out",
         // Focus ring
         "focus:outline-none focus:ring-2 focus:ring-offset-2",
         // Disabled state

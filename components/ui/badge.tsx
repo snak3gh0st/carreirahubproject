@@ -28,7 +28,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   success: "bg-success-100 text-success-700",      // Paid status
   error: "bg-error-100 text-error-700",            // Overdue status
   warning: "bg-warning-100 text-warning-700",      // Pending status
-  info: "bg-info-100 text-info-700",               // Info status
+  info: "bg-gold-100 text-gold-700",               // Info status - GOLD THEME
   pending: "bg-warning-100 text-warning-700",      // Alias for warning
 };
 
@@ -37,7 +37,7 @@ const dotStyles: Record<BadgeVariant, string> = {
   success: "bg-success-700",
   error: "bg-error-700",
   warning: "bg-warning-700",
-  info: "bg-info-700",
+  info: "bg-gold-700",                             // Info dot - GOLD THEME
   pending: "bg-warning-700",
 };
 
@@ -45,7 +45,7 @@ export function Badge({ children, variant = "default", className = "", dot = fal
   return (
     <span
       className={cn(
-        "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold",
+        "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold transition-colors duration-200",
         variantStyles[variant],
         className
       )}
