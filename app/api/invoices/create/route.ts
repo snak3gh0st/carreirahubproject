@@ -8,7 +8,7 @@ import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 import { contractWorkflowService } from "@/lib/services/contract-workflow.service";
 import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
-import { addMonths } from "@/lib/utils/date";
+import { addMonths, parseLocalDate } from "@/lib/utils/date";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         // ENTRY INVOICE: Separate entry payment due TODAY
         invoiceAmount = entryAmount;
         invoiceDescription = `${data.description || 'Service'} - Entry Payment`;
-        invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+        invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : new Date();
       } else if (entryAmount > 0 && i > 1) {
         // INSTALLMENT INVOICE (when entry exists): i=2 → Installment 1, i=3 → Installment 2
         const installmentAmount = remaining / installmentCount;
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
         invoiceDescription = `${data.description || 'Service'} - Installment ${installmentNumber} of ${installmentCount}`;
 
         // Calculate due date: i=2 → +1 month, i=3 → +2 months
-        const baseDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+        const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : new Date();
         const monthsToAdd = i - 1; // i=2 → +1 month
         invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
       } else if (installmentCount > 0) {
@@ -148,14 +148,14 @@ export async function POST(request: NextRequest) {
         invoiceDescription = `${data.description || 'Service'} - Installment ${i} of ${installmentCount}`;
 
         // Calculate due date: i=1 → +0 months, i=2 → +1 month
-        const baseDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+        const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : new Date();
         const monthsToAdd = i - 1;
         invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
       } else {
         // Single invoice (no installments, no entry split)
         invoiceAmount = totalAmount;
         invoiceDescription = data.description || 'Service';
-        invoiceDueDate = data.dueDate ? new Date(data.dueDate) : new Date();
+        invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : new Date();
       }
 
       // Prepare line items for this invoice
