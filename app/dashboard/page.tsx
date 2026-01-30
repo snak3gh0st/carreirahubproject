@@ -17,7 +17,7 @@ import {
   BarChart,
 } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
-import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
+import { QuickFilters } from "@/components/dashboard/quick-filters";
 import { useEffect, useState } from "react";
 
 /**
@@ -212,11 +212,9 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* ========== FILTERS SECTION ========== */}
+        {/* ========== QUICK FILTERS ========== */}
         <div className="mb-8">
-          <DashboardFilters onFiltersChange={() => {
-            // Metrics will auto-refresh via useEffect dependency on filter params
-          }} />
+          <QuickFilters />
         </div>
 
         {/* ========== FINANCE SECTION ========== */}
