@@ -57,7 +57,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
 
   // Parse current filter state from URL
   const [dateRange, setDateRange] = useState(
-    searchParams.get("dateRange") || "allTime"
+    searchParams.get("dateRange") || "thisYear"
   );
   const [fromDate, setFromDate] = useState(searchParams.get("from") || "");
   const [toDate, setToDate] = useState(searchParams.get("to") || "");
@@ -134,7 +134,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
   };
 
   const resetFilters = () => {
-    setDateRange("allTime");
+    setDateRange("thisYear");
     setFromDate("");
     setToDate("");
     setSegment("all");
@@ -145,7 +145,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
     router.push("?");
 
     onFiltersChange?.({
-      dateRange: "allTime",
+      dateRange: "thisYear",
       segment: "all",
       invoiceStatus: [],
       dealStatus: [],
@@ -155,7 +155,7 @@ export function DashboardFilters({ onFiltersChange }: DashboardFiltersProps) {
   };
 
   const hasActiveFilters =
-    dateRange !== "allTime" ||
+    dateRange !== "thisYear" ||
     segment !== "all" ||
     invoiceStatuses.length > 0 ||
     dealStatuses.length > 0;

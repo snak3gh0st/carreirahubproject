@@ -194,8 +194,8 @@ export default function DashboardPage() {
 
         {/* ========== FINANCE SECTION ========== */}
         <div className="mb-8">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
-            <DollarSign className="h-6 w-6 text-green-600" />
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-6">
+            <DollarSign className="h-6 w-6 text-gold-600" />
             Finance Metrics
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -211,7 +211,7 @@ export default function DashboardPage() {
               label="Total Invoices"
               value={formatNumber(metrics.finance.totalInvoices)}
               description={`${metrics.finance.totalInvoices - metrics.finance.overdueCount} paid`}
-              icon={<FileText className="h-5 w-5 text-primary-600" />}
+              icon={<FileText className="h-5 w-5 text-gold-600" />}
             />
             <StatCard
               label="Active Customers"
@@ -238,11 +238,11 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link
               href="/dashboard/invoices/new"
-              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:border-gold-200 hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-primary-50 rounded-lg flex items-center justify-center">
-                  <FileText className="h-5 w-5 text-primary-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-gold-50 rounded-lg flex items-center justify-center">
+                  <FileText className="h-5 w-5 text-gold-600" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
@@ -256,7 +256,7 @@ export default function DashboardPage() {
             </Link>
             <Link
               href="/dashboard/quickbooks/sync"
-              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:border-gold-200 hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start gap-4">
                 <div className="flex-shrink-0 w-10 h-10 bg-success-50 rounded-lg flex items-center justify-center">
@@ -274,11 +274,11 @@ export default function DashboardPage() {
             </Link>
             <Link
               href="/dashboard/insights"
-              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200"
+              className="group block bg-white rounded-lg border border-gray-200 p-6 hover:border-gold-200 hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-10 h-10 bg-warning-50 rounded-lg flex items-center justify-center">
-                  <BarChart className="h-5 w-5 text-warning-600" />
+                <div className="flex-shrink-0 w-10 h-10 bg-gold-50 rounded-lg flex items-center justify-center">
+                  <BarChart className="h-5 w-5 text-gold-600" />
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">

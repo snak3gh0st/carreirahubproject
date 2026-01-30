@@ -80,6 +80,24 @@ const config = {
         // Sigma Intel Brand Color
         'sigma-blue': '#29ABE2',
         
+        // Gold Theme Aliases (NEW - Carreira USA Gold Theme)
+        gold: {
+          50: '#FFFBEB',    // Lightest cream
+          100: '#FEF3C7',   // Light gold cream
+          200: '#FDE68A',   // Soft gold
+          300: '#FCD34D',   // Medium gold
+          400: '#FBBF24',   // Vibrant gold
+          500: '#D4AF37',   // Classic gold - Main brand
+          600: '#B8941F',   // Deep gold
+          700: '#9C7A19',   // Rich gold
+          800: '#806114',   // Dark gold
+          900: '#64470F',   // Darkest gold
+        },
+        
+        // Secondary Dark Colors (NEW - For sidebar & dark sections)
+        'secondary-dark': '#1A1A1A',   // Rich black
+        'secondary-gray': '#2D2D2D',   // Dark gray
+        
         // Neutral Grays
         gray: {
           50: 'var(--gray-50)',

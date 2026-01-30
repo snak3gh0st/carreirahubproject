@@ -103,23 +103,23 @@ export function ProfessionalSidebar({
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-white border-r border-gray-200 flex flex-col">
+    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-secondary-dark border-r border-secondary-gray flex flex-col">
       {/* Logo Section */}
       <div className="px-8 py-10">
         <Link href="/dashboard" className="flex items-center gap-3">
-          {/* Logo Icon - Blue Square */}
-          <div className="w-7 h-7 bg-primary-600 rounded flex items-center justify-center">
+          {/* Logo Icon - Gold Square */}
+          <div className="w-7 h-7 bg-gold-500 rounded flex items-center justify-center">
             <span className="text-white text-sm font-bold">C</span>
           </div>
           {/* Logo Text */}
-          <span className="text-lg font-display font-semibold text-gray-900">
+          <span className="text-lg font-display font-semibold text-white">
             Carreira
           </span>
         </Link>
       </div>
 
       {/* Navigation Section */}
-      <nav className="flex-1 px-8 space-y-2">
+      <nav className="flex-1 px-4 space-y-2">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -129,23 +129,18 @@ export function ProfessionalSidebar({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-display transition-colors group",
+                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
                 active
-                  ? "text-gray-900 font-medium"
-                  : "text-gray-700 font-normal hover:text-gray-900"
+                  ? "bg-gold-600 text-white font-semibold shadow-lg shadow-gold-900/20"
+                  : "text-gray-300 font-normal hover:bg-secondary-gray hover:text-white"
               )}
             >
-              {/* Active Dot Indicator */}
-              <div
-                className={cn(
-                  "w-1.5 h-1.5 rounded-full transition-colors",
-                  active ? "bg-primary-600" : "bg-transparent"
-                )}
-              />
+              <Icon className={cn(
+                "h-5 w-5 transition-colors",
+                active ? "text-white" : "text-gray-400 group-hover:text-white"
+              )} />
               
-              <span className={cn(
-                active && "font-medium"
-              )}>
+              <span>
                 {item.label}
               </span>
             </Link>
@@ -154,11 +149,11 @@ export function ProfessionalSidebar({
       </nav>
 
       {/* Bottom Section - User Profile + Sigma Footer */}
-      <div className="px-8 py-6 border-t border-gray-200 space-y-6">
+      <div className="px-8 py-6 border-t border-secondary-gray space-y-6">
         {/* User Profile */}
         <div className="flex items-center gap-3">
           {/* Avatar */}
-          <div className="w-9 h-9 bg-gray-900 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 bg-gold-500 rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-xs text-white font-display font-medium">
               {getInitials(userName)}
             </span>
@@ -166,18 +161,18 @@ export function ProfessionalSidebar({
           
           {/* User Info */}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-display font-medium text-gray-900 truncate">
+            <p className="text-sm font-display font-medium text-white truncate">
               {userName}
             </p>
-            <p className="text-xs text-gray-600 truncate">
+            <p className="text-xs text-gray-400 truncate">
               {userRole}
             </p>
           </div>
         </div>
 
         {/* Powered by SIGMA INTEL Footer */}
-        <div className="text-center space-y-2 pt-4 border-t border-gray-200">
-          <p className="text-[10px] text-gray-600">
+        <div className="text-center space-y-2 pt-4 border-t border-secondary-gray">
+          <p className="text-[10px] text-gray-500">
             Powered by
           </p>
           <p className="text-xs font-display font-bold text-sigma-blue">

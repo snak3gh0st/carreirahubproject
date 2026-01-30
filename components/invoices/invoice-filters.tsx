@@ -77,7 +77,7 @@ export function InvoiceFilters({
           <select
             value={currentStatus || ""}
             onChange={(e) => handleStatusChange(e.target.value)}
-            className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+            className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors"
           >
             <option value="">All Status</option>
             {Object.entries(statsMap).map(([status, data]) => (
@@ -93,7 +93,7 @@ export function InvoiceFilters({
           <select
             value={getCurrentDateRange()}
             onChange={(e) => handleDateRangeChange(e.target.value)}
-            className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+            className="w-full px-4 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-lg hover:bg-gray-50 focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors"
           >
             <option value="">All Time</option>
             <option value="week">Due This Week</option>
@@ -117,7 +117,7 @@ export function InvoiceFilters({
               name="search"
               defaultValue={currentSearch}
               placeholder="Search invoices..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 text-sm rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 text-sm rounded-lg focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
             />
             <svg
               className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"

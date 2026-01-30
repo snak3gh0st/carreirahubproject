@@ -15,36 +15,36 @@
    ======================================== */
 
 export const colors = {
-  // Primary Blue - Trust, Finance, Professional
+  // Primary Gold - Success, Excellence, Premium (Carreira USA Brand)
   primary: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    200: '#BFDBFE',
-    300: '#93C5FD',
-    400: '#60A5FA',
-    500: '#0F52BA',  // Main brand color
-    600: '#0C42A0',
-    700: '#093686',
-    800: '#072A6C',
-    900: '#051E52',
+    50: '#FFFBEB',   // Lightest cream
+    100: '#FEF3C7',  // Light gold cream
+    200: '#FDE68A',  // Soft gold
+    300: '#FCD34D',  // Medium gold
+    400: '#FBBF24',  // Vibrant gold
+    500: '#D4AF37',  // Main brand color - Classic Gold
+    600: '#B8941F',  // Deep gold
+    700: '#9C7A19',  // Rich gold
+    800: '#806114',  // Dark gold
+    900: '#64470F',  // Darkest gold
   },
   
   // Success Green - Payments, Growth, Positive
   success: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    500: '#059669',
-    600: '#047857',
-    700: '#065F46',
+    50: '#F0FDF4',
+    100: '#DCFCE7',
+    500: '#22C55E',  // Modern bright green
+    600: '#16A34A',
+    700: '#15803D',
   },
   
-  // Warning Amber - Alerts, Pending, Attention
+  // Warning Orange - Alerts, Pending, Attention
   warning: {
-    50: '#FFFBEB',
-    100: '#FEF3C7',
-    500: '#F59E0B',
-    600: '#D97706',
-    700: '#B45309',
+    50: '#FFF7ED',
+    100: '#FFEDD5',
+    500: '#F97316',  // Vibrant orange
+    600: '#EA580C',
+    700: '#C2410C',
   },
   
   // Error Red - Overdue, Critical, Errors
@@ -56,12 +56,12 @@ export const colors = {
     700: '#991B1B',
   },
   
-  // Info Blue - Neutral information
+  // Info Gold - Neutral information (aligned with primary gold)
   info: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    500: '#3B82F6',
-    600: '#2563EB',
+    50: '#FFFBEB',   // Light cream
+    100: '#FEF3C7',  // Light gold cream
+    500: '#D4AF37',  // Classic gold
+    600: '#B8941F',  // Deep gold
   },
   
   // Neutral Grays - Optimized for readability
