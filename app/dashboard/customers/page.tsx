@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { format } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
 import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
 import { StatCard } from "@/components/ui/stat-card";
@@ -11,6 +12,26 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Users, TrendingUp, AlertCircle } from "lucide-react";
 
 const ITEMS_PER_PAGE = 25;
+
+type BadgeVariant = "success" | "warning" | "error" | "info" | "default";
+
+function getCustomerStatus(customer: any): { variant: BadgeVariant; label: string } {
+  const today = new Date();
+  const hasOverdue = customer.invoices.some(
+    (inv: any) =>
+      inv.status !== "PAID" &&
+      inv.status !== "VOID" &&
+      new Date(inv.dueDate) < today
+  );
+  const hasUnpaid = customer.invoices.some(
+    (inv: any) => inv.status !== "PAID" && inv.status !== "VOID"
+  );
+
+  if (hasOverdue) return { variant: "error", label: "Overdue" };
+  if (hasUnpaid) return { variant: "warning", label: "Pending" };
+  if (customer.invoices.length > 0) return { variant: "success", label: "Good Standing" };
+  return { variant: "default", label: "No Invoices" };
+}
 
 /**
  * Dashboard de Customers
@@ -289,35 +310,10 @@ export default async function CustomersPage({
           />
         </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-          <h3 className="text-sm font-medium text-gray-500">Total Customers</h3>
-          <p className="text-3xl font-bold mt-2">{stats._count.id}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-green-500">
-          <h3 className="text-sm font-medium text-gray-500">From QuickBooks</h3>
-          <p className="text-3xl font-bold mt-2 text-green-600">{qbCustomers}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
-          <h3 className="text-sm font-medium text-gray-500">From Pipedrive</h3>
-          <p className="text-3xl font-bold mt-2 text-blue-600">{pipedriveCustomers}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-purple-500">
-          <h3 className="text-sm font-medium text-gray-500">With Invoices</h3>
-          <p className="text-3xl font-bold mt-2 text-purple-600">{customersWithInvoices}</p>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow border-l-4 border-red-500">
-          <h3 className="text-sm font-medium text-gray-500">With Overdue</h3>
-          <p className="text-3xl font-bold mt-2 text-red-600">{customersWithOverdue}</p>
-          {customersWithOverdue > 0 && (
-            <p className="text-xs text-red-600 mt-1">⚠️ Needs attention</p>
-          )}
-        </div>
-      </div>
+
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
         <div className="flex flex-wrap items-center gap-4 mb-4">
           {/* Search */}
           <form method="GET" className="flex-1 min-w-[200px]">
@@ -328,7 +324,7 @@ export default async function CustomersPage({
                 name="search"
                 defaultValue={search}
                 placeholder="Search by name, email, or phone..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
               />
               <svg
                 className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
@@ -348,33 +344,33 @@ export default async function CustomersPage({
 
           {/* Source Filter */}
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Source:</span>
+            <span className="text-sm font-display font-medium text-gray-700">Source:</span>
             <Link
               href={`/dashboard/customers${search ? `?search=${search}` : ""}`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                 !source
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               All
             </Link>
             <Link
               href={`/dashboard/customers?source=quickbooks${search ? `&search=${search}` : ""}`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                 source === "quickbooks"
-                  ? "bg-green-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               QuickBooks ({qbCustomers})
             </Link>
             <Link
               href={`/dashboard/customers?source=pipedrive${search ? `&search=${search}` : ""}`}
-              className={`px-3 py-1 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
                 source === "pipedrive"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
+                  ? "bg-primary-600 text-white"
+                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
               Pipedrive ({pipedriveCustomers})
@@ -542,9 +538,9 @@ export default async function CustomersPage({
       </div>
 
       {/* Quick Filter Chips */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
+          <span className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Quick Filters:</span>
         </div>
         <div className="flex md:flex-wrap gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-2 px-2">
           {(() => {
@@ -639,32 +635,24 @@ export default async function CustomersPage({
                   Name<SortIndicator field="name" />
                 </Link>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                <Link
-                  href={buildSortUrl("email")}
-                  className="hover:text-gray-900 cursor-pointer"
-                >
-                  Email<SortIndicator field="email" />
-                </Link>
+              <th className="px-6 py-3 text-right text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                Total Invoiced
               </th>
-              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                Phone
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                Invoices
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+              <th className="px-6 py-3 text-right text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Balance
               </th>
               <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                Actions
               </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
             {customers.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-0">
+                <td colSpan={5} className="p-0">
                   <EmptyState
                     icon={<Users className="w-16 h-16" />}
                     title="No customers found"
@@ -674,95 +662,52 @@ export default async function CustomersPage({
               </tr>
             ) : (
               customers.map((customer) => {
-                const totalInvoices = customer.invoices.length;
-                const paidInvoices = customer.invoices.filter(
-                  (i) => i.status === "PAID"
-                ).length;
-                const totalBalance = customer.invoices
-                  .filter((i) => i.status !== "PAID" && i.status !== "VOID")
-                  .reduce((sum, i) => sum + Number(i.amount), 0);
+                const totalInvoiced = customer.qbTotalInvoiced || customer.invoices.reduce((sum, i) => sum + Number(i.amount), 0);
+                const totalBalance = customer.qbBalance !== null && customer.qbBalance !== undefined
+                  ? Number(customer.qbBalance)
+                  : customer.invoices
+                      .filter((i) => i.status !== "PAID" && i.status !== "VOID")
+                      .reduce((sum, i) => sum + Number(i.amount), 0);
 
-                // Calculate overdue invoices
-                const today = new Date();
-                const overdueInvoices = customer.invoices.filter(
-                  (i) =>
-                    i.status !== "PAID" &&
-                    i.status !== "VOID" &&
-                    new Date(i.dueDate) < today
-                );
-                const overdueCount = overdueInvoices.length;
-                const overdueAmount = overdueInvoices.reduce(
-                  (sum, i) => sum + Number(i.amount),
-                  0
-                );
+                const status = getCustomerStatus(customer);
 
                 return (
-                  <tr key={customer.id} className="md:hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
+                  <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col">
+                        <Link
+                          href={`/dashboard/customers/${customer.id}`}
+                          className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
+                        >
+                          {customer.name}
+                        </Link>
+                        <span className="text-xs text-gray-500">{customer.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-display font-semibold text-gray-900 tabular-nums">
+                      ${Number(totalInvoiced).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-display font-semibold tabular-nums">
+                      {totalBalance > 0 ? (
+                        <span className="text-error-600">
+                          ${Number(totalBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      ) : (
+                        <span className="text-success-600">$0.00</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant={status.variant}>
+                        {status.label}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <Link
                         href={`/dashboard/customers/${customer.id}`}
-                        className="text-blue-600 hover:underline font-medium"
+                        className="text-primary-600 hover:text-primary-700 font-medium"
                       >
-                        {customer.name}
+                        View
                       </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.email}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {customer.phone || "-"}
-                    </td>
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap">
-                      <div className="flex gap-1">
-                        {customer.quickbooks_id && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
-                            QB
-                          </span>
-                        )}
-                        {customer.pipedrive_id && (
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
-                            PD
-                          </span>
-                        )}
-                        {!customer.quickbooks_id && !customer.pipedrive_id && (
-                          <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
-                            Manual
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex flex-col">
-                        <span className="text-gray-900">
-                          {paidInvoices}/{totalInvoices} <span className="text-gray-500">paid</span>
-                        </span>
-                        {overdueCount > 0 && (
-                          <span className="text-red-600 text-xs font-medium mt-1">
-                            ⚠️ {overdueCount} overdue
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="flex flex-col">
-                        {totalBalance > 0 ? (
-                          <>
-                            <span className="text-red-600 font-medium">
-                              ${totalBalance.toLocaleString()}
-                            </span>
-                            {overdueAmount > 0 && (
-                              <span className="text-red-700 text-xs font-bold mt-1">
-                                ${overdueAmount.toLocaleString()} overdue
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-green-600">$0</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(customer.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
                 );
