@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   FileText,
@@ -10,6 +11,7 @@ import {
   CreditCard,
   FileSignature,
   BarChart3,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -168,6 +170,15 @@ export function ProfessionalSidebar({
               {userRole}
             </p>
           </div>
+
+          {/* Logout Button */}
+          <button
+            onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+            className="p-2 text-gray-400 hover:text-white hover:bg-secondary-gray rounded-lg transition-colors"
+            title="Logout"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Powered by SIGMA INTEL Footer */}
