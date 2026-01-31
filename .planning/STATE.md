@@ -431,13 +431,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 032 | Fix broken QuickBooks sync link and ensure Settings button visible | 2026-01-30 | 1c1619f | [032-fix-broken-quickbooks-sync-link-and-ensu](.planning/quick/032-fix-broken-quickbooks-sync-link-and-ensu/) |
 | 033 | Improve invoice customer selection UX and add customer deletion | 2026-01-30 | f4f32d3 | [033-improve-invoice-customer-selection-ui-an](.planning/quick/033-improve-invoice-customer-selection-ui-an/) |
 | 034 | Fix invoice date timezone bug and first installment calculation | 2026-01-30 | c6ccaa0 | [034-fix-invoice-date-timezone-bug-and-first-](.planning/quick/034-fix-invoice-date-timezone-bug-and-first-/) |
+| 035 | Fix workflow progress tracker - add email tracking fields | 2026-01-31 | pending | [035-fix-workflow-progress-tracker-add-emai](.planning/quick/035-fix-workflow-progress-tracker-add-emai/) |
 
 ## Session Continuity
 
-Last session: 2026-01-30
-Stopped at: Completed Quick Task 034 (Fix invoice date timezone bug and first installment calculation)
-Resume file: .planning/quick/034-fix-invoice-date-timezone-bug-and-first-/034-SUMMARY.md
-Next action: Quick Task 029 at verification checkpoint (contract creation + preview)
+Last session: 2026-01-31
+Stopped at: Completed Quick Task 035 (Fix workflow progress tracker - add email tracking fields)
+Resume file: .planning/quick/035-fix-workflow-progress-tracker-add-emai/035-SUMMARY.md
+Next action: Ready for commit and deploy
 
 ## Sprint 1 Success Criteria
 

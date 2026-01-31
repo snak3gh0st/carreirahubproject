@@ -377,6 +377,11 @@ model Invoice {
   lastCollectionCallAt  DateTime?
   collectionCallCount   Int      @default(0)
 
+  // Email tracking
+  emailSentAt           DateTime?
+  emailSendAttempts     Int      @default(0)
+  lastEmailSendError    String?
+
   dealId     String?
   deal       Deal?    @relation(fields: [dealId], references: [id])
   customerId String

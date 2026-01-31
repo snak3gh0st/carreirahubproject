@@ -280,6 +280,11 @@ export async function POST(request: NextRequest) {
       const lineItems = metadata.lineItems;
 
       let qbInvoiceId: string | undefined;
+      
+      // Email tracking variables (will be set during invoice creation)
+      let emailSentAt: Date | undefined;
+      let emailSendAttempts = 0;
+      let lastEmailSendError: string | undefined;
 
       // Auto-approve and sync to QuickBooks immediately for all roles
       await quickbooksService.initialize();
@@ -431,6 +436,10 @@ export async function POST(request: NextRequest) {
                 } as any,
               },
             });
+
+            // Set email tracking variables for invoice creation
+            emailSentAt = new Date();
+            emailSendAttempts = 1;
           } else {
             // Send failed after retries - create NEEDS_MANUAL_SEND log entry
             console.log(`[INVOICE_CREATE] ⚠️  Invoice email send failed after ${sendResult.attempts} attempts`);
@@ -454,6 +463,10 @@ export async function POST(request: NextRequest) {
                 } as any,
               },
             });
+
+            // Set email tracking variables for invoice creation
+            emailSendAttempts = sendResult.attempts || 1;
+            lastEmailSendError = sendResult.error || "Unknown error";
           }
         } catch (sendError: any) {
           // Shouldn't happen since sendInvoice is now non-throwing, but keep as safety net
@@ -532,6 +545,10 @@ export async function POST(request: NextRequest) {
           dealId,
           customerId,
           lineItems: lineItems as any,
+          // Email tracking fields
+          emailSentAt,
+          emailSendAttempts,
+          lastEmailSendError,
           ...(invoiceCountToCreate > 1 && {
             installments: {
               seriesId,

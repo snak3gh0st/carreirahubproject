@@ -121,12 +121,16 @@ export default async function InvoiceDetailPage({
     },
     {
       title: "Email Sent",
-      status: invoice.status === InvoiceStatus.SENT || invoice.status === InvoiceStatus.PAID 
-        ? ("completed" as const) 
+      status: invoice.emailSentAt
+        ? ("completed" as const)
+        : invoice.lastEmailSendError
+        ? ("failed" as const)
         : ("pending" as const),
-      date: invoice.status === InvoiceStatus.SENT || invoice.status === InvoiceStatus.PAID ? invoice.createdAt : null,
-      description: invoice.status === InvoiceStatus.SENT || invoice.status === InvoiceStatus.PAID
-        ? `Email sent to ${invoice.customer.email}`
+      date: invoice.emailSentAt,
+      description: invoice.emailSentAt
+        ? `Email sent to ${invoice.customer.email} (${invoice.emailSendAttempts || 1} attempt${(invoice.emailSendAttempts || 1) > 1 ? 's' : ''})`
+        : invoice.lastEmailSendError
+        ? `Failed to send: ${invoice.lastEmailSendError} (${invoice.emailSendAttempts || 0} attempt${(invoice.emailSendAttempts || 0) !== 1 ? 's' : ''})`
         : "Email will be sent automatically",
     },
     {
