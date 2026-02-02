@@ -15,6 +15,7 @@ export interface CustomerData {
   email: string;
   name: string;
   phone?: string;
+  dateOfBirth?: Date;
   ssn?: string;
   passport?: string;
   cpf?: string;
@@ -38,7 +39,7 @@ export class IdentityMapperService {
    * Reconciliar ou criar Customer baseado em email e IDs externos
    */
   async reconcileCustomer(data: CustomerData): Promise<Customer> {
-    const { email, name, phone, ssn, passport, cpf, address, city, state, zipCode, country, externalIds = {}, metadata } = data;
+    const { email, name, phone, dateOfBirth, ssn, passport, cpf, address, city, state, zipCode, country, externalIds = {}, metadata } = data;
 
     // Buscar Customer existente por email
     let customer = await prisma.customer.findUnique({
@@ -52,6 +53,7 @@ export class IdentityMapperService {
       // Atualizar campos básicos se necessário
       if (name && !customer.name) updates.name = name;
       if (phone && !customer.phone) updates.phone = phone;
+      if (dateOfBirth && !customer.dateOfBirth) updates.dateOfBirth = dateOfBirth;
       if (ssn && !customer.ssn) updates.ssn = ssn;
       if (passport && !customer.passport) updates.passport = passport;
       if (cpf && !customer.cpf) updates.cpf = cpf;
@@ -104,6 +106,7 @@ export class IdentityMapperService {
           email,
           name,
           phone,
+          dateOfBirth,
           ssn,
           passport,
           cpf,

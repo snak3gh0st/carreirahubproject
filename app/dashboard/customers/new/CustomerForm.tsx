@@ -10,6 +10,7 @@ export function NewCustomerForm() {
     name: "",
     email: "",
     phone: "",
+    dateOfBirth: "",
     ssn: "",
     passport: "",
     cpf: "",
@@ -47,6 +48,7 @@ export function NewCustomerForm() {
           email: form.email,
           name: form.name,
           phone: form.phone || undefined,
+          dateOfBirth: form.dateOfBirth || undefined,
           ssn: form.ssn || undefined,
           passport: form.passport || undefined,
           cpf: form.cpf || undefined,
@@ -72,6 +74,7 @@ export function NewCustomerForm() {
         name: "",
         email: "",
         phone: "",
+        dateOfBirth: "",
         ssn: "",
         passport: "",
         cpf: "",
@@ -211,7 +214,7 @@ export function NewCustomerForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone <span className="text-gray-400 text-xs">(Optional)</span>
+            Telefone <span className="text-gray-400 text-xs">(Opcional)</span>
           </label>
           <input
             type="text"
@@ -222,10 +225,23 @@ export function NewCustomerForm() {
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Data de Nascimento <span className="text-gray-400 text-xs">(Opcional)</span>
+          </label>
+          <input
+            type="date"
+            value={form.dateOfBirth}
+            onChange={(e) => handleChange("dateOfBirth", e.target.value)}
+            className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="DD/MM/AAAA"
+          />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              SSN <span className="text-gray-400 text-xs">(Optional)</span>
+              SSN (EUA) <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -238,19 +254,19 @@ export function NewCustomerForm() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passport <span className="text-gray-400 text-xs">(Optional)</span>
+              Passaporte <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
               value={form.passport}
               onChange={(e) => handleChange("passport", e.target.value)}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Passport number"
+              placeholder="Número do passaporte"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              CPF <span className="text-gray-400 text-xs">(Optional)</span>
+              CPF <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -265,7 +281,7 @@ export function NewCustomerForm() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address <span className="text-gray-400 text-xs">(Optional)</span>
+            Endereço <span className="text-gray-400 text-xs">(Opcional)</span>
           </label>
           <input
             type="text"
@@ -279,7 +295,7 @@ export function NewCustomerForm() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              City <span className="text-gray-400 text-xs">(Optional)</span>
+              Cidade <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -291,7 +307,7 @@ export function NewCustomerForm() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              State <span className="text-gray-400 text-xs">(Optional)</span>
+              Estado <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -304,7 +320,7 @@ export function NewCustomerForm() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ZIP Code <span className="text-gray-400 text-xs">(Optional)</span>
+              CEP <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
