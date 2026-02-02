@@ -228,8 +228,9 @@ export class WorkflowStatusService {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 30);
 
-        const qbInvoice = await quickbooksService.createInvoice({
+        const qbInvoice = await quickbooksService.createInvoiceWithBillEmail({
           customerId: qbCustomer.Id,
+          customerEmail: deal.customer.email,
           dueDate,
           lineItems: [
             {

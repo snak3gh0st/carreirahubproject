@@ -90,6 +90,7 @@ export class InvoiceSyncService {
           // Prepare QB invoice data with optional payment term
           const qbInvoiceData: any = {
             customerId: qbCustomer.Id,
+            customerEmail: invoice.customer.email,
             dueDate: invoice.dueDate,
             lineItems: qbLineItems,
           };
@@ -99,8 +100,8 @@ export class InvoiceSyncService {
             qbInvoiceData.paymentTermId = paymentTermId;
           }
 
-          // Create QB invoice (always creates as DRAFT initially)
-          const qbInvoice = await quickbooksService.createInvoice(qbInvoiceData);
+          // Create QB invoice with BillEmail set (enables automatic email delivery)
+          const qbInvoice = await quickbooksService.createInvoiceWithBillEmail(qbInvoiceData);
 
           // Update invoice with QB ID
           await prisma.invoice.update({
