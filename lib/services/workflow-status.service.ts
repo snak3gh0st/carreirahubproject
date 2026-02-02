@@ -253,6 +253,11 @@ export class WorkflowStatusService {
           },
         });
 
+        // Send invoice via email (critical - creation alone doesn't send)
+        if (deal.customer.email) {
+          await quickbooksService.sendInvoice(qbInvoice.Id, deal.customer.email);
+        }
+
         await this.markInvoiceCreated(dealId);
 
         return { success: true, message: "Invoice retry successful" };
