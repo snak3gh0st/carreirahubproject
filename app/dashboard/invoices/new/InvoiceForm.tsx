@@ -45,6 +45,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     customerId: "",
     dealId: "",
     discount: "",
+    discountType: "amount" as "amount" | "percentage",
     entryAmount: "",
     installments: "",
     dueDate: "",
@@ -186,8 +187,14 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       (sum, item) => sum + getNumericValue(item.unitPrice) * item.quantity,
       0
     );
-    const discount = getNumericValue(form.discount);
-    return Math.max(0, baseAmount - discount);
+    const discountValue = getNumericValue(form.discount);
+    
+    if (form.discountType === "percentage") {
+      const discountAmount = baseAmount * (discountValue / 100);
+      return Math.max(0, baseAmount - discountAmount);
+    } else {
+      return Math.max(0, baseAmount - discountValue);
+    }
   };
 
   const generateInstallmentSchedule = () => {
@@ -331,7 +338,10 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     0
   );
   const total = calculateTotal();
-  const discountValue = getNumericValue(form.discount);
+  const discountInputValue = getNumericValue(form.discount);
+  const discountValue = form.discountType === "percentage" 
+    ? subtotal * (discountInputValue / 100) 
+    : discountInputValue;
   const entryValue = getNumericValue(form.entryAmount);
   const installmentsValue = getNumericValue(form.installments);
   const remaining = Math.max(0, total - entryValue);
@@ -383,7 +393,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                     setShowCustomerDropdown(true);
                   }}
                   onFocus={() => setShowCustomerDropdown(true)}
-                  placeholder="Search by name or email..."
+                  placeholder="Buscar por nome ou email..."
                   className="w-full border border-gray-300 rounded-md pl-10 pr-10 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required={!form.customerId}
                 />
@@ -422,7 +432,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                   {filteredCustomers.length === 0 ? (
                     <div className="px-3 py-2 text-sm text-gray-500">
-                      No customers found
+                      Nenhum cliente encontrado
                     </div>
                   ) : (
                     filteredCustomers.map((customer) => (
@@ -626,15 +636,41 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           {/* Discount Field (moved here) */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Desconto (USD)
+              Desconto
             </label>
+            <div className="flex gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => handleChange("discountType", "amount")}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+                  form.discountType === "amount"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                Valor (USD)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleChange("discountType", "percentage")}
+                className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${
+                  form.discountType === "percentage"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                Percentual (%)
+              </button>
+            </div>
             <input
               type="number"
-              step="0.01"
+              step={form.discountType === "percentage" ? "0.1" : "0.01"}
               min="0"
+              max={form.discountType === "percentage" ? "100" : undefined}
               value={form.discount}
               onChange={(e) => handleChange("discount", e.target.value)}
               className="w-full md:w-1/2 border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder={form.discountType === "percentage" ? "0.0" : "0.00"}
             />
           </div>
 
