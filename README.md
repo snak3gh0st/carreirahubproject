@@ -1,6 +1,6 @@
-# Carreira AI Hub
+# Sigma Business Intelligence Engine
 
-> Proprietary middleware system that replaces expensive No-Code/SaaS tools, centralizing lead management, sales, and operations into a single source of truth (SSOT).
+> **Proprietary multi-tenant middleware system** by Sigma Intelligence that replaces expensive No-Code/SaaS tools, centralizing lead management, sales, and operations into a single source of truth (SSOT).
 
 [![Next.js](https://img.shields.io/badge/Next.js-14+-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
@@ -9,12 +9,17 @@
 
 ## 🎯 Project Overview
 
-Carreira AI Hub eliminates "data blindness" and reduces operational expenses by 66% (~$17.6k/month savings) for Carreira U.S.A. by replacing fragile N8N automations with robust API-driven workflows in pure code.
+**Sigma Intelligence** proprietary business engine deployed for **Carreira U.S.A.** (first client implementation). The system eliminates "data blindness" and reduces operational expenses by 66% (~$17.6k/month savings) by replacing fragile N8N automations with robust API-driven workflows in pure code.
+
+**Client**: Carreira U.S.A. (Immigration consulting and career services)  
+**Engine Owner**: Sigma Intelligence  
+**Deployment Model**: White-label SaaS engine sleeved to client infrastructure
 
 **Core Philosophy**: 
 - Replace No-Code/SaaS sprawl with centralized API routes
 - Eliminate duplicate customer data through the Identity Mapper pattern
 - Single source of truth across CRM, finance, and operations
+- Multi-tenant architecture ready for future client deployments
 
 ## 🚀 Quick Start
 
@@ -114,9 +119,9 @@ carreirahubproject/
 
 ## 🔑 Key Features
 
-### 1. Identity Mapper (Customer Deduplication)
+### 1. Identity Mapper (Sigma Core Pattern)
 
-**Critical Rule**: Email is the unique key across all systems.
+**Sigma's Critical Rule**: Email is the unique key across all systems. Never create duplicate customers.
 
 ```typescript
 import { identityMapper } from "@/lib/services/identity-mapper";
@@ -131,13 +136,15 @@ const customer = await identityMapper.reconcileCustomer({
 });
 ```
 
-Reconciles customer data from:
+**Sigma Identity Mapper** reconciles customer data from:
 - Pipedrive (CRM)
 - QuickBooks (Finance)
 - Stripe (Payments)
 - Trello, CloudTalk, Google Contacts
 
-### 2. Automated Lead Qualification
+This pattern eliminates duplicate customer records across disparate systems, ensuring a true Single Source of Truth.
+
+### 2. Automated Lead Qualification (Sigma AI Engine)
 
 AI-powered lead scoring using GPT-4:
 
@@ -149,6 +156,7 @@ const qualification = await aiService.qualifyLead(leadId);
 - Threshold: ≥70 = QUALIFIED
 - Triggers: WhatsApp message automation
 - Escalation: Auto-escalates complex conversations to human SDR
+- **Sigma Innovation**: Proprietary qualification algorithm trained on service industry patterns
 
 ### 3. Invoice Workflow Automation
 
@@ -363,17 +371,31 @@ Verifies:
 
 ## 🤝 Contributing
 
-This is a proprietary project for Carreira U.S.A. Please contact the development team for contribution guidelines.
+This is a proprietary engine owned by **Sigma Intelligence**. Current deployment serves **Carreira U.S.A.** as the first client. For contribution guidelines or licensing inquiries, contact Sigma Intelligence.
 
 ## 📄 License
 
-Proprietary - All rights reserved by Carreira U.S.A.
+**Proprietary - All rights reserved by Sigma Intelligence**
+
+This software is the exclusive property of Sigma Intelligence and is licensed to clients under specific terms. Unauthorized copying, distribution, or modification is strictly prohibited.
 
 ## 🔗 Links
 
 - **GitHub**: [https://github.com/snak3gh0st/carreirahubproject](https://github.com/snak3gh0st/carreirahubproject)
-- **Company**: Carreira U.S.A.
+- **Engine Owner**: Sigma Intelligence
+- **Current Client**: Carreira U.S.A.
+
+## 🏢 About Sigma Intelligence
+
+Sigma Intelligence develops proprietary business intelligence and automation engines for service-based companies. Our white-label SaaS platform replaces fragmented tool stacks with unified, API-driven workflows.
+
+**Services**:
+- Custom middleware development
+- CRM/Finance integration architecture
+- AI-powered lead qualification
+- Multi-tenant SaaS deployment
+- White-label business automation
 
 ---
 
-**Built with ❤️ for Carreira U.S.A. - Empowering careers in America**
+**Built by Sigma Intelligence** | Deployed for Carreira U.S.A. | Empowering service businesses through intelligent automation
