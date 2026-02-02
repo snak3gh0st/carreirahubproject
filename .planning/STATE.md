@@ -13,7 +13,7 @@ See: .planning/PROJECT.md (updated 2026-01-14)
 Phase: 9 of 9 (Professional UI/UX Enhancement) - IN PROGRESS
 Plan: 4 of 5 in current phase (partial completion)
 Status: In progress - Invoices List redesigned, 5 pages remain
-Last activity: 2026-01-30 - Completed quick task 033: Improve invoice customer selection UX and add customer deletion
+Last activity: 2026-02-02 - Completed quick task 036: Add discount percentage, DOB field, and PT-BR translations
 
 Progress: █████████████████████ 100% Sprint 1 + ▓▓▓▓░ Phase 9 (28/29 plans executed, 09-04 partial)
 
@@ -432,13 +432,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 033 | Improve invoice customer selection UX and add customer deletion | 2026-01-30 | f4f32d3 | [033-improve-invoice-customer-selection-ui-an](.planning/quick/033-improve-invoice-customer-selection-ui-an/) |
 | 034 | Fix invoice date timezone bug and first installment calculation | 2026-01-30 | c6ccaa0 | [034-fix-invoice-date-timezone-bug-and-first-](.planning/quick/034-fix-invoice-date-timezone-bug-and-first-/) |
 | 035 | Fix workflow progress tracker - add email tracking fields | 2026-01-31 | pending | [035-fix-workflow-progress-tracker-add-emai](.planning/quick/035-fix-workflow-progress-tracker-add-emai/) |
+| 036 | Add discount percentage, DOB field, and PT-BR translations | 2026-02-02 | ab9c21c | [036-add-discount-and-dob-translate-to-pt-br](.planning/quick/036-add-discount-and-dob-translate-to-pt-br/) |
 
 ## Session Continuity
 
-Last session: 2026-01-31
-Stopped at: Completed Quick Task 035 (Fix workflow progress tracker - add email tracking fields)
-Resume file: .planning/quick/035-fix-workflow-progress-tracker-add-emai/035-SUMMARY.md
-Next action: Ready for commit and deploy
+Last session: 2026-02-02
+Stopped at: Completed Quick Task 036 (Add discount percentage, DOB field, and PT-BR translations)
+Resume file: .planning/quick/036-add-discount-and-dob-translate-to-pt-br/036-SUMMARY.md
+Next action: Ready for deployment
 
 ## Sprint 1 Success Criteria
 
