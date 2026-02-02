@@ -31,6 +31,8 @@ interface InvoiceItemForm {
   serviceItemId: string;
   quantity: number;
   unitPrice: string;
+  serviceSearch: string;
+  showServiceDropdown: boolean;
 }
 
 
@@ -53,7 +55,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   });
   const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
   const [items, setItems] = useState<InvoiceItemForm[]>([
-    { id: `item-${Date.now()}`, serviceItemId: "", quantity: 1, unitPrice: "" },
+    { id: `item-${Date.now()}`, serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
   ]);
   const [filteredDeals, setFilteredDeals] = useState<Deal[]>(deals);
   const [submitting, setSubmitting] = useState(false);
@@ -120,6 +122,24 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     }
   }, [showCustomerDropdown]);
 
+  // Close service dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      items.forEach((item) => {
+        if (item.showServiceDropdown && !target.closest(`.service-search-container-${item.id}`)) {
+          updateItemSearch(item.id, "showServiceDropdown", false);
+        }
+      });
+    };
+
+    const hasOpenDropdown = items.some((item) => item.showServiceDropdown);
+    if (hasOpenDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [items]);
+
   // Filtrar deals quando customer mudar
   useEffect(() => {
     if (form.customerId) {
@@ -143,12 +163,33 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const addItem = () => {
     setItems((prev) => [
       ...prev,
-      { id: `item-${Date.now()}-${prev.length}`, serviceItemId: "", quantity: 1, unitPrice: "" },
+      { id: `item-${Date.now()}-${prev.length}`, serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
     ]);
   };
 
   const removeItem = (id: string) => {
     setItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const updateItemSearch = (
+    id: string,
+    field: "serviceSearch" | "showServiceDropdown",
+    value: string | boolean
+  ) => {
+    setItems((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
+    );
+  };
+
+  const getFilteredServices = (searchTerm: string) => {
+    if (!searchTerm) return serviceItems;
+    return serviceItems
+      .filter((svc) =>
+        svc.name.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
   };
 
   const updateItem = (
@@ -555,24 +596,89 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                      <div className={`relative service-search-container-${item.id}`}>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Serviço <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          value={item.serviceItemId}
-                          onChange={(e) => updateItem(item.id, "serviceItemId", e.target.value)}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          required
-                        >
-                          <option value="">Selecione um serviço</option>
-                          {serviceItems.map((svc) => (
-                            <option key={svc.id} value={svc.id}>
-                              {svc.name} - ${svc.unitPrice?.toFixed(2) || "0.00"}
-                              {svc.type && ` (${svc.type})`}
-                            </option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={item.serviceSearch}
+                            onChange={(e) => {
+                              updateItemSearch(item.id, "serviceSearch", e.target.value);
+                              updateItemSearch(item.id, "showServiceDropdown", true);
+                            }}
+                            onFocus={() => updateItemSearch(item.id, "showServiceDropdown", true)}
+                            placeholder="Buscar serviço por nome..."
+                            className="w-full border border-gray-300 rounded-md pl-10 pr-10 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            required={!item.serviceItemId}
+                          />
+                          {/* Search icon */}
+                          <svg
+                            className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+                            fill="none"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                          </svg>
+                          {/* Clear button */}
+                          {item.serviceItemId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                updateItem(item.id, "serviceItemId", "");
+                                updateItemSearch(item.id, "serviceSearch", "");
+                                updateItemSearch(item.id, "showServiceDropdown", false);
+                              }}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                <path d="M6 18L18 6M6 6l12 12"></path>
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        
+                        {/* Dropdown */}
+                        {item.showServiceDropdown && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                            {getFilteredServices(item.serviceSearch).length === 0 ? (
+                              <div className="px-3 py-2 text-sm text-gray-500">
+                                Nenhum serviço encontrado
+                              </div>
+                            ) : (
+                              getFilteredServices(item.serviceSearch).map((svc) => (
+                                <button
+                                  key={svc.id}
+                                  type="button"
+                                  onClick={() => {
+                                    updateItem(item.id, "serviceItemId", svc.id);
+                                    updateItemSearch(item.id, "serviceSearch", svc.name);
+                                    updateItemSearch(item.id, "showServiceDropdown", false);
+                                    // Auto-populate unitPrice
+                                    if (svc.unitPrice != null) {
+                                      updateItem(item.id, "unitPrice", String(svc.unitPrice));
+                                    }
+                                  }}
+                                  className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors ${
+                                    item.serviceItemId === svc.id ? 'bg-blue-100' : ''
+                                  }`}
+                                >
+                                  <div className="text-sm font-bold text-gray-900">
+                                    {svc.name}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    R$ {svc.unitPrice?.toFixed(2) || "0.00"}
+                                  </div>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       <div>
