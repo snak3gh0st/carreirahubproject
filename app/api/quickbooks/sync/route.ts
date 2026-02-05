@@ -24,10 +24,10 @@ export async function POST(request: Request) {
     const { 
       syncCustomers = true,
       syncInvoices = true,
-      syncPayments = false,
-      syncItems = false,
+      syncPayments = true,  // Changed default to true
+      syncItems = true,
       maxResults = 1000,
-      incremental = false, // Por padrão, sincronização completa
+      incremental = false,
     } = body;
 
     // Usar o serviço de sincronização
