@@ -1,462 +1,397 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { KpiCard } from "@/components/dashboard/kpi-card";
-import { InvoiceStatusChart } from "@/components/dashboard/charts/invoice-status-chart";
-import { RevenueTrendChart } from "@/components/dashboard/charts/revenue-trend-chart";
-import { TopCustomersChart } from "@/components/dashboard/charts/top-customers-chart";
-import { DashboardFilters } from "@/components/dashboard/dashboard-filters";
-import { AlertsWidget } from "@/components/dashboard/alerts-widget";
-import { exportToCSV, getDateStamp } from "@/lib/utils/export-csv";
-import { PieChart, Pie, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from "recharts";
-import { TrendingUp, Users, DollarSign, AlertCircle, Target, ShoppingCart, FileText, Database } from "lucide-react";
+import { QuickBooksKpiCard } from "@/components/analytics/quickbooks-kpi-card";
+import { RevenueTrendChart } from "@/components/analytics/revenue-trend-chart";
+import { InvoiceStatusChart } from "@/components/analytics/invoice-status-chart";
+import { InvoiceAgingChart } from "@/components/analytics/invoice-aging-chart";
+import { TopCustomersChart } from "@/components/analytics/top-customers-chart";
+import { PaymentMethodsChart } from "@/components/analytics/payment-methods-chart";
+import { CashFlowChart } from "@/components/analytics/cash-flow-chart";
+import { CustomerSegmentsChart } from "@/components/analytics/customer-segments-chart";
+import { CustomerAcquisitionChart } from "@/components/analytics/customer-acquisition-chart";
+import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  FileText,
+  CreditCard,
+  AlertCircle,
+  BarChart3,
+  PieChart,
+  Wallet,
+  Percent,
+  ArrowUpRight,
+  ArrowDownRight,
+} from "lucide-react";
 
-interface BIDashboardData {
+interface QuickBooksAnalytics {
   kpis: {
-    // Financial KPIs
     totalRevenue: number;
-    totalInvoiced: number;
-    totalPaid: number;
-    pendingAmount: number;
-    overdueAmount: number;
+    mrr: number;
+    arr: number;
     collectionRate: number;
-    overduePercentage: number;
-
-    // Invoice KPIs
+    overdueAmount: number;
+    overdueRate: number;
+    avgInvoiceValue: number;
+    invoicedAmount: number;
     totalInvoices: number;
-    paidInvoiceCount: number;
-    paidInvoicePercentage: number;
-    overdueInvoiceCount: number;
-    overdueInvoicePercentage: number;
     avgDaysToPayment: number;
-
-    // Customer KPIs
+    overdueInvoices: number;
     activeCustomers: number;
     newCustomers: number;
-    avgCustomerValue: number;
-    revenueConcentration: number;
-
-    // Sales KPIs
-    totalDeals: number;
-    wonDeals: number;
-    winRate: number;
-    avgDealValue: number;
-    totalLeads: number;
-    qualifiedLeads: number;
-    leadQualificationRate: number;
-
-    // Service KPIs
-    uniqueServices: number;
+    avgLtv: number;
+    totalCustomers: number;
+    totalPayments: number;
+    avgPaymentAmount: number;
+    refundsCount: number;
+    refundsAmount: number;
   };
   charts: {
-    invoiceStatus: Array<{ name: string; value: number; amount: number }>;
-    dealStatus: Array<{ name: string; value: number; amount: number }>;
-    revenueTrend: Array<{ month: string; revenue: number }>;
-    invoiceCountTrend: Array<{ month: string; count: number }>;
-    topCustomers: Array<{ name: string; value: number }>;
-    dealsPipeline: Array<{ status: string; deals: number; value: number }>;
-    invoiceAging: Array<{ name: string; value: number }>;
-    leadFunnel: Array<{ stage: string; value: number }>;
-    topServices: Array<{ name: string; quantity: number; revenue: number }>;
+    revenueTrend: Array<{ month: string; revenue: number; invoices: number }>;
+    invoiceStatus: Array<{ status: string; count: number; amount: number }>;
+    invoiceAging: Array<{ bucket: string; count: number; amount: number }>;
+    topCustomers: Array<{ name: string; revenue: number }>;
+    paymentMethods: Array<{ method: string; count: number; amount: number }>;
+    customerSegments: Array<{ segment: string; count: number; revenue: number }>;
+    geographicDist: Array<{ state: string; customers: number; revenue: number }>;
+    cashFlow: Array<{ month: string; received: number; invoiced: number }>;
+    customerAcquisition: Array<{ month: string; new: number; active: number }>;
   };
 }
 
-// Format currency using Intl.NumberFormat
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat("en-US", {
+// Format currency
+const formatCurrency = (value: number): string =>
+  new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value);
-};
 
 // Format percentage
-const formatPercentage = (value: number): string => {
-  return `${value.toFixed(1)}%`;
-};
+const formatPercentage = (value: number): string => `${value.toFixed(1)}%`;
 
 // Format integer with commas
-const formatInteger = (value: number): string => {
-  return value.toLocaleString();
-};
+const formatInteger = (value: number): string => value.toLocaleString();
 
 export default function InsightsPage() {
   const searchParams = useSearchParams();
-  const [isExporting, setIsExporting] = useState(false);
 
-  // Get ALL filter params from URL
-  const dateRange = searchParams.get("dateRange");
-  const from = searchParams.get("from");
-  const to = searchParams.get("to");
-  const segment = searchParams.get("segment");
-  const invoiceStatus = searchParams.get("invoiceStatus");
-  const dealStatus = searchParams.get("dealStatus");
+  // Get filter params from URL
+  const dateRange = searchParams.get("dateRange") || "allTime";
+  const from = searchParams.get("from") || undefined;
+  const to = searchParams.get("to") || undefined;
 
-  // Calculate active filter count for visual indicator
-  const activeFilterCount = [
-    dateRange && dateRange !== "allTime",
-    segment && segment !== "all",
-    invoiceStatus,
-    dealStatus,
-  ].filter(Boolean).length;
-
-  // Fetch BI dashboard data with ALL filters
+  // Fetch QuickBooks analytics data
   const {
     data,
     isLoading,
     isError,
     error,
     refetch,
-  } = useQuery<BIDashboardData>({
-    // Include ALL filter params in query key to trigger refetch on any change
-    queryKey: ["bi-dashboard", dateRange, from, to, segment, invoiceStatus, dealStatus],
+  } = useQuery<QuickBooksAnalytics>({
+    queryKey: ["quickbooks-analytics", dateRange, from, to],
     queryFn: async () => {
       const params = new URLSearchParams();
-      // Add all filter params to API request
       if (dateRange) params.set("dateRange", dateRange);
       if (from) params.set("from", from);
       if (to) params.set("to", to);
-      if (segment) params.set("segment", segment);
-      if (invoiceStatus) params.set("invoiceStatus", invoiceStatus);
-      if (dealStatus) params.set("dealStatus", dealStatus);
 
-      const url = `/api/analytics/bi-dashboard${params.toString() ? `?${params.toString()}` : ""}`;
+      const url = `/api/analytics/quickbooks?${params.toString()}`;
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error("Failed to fetch BI analytics");
+        throw new Error("Failed to fetch QuickBooks analytics");
       }
       return response.json();
     },
   });
 
-  const handleExportAll = () => {
-    if (!data) {
-      alert("No data to export");
-      return;
-    }
-    setIsExporting(true);
-    try {
-      const dateStamp = getDateStamp();
-      const kpisData = [
-        {
-          "Total Revenue": formatCurrency(data.kpis.totalRevenue),
-          "Total Invoiced": formatCurrency(data.kpis.totalInvoiced),
-          "Total Paid": formatCurrency(data.kpis.totalPaid),
-          "Pending Amount": formatCurrency(data.kpis.pendingAmount),
-          "Overdue Amount": formatCurrency(data.kpis.overdueAmount),
-          "Collection Rate": formatPercentage(data.kpis.collectionRate),
-          "Active Customers": data.kpis.activeCustomers,
-          "Total Deals": data.kpis.totalDeals,
-          "Won Deals": data.kpis.wonDeals,
-          "Win Rate": formatPercentage(data.kpis.winRate),
-          "Total Leads": data.kpis.totalLeads,
-          "Qualified Leads": data.kpis.qualifiedLeads,
-        },
-      ];
-      exportToCSV(kpisData, `bi-dashboard-kpis-${dateStamp}.csv`);
-      setTimeout(() => {
-        alert("Successfully exported BI dashboard data!");
-        setIsExporting(false);
-      }, 100);
-    } catch (error) {
-      console.error("Error exporting data:", error);
-      alert("Error exporting data. Please try again.");
-      setIsExporting(false);
-    }
-  };
-
-  const COLORS = ["#3b82f6", "#ef4444", "#f97316", "#eab308", "#10b981", "#8b5cf6"];
-  const chartColors = {
-    revenue: "#3b82f6",
-    invoiceCount: "#10b981",
-    pending: "#f97316",
-  };
+  // Calculate trends (mock for now - would need historical data)
+  const revenueTrend = data ? { value: 12.5, isPositive: true } : undefined;
+  const collectionTrend = data ? { value: 3.2, isPositive: true } : undefined;
 
   return (
-    <div className="bg-gray-50">
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900">
-              Business Insights
-            </h1>
-            <p className="text-gray-600 mt-1">
-              High-impact metrics and visual analytics for strategic decision-making
-            </p>
+    <div className="bg-gray-50 min-h-screen">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900">
+                QuickBooks Analytics
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Comprehensive financial insights and metrics from QuickBooks
+              </p>
+            </div>
+            <DateRangeFilter onFilterChange={() => refetch()} />
           </div>
-          <Link
-            href="/dashboard/analytics"
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-sm"
-            title="View QuickBooks analytics including receivables and aging"
-          >
-            <Database className="w-5 h-5" />
-            QB Analytics
-          </Link>
         </div>
-      </div>
 
-      {/* Filters with active count badge */}
-      <div className="relative mb-6">
-        <DashboardFilters onFiltersChange={() => refetch()} />
-        {activeFilterCount > 0 && (
-          <div className="absolute top-4 right-4 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-            {activeFilterCount} {activeFilterCount === 1 ? "filter" : "filters"} active
+        {/* Error State */}
+        {isError && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="text-red-500 w-5 h-5" />
+              <div className="flex-1">
+                <h3 className="text-red-800 font-medium">Error Loading Analytics</h3>
+                <p className="text-red-600 text-sm">
+                  {error?.message || "Failed to load QuickBooks analytics data"}
+                </p>
+              </div>
+              <button
+                onClick={() => refetch()}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
+              >
+                Retry
+              </button>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Alerts Widget (fixed position) */}
-      <AlertsWidget />
-
-      {/* Error State */}
-      {isError && (
-        <div className="mb-6 bg-red-50">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="text-red-500" />
-            <div className="flex-1">
-              <h3 className="text-red-800">Error Loading Analytics</h3>
-              <p className="text-red-600">{error?.message}</p>
-            </div>
-            <button onClick={() => refetch()} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Retry</button>
+        {/* Financial KPIs - Row 1 */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-blue-600" />
+            Financial Overview
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <QuickBooksKpiCard
+              title="Total Revenue"
+              value={data ? formatCurrency(data.kpis.totalRevenue) : "$0"}
+              subtitle="Payments received"
+              trend={revenueTrend}
+              icon={<DollarSign className="w-5 h-5 text-green-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="MRR"
+              value={data ? formatCurrency(data.kpis.mrr) : "$0"}
+              subtitle="Monthly Recurring Revenue"
+              icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="ARR"
+              value={data ? formatCurrency(data.kpis.arr) : "$0"}
+              subtitle="Annual Recurring Revenue"
+              icon={<Wallet className="w-5 h-5 text-indigo-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Collection Rate"
+              value={data ? formatPercentage(data.kpis.collectionRate) : "0%"}
+              subtitle={data ? `${formatPercentage(data.kpis.overdueRate)} overdue` : "0% overdue"}
+              trend={collectionTrend}
+              icon={<Percent className="w-5 h-5 text-green-600" />}
+              valueColor={data && data.kpis.collectionRate >= 80 ? "text-green-600" : data && data.kpis.collectionRate >= 60 ? "text-yellow-600" : "text-red-600"}
+              isLoading={isLoading}
+            />
           </div>
         </div>
-      )}
 
-      {/* Core KPI Grid - 2 rows x 4 columns (8 high-impact metrics) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {/* Row 1: Financial Health */}
-        <KpiCard
-          title="Total Revenue"
-          value={data ? formatCurrency(data.kpis.totalRevenue) : "$0"}
-          subtitle={data ? `${formatPercentage(data.kpis.collectionRate)} collection rate` : "0% collection"}
-          icon={<div className="text-green-500"><DollarSign className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Overdue Amount"
-          value={data ? formatCurrency(data.kpis.overdueAmount) : "$0"}
-          subtitle={data ? `${formatPercentage(data.kpis.overduePercentage)} of invoiced` : "0%"}
-          valueColor="text-red-600"
-          icon={<div className="text-red-500"><AlertCircle className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Avg Days to Payment"
-          value={data ? `${data.kpis.avgDaysToPayment}d` : "0d"}
-          subtitle="Payment cycle time"
-          icon={<div className="text-orange-500"><AlertCircle className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Active Customers"
-          value={data ? formatInteger(data.kpis.activeCustomers) : "0"}
-          subtitle={data ? `${formatCurrency(data.kpis.avgCustomerValue)} avg value` : "$0 avg"}
-          icon={<div className="text-indigo-500"><Users className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-
-        {/* Row 2: Sales & Growth */}
-        <KpiCard
-          title="Won Deals"
-          value={data ? formatInteger(data.kpis.wonDeals) : "0"}
-          subtitle={data ? `${formatPercentage(data.kpis.winRate)} win rate • ${formatCurrency(data.kpis.avgDealValue)} avg` : "0%"}
-          icon={<div className="text-green-600"><Target className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Lead Qualification"
-          value={data ? formatPercentage(data.kpis.leadQualificationRate) : "0%"}
-          subtitle={data ? `${data.kpis.qualifiedLeads} of ${data.kpis.totalLeads} leads` : "0 qualified"}
-          icon={<div className="text-cyan-500"><Users className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Revenue Concentration"
-          value={data ? formatPercentage(data.kpis.revenueConcentration) : "0%"}
-          subtitle="From top 20% customers"
-          icon={<div className="text-purple-500"><TrendingUp className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-        <KpiCard
-          title="Service Diversity"
-          value={data ? formatInteger(data.kpis.uniqueServices) : "0"}
-          subtitle="Unique services sold"
-          icon={<div className="text-indigo-500"><ShoppingCart className="w-5 h-5" /></div>}
-          isLoading={isLoading}
-        />
-      </div>
-
-      {/* Priority Charts Grid - High-value visualizations first */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Revenue Trend - MOST IMPORTANT */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend (12 Months)</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 rounded" />
-          ) : data?.charts.revenueTrend?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={data.charts.revenueTrend}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-                <Line type="monotone" dataKey="revenue" stroke={chartColors.revenue} strokeWidth={2} name="Revenue" />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
+        {/* Financial KPIs - Row 2 */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <QuickBooksKpiCard
+              title="Overdue Amount"
+              value={data ? formatCurrency(data.kpis.overdueAmount) : "$0"}
+              subtitle={`${data?.kpis.overdueInvoices || 0} overdue invoices`}
+              icon={<AlertCircle className="w-5 h-5 text-red-600" />}
+              valueColor="text-red-600"
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Avg Invoice Value"
+              value={data ? formatCurrency(data.kpis.avgInvoiceValue) : "$0"}
+              subtitle="Average per invoice"
+              icon={<FileText className="w-5 h-5 text-blue-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Avg Days to Pay"
+              value={data ? `${data.kpis.avgDaysToPayment} days` : "0 days"}
+              subtitle="Payment cycle time"
+              icon={<TrendingDown className="w-5 h-5 text-orange-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Invoiced Amount"
+              value={data ? formatCurrency(data.kpis.invoicedAmount) : "$0"}
+              subtitle={`${formatInteger(data?.kpis.totalInvoices || 0)} invoices`}
+              icon={<BarChart3 className="w-5 h-5 text-purple-600" />}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
-        {/* Lead Funnel - CRITICAL MISSING VISUALIZATION */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Lead Conversion Funnel</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 rounded" />
-          ) : data?.charts.leadFunnel?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.leadFunnel} layout="horizontal">
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="stage" type="category" width={100} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="value" fill="#3b82f6" name="Leads" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No lead data</div>
-          )}
+        {/* Customer KPIs */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-blue-600" />
+            Customer Analytics
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <QuickBooksKpiCard
+              title="Active Customers"
+              value={data ? formatInteger(data.kpis.activeCustomers) : "0"}
+              subtitle="With activity in period"
+              icon={<Users className="w-5 h-5 text-green-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="New Customers"
+              value={data ? formatInteger(data.kpis.newCustomers) : "0"}
+              subtitle="Acquired this period"
+              icon={<ArrowUpRight className="w-5 h-5 text-blue-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Avg LTV"
+              value={data ? formatCurrency(data.kpis.avgLtv) : "$0"}
+              subtitle="Lifetime Value"
+              icon={<TrendingUp className="w-5 h-5 text-indigo-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Total Customers"
+              value={data ? formatInteger(data.kpis.totalCustomers) : "0"}
+              subtitle="All-time customers"
+              icon={<Users className="w-5 h-5 text-gray-600" />}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
-        {/* Invoice Aging - Financial health indicator */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Aging Distribution</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 rounded" />
-          ) : data?.charts.invoiceAging?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.invoiceAging}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-                <Bar dataKey="value" fill="#f97316" name="Amount" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
+        {/* Payment KPIs */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-blue-600" />
+            Payment Analytics
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <QuickBooksKpiCard
+              title="Total Payments"
+              value={data ? formatInteger(data.kpis.totalPayments) : "0"}
+              subtitle={data ? formatCurrency(data.kpis.totalRevenue) : "$0"}
+              icon={<CreditCard className="w-5 h-5 text-green-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Avg Payment"
+              value={data ? formatCurrency(data.kpis.avgPaymentAmount) : "$0"}
+              subtitle="Per transaction"
+              icon={<DollarSign className="w-5 h-5 text-blue-600" />}
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Refunds"
+              value={data ? formatInteger(data.kpis.refundsCount) : "0"}
+              subtitle={data ? formatCurrency(data.kpis.refundsAmount) : "$0"}
+              icon={<ArrowDownRight className="w-5 h-5 text-red-600" />}
+              valueColor="text-red-600"
+              isLoading={isLoading}
+            />
+            <QuickBooksKpiCard
+              title="Payment Methods"
+              value={data ? data.charts.paymentMethods.length.toString() : "0"}
+              subtitle="Active methods"
+              icon={<PieChart className="w-5 h-5 text-purple-600" />}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
-        {/* Top Customers - Concentration risk */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Customers by Revenue</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 rounded" />
-          ) : data?.charts.topCustomers?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.topCustomers}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis />
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-                <Bar dataKey="value" fill={chartColors.revenue} name="Total Revenue" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
+        {/* Charts - Row 1 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Revenue Trend */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend (12 Months)</h3>
+            <RevenueTrendChart
+              data={data?.charts.revenueTrend || []}
+              isLoading={isLoading}
+            />
+          </div>
+
+          {/* Invoice Status */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Status Distribution</h3>
+            <InvoiceStatusChart
+              data={data?.charts.invoiceStatus || []}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
-        {/* Top Services - Product mix analysis */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Services by Quantity & Revenue</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 rounded" />
-          ) : data?.charts.topServices?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.topServices}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip
-                  formatter={(value, name) => {
-                    if (name === "revenue") return [formatCurrency(value as number), "Revenue"];
-                    return [value, "Quantity"];
-                  }}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="quantity" fill="#8b5cf6" name="Quantity" />
-                <Bar yAxisId="right" dataKey="revenue" fill="#f59e0b" name="Revenue" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No service data</div>
-          )}
+        {/* Charts - Row 2 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Invoice Aging */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Aging</h3>
+            <InvoiceAgingChart
+              data={data?.charts.invoiceAging || []}
+              isLoading={isLoading}
+            />
+          </div>
+
+          {/* Top Customers */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Customers by Revenue</h3>
+            <TopCustomersChart
+              data={data?.charts.topCustomers || []}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
 
-        {/* Sales Pipeline - Deal visibility */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Sales Pipeline Value by Status</h3>
-          {isLoading ? (
-            <div className="h-80 animate-pulse bg-gray-200 rounded" />
-          ) : data?.charts.dealsPipeline?.length ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={data.charts.dealsPipeline}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="status" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip formatter={(value) => formatCurrency(value as number)} />
-                <Legend />
-                <Bar yAxisId="left" dataKey="deals" fill="#3b82f6" name="Deal Count" />
-                <Bar yAxisId="right" dataKey="value" fill="#10b981" name="Pipeline Value" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-80 flex items-center justify-center text-gray-500">No data</div>
-          )}
+        {/* Charts - Row 3 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Payment Methods */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Payments by Method</h3>
+            <PaymentMethodsChart
+              data={data?.charts.paymentMethods || []}
+              isLoading={isLoading}
+            />
+          </div>
+
+          {/* Cash Flow */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Cash Flow: Invoiced vs Received</h3>
+            <CashFlowChart
+              data={data?.charts.cashFlow || []}
+              isLoading={isLoading}
+            />
+          </div>
+        </div>
+
+        {/* Charts - Row 4 */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Customer Segments */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Segments by Revenue</h3>
+            <CustomerSegmentsChart
+              data={data?.charts.customerSegments || []}
+              isLoading={isLoading}
+            />
+          </div>
+
+          {/* Customer Acquisition */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Acquisition Trend</h3>
+            <CustomerAcquisitionChart
+              data={data?.charts.customerAcquisition || []}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
       </div>
-
-
-
-      {/* Export Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleExportAll}
-          disabled={isLoading || isExporting || !data}
-          className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          {isExporting ? (
-            <>
-              <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Exporting...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Export BI Dashboard
-            </>
-          )}
-        </button>
-      </div>
-    </div>
     </div>
   );
 }
