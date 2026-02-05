@@ -76,9 +76,8 @@ export async function GET(request: NextRequest) {
       ? { gte: startDate, lte: endDate }
       : undefined;
 
-    // Calculate 12 months ago for revenue trend
-    const revenueTrendStartDate = startDate || subMonths(startOfMonth(now), 11);
-    const twelveMonthsAgo = subMonths(startOfMonth(now), 11); // Kept for chart data
+    // Calculate chart data range - respects dateFilter when set, otherwise last 12 months
+    const chartStartDate = startDate || subMonths(startOfMonth(now), 11);
 
     // ====================
     // FINANCIAL KPIs
@@ -387,20 +386,21 @@ export async function GET(request: NextRequest) {
     // CHART DATA
     // ====================
 
-    // Revenue Trend (12 months)
+    // Revenue Trend - respects dateFilter when set, otherwise last 12 months
+    const chartEndDate = endDate || endOfMonth(now);
     const revenueByMonthMap = new Map<string, { revenue: number; invoices: number }>();
     eachMonthOfInterval({
-      start: twelveMonthsAgo,
-      end: endOfMonth(now),
+      start: chartStartDate,
+      end: chartEndDate,
     }).forEach((month) => {
       const key = format(month, "yyyy-MM");
       revenueByMonthMap.set(key, { revenue: 0, invoices: 0 });
     });
 
-    // Add payment data
+    // Add payment data - uses chartStartDate to respect dateFilter
     const paymentsForTrend = await prisma.payment.findMany({
       where: {
-        paymentDate: { gte: twelveMonthsAgo },
+        paymentDate: { gte: chartStartDate, lte: chartEndDate },
       },
       select: { paymentDate: true, amount: true },
     });
@@ -466,20 +466,20 @@ export async function GET(request: NextRequest) {
       revenue: Number(item._sum.qbTotalPaid || 0),
     }));
 
-    // Cash Flow Trend (Area Chart) - payments vs invoiced by month
+    // Cash Flow Trend (Area Chart) - respects dateFilter when set
     const cashFlowByMonthMap = new Map<string, { received: number; invoiced: number }>();
     eachMonthOfInterval({
-      start: twelveMonthsAgo,
-      end: endOfMonth(now),
+      start: chartStartDate,
+      end: chartEndDate,
     }).forEach((month) => {
       const key = format(month, "yyyy-MM");
       cashFlowByMonthMap.set(key, { received: 0, invoiced: 0 });
     });
 
-    // Add invoiced data
+    // Add invoiced data - uses chartStartDate/chartEndDate
     const invoicesForCashFlow = await prisma.invoice.findMany({
       where: {
-        createdAt: { gte: twelveMonthsAgo },
+        createdAt: { gte: chartStartDate, lte: chartEndDate },
         status: { notIn: ["DRAFT", "VOID"] },
       },
       select: { createdAt: true, amount: true, status: true },
@@ -511,19 +511,19 @@ export async function GET(request: NextRequest) {
         invoiced: data.invoiced,
       }));
 
-    // Customer Acquisition Trend
+    // Customer Acquisition Trend - respects dateFilter when set
     const newCustomersByMonth = await prisma.customer.groupBy({
       by: ["createdAt"],
       where: {
-        createdAt: { gte: twelveMonthsAgo },
+        createdAt: { gte: chartStartDate, lte: chartEndDate },
       },
       _count: { id: true },
     });
 
     const acquisitionByMonthMap = new Map<string, { new: number; active: number }>();
     eachMonthOfInterval({
-      start: twelveMonthsAgo,
-      end: endOfMonth(now),
+      start: chartStartDate,
+      end: chartEndDate,
     }).forEach((month) => {
       const key = format(month, "yyyy-MM");
       acquisitionByMonthMap.set(key, { new: 0, active: 0 });
