@@ -78,6 +78,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate 12 months ago for revenue trend
     const revenueTrendStartDate = startDate || subMonths(startOfMonth(now), 11);
+    const twelveMonthsAgo = subMonths(startOfMonth(now), 11); // Kept for chart data
 
     // ====================
     // FINANCIAL KPIs
@@ -92,17 +93,12 @@ export async function GET(request: NextRequest) {
     });
 
     // MRR - Monthly Recurring Revenue (average of last 3 months)
-    const threeMonthsAgo = subMonths(now, 3);
-    const mrrResult = await prisma.payment.groupBy({
-      by: ["paymentDate"],
-      where: {
-        paymentDate: { gte: threeMonthsAgo },
-      },
-      _sum: { amount: true },
-    });
-    const mrr = mrrResult.length > 0
-      ? Number(mrrResult.reduce((sum, m) => sum + Number(m._sum.amount || 0), 0) / 3)
-      : 0;
+    // FIXED: Now uses dateFilter to calculate MRR based on payments in range
+    const totalRevenueInRange = Number(totalRevenueResult._sum.amount || 0);
+    const monthsInRange = startDate && endDate
+      ? Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30)))
+      : 3;
+    const mrr = totalRevenueInRange > 0 ? totalRevenueInRange / monthsInRange : 0;
 
     // ARR - Annual Recurring Revenue
     const arr = mrr * 12;
@@ -149,9 +145,11 @@ export async function GET(request: NextRequest) {
     const overdueRate = totalInvoiced > 0 ? (overdueAmount / totalInvoiced) * 100 : 0;
 
     // Average Invoice Value
+    // FIXED: Added dateFilter to filter by createdAt in date range
     const avgInvoiceValueResult = await prisma.invoice.aggregate({
       where: {
         status: { notIn: ["DRAFT", "VOID"] },
+        ...(dateFilter && { createdAt: dateFilter }),
       },
       _avg: { amount: true },
     });
@@ -170,10 +168,12 @@ export async function GET(request: NextRequest) {
     });
 
     // Invoice Aging Buckets
+    // FIXED: Added dateFilter to filter invoices by createdAt in date range
     const nowDate = new Date();
     const agingResult = await prisma.invoice.findMany({
       where: {
         status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
+        ...(dateFilter && { createdAt: dateFilter }),
       },
       select: {
         amount: true,
@@ -213,10 +213,12 @@ export async function GET(request: NextRequest) {
     });
 
     // Average Days to Payment
+    // FIXED: Added dateFilter to filter by createdAt in date range
     const paidInvoices = await prisma.invoice.findMany({
       where: {
         status: "PAID",
         paidAt: { not: null },
+        ...(dateFilter && { createdAt: dateFilter }),
       },
       select: {
         createdAt: true,
@@ -239,12 +241,13 @@ export async function GET(request: NextRequest) {
       avgDaysToPayment = Math.round(totalDays / paidInvoices.length);
     }
 
-    // Invoice Volume Trends (12 months)
-    const twelveMonthsAgo = subMonths(startOfMonth(now), 11);
+    // Invoice Volume Trends
+    // FIXED: Now uses dateFilter instead of fixed 12 months
+    const invoiceTrendStartDate = startDate || subMonths(startOfMonth(now), 11);
     const invoicesByMonth = await prisma.invoice.groupBy({
       by: ["createdAt"],
       where: {
-        createdAt: { gte: twelveMonthsAgo },
+        createdAt: { gte: invoiceTrendStartDate },
         status: { notIn: ["DRAFT", "VOID"] },
       },
       _count: { id: true },
@@ -272,28 +275,44 @@ export async function GET(request: NextRequest) {
     const newCustomers = newCustomersResult;
 
     // Average LTV
-    const customersWithPayments = await prisma.customer.findMany({
+    // FIXED: Now calculates from payments in dateFilter instead of all-time qbTotalPaid
+    const paymentsForLtv = await prisma.payment.findMany({
       where: {
-        qbTotalPaid: { gt: 0 },
+        ...(dateFilter && { paymentDate: dateFilter }),
       },
-      select: {
-        id: true,
-        name: true,
-        qbTotalPaid: true,
-      },
-      take: 1000,
+      select: { customerId: true, amount: true },
     });
 
+    // Aggregate payments by customer
+    const customerPayments = new Map<string, number>();
+    paymentsForLtv.forEach((p) => {
+      const current = customerPayments.get(p.customerId) || 0;
+      customerPayments.set(p.customerId, current + Number(p.amount));
+    });
+
+    // Get customer details for segments and top customers
+    const customerIds = Array.from(customerPayments.keys());
+    const customersWithPayments = customerIds.length > 0
+      ? await prisma.customer.findMany({
+          where: { id: { in: customerIds } },
+          select: { id: true, name: true, qbTotalPaid: true },
+        })
+      : [];
+
+    // Update with actual paid amounts from date-filtered payments
+    const customersWithLtv = customersWithPayments.map((c) => ({
+      ...c,
+      totalPaidInRange: customerPayments.get(c.id) || 0,
+    }));
+
     let avgLtv = 0;
-    if (customersWithPayments.length > 0) {
-      const totalLtv = customersWithPayments.reduce(
-        (sum, c) => sum + Number(c.qbTotalPaid || 0),
-        0
-      );
-      avgLtv = totalLtv / customersWithPayments.length;
+    if (customersWithLtv.length > 0) {
+      const totalLtv = customersWithLtv.reduce((sum, c) => sum + c.totalPaidInRange, 0);
+      avgLtv = totalLtv / customersWithLtv.length;
     }
 
     // Customer Segments by Revenue
+    // FIXED: Now uses totalPaidInRange from date-filtered payments
     const segments = {
       "Premium ($10k+)": { count: 0, revenue: 0 },
       "High ($5k-10k)": { count: 0, revenue: 0 },
@@ -301,8 +320,8 @@ export async function GET(request: NextRequest) {
       "Low (<$1k)": { count: 0, revenue: 0 },
     };
 
-    customersWithPayments.forEach((c) => {
-      const paid = Number(c.qbTotalPaid || 0);
+    customersWithLtv.forEach((c) => {
+      const paid = c.totalPaidInRange;
       if (paid >= 10000) {
         segments["Premium ($10k+)"].count++;
         segments["Premium ($10k+)"].revenue += paid;
@@ -417,12 +436,13 @@ export async function GET(request: NextRequest) {
     }));
 
     // Top Customers by Revenue
-    const topCustomers = customersWithPayments
-      .sort((a, b) => Number(b.qbTotalPaid || 0) - Number(a.qbTotalPaid || 0))
+    // FIXED: Now uses totalPaidInRange from date-filtered payments
+    const topCustomers = customersWithLtv
+      .sort((a, b) => b.totalPaidInRange - a.totalPaidInRange)
       .slice(0, 10)
       .map((c) => ({
         name: c.name,
-        revenue: Number(c.qbTotalPaid || 0),
+        revenue: c.totalPaidInRange,
       }));
 
     // Payment Methods for Chart
@@ -550,7 +570,7 @@ export async function GET(request: NextRequest) {
         activeCustomers,
         newCustomers,
         avgLtv: Number(avgLtv.toFixed(2)),
-        totalCustomers: customersWithPayments.length,
+        totalCustomers: customersWithLtv.length,
 
         // Payment
         totalPayments: totalPaymentsResult._count.id,
