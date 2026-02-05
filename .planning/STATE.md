@@ -440,13 +440,15 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 035 | Fix workflow progress tracker - add email tracking fields | 2026-01-31 | pending | [035-fix-workflow-progress-tracker-add-emai](.planning/quick/035-fix-workflow-progress-tracker-add-emai/) |
 | 036 | Add discount percentage, DOB field, and PT-BR translations | 2026-02-02 | ab9c21c | [036-add-discount-and-dob-translate-to-pt-br](.planning/quick/036-add-discount-and-dob-translate-to-pt-br/) |
 | 037 | Add searchable service/product dropdown to invoice form | 2026-02-02 | 3ad337f | [037-add-searchable-service-product-dropdown](.planning/quick/037-add-searchable-service-product-dropdown/) |
-| 038 | Redo Insights BI - QuickBooks Only | 2026-02-04 | pending | [038-redo-insights-bi-quickbooks](.planning/quick/038-redo-insights-bi-quickbooks/) |
+| 038 | Redo Insights BI - QuickBooks Only | 2026-02-04 | c74fd7b | [038-redo-insights-bi-quickbooks](.planning/quick/038-redo-insights-bi-quickbooks/) |
+| 038-D1 | Fix date filtering bugs in QuickBooks API | 2026-02-04 | c74fd7b | [038-date-filtering-bugs](.planning/debug/038-date-filtering-bugs/) |
 
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Completed Quick Task 038: Redo Insights BI - QuickBooks Only
-Resume file: .planning/quick/038-redo-insights-bi-quickbooks/038-SUMMARY.md
+Stopped at: Fixed QuickBooks API date filtering bugs (038-D1)
+- Fixed MRR, avgInvoiceValue, invoice aging, avgDaysToPayment, invoice trends, avgLTV
+Resume file: .planning/debug/038-date-filtering-bugs-SUMMARY.md
 Next action: Ready for more quick tasks or milestone completion
 
 ## Sprint 1 Success Criteria
