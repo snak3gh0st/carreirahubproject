@@ -4,6 +4,22 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { startOfMonth, subMonths, subDays, startOfYear, format, eachMonthOfInterval, endOfMonth } from "date-fns";
 
+/**
+ * Parse a date string from PostgreSQL as UTC to avoid timezone issues.
+ * PostgreSQL stores dates as UTC, but JavaScript's new Date() parses them in local time,
+ * causing early-morning UTC dates to shift to the previous day in local time.
+ */
+function parseUtcDate(dateStr: string | Date): Date {
+  if (dateStr instanceof Date) {
+    return dateStr;
+  }
+  // If the date string doesn't have timezone info, append 'Z' to treat it as UTC
+  if (!dateStr.includes('Z') && !dateStr.includes('+')) {
+    dateStr = dateStr + 'Z';
+  }
+  return new Date(dateStr);
+}
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -92,8 +108,8 @@ export async function GET(request: NextRequest) {
       });
 
       if (oldestPayment && newestPayment) {
-        chartStartDate = startOfMonth(new Date(oldestPayment.paymentDate));
-        chartEndDate = endOfMonth(new Date(newestPayment.paymentDate));
+        chartStartDate = startOfMonth(parseUtcDate(oldestPayment.paymentDate));
+        chartEndDate = endOfMonth(parseUtcDate(newestPayment.paymentDate));
       }
     }
 
@@ -427,7 +443,7 @@ export async function GET(request: NextRequest) {
     });
 
     paymentsForTrend.forEach((p) => {
-      const key = format(startOfMonth(new Date(p.paymentDate)), "yyyy-MM");
+      const key = format(startOfMonth(parseUtcDate(p.paymentDate)), "yyyy-MM");
       const existing = revenueByMonthMap.get(key) || { revenue: 0, invoices: 0 };
       revenueByMonthMap.set(key, {
         revenue: existing.revenue + Number(p.amount),
@@ -507,7 +523,7 @@ export async function GET(request: NextRequest) {
     });
 
     invoicesForCashFlow.forEach((inv) => {
-      const key = format(startOfMonth(new Date(inv.createdAt)), "yyyy-MM");
+      const key = format(startOfMonth(parseUtcDate(inv.createdAt)), "yyyy-MM");
       const existing = cashFlowByMonthMap.get(key) || { received: 0, invoiced: 0 };
       cashFlowByMonthMap.set(key, {
         received: existing.received,
@@ -517,7 +533,7 @@ export async function GET(request: NextRequest) {
 
     // Add received data (payments)
     paymentsForTrend.forEach((p) => {
-      const key = format(startOfMonth(new Date(p.paymentDate)), "yyyy-MM");
+      const key = format(startOfMonth(parseUtcDate(p.paymentDate)), "yyyy-MM");
       const existing = cashFlowByMonthMap.get(key) || { received: 0, invoiced: 0 };
       cashFlowByMonthMap.set(key, {
         received: existing.received + Number(p.amount),
@@ -551,7 +567,7 @@ export async function GET(request: NextRequest) {
     });
 
     newCustomersByMonth.forEach((c) => {
-      const key = format(startOfMonth(new Date(c.createdAt)), "yyyy-MM");
+      const key = format(startOfMonth(parseUtcDate(c.createdAt)), "yyyy-MM");
       const existing = acquisitionByMonthMap.get(key) || { new: 0, active: 0 };
       acquisitionByMonthMap.set(key, {
         new: existing.new + c._count.id,
