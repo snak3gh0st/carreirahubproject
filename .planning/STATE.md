@@ -440,14 +440,16 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 035 | Fix workflow progress tracker - add email tracking fields | 2026-01-31 | pending | [035-fix-workflow-progress-tracker-add-emai](.planning/quick/035-fix-workflow-progress-tracker-add-emai/) |
 | 036 | Add discount percentage, DOB field, and PT-BR translations | 2026-02-02 | ab9c21c | [036-add-discount-and-dob-translate-to-pt-br](.planning/quick/036-add-discount-and-dob-translate-to-pt-br/) |
 | 037 | Add searchable service/product dropdown to invoice form | 2026-02-02 | 3ad337f | [037-add-searchable-service-product-dropdown](.planning/quick/037-add-searchable-service-product-dropdown/) |
-| 038 | Redo Insights BI - QuickBooks Only | 2026-02-04 | c74fd7b | [038-redo-insights-bi-quickbooks](.planning/quick/038-redo-insights-bi-quickbooks/) |
+| 038 | Redo Insights BI - QuickBooks Only | 2026-02-04 | 26b1dfc | [038-redo-insights-bi-quickbooks](.planning/quick/038-redo-insights-bi-quickbooks/) |
 | 038-D1 | Fix date filtering bugs in QuickBooks API | 2026-02-04 | c74fd7b | [038-date-filtering-bugs](.planning/debug/038-date-filtering-bugs/) |
+| 038-D2 | Fix chart date distribution | 2026-02-04 | 26b1dfc | [038-chart-date-distribution](.planning/debug/038-chart-date-distribution/) |
 
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Fixed QuickBooks API date filtering bugs (038-D1)
-- Fixed MRR, avgInvoiceValue, invoice aging, avgDaysToPayment, invoice trends, avgLTV
+Stopped at: Fixed chart date distribution bugs (038-D2)
+- Fixed Revenue Trend, Cash Flow, Customer Acquisition charts to respect dateFilter
+- Charts now show data only within selected date range
 Resume file: .planning/debug/038-date-filtering-bugs-SUMMARY.md
 Next action: Ready for more quick tasks or milestone completion
 
