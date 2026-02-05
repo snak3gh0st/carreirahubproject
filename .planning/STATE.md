@@ -443,13 +443,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 038 | Redo Insights BI - QuickBooks Only | 2026-02-04 | 26b1dfc | [038-redo-insights-bi-quickbooks](.planning/quick/038-redo-insights-bi-quickbooks/) |
 | 038-D1 | Fix date filtering bugs in QuickBooks API | 2026-02-04 | c74fd7b | [038-date-filtering-bugs](.planning/debug/038-date-filtering-bugs/) |
 | 038-D2 | Fix chart date distribution | 2026-02-04 | 26b1dfc | [038-chart-date-distribution](.planning/debug/038-chart-date-distribution/) |
+| 038-D3 | Fix allTime showing only 12 months | 2026-02-04 | 8771b17 | [038-alltime-historical](.planning/debug/038-alltime-historical/) |
 
 ## Session Continuity
 
 Last session: 2026-02-04
-Stopped at: Fixed chart date distribution bugs (038-D2)
-- Fixed Revenue Trend, Cash Flow, Customer Acquisition charts to respect dateFilter
-- Charts now show data only within selected date range
+Stopped at: Fixed allTime chart showing only 12 months (038-D3)
+- Charts now find oldest/newest payment dates from database
+- For allTime, shows complete historical data from first to last payment
 Resume file: .planning/debug/038-date-filtering-bugs-SUMMARY.md
 Next action: Ready for more quick tasks or milestone completion
 
