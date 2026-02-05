@@ -445,13 +445,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 038-D2 | Fix chart date distribution | 2026-02-04 | 26b1dfc | [038-chart-date-distribution](.planning/debug/038-chart-date-distribution/) |
 | 038-D3 | Fix allTime showing only 12 months | 2026-02-04 | 8771b17 | [038-alltime-historical](.planning/debug/038-alltime-historical/) |
 | 038-D4 | Fix timezone parsing - charts piling in one month | 2026-02-05 | 86f32c7 | [038-chart-piling-month](.planning/debug/038-chart-piling-month/) |
+| 038-D5 | Add YTD and MTD date filters | 2026-02-05 | fe86728 | [038-ytd-mtd-filters](.planning/debug/038-ytd-mtd-filters/) |
 
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Fixed timezone parsing issue (038-D4)
-- Charts now correctly distribute data across Dec/Jan/Feb
-- Added parseUtcDate() helper to avoid timezone issues
+Stopped at: Added YTD and MTD date filters (038-D5)
+- MTD (Month to Date): From 1st of current month to now
+- YTD (Year to Date): From 1st of January to now
 Resume file: .planning/debug/038-chart-piling-month-FIX.md
 Next action: Ready for more quick tasks or milestone completion
 
