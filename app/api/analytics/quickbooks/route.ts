@@ -76,8 +76,26 @@ export async function GET(request: NextRequest) {
       ? { gte: startDate, lte: endDate }
       : undefined;
 
-    // Calculate chart data range - respects dateFilter when set, otherwise last 12 months
-    const chartStartDate = startDate || subMonths(startOfMonth(now), 11);
+    // Calculate chart data range
+    let chartStartDate = startDate || subMonths(startOfMonth(now), 11);
+    let chartEndDate = endDate || endOfMonth(now);
+
+    // For "allTime", find actual min/max dates from payments
+    if (dateRange === "allTime") {
+      const oldestPayment = await prisma.payment.findFirst({
+        orderBy: { paymentDate: "asc" },
+        select: { paymentDate: true },
+      });
+      const newestPayment = await prisma.payment.findFirst({
+        orderBy: { paymentDate: "desc" },
+        select: { paymentDate: true },
+      });
+
+      if (oldestPayment && newestPayment) {
+        chartStartDate = startOfMonth(new Date(oldestPayment.paymentDate));
+        chartEndDate = endOfMonth(new Date(newestPayment.paymentDate));
+      }
+    }
 
     // ====================
     // FINANCIAL KPIs
@@ -386,8 +404,11 @@ export async function GET(request: NextRequest) {
     // CHART DATA
     // ====================
 
-    // Revenue Trend - respects dateFilter when set, otherwise last 12 months
-    const chartEndDate = endDate || endOfMonth(now);
+    // ====================
+    // CHART DATA
+    // ====================
+
+    // Revenue Trend chart data is already calculated above (chartStartDate/chartEndDate)
     const revenueByMonthMap = new Map<string, { revenue: number; invoices: number }>();
     eachMonthOfInterval({
       start: chartStartDate,
