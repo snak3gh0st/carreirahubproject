@@ -446,15 +446,16 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 038-D3 | Fix allTime showing only 12 months | 2026-02-04 | 8771b17 | [038-alltime-historical](.planning/debug/038-alltime-historical/) |
 | 038-D4 | Fix timezone parsing - charts piling in one month | 2026-02-05 | 86f32c7 | [038-chart-piling-month](.planning/debug/038-chart-piling-month/) |
 | 038-D5 | Add YTD and MTD date filters | 2026-02-05 | fe86728 | [038-ytd-mtd-filters](.planning/debug/038-ytd-mtd-filters/) |
+| 038-D6 | Enable QuickBooks payments sync | 2026-02-05 | d66ea4c | [038-payments-sync](.planning/debug/038-payments-sync/) |
 
 ## Session Continuity
 
 Last session: 2026-02-05
-Stopped at: Added YTD and MTD date filters (038-D5)
-- MTD (Month to Date): From 1st of current month to now
-- YTD (Year to Date): From 1st of January to now
+Stopped at: Enabled QuickBooks payments sync (038-D6)
+- Created sync-quickbooks-payments.ts script
+- Changed default syncPayments to true in API route
 Resume file: .planning/debug/038-chart-piling-month-FIX.md
-Next action: Ready for more quick tasks or milestone completion
+Next action: User needs to sync payments to populate dashboard
 
 ## Sprint 1 Success Criteria
 
