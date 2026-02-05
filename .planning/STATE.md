@@ -444,14 +444,15 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 038-D1 | Fix date filtering bugs in QuickBooks API | 2026-02-04 | c74fd7b | [038-date-filtering-bugs](.planning/debug/038-date-filtering-bugs/) |
 | 038-D2 | Fix chart date distribution | 2026-02-04 | 26b1dfc | [038-chart-date-distribution](.planning/debug/038-chart-date-distribution/) |
 | 038-D3 | Fix allTime showing only 12 months | 2026-02-04 | 8771b17 | [038-alltime-historical](.planning/debug/038-alltime-historical/) |
+| 038-D4 | Fix timezone parsing - charts piling in one month | 2026-02-05 | 86f32c7 | [038-chart-piling-month](.planning/debug/038-chart-piling-month/) |
 
 ## Session Continuity
 
-Last session: 2026-02-04
-Stopped at: Fixed allTime chart showing only 12 months (038-D3)
-- Charts now find oldest/newest payment dates from database
-- For allTime, shows complete historical data from first to last payment
-Resume file: .planning/debug/038-date-filtering-bugs-SUMMARY.md
+Last session: 2026-02-05
+Stopped at: Fixed timezone parsing issue (038-D4)
+- Charts now correctly distribute data across Dec/Jan/Feb
+- Added parseUtcDate() helper to avoid timezone issues
+Resume file: .planning/debug/038-chart-piling-month-FIX.md
 Next action: Ready for more quick tasks or milestone completion
 
 ## Sprint 1 Success Criteria
