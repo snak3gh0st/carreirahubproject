@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { subDays, startOfYear, format } from "date-fns";
+import { subDays, startOfYear, startOfMonth, format } from "date-fns";
 
 interface DateRangeFilterProps {
   onFilterChange?: () => void;
 }
 
-type QuickFilter = "last7" | "last30" | "last90" | "thisYear" | "allTime" | "custom";
+type QuickFilter = "last7" | "last30" | "last90" | "mtd" | "ytd" | "thisYear" | "allTime" | "custom";
 
 export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
   const router = useRouter();
@@ -26,6 +26,8 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
     { label: "Last 7 Days", value: "last7" },
     { label: "Last 30 Days", value: "last30" },
     { label: "Last 90 Days", value: "last90" },
+    { label: "MTD", value: "mtd" },
+    { label: "YTD", value: "ytd" },
     { label: "This Year", value: "thisYear" },
     { label: "All Time", value: "allTime" },
   ];
@@ -154,12 +156,28 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
                 last 30 days
               </span>
             </span>
-          ) : currentFilter === "last90" ? (
+           ) : currentFilter === "last90" ? (
             <span>
               Showing data for the{" "}
               <span className="font-semibold text-gray-900">
                 last 90 days
               </span>
+            </span>
+          ) : currentFilter === "mtd" ? (
+            <span>
+              Showing data for{" "}
+              <span className="font-semibold text-gray-900">
+                this month
+              </span>{" "}
+              (Month to Date)
+            </span>
+          ) : currentFilter === "ytd" ? (
+            <span>
+              Showing data for{" "}
+              <span className="font-semibold text-gray-900">
+                this year
+              </span>{" "}
+              (Year to Date)
             </span>
           ) : currentFilter === "thisYear" ? (
             <span>
@@ -212,6 +230,18 @@ export function getDateRangeFromFilter(
     case "last90":
       return {
         startDate: subDays(now, 90),
+        endDate: now,
+      };
+    case "mtd":
+      // Month to Date - from 1st of current month to now
+      return {
+        startDate: startOfMonth(now),
+        endDate: now,
+      };
+    case "ytd":
+      // Year to Date - from 1st of January to now
+      return {
+        startDate: startOfYear(now),
         endDate: now,
       };
     case "thisYear":
