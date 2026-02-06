@@ -448,6 +448,7 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 038-D5 | Add YTD and MTD date filters | 2026-02-05 | fe86728 | [038-ytd-mtd-filters](.planning/debug/038-ytd-mtd-filters/) |
 | 038-D6 | Enable QuickBooks payments sync | 2026-02-05 | d66ea4c | [038-payments-sync](.planning/debug/038-payments-sync/) |
 | 039 | Translate entire webapp UI to PT-BR | 2026-02-06 | 67bdd62 | [039-translate-webapp-to-pt-br](.planning/quick/039-translate-webapp-to-pt-br/) |
+| 039b | Translate remaining pages to PT-BR (round 2) | 2026-02-06 | b1a38ad | [039-translate-webapp-to-pt-br](.planning/quick/039-translate-webapp-to-pt-br/) |
 
 ## Session Continuity
 
