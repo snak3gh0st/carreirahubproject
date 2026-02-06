@@ -12,6 +12,7 @@ import {
   FileSignature,
   BarChart3,
   LogOut,
+  HeadphonesIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
@@ -68,6 +69,12 @@ const mainNavItems: NavItem[] = [
     label: "Insights",
     icon: BarChart3,
     roles: ["ADMIN", "FINANCE"],
+  },
+  {
+    href: "/dashboard/support",
+    label: "Suporte",
+    icon: HeadphonesIcon,
+    roles: ["ADMIN", "SUPPORT", "OPERATIONAL"],
   },
 ];
 
