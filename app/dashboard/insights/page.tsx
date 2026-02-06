@@ -224,10 +224,10 @@ export default function InsightsPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-4xl font-bold text-gray-900">
-                QuickBooks Analytics
+                Análises QuickBooks
               </h1>
               <p className="text-gray-600 mt-1">
-                Comprehensive financial insights and metrics from QuickBooks
+                Insights financeiros e métricas completas do QuickBooks
               </p>
             </div>
             <DateRangeFilter onFilterChange={() => refetch()} />
@@ -240,16 +240,16 @@ export default function InsightsPage() {
             <div className="flex items-center gap-3">
               <AlertCircle className="text-red-500 w-5 h-5" />
               <div className="flex-1">
-                <h3 className="text-red-800 font-medium">Error Loading Analytics</h3>
+                <h3 className="text-red-800 font-medium">Erro ao Carregar Análises</h3>
                 <p className="text-red-600 text-sm">
-                  {error?.message || "Failed to load QuickBooks analytics data"}
+                  {error?.message || "Falha ao carregar dados de análise do QuickBooks"}
                 </p>
               </div>
               <button
                 onClick={() => refetch()}
                 className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors text-sm"
               >
-                Retry
+                Tentar Novamente
               </button>
             </div>
           </div>
@@ -372,7 +372,7 @@ export default function InsightsPage() {
                         {" "}totalizando {formatCurrency(forecastData.summary.staleAmount)} são provável inadimplência
                       </div>
                       <div className="text-xs text-orange-700">
-                        Estas foram excluídas da previsão de cash flow e devem ser revisadas para write-off
+                        Estas foram excluídas da previsão de fluxo de caixa e devem ser revisadas para baixa contábil
                       </div>
                     </div>
                   </div>
@@ -437,13 +437,13 @@ export default function InsightsPage() {
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-blue-600" />
-            Financial Overview
+            Visão Financeira
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <QuickBooksKpiCard
-              title="Total Revenue"
+              title="Receita Total"
               value={data ? formatCurrency(data.kpis.totalRevenue) : "$0"}
-              subtitle="Payments received"
+              subtitle="Pagamentos recebidos"
               trend={revenueTrend}
               icon={<DollarSign className="w-5 h-5 text-green-600" />}
               isLoading={isLoading}
@@ -451,21 +451,21 @@ export default function InsightsPage() {
             <QuickBooksKpiCard
               title="MRR"
               value={data ? formatCurrency(data.kpis.mrr) : "$0"}
-              subtitle="Monthly Recurring Revenue"
+              subtitle="Receita Recorrente Mensal"
               icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
               title="ARR"
               value={data ? formatCurrency(data.kpis.arr) : "$0"}
-              subtitle="Annual Recurring Revenue"
+              subtitle="Receita Recorrente Anual"
               icon={<Wallet className="w-5 h-5 text-indigo-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Collection Rate"
+              title="Taxa de Cobrança"
               value={data ? formatPercentage(data.kpis.collectionRate) : "0%"}
-              subtitle={data ? `${formatPercentage(data.kpis.overdueRate)} overdue` : "0% overdue"}
+              subtitle={data ? `${formatPercentage(data.kpis.overdueRate)} vencido` : "0% vencido"}
               trend={collectionTrend}
               icon={<Percent className="w-5 h-5 text-green-600" />}
               valueColor={data && data.kpis.collectionRate >= 80 ? "text-green-600" : data && data.kpis.collectionRate >= 60 ? "text-yellow-600" : "text-red-600"}
@@ -478,31 +478,31 @@ export default function InsightsPage() {
         <div className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <QuickBooksKpiCard
-              title="Overdue Amount"
+              title="Valor Vencido"
               value={data ? formatCurrency(data.kpis.overdueAmount) : "$0"}
-              subtitle={`${data?.kpis.overdueInvoices || 0} overdue invoices`}
+              subtitle={`${data?.kpis.overdueInvoices || 0} faturas vencidas`}
               icon={<AlertCircle className="w-5 h-5 text-red-600" />}
               valueColor="text-red-600"
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Avg Invoice Value"
+              title="Valor Médio da Fatura"
               value={data ? formatCurrency(data.kpis.avgInvoiceValue) : "$0"}
-              subtitle="Average per invoice"
+              subtitle="Média por fatura"
               icon={<FileText className="w-5 h-5 text-blue-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Avg Days to Pay"
-              value={data ? `${data.kpis.avgDaysToPayment} days` : "0 days"}
-              subtitle="Payment cycle time"
+              title="Média de Dias p/ Pagamento"
+              value={data ? `${data.kpis.avgDaysToPayment} dias` : "0 dias"}
+              subtitle="Tempo do ciclo de pagamento"
               icon={<TrendingDown className="w-5 h-5 text-orange-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Invoiced Amount"
+              title="Valor Faturado"
               value={data ? formatCurrency(data.kpis.invoicedAmount) : "$0"}
-              subtitle={`${formatInteger(data?.kpis.totalInvoices || 0)} invoices`}
+              subtitle={`${formatInteger(data?.kpis.totalInvoices || 0)} faturas`}
               icon={<BarChart3 className="w-5 h-5 text-purple-600" />}
               isLoading={isLoading}
             />
@@ -513,34 +513,34 @@ export default function InsightsPage() {
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-blue-600" />
-            Customer Analytics
+            Análises de Clientes
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <QuickBooksKpiCard
-              title="Active Customers"
+              title="Clientes Ativos"
               value={data ? formatInteger(data.kpis.activeCustomers) : "0"}
-              subtitle="With activity in period"
+              subtitle="Com atividade no período"
               icon={<Users className="w-5 h-5 text-green-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="New Customers"
+              title="Novos Clientes"
               value={data ? formatInteger(data.kpis.newCustomers) : "0"}
-              subtitle="Acquired this period"
+              subtitle="Adquiridos neste período"
               icon={<ArrowUpRight className="w-5 h-5 text-blue-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Avg LTV"
+              title="LTV Médio"
               value={data ? formatCurrency(data.kpis.avgLtv) : "$0"}
-              subtitle="Lifetime Value"
+              subtitle="Valor Vitalício"
               icon={<TrendingUp className="w-5 h-5 text-indigo-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Total Customers"
+              title="Total de Clientes"
               value={data ? formatInteger(data.kpis.totalCustomers) : "0"}
-              subtitle="All-time customers"
+              subtitle="Clientes de todos os tempos"
               icon={<Users className="w-5 h-5 text-gray-600" />}
               isLoading={isLoading}
             />
@@ -551,25 +551,25 @@ export default function InsightsPage() {
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <CreditCard className="w-5 h-5 text-blue-600" />
-            Payment Analytics
+            Análises de Pagamentos
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <QuickBooksKpiCard
-              title="Total Payments"
+              title="Total de Pagamentos"
               value={data ? formatInteger(data.kpis.totalPayments) : "0"}
               subtitle={data ? formatCurrency(data.kpis.totalRevenue) : "$0"}
               icon={<CreditCard className="w-5 h-5 text-green-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Avg Payment"
+              title="Pagamento Médio"
               value={data ? formatCurrency(data.kpis.avgPaymentAmount) : "$0"}
-              subtitle="Per transaction"
+              subtitle="Por transação"
               icon={<DollarSign className="w-5 h-5 text-blue-600" />}
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Refunds"
+              title="Reembolsos"
               value={data ? formatInteger(data.kpis.refundsCount) : "0"}
               subtitle={data ? formatCurrency(data.kpis.refundsAmount) : "$0"}
               icon={<ArrowDownRight className="w-5 h-5 text-red-600" />}
@@ -577,9 +577,9 @@ export default function InsightsPage() {
               isLoading={isLoading}
             />
             <QuickBooksKpiCard
-              title="Payment Methods"
+              title="Métodos de Pagamento"
               value={data ? data.charts.paymentMethods.length.toString() : "0"}
-              subtitle="Active methods"
+              subtitle="Métodos ativos"
               icon={<PieChart className="w-5 h-5 text-purple-600" />}
               isLoading={isLoading}
             />
@@ -590,7 +590,7 @@ export default function InsightsPage() {
         <div className="space-y-6">
           {/* Revenue Trend - Full Width Hero */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend (12 Months)</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tendência de Receita (12 Meses)</h3>
             <RevenueTrendChart
               data={data?.charts.revenueTrend || []}
               isLoading={isLoading}
@@ -599,7 +599,7 @@ export default function InsightsPage() {
 
           {/* Cash Flow - Full Width Hero */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Cash Flow: Invoiced vs Received</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Fluxo de Caixa: Faturado vs Recebido</h3>
             <CashFlowChart
               data={data?.charts.cashFlow || []}
               isLoading={isLoading}
@@ -608,7 +608,7 @@ export default function InsightsPage() {
 
           {/* Top Customers - Full Width (needs more vertical space) */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Customers by Revenue</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Clientes por Receita</h3>
             <TopCustomersChart
               data={data?.charts.topCustomers || []}
               isLoading={isLoading}
@@ -618,7 +618,7 @@ export default function InsightsPage() {
           {/* Invoice Status + Aging - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Status Distribution</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Distribuição de Status de Faturas</h3>
               <InvoiceStatusChart
                 data={data?.charts.invoiceStatus || []}
                 isLoading={isLoading}
@@ -626,7 +626,7 @@ export default function InsightsPage() {
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Aging</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Vencimento de Faturas</h3>
               <InvoiceAgingChart
                 data={data?.charts.invoiceAging || []}
                 isLoading={isLoading}
@@ -637,7 +637,7 @@ export default function InsightsPage() {
           {/* Payment Methods + Customer Segments - Side by Side */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payments by Method</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Pagamentos por Método</h3>
               <PaymentMethodsChart
                 data={data?.charts.paymentMethods || []}
                 isLoading={isLoading}
@@ -645,7 +645,7 @@ export default function InsightsPage() {
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Segments by Revenue</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Segmentos de Clientes por Receita</h3>
               <CustomerSegmentsChart
                 data={data?.charts.customerSegments || []}
                 isLoading={isLoading}
@@ -655,7 +655,7 @@ export default function InsightsPage() {
 
           {/* Customer Acquisition - Full Width at Bottom */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Acquisition Trend</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Tendência de Aquisição de Clientes</h3>
             <CustomerAcquisitionChart
               data={data?.charts.customerAcquisition || []}
               isLoading={isLoading}

@@ -72,8 +72,8 @@ export function PaymentMethodsChart({ data, isLoading }: PaymentMethodsChartProp
             d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
           />
         </svg>
-        <p className="text-lg font-medium text-gray-700 mb-1">No payment data available</p>
-        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+        <p className="text-lg font-medium text-gray-700 mb-1">Nenhum dado de pagamento disponível</p>
+        <p className="text-sm text-gray-500">Tente ajustar o filtro de período</p>
       </div>
     );
   }
@@ -108,8 +108,8 @@ export function PaymentMethodsChart({ data, isLoading }: PaymentMethodsChartProp
         />
         <Tooltip
           formatter={(value: number, name: string, props: any) => [
-            `${formatCurrency(value)} (${props.payload.count} payments)`,
-            "Amount"
+            `${formatCurrency(value)} (${props.payload.count} pagamentos)`,
+            "Valor"
           ]}
           contentStyle={{
             backgroundColor: "#fff",
@@ -121,7 +121,7 @@ export function PaymentMethodsChart({ data, isLoading }: PaymentMethodsChartProp
         <Legend />
         <Bar
           dataKey="amount"
-          name="Amount"
+          name="Valor"
           fill="#0F52BA"
           radius={[0, 4, 4, 0]}
         >

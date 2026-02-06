@@ -155,7 +155,7 @@ const navigationSections: NavSection[] = [
     ],
   },
   {
-    title: "Commercial",
+    title: "Comercial",
     roles: ["ADMIN", "COMMERCIAL"],
     items: [
       {

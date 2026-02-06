@@ -73,7 +73,7 @@ export function InvoiceAgingChart({ data, isLoading }: InvoiceAgingChartProps) {
         <Legend />
         <Bar
           dataKey="amount"
-          name="Amount"
+          name="Valor"
           radius={[4, 4, 0, 0]}
         >
           {data.map((entry, index) => (

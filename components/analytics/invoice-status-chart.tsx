@@ -60,8 +60,8 @@ export function InvoiceStatusChart({ data, isLoading }: InvoiceStatusChartProps)
             d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
           />
         </svg>
-        <p className="text-lg font-medium text-gray-700 mb-1">No invoice data available</p>
-        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+        <p className="text-lg font-medium text-gray-700 mb-1">Nenhum dado de fatura disponível</p>
+        <p className="text-sm text-gray-500">Tente ajustar o filtro de período</p>
       </div>
     );
   }
@@ -94,8 +94,8 @@ export function InvoiceStatusChart({ data, isLoading }: InvoiceStatusChartProps)
             </Pie>
             <Tooltip
               formatter={(value: number, name: string, props: any) => [
-                `${formatCurrency(value)} (${props.payload.count} invoices)`,
-                "Amount",
+                `${formatCurrency(value)} (${props.payload.count} faturas)`,
+                "Valor",
               ]}
               contentStyle={{
                 backgroundColor: "#fff",
@@ -114,8 +114,8 @@ export function InvoiceStatusChart({ data, isLoading }: InvoiceStatusChartProps)
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-2 font-medium text-gray-700">Status</th>
-              <th className="text-right py-2 font-medium text-gray-700">Count</th>
-              <th className="text-right py-2 font-medium text-gray-700">Amount</th>
+              <th className="text-right py-2 font-medium text-gray-700">Quantidade</th>
+              <th className="text-right py-2 font-medium text-gray-700">Valor</th>
               <th className="text-right py-2 font-medium text-gray-700">%</th>
             </tr>
           </thead>

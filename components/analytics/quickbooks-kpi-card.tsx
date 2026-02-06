@@ -53,7 +53,7 @@ export function QuickBooksKpiCard({
                 {trend.isPositive ? "+" : ""}
                 {trend.value}%
               </span>
-              <span className="text-sm text-gray-500 ml-1">vs last period</span>
+              <span className="text-sm text-gray-500 ml-1">vs período anterior</span>
             </div>
           )}
         </div>

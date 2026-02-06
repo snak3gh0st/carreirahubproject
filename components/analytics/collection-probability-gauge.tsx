@@ -9,7 +9,7 @@ interface CollectionProbabilityGaugeProps {
 
 export function CollectionProbabilityGauge({
   probability,
-  label = "Collection Probability",
+  label = "Probabilidade de Recebimento",
   size = "md",
   isLoading,
 }: CollectionProbabilityGaugeProps) {

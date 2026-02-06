@@ -53,8 +53,8 @@ export function RevenueTrendChart({ data, isLoading }: RevenueTrendChartProps) {
             d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
           />
         </svg>
-        <p className="text-lg font-medium text-gray-700 mb-1">No revenue data available</p>
-        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+        <p className="text-lg font-medium text-gray-700 mb-1">Nenhum dado de receita disponível</p>
+        <p className="text-sm text-gray-500">Tente ajustar o filtro de período</p>
       </div>
     );
   }
@@ -88,7 +88,7 @@ export function RevenueTrendChart({ data, isLoading }: RevenueTrendChartProps) {
         <Line
           type="monotone"
           dataKey="revenue"
-          name="Revenue"
+          name="Receita"
           stroke="#0F52BA"
           strokeWidth={2}
           dot={{ fill: "#0F52BA", strokeWidth: 2, r: 4 }}

@@ -56,8 +56,8 @@ export function CustomerSegmentsChart({ data, isLoading }: CustomerSegmentsChart
             d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"
           />
         </svg>
-        <p className="text-lg font-medium text-gray-700 mb-1">No segment data available</p>
-        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+        <p className="text-lg font-medium text-gray-700 mb-1">Nenhum dado de segmento disponível</p>
+        <p className="text-sm text-gray-500">Tente ajustar o filtro de período</p>
       </div>
     );
   }
@@ -90,8 +90,8 @@ export function CustomerSegmentsChart({ data, isLoading }: CustomerSegmentsChart
             </Pie>
             <Tooltip
               formatter={(value: number, name: string, props: any) => [
-                `${formatCurrency(value)} (${props.payload.count} customers)`,
-                "Revenue",
+                `${formatCurrency(value)} (${props.payload.count} clientes)`,
+                "Receita",
               ]}
               contentStyle={{
                 backgroundColor: "#fff",
@@ -109,9 +109,9 @@ export function CustomerSegmentsChart({ data, isLoading }: CustomerSegmentsChart
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-200">
-              <th className="text-left py-2 font-medium text-gray-700">Segment</th>
-              <th className="text-right py-2 font-medium text-gray-700">Count</th>
-              <th className="text-right py-2 font-medium text-gray-700">Revenue</th>
+              <th className="text-left py-2 font-medium text-gray-700">Segmento</th>
+              <th className="text-right py-2 font-medium text-gray-700">Quantidade</th>
+              <th className="text-right py-2 font-medium text-gray-700">Receita</th>
               <th className="text-right py-2 font-medium text-gray-700">%</th>
             </tr>
           </thead>

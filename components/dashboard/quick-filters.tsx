@@ -13,10 +13,10 @@ import { useRouter, useSearchParams } from "next/navigation";
  */
 
 const DATE_RANGES = [
-  { value: "last7", label: "Last 7 Days" },
-  { value: "last30", label: "Last 30 Days" },
-  { value: "thisYear", label: "This Year" },
-  { value: "allTime", label: "All Time" },
+  { value: "last7", label: "Últimos 7 Dias" },
+  { value: "last30", label: "Últimos 30 Dias" },
+  { value: "thisYear", label: "Este Ano" },
+  { value: "allTime", label: "Todo o Período" },
 ];
 
 export function QuickFilters() {
@@ -37,14 +37,14 @@ export function QuickFilters() {
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
-          Time Period
+          Período
         </h3>
         {currentRange !== "thisYear" && (
           <button
             onClick={() => handleDateRangeChange("thisYear")}
             className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
           >
-            Reset
+            Limpar
           </button>
         )}
       </div>
@@ -69,10 +69,10 @@ export function QuickFilters() {
       </div>
 
       <p className="mt-4 text-xs text-gray-500">
-        Metrics update automatically when you select a time period.
-        For advanced filters, visit the{" "}
+        As métricas atualizam automaticamente ao selecionar um período.
+        Para filtros avançados, acesse a{" "}
         <a href="/dashboard/insights" className="text-primary-600 hover:text-primary-700 font-medium">
-          Insights page
+          página de Insights
         </a>
         .
       </p>

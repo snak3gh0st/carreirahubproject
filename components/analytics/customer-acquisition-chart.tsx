@@ -44,8 +44,8 @@ export function CustomerAcquisitionChart({ data, isLoading }: CustomerAcquisitio
             d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
           />
         </svg>
-        <p className="text-lg font-medium text-gray-700 mb-1">No acquisition data available</p>
-        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+        <p className="text-lg font-medium text-gray-700 mb-1">Nenhum dado de aquisição disponível</p>
+        <p className="text-sm text-gray-500">Tente ajustar o filtro de período</p>
       </div>
     );
   }
@@ -76,7 +76,7 @@ export function CustomerAcquisitionChart({ data, isLoading }: CustomerAcquisitio
         <Legend />
         <Bar
           dataKey="new"
-          name="New Customers"
+          name="Novos Clientes"
           fill="#0F52BA"
           radius={[4, 4, 0, 0]}
         />

@@ -41,7 +41,7 @@ export function ReceivablesForecastChart({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-lg animate-pulse">
-        <div className="text-gray-400">Loading forecast chart...</div>
+        <div className="text-gray-400">Carregando gráfico de previsão...</div>
       </div>
     );
   }
@@ -49,9 +49,9 @@ export function ReceivablesForecastChart({
   if (!forecasts || forecasts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] bg-gray-50 rounded-lg">
-        <div className="text-gray-400 mb-2">No forecast data available</div>
+        <div className="text-gray-400 mb-2">Nenhum dado de previsão disponível</div>
         <div className="text-sm text-gray-500">
-          Open invoices are needed to generate a timeline
+          Faturas em aberto são necessárias para gerar a linha do tempo
         </div>
       </div>
     );
@@ -114,7 +114,7 @@ export function ReceivablesForecastChart({
       {/* Cumulative Collections Chart */}
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Cumulative Expected Collections
+          Recebimentos Esperados Acumulados
         </h4>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart
@@ -151,7 +151,7 @@ export function ReceivablesForecastChart({
               fill="#10b981"
               fillOpacity={0.2}
               stroke="none"
-              name="Risk-Adjusted (Cumulative)"
+              name="Ajustado ao Risco (Acumulado)"
             />
             <Line
               type="monotone"
@@ -159,7 +159,7 @@ export function ReceivablesForecastChart({
               stroke="#3b82f6"
               strokeWidth={3}
               dot={{ r: 4 }}
-              name="Expected (Cumulative)"
+              name="Esperado (Acumulado)"
             />
             <Line
               type="monotone"
@@ -168,7 +168,7 @@ export function ReceivablesForecastChart({
               strokeWidth={3}
               dot={{ r: 4 }}
               strokeDasharray="5 5"
-              name="Risk-Adjusted (Cumulative)"
+              name="Ajustado ao Risco (Acumulado)"
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -177,7 +177,7 @@ export function ReceivablesForecastChart({
       {/* Monthly Collections Chart */}
       <div>
         <h4 className="text-sm font-medium text-gray-700 mb-3">
-          Monthly Expected Collections
+          Recebimentos Esperados Mensais
         </h4>
         <ResponsiveContainer width="100%" height={300}>
           <ComposedChart
@@ -198,7 +198,7 @@ export function ReceivablesForecastChart({
             <Tooltip
               formatter={(value: number, name: string) => {
                 if (name === "count") {
-                  return [value, "Invoices"];
+                  return [value, "Faturas"];
                 }
                 return [formatCurrency(value), name];
               }}
@@ -220,7 +220,7 @@ export function ReceivablesForecastChart({
               fillOpacity={0.3}
               stroke="#10b981"
               strokeWidth={2}
-              name="Risk-Adjusted"
+              name="Ajustado ao Risco"
             />
             <Line
               type="monotone"
@@ -228,7 +228,7 @@ export function ReceivablesForecastChart({
               stroke="#3b82f6"
               strokeWidth={2}
               dot={{ r: 4 }}
-              name="Expected"
+              name="Esperado"
             />
           </ComposedChart>
         </ResponsiveContainer>
@@ -246,7 +246,7 @@ export function ReceivablesForecastChart({
               {formatCurrency(item.weighted)}
             </div>
             <div className="text-xs text-gray-500">
-              {item.count} invoice{item.count !== 1 ? "s" : ""}
+              {item.count} fatura{item.count !== 1 ? "s" : ""}
             </div>
           </div>
         ))}

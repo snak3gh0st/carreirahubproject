@@ -142,7 +142,7 @@ export default function DashboardPage() {
               {getGreeting()}, {firstName}! 👋
             </h1>
             <p className="text-gray-600">
-              Área Comercial - Gestão de Invoices
+              Área Comercial - Gestão de Faturas
             </p>
           </div>
 
@@ -164,9 +164,9 @@ export default function DashboardPage() {
               className="group rounded-xl border border-blue-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="relative">
-                <p className="text-lg font-bold text-gray-900">Criar Invoice</p>
+                <p className="text-lg font-bold text-gray-900">Criar Fatura</p>
                 <p className="text-sm text-gray-600">
-                  Nova invoice para cliente
+                  Nova fatura para cliente
                 </p>
               </div>
             </Link>
@@ -175,9 +175,9 @@ export default function DashboardPage() {
               className="group rounded-xl border border-green-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="relative">
-                <p className="text-lg font-bold text-gray-900">Minhas Invoices</p>
+                <p className="text-lg font-bold text-gray-900">Minhas Faturas</p>
                 <p className="text-sm text-gray-600">
-                  Ver invoices criadas por mim
+                  Ver faturas criadas por mim
                 </p>
               </div>
             </Link>

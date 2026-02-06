@@ -37,27 +37,27 @@ const getRiskBadge = (riskLevel: string) => {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
           <XCircle className="w-3 h-3" />
-          Critical
+          Crítico
         </span>
       );
     case "HIGH":
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
           <AlertTriangle className="w-3 h-3" />
-          High
+          Alto
         </span>
       );
     case "MEDIUM":
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
           <TrendingDown className="w-3 h-3" />
-          Medium
+          Médio
         </span>
       );
     default:
       return (
         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-          Low
+          Baixo
         </span>
       );
   }
@@ -82,9 +82,9 @@ export function AtRiskInvoicesTable({
   if (!data || data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-gray-50 rounded-lg">
-        <div className="text-gray-400 mb-2">No at-risk invoices</div>
+        <div className="text-gray-400 mb-2">Nenhuma fatura em risco</div>
         <div className="text-sm text-gray-500">
-          All invoices have good collection probability
+          Todas as faturas têm boa probabilidade de recebimento
         </div>
       </div>
     );
@@ -96,25 +96,25 @@ export function AtRiskInvoicesTable({
         <thead className="bg-gray-50">
           <tr>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Invoice
+              Fatura
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Customer
+              Cliente
             </th>
             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Amount
+              Valor
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Due Date
+              Vencimento
             </th>
             <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Risk Level
+              Nível de Risco
             </th>
             <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Collection %
+              % Recebimento
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Risk Factors
+              Fatores de Risco
             </th>
           </tr>
         </thead>
@@ -146,7 +146,7 @@ export function AtRiskInvoicesTable({
                 </div>
                 {invoice.daysOverdue > 0 && (
                   <div className="text-xs text-red-600 font-medium">
-                    {invoice.daysOverdue} days overdue
+                    {invoice.daysOverdue} dias em atraso
                   </div>
                 )}
               </td>
@@ -204,10 +204,10 @@ export function AtRiskInvoicesTable({
       <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
         <div className="flex items-center justify-between text-sm">
           <div className="text-gray-600">
-            Showing {data.length} at-risk invoice{data.length !== 1 ? "s" : ""}
+            Exibindo {data.length} fatura{data.length !== 1 ? "s" : ""} em risco
           </div>
           <div className="text-gray-900 font-semibold">
-            Total at risk: {formatCurrency(data.reduce((sum, inv) => sum + inv.amount, 0))}
+            Total em risco: {formatCurrency(data.reduce((sum, inv) => sum + inv.amount, 0))}
           </div>
         </div>
       </div>

@@ -42,7 +42,7 @@ export function CashFlowProjectionChart({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-lg animate-pulse">
-        <div className="text-gray-400">Loading forecast...</div>
+        <div className="text-gray-400">Carregando previsão...</div>
       </div>
     );
   }
@@ -50,9 +50,9 @@ export function CashFlowProjectionChart({
   if (!data || data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] bg-gray-50 rounded-lg">
-        <div className="text-gray-400 mb-2">No forecast data available</div>
+        <div className="text-gray-400 mb-2">Nenhum dado de previsão disponível</div>
         <div className="text-sm text-gray-500">
-          Open invoices are needed to generate projections
+          Faturas em aberto são necessárias para gerar projeções
         </div>
       </div>
     );
@@ -61,8 +61,8 @@ export function CashFlowProjectionChart({
   // Prepare chart data
   const chartData = data.map((item) => ({
     period: item.periodLabel,
-    Expected: item.expectedAmount,
-    "Weighted (Probability)": item.pessimisticAmount,
+    Esperado: item.expectedAmount,
+    "Ponderado (Probabilidade)": item.pessimisticAmount,
     invoices: item.invoiceCount,
     probability: item.avgCollectionProbability,
   }));
@@ -101,16 +101,16 @@ export function CashFlowProjectionChart({
             iconSize={12}
           />
           <Bar
-            dataKey="Expected"
+            dataKey="Esperado"
             fill="#3b82f6"
             radius={[8, 8, 0, 0]}
-            name="Expected Collections"
+            name="Recebimentos Esperados"
           />
           <Bar
-            dataKey="Weighted (Probability)"
+            dataKey="Ponderado (Probabilidade)"
             fill="#10b981"
             radius={[8, 8, 0, 0]}
-            name="Risk-Adjusted Collections"
+            name="Recebimentos Ajustados ao Risco"
           />
         </BarChart>
       </ResponsiveContainer>
@@ -127,7 +127,7 @@ export function CashFlowProjectionChart({
               {formatCurrency(period.pessimisticAmount)}
             </div>
             <div className="text-xs text-gray-500">
-              {period.invoiceCount} invoices · {period.avgCollectionProbability}% prob
+              {period.invoiceCount} faturas · {period.avgCollectionProbability}% prob
             </div>
             <div className="mt-2 flex items-center gap-1">
               <div
