@@ -68,7 +68,8 @@ class SupportChatService {
   async sendMessage(
     ticketId: string,
     userId: string,
-    content: string
+    content: string,
+    userRole: string = "COMMERCIAL"
   ): Promise<{ userMsg: SupportMessage; aiResponse: SupportMessage | null; shouldEscalate: boolean }> {
     // Rate limit check
     const allowed = await this.checkRateLimit(userId);
@@ -135,7 +136,8 @@ class SupportChatService {
     const { response: aiText, shouldEscalate } = await this.callAI(
       userId,
       messages,
-      content
+      content,
+      userRole
     );
 
     // Save AI response
@@ -158,7 +160,8 @@ class SupportChatService {
   private async callAI(
     userId: string,
     history: SupportMessage[],
-    latestMessage: string
+    latestMessage: string,
+    userRole: string = "COMMERCIAL"
   ): Promise<{ response: string; shouldEscalate: boolean }> {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -172,10 +175,10 @@ class SupportChatService {
 
     try {
       console.log(`[SupportChat] Calling AI with model=${SUPPORT_AI_MODEL}, key=${apiKey.slice(0, 8)}...`);
-      // Get user name
+      // Get user name and role
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { name: true },
+        select: { name: true, role: true },
       });
 
       const messageHistory = history
@@ -193,6 +196,7 @@ class SupportChatService {
             role: "system",
             content: SUPPORT_CHAT_USER_CONTEXT(
               user?.name || "Usuario",
+              userRole,
               messageHistory
             ),
           },

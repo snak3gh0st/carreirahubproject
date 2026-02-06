@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const userId = (session.user as any).id;
+    const userRole = (session.user as any).role || "COMMERCIAL";
     const body = await request.json();
     const { ticketId, message } = body;
 
@@ -29,7 +30,8 @@ export async function POST(request: NextRequest) {
     const result = await supportChatService.sendMessage(
       activeTicketId,
       userId,
-      message.trim()
+      message.trim(),
+      userRole
     );
 
     // Get updated ticket
