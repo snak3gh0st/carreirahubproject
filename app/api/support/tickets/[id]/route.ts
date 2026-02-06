@@ -59,9 +59,9 @@ export async function PATCH(
     const body = await request.json();
     const { status } = body;
 
-    // Users can only escalate their own tickets
+    // Users can escalate or close their own tickets
     if (!isTeam) {
-      if (status !== "ESCALATED") {
+      if (status !== "ESCALATED" && status !== "CLOSED") {
         return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
       }
       const ticket = await prisma.supportTicket.findUnique({

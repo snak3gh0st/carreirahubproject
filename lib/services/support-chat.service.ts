@@ -26,6 +26,17 @@ const MAX_HISTORY_MESSAGES = 8; // Limit context window to reduce token usage
 
 class SupportChatService {
   async createTicket(userId: string): Promise<SupportTicket> {
+    // Auto-close stale tickets (escalated/in_progress for >24h with no new messages)
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    await prisma.supportTicket.updateMany({
+      where: {
+        userId,
+        status: { in: ["AI_HANDLING", "ESCALATED", "IN_PROGRESS"] },
+        updatedAt: { lt: oneDayAgo },
+      },
+      data: { status: "CLOSED" },
+    });
+
     // Check active ticket limit
     const activeTickets = await prisma.supportTicket.count({
       where: {
