@@ -22,13 +22,13 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
     { href: "/dashboard", label: "Dashboard", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
     { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "SDR", "SALES"] },
     { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "SUPPORT", "SDR"] },
-    { href: "/dashboard/deals", label: "Deals", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
-    { href: "/dashboard/invoices", label: "Invoices", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/payments", label: "Payments", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/customers", label: "Customers", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
+    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
+    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/payments", label: "Pagamentos", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
     { href: "/dashboard/insights", label: "Insights", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/integrations", label: "Integrations", roles: ["ADMIN", "FINANCE"] },
-    { href: "/", label: "Home", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
+    { href: "/dashboard/integrations", label: "Integrações", roles: ["ADMIN", "FINANCE"] },
+    { href: "/", label: "Início", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
   ]
 
   const visibleLinks = navLinks.filter((link) => link.roles.includes(userRole))
@@ -83,7 +83,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
               </span>
             </div>
 
-            {/* Logout Button - Tablet and Desktop */}
+            {/* Sair Button - Tablet and Desktop */}
             <Button
               variant="ghost"
               size="sm"
@@ -91,7 +91,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
               className="hidden md:flex items-center gap-2 text-gray-700"
             >
               <LogOut className="h-4 w-4" />
-              <span className="text-sm">Logout</span>
+              <span className="text-sm">Sair</span>
             </Button>
 
             {/* Mobile Menu Button - Only visible on tablet and below */}
@@ -130,11 +130,11 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
                         {session?.user?.email}
                       </p>
                       <p className="text-xs font-semibold text-blue-600">
-                        Role: {userRole}
+                        Cargo: {userRole}
                       </p>
                     </div>
 
-                    {/* Mobile Logout Button */}
+                    {/* Mobile Sair Button */}
                     <Button
                       variant="secondary"
                       size="sm"
@@ -145,7 +145,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
                       className="w-full flex items-center justify-center gap-2"
                     >
                       <LogOut className="h-4 w-4" />
-                      <span>Logout</span>
+                      <span>Sair</span>
                     </Button>
                   </div>
                 </div>

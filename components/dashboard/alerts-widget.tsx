@@ -59,7 +59,7 @@ export function AlertsWidget() {
             a.id === alertId ? { ...a, status: "ACKNOWLEDGED" } : a
           )
         );
-        addToast("Alert acknowledged", "success");
+        addToast("Alerta reconhecido", "success");
       }
     } catch (err) {
       console.error("Failed to acknowledge alert:", err);
@@ -79,7 +79,7 @@ export function AlertsWidget() {
             a.id === alertId ? { ...a, status: "RESOLVED" } : a
           )
         );
-        addToast("Alert resolved", "success");
+        addToast("Alerta resolvido", "success");
       }
     } catch (err) {
       console.error("Failed to resolve alert:", err);
@@ -99,7 +99,7 @@ export function AlertsWidget() {
             a.id === alertId ? { ...a, status: "DISMISSED" } : a
           )
         );
-        addToast("Alert dismissed", "success");
+        addToast("Alerta dispensado", "success");
       }
     } catch (err) {
       console.error("Failed to dismiss alert:", err);
@@ -157,12 +157,12 @@ export function AlertsWidget() {
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffDays > 0) {
-      return `${diffDays}d ago`;
+      return `${diffDays}d atrás`;
     }
     if (diffHours > 0) {
-      return `${diffHours}h ago`;
+      return `${diffHours}h atrás`;
     }
-    return "Just now";
+    return "Agora mesmo";
   };
 
   const activeAlerts = alerts.filter(
@@ -176,7 +176,7 @@ export function AlertsWidget() {
         <button
           onClick={() => setIsOpen(!isOpen)}
           className="relative w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-110"
-          title={`${activeAlerts.length} active alerts`}
+          title={`${activeAlerts.length} alertas ativos`}
         >
           <Bell className="w-6 h-6" />
           {activeAlerts.length > 0 && (
@@ -195,7 +195,7 @@ export function AlertsWidget() {
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-blue-600" />
               <h3 className="font-semibold text-gray-900">
-                Alerts
+                Alertas
               </h3>
               {activeAlerts.length > 0 && (
                 <span className="inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-red-500 rounded-full">
@@ -217,10 +217,10 @@ export function AlertsWidget() {
               <div className="p-6 text-center">
                 <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
                 <p className="text-sm font-medium text-gray-900">
-                  No Active Alerts
+                  Nenhum Alerta Ativo
                 </p>
                 <p className="text-xs text-gray-600">
-                  Everything looks good!
+                  Tudo certo!
                 </p>
               </div>
             ) : (
@@ -262,7 +262,7 @@ export function AlertsWidget() {
                             className="text-xs px-2 py-1 rounded bg-blue-100"
                             onClick={() => setIsOpen(false)}
                           >
-                            View Details
+                            Ver Detalhes
                           </a>
                         )}
                         {alert.status === "ACTIVE" && (
@@ -270,7 +270,7 @@ export function AlertsWidget() {
                             onClick={() => handleAcknowledge(alert.id)}
                             className="text-xs px-2 py-1 rounded bg-gray-200"
                           >
-                            Acknowledge
+                            Reconhecer
                           </button>
                         )}
                         {alert.status === "ACKNOWLEDGED" && (
@@ -278,14 +278,14 @@ export function AlertsWidget() {
                             onClick={() => handleResolve(alert.id)}
                             className="text-xs px-2 py-1 rounded bg-green-200"
                           >
-                            Resolve
+                            Resolver
                           </button>
                         )}
                         <button
                           onClick={() => handleDismiss(alert.id)}
                           className="text-xs px-2 py-1 rounded bg-gray-200"
                         >
-                          Dismiss
+                          Dispensar
                         </button>
                       </div>
                     </div>
@@ -301,7 +301,7 @@ export function AlertsWidget() {
               <div className="text-xs text-gray-500">
                 {metadata && (
                   <span>
-                    {metadata.total} alerts • {metadata.timePeriod}
+                    {metadata.total} alertas • {metadata.timePeriod}
                   </span>
                 )}
               </div>
@@ -309,7 +309,7 @@ export function AlertsWidget() {
                 onClick={fetchAlerts}
                 className="text-xs text-blue-600 hover:text-blue-700"
               >
-                Refresh
+                Atualizar
               </button>
             </div>
           </div>

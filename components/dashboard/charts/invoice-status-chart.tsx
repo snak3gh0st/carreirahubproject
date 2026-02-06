@@ -54,10 +54,10 @@ export function InvoiceStatusChart({ data }: InvoiceStatusChartProps) {
             {data.name}
           </p>
           <p className="text-sm text-gray-600">
-            Count: {data.value}
+            Quantidade: {data.value}
           </p>
           <p className="text-sm text-gray-600">
-            Value: ${data.totalValue.toLocaleString()}
+            Valor: ${data.totalValue.toLocaleString()}
           </p>
         </div>
       );
@@ -69,7 +69,7 @@ export function InvoiceStatusChart({ data }: InvoiceStatusChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center text-gray-500">
-        No invoice data available
+        Nenhum dado de fatura disponível
       </div>
     );
   }

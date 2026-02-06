@@ -9,6 +9,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CreditCard, Plus } from "lucide-react";
+import { CopyButton } from "@/components/ui/copy-button";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -258,29 +259,29 @@ export default async function PaymentsPage({
       <div className="container mx-auto p-6 md:p-8 max-w-7xl">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-display font-semibold text-gray-900">Payments</h1>
+          <h1 className="text-3xl font-display font-semibold text-gray-900">Pagamentos</h1>
         </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
-            label="Total Payments"
+            label="Total de Pagamentos"
             value={`$${totalPaymentsAmount.toLocaleString()}`}
             change={`${totalChangePercent}%`}
             trend={totalTrend as "up" | "down"}
           />
           <StatCard
-            label="Total Transactions"
+            label="Total de Transações"
             value={stats._count.id.toString()}
-            description={`${qbPayments} from QuickBooks`}
+            description={`${qbPayments} do QuickBooks`}
           />
           <StatCard
-            label="Average Payment"
+            label="Pagamento Médio"
             value={`$${averagePayment.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            description="Per transaction"
+            description="Por transação"
           />
           <StatCard
-            label="This Month"
+            label="Este Mês"
             value={`$${thisMonthAmount.toLocaleString()}`}
             description={now.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
           />
@@ -300,7 +301,7 @@ export default async function PaymentsPage({
                 type="text"
                 name="search"
                 defaultValue={search}
-                placeholder="Search by transaction ref, customer name, or email..."
+                placeholder="Buscar por ref. de transação, nome do cliente ou e-mail..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
               />
               <svg
@@ -321,7 +322,7 @@ export default async function PaymentsPage({
 
           {/* Source Filter */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-display font-medium text-gray-700">Source:</span>
+            <span className="text-sm font-display font-medium text-gray-700">Origem:</span>
             <Link
               href={`/dashboard/payments${search ? `?search=${search}` : ""}`}
               className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
@@ -330,7 +331,7 @@ export default async function PaymentsPage({
                   : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
-              All
+              Todos
             </Link>
             <Link
               href={`/dashboard/payments?source=quickbooks${
@@ -362,7 +363,7 @@ export default async function PaymentsPage({
         {/* Advanced Filters */}
         <details className="border-t pt-4">
           <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
-            <span>Advanced Filters</span>
+            <span>Filtros Avançados</span>
             {activeFilterCount > 0 && (
               <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
                 {activeFilterCount}
@@ -380,7 +381,7 @@ export default async function PaymentsPage({
               {/* Date Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Date From
+                  Data do Pagamento De
                 </label>
                 <input
                   type="date"
@@ -391,7 +392,7 @@ export default async function PaymentsPage({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Date To
+                  Data do Pagamento Até
                 </label>
                 <input
                   type="date"
@@ -404,7 +405,7 @@ export default async function PaymentsPage({
               {/* Amount Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Amount ($)
+                  Valor Mínimo ($)
                 </label>
                 <input
                   type="number"
@@ -417,13 +418,13 @@ export default async function PaymentsPage({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Amount ($)
+                  Valor Máximo ($)
                 </label>
                 <input
                   type="number"
                   name="maxAmount"
                   defaultValue={searchParams.maxAmount}
-                  placeholder="Unlimited"
+                  placeholder="Ilimitado"
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -432,21 +433,21 @@ export default async function PaymentsPage({
               {/* Payment Method */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment Method
+                  Método de Pagamento
                 </label>
                 <select
                   name="paymentMethod"
                   defaultValue={searchParams.paymentMethod || ""}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">All</option>
+                  <option value="">Todos</option>
                   <option value="stripe">Stripe</option>
                   <option value="quickbooks">QuickBooks</option>
                   <option value="manual">Manual</option>
-                  <option value="bank_transfer">Bank Transfer</option>
-                  <option value="cash">Cash</option>
-                  <option value="check">Check</option>
-                  <option value="other">Other</option>
+                  <option value="bank_transfer">Transferência Bancária</option>
+                  <option value="cash">Dinheiro</option>
+                  <option value="check">Cheque</option>
+                  <option value="other">Outro</option>
                 </select>
               </div>
             </div>
@@ -457,13 +458,13 @@ export default async function PaymentsPage({
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
               >
-                Apply Filters
+                Aplicar Filtros
               </button>
               <Link
                 href="/dashboard/payments"
                 className="px-4 py-2 text-gray-700 hover:text-gray-900 transition"
               >
-                Clear Filters
+                Limpar Filtros
               </Link>
             </div>
           </form>
@@ -473,7 +474,7 @@ export default async function PaymentsPage({
       {/* Quick Filter Chips */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-medium text-gray-500 uppercase">Quick Filters:</span>
+          <span className="text-xs font-medium text-gray-500 uppercase">Filtros Rápidos:</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {(() => {
@@ -514,7 +515,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  Today
+                  Hoje
                 </Link>
 
                 {/* This Week */}
@@ -530,7 +531,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  This Week
+                  Esta Semana
                 </Link>
 
                 {/* This Month */}
@@ -546,7 +547,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  This Month
+                  Este Mês
                 </Link>
 
                 {/* Last 30 Days */}
@@ -562,7 +563,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  Last 30 Days
+                  Últimos 30 Dias
                 </Link>
 
                 {/* High Value */}
@@ -578,7 +579,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  High Value (&gt;$5k)
+                  Alto Valor (&gt;$5k)
                 </Link>
 
                 {/* QuickBooks Synced */}
@@ -594,7 +595,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  QuickBooks Synced
+                  Sincronizado QB
                 </Link>
 
                 {/* Manual Entry */}
@@ -610,7 +611,7 @@ export default async function PaymentsPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
-                  Manual Entry
+                  Entrada Manual
                 </Link>
               </>
             );
@@ -629,29 +630,29 @@ export default async function PaymentsPage({
                     href={buildSortUrl("paymentDate")}
                     className="hover:text-gray-900 cursor-pointer"
                   >
-                    Date<SortIndicator field="paymentDate" />
+                    Data<SortIndicator field="paymentDate" />
                   </Link>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                  Transaction Ref
+                  Ref. Transação
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                   <Link
                     href={buildSortUrl("customer")}
                     className="hover:text-gray-900 cursor-pointer"
                   >
-                    Customer<SortIndicator field="customer" />
+                    Cliente<SortIndicator field="customer" />
                   </Link>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                  Invoice
+                  Fatura
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                   <Link
                     href={buildSortUrl("amount")}
                     className="hover:text-gray-900 cursor-pointer"
                   >
-                    Amount<SortIndicator field="amount" />
+                    Valor<SortIndicator field="amount" />
                   </Link>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
@@ -659,11 +660,11 @@ export default async function PaymentsPage({
                     href={buildSortUrl("paymentMethod")}
                     className="hover:text-gray-900 cursor-pointer"
                   >
-                    Method<SortIndicator field="paymentMethod" />
+                    Método<SortIndicator field="paymentMethod" />
                   </Link>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                  Source
+                  Origem
                 </th>
               </tr>
             </thead>
@@ -674,8 +675,8 @@ export default async function PaymentsPage({
                     <div className="py-12">
                       <EmptyState
                         icon={<CreditCard className="h-12 w-12" />}
-                        title="No payments found"
-                        description="Try adjusting your filters or add a new payment"
+                        title="Nenhum pagamento encontrado"
+                        description="Tente ajustar seus filtros ou adicione um novo pagamento"
                       />
                     </div>
                   </td>
@@ -698,40 +699,20 @@ export default async function PaymentsPage({
                   return (
                     <tr
                       key={payment.id}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => (window.location.href = `/dashboard/payments/${payment.id}`)}
+                      className="hover:bg-gray-50 transition-colors"
                     >
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-display text-gray-900 tabular-nums">
-                        {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
+                        <Link href={`/dashboard/payments/${payment.id}`} className="hover:text-primary-600">
+                          {format(new Date(payment.paymentDate), 'MMM dd, yyyy')}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono text-gray-700">
+                          <Link href={`/dashboard/payments/${payment.id}`} className="text-sm font-mono text-gray-700 hover:text-primary-600">
                             {payment.referenceNumber || payment.id.slice(0, 8)}
-                          </span>
+                          </Link>
                           {payment.referenceNumber && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(payment.referenceNumber!);
-                              }}
-                              className="text-gray-400 hover:text-gray-600"
-                              title="Copy reference"
-                            >
-                              <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                />
-                              </svg>
-                            </button>
+                            <CopyButton text={payment.referenceNumber} />
                           )}
                         </div>
                       </td>
@@ -739,7 +720,6 @@ export default async function PaymentsPage({
                         <div className="flex flex-col">
                           <Link
                             href={`/dashboard/customers/${payment.customer.id}`}
-                            onClick={(e) => e.stopPropagation()}
                             className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
                           >
                             {payment.customer.name}
@@ -750,7 +730,6 @@ export default async function PaymentsPage({
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link
                           href={`/dashboard/invoices/${payment.invoice.id}`}
-                          onClick={(e) => e.stopPropagation()}
                           className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
                         >
                           {payment.invoice.invoiceNumber || payment.invoice.id.slice(0, 8)}

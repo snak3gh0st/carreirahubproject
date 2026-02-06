@@ -23,9 +23,9 @@ export default async function IntegrationsPage() {
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Integrations</h1>
+        <h1 className="text-3xl font-bold">Integrações</h1>
         <p className="text-gray-600 mt-2">
-          Manage connections with QuickBooks and Pipedrive
+          Gerenciar conexões com QuickBooks e Pipedrive
         </p>
       </div>
 
@@ -56,12 +56,12 @@ export default async function IntegrationsPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold mb-2">Settings</h3>
+            <h3 className="text-lg font-semibold mb-2">Configurações</h3>
             <p className="text-sm text-gray-600">
-              Configure QuickBooks and Pipedrive connections, manage OAuth tokens, and set up webhooks
+              Configurar conexões do QuickBooks e Pipedrive, gerenciar tokens OAuth e configurar webhooks
             </p>
             <div className="mt-4 text-blue-600 text-sm font-medium">
-              Configure →
+              Configurar →
             </div>
           </div>
         </Link>
@@ -86,12 +86,12 @@ export default async function IntegrationsPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold mb-2">Bulk Import</h3>
+            <h3 className="text-lg font-semibold mb-2">Importação em Massa</h3>
             <p className="text-sm text-gray-600">
-              Import all existing customers, deals, and invoices from QuickBooks or Pipedrive
+              Importar todos os clientes, negócios e faturas existentes do QuickBooks ou Pipedrive
             </p>
             <div className="mt-4 text-green-600 text-sm font-medium">
-              Start Import →
+              Iniciar Importação →
             </div>
           </div>
         </Link>
@@ -116,12 +116,12 @@ export default async function IntegrationsPage() {
                 </svg>
               </div>
             </div>
-            <h3 className="text-lg font-semibold mb-2">Sync Status</h3>
+            <h3 className="text-lg font-semibold mb-2">Status de Sincronização</h3>
             <p className="text-sm text-gray-600">
-              Monitor real-time synchronization health, view recent sync logs, and track errors
+              Monitorar a saúde da sincronização em tempo real, ver logs recentes e rastrear erros
             </p>
             <div className="mt-4 text-purple-600 text-sm font-medium">
-              View Status →
+              Ver Status →
             </div>
           </div>
         </Link>
@@ -129,7 +129,7 @@ export default async function IntegrationsPage() {
 
       {/* Quick Stats */}
       <div className="mt-8 bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+        <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <a
             href="/api/quickbooks/auth/connect"
@@ -138,7 +138,7 @@ export default async function IntegrationsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-medium">QuickBooks OAuth</h4>
-                <p className="text-sm text-gray-600">Connect or reconnect QuickBooks</p>
+                <p className="text-sm text-gray-600">Conectar ou reconectar QuickBooks</p>
               </div>
               <svg
                 className="w-5 h-5 text-gray-400"
@@ -162,8 +162,8 @@ export default async function IntegrationsPage() {
           >
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium">Start New Import</h4>
-                <p className="text-sm text-gray-600">Import data from external sources</p>
+                <h4 className="font-medium">Nova Importação</h4>
+                <p className="text-sm text-gray-600">Importar dados de fontes externas</p>
               </div>
               <svg
                 className="w-5 h-5 text-gray-400"

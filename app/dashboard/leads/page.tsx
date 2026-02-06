@@ -129,10 +129,10 @@ export default async function LeadsPage({
               />
             </svg>
             <h3 className="mt-2 text-lg font-medium text-gray-900">
-              No leads yet
+              Nenhum lead ainda
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Leads will appear here when added via chatbot or webhook
+              Os leads aparecerão aqui quando adicionados via chatbot ou webhook
             </p>
           </div>
         ) : (
@@ -210,7 +210,7 @@ export default async function LeadsPage({
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
                 <p className="text-sm text-gray-700">
-                  Page {currentPage} of {totalPages} ({totalCount} total leads)
+                  Página {currentPage} de {totalPages} ({totalCount} leads no total)
                 </p>
                 <div className="flex gap-2">
                   <Link
@@ -222,7 +222,7 @@ export default async function LeadsPage({
                     }`}
                     aria-disabled={currentPage === 1}
                   >
-                    Previous
+                    Anterior
                   </Link>
                   <Link
                     href={`?page=${currentPage + 1}`}
@@ -233,7 +233,7 @@ export default async function LeadsPage({
                     }`}
                     aria-disabled={currentPage === totalPages}
                   >
-                    Next
+                    Próximo
                   </Link>
                 </div>
               </div>
@@ -262,16 +262,16 @@ export default async function LeadsPage({
             />
           </svg>
           <h3 className="mt-2 text-lg font-medium text-red-900">
-            Error loading leads
+            Erro ao carregar leads
           </h3>
           <p className="mt-1 text-sm text-red-700">
-            Unable to fetch leads data. Please try again.
+            Não foi possível buscar os dados dos leads. Tente novamente.
           </p>
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
-            Retry
+            Tentar novamente
           </button>
         </div>
       </div>

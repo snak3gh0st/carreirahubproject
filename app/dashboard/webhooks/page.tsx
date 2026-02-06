@@ -116,7 +116,7 @@ export default function WebhookMonitoringPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-gray-600">Loading webhook monitoring data...</div>
+          <div className="text-gray-600">Carregando dados de monitoramento de webhooks...</div>
         </div>
       </div>
     );
@@ -126,7 +126,7 @@ export default function WebhookMonitoringPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h2 className="text-red-800 font-semibold mb-2">Error</h2>
+          <h2 className="text-red-800 font-semibold mb-2">Erro</h2>
           <p className="text-red-600">{error}</p>
           <Button
             variant="danger"
@@ -134,7 +134,7 @@ export default function WebhookMonitoringPage() {
             onClick={fetchData}
             className="mt-4"
           >
-            Retry
+            Tentar Novamente
           </Button>
         </div>
       </div>
@@ -158,26 +158,26 @@ export default function WebhookMonitoringPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">
-            Webhook Monitoring
+            Monitoramento de Webhooks
           </h1>
           <p className="text-gray-600">
-            Real-time webhook delivery and health metrics
+            Métricas de entrega e saúde de webhooks em tempo real
           </p>
         </div>
         <Button variant="secondary" onClick={fetchData}>
-          Refresh
+          Atualizar
         </Button>
       </div>
 
       {/* Overall System Status */}
       <Card className="mb-8">
         <CardHeader>
-          <CardTitle>System Status</CardTitle>
+          <CardTitle>Status do Sistema</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
-              <div className="text-sm text-gray-600 mb-2">Overall Health</div>
+              <div className="text-sm text-gray-600 mb-2">Saúde Geral</div>
               <Badge
                 variant={statusToBadgeVariant[healthData.status]}
                 className="text-lg px-4 py-2"
@@ -186,21 +186,21 @@ export default function WebhookMonitoringPage() {
               </Badge>
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-2">Dead Letter Queue</div>
+              <div className="text-sm text-gray-600 mb-2">Fila de Mensagens Mortas</div>
               <div className="text-2xl font-bold text-gray-900">
                 {healthData.deadLetterCount}
               </div>
-              <div className="text-sm text-gray-500">permanently failed</div>
+              <div className="text-sm text-gray-500">falhas permanentes</div>
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-2">Pending Retries</div>
+              <div className="text-sm text-gray-600 mb-2">Tentativas Pendentes</div>
               <div className="text-2xl font-bold text-gray-900">
                 {healthData.pendingRetries}
               </div>
-              <div className="text-sm text-gray-500">awaiting retry</div>
+              <div className="text-sm text-gray-500">aguardando nova tentativa</div>
             </div>
             <div>
-              <div className="text-sm text-gray-600 mb-2">Last Updated</div>
+              <div className="text-sm text-gray-600 mb-2">Última Atualização</div>
               <div className="text-sm font-medium text-gray-900">
                 {new Date(healthData.timestamp).toLocaleString()}
               </div>
@@ -212,7 +212,7 @@ export default function WebhookMonitoringPage() {
       {/* Per-Service Health Cards */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold mb-4 text-gray-900">
-          Service Health (Last 24 Hours)
+          Saúde dos Serviços (Últimas 24 Horas)
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {serviceEntries.map((service) => (
@@ -224,7 +224,7 @@ export default function WebhookMonitoringPage() {
       {/* Recent Dead Letter Events */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Failed Events (Dead Letter Queue)</CardTitle>
+          <CardTitle>Eventos Recentes com Falha (Fila de Mensagens Mortas)</CardTitle>
         </CardHeader>
         <CardContent>
           {deadLetterEvents && deadLetterEvents.events.length > 0 ? (
@@ -233,22 +233,22 @@ export default function WebhookMonitoringPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Service
+                      Serviço
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Event Type
+                      Tipo de Evento
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Event ID
+                      ID do Evento
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Retries
+                      Tentativas
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Error
+                      Erro
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      Criado em
                     </th>
                   </tr>
                 </thead>
@@ -292,14 +292,14 @@ export default function WebhookMonitoringPage() {
               {deadLetterEvents.hasMore && (
                 <div className="mt-4 text-center">
                   <p className="text-sm text-gray-600">
-                    Showing {deadLetterEvents.events.length} of {deadLetterEvents.total} total events
+                    Exibindo {deadLetterEvents.events.length} de {deadLetterEvents.total} eventos no total
                   </p>
                 </div>
               )}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
-              No dead letter events found. All webhooks processing successfully!
+              Nenhum evento na fila de mensagens mortas. Todos os webhooks estão sendo processados com sucesso!
             </div>
           )}
         </CardContent>

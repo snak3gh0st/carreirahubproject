@@ -41,7 +41,7 @@ interface NavItem {
 
 const navigationSections: NavSection[] = [
   {
-    title: "Overview",
+    title: "Visão Geral",
     roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
     items: [
       {
@@ -53,7 +53,7 @@ const navigationSections: NavSection[] = [
     ],
   },
   {
-    title: "Sales & Leads",
+    title: "Vendas & Leads",
     roles: ["ADMIN", "SALES", "SDR"],
     items: [
       {
@@ -64,85 +64,85 @@ const navigationSections: NavSection[] = [
       },
       {
         href: "/dashboard/conversations",
-        label: "Conversations",
+        label: "Conversas",
         icon: MessageSquare,
         roles: ["ADMIN", "SUPPORT", "SDR"],
       },
       {
         href: "/dashboard/deals",
-        label: "Deals",
+        label: "Negócios",
         icon: Briefcase,
         roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
       },
       {
         href: "/dashboard/invoices/new",
-        label: "Create Invoice",
+        label: "Criar Fatura",
         icon: PlusCircle,
         roles: ["ADMIN", "SALES"],
       },
       {
         href: "/dashboard/invoices",
-        label: "My Invoices",
+        label: "Minhas Faturas",
         icon: FileText,
         roles: ["ADMIN", "SALES"],
       },
       {
         href: "/dashboard/contracts/new",
-        label: "Create Contract",
+        label: "Criar Contrato",
         icon: FilePlus,
         roles: ["ADMIN", "SALES"],
       },
     ],
   },
   {
-    title: "Finance",
+    title: "Financeiro",
     roles: ["ADMIN", "FINANCE"],
     items: [
       {
         href: "/dashboard/invoices",
-        label: "Invoices",
+        label: "Faturas",
         icon: FileText,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/contracts",
-        label: "Contracts",
+        label: "Contratos",
         icon: FileSignature,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/contracts/new",
-        label: "Create Contract",
+        label: "Criar Contrato",
         icon: FilePlus,
         roles: ["ADMIN", "FINANCE", "SALES"],
       },
       {
         href: "/dashboard/invoices/new",
-        label: "Create Invoice",
+        label: "Criar Fatura",
         icon: PlusCircle,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/invoices/approval-queue",
-        label: "Approval Queue",
+        label: "Fila de Aprovação",
         icon: CheckCircle,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/payments",
-        label: "Payments",
+        label: "Pagamentos",
         icon: CreditCard,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/customers",
-        label: "Customers",
+        label: "Clientes",
         icon: Building2,
         roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
       },
       {
         href: "/dashboard/customers/new",
-        label: "Create Customer",
+        label: "Criar Cliente",
         icon: PlusCircle,
         roles: ["ADMIN", "FINANCE"],
       },
@@ -166,55 +166,55 @@ const navigationSections: NavSection[] = [
       },
       {
         href: "/dashboard/invoices/new",
-        label: "Create Invoice",
+        label: "Criar Fatura",
         icon: PlusCircle,
         roles: ["ADMIN", "COMMERCIAL"],
       },
       {
         href: "/dashboard/invoices",
-        label: "My Invoices",
+        label: "Minhas Faturas",
         icon: FileText,
         roles: ["ADMIN", "COMMERCIAL"],
       },
       {
         href: "/dashboard/contracts/new",
-        label: "Create Contract",
+        label: "Criar Contrato",
         icon: FilePlus,
         roles: ["ADMIN", "COMMERCIAL"],
       },
     ],
   },
   {
-    title: "Integrations",
+    title: "Integrações",
     roles: ["ADMIN", "FINANCE"],
     items: [
       {
         href: "/dashboard/integrations/hub",
-        label: "Integration Hub",
+        label: "Hub de Integrações",
         icon: Link2,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/integrations/sync-status",
-        label: "Sync Status",
+        label: "Status de Sincronização",
         icon: Workflow,
         roles: ["ADMIN", "FINANCE"],
       },
       {
         href: "/dashboard/integrations/bulk-import",
-        label: "Bulk Import",
+        label: "Importação em Massa",
         icon: FileText,
         roles: ["ADMIN", "FINANCE"],
       },
     ],
   },
   {
-    title: "Admin",
+    title: "Administração",
     roles: ["ADMIN"],
     items: [
       {
         href: "/dashboard/settings/integrations",
-        label: "Settings",
+        label: "Configurações",
         icon: Settings,
         roles: ["ADMIN"],
       },
@@ -226,7 +226,7 @@ const navigationSections: NavSection[] = [
       },
       {
         href: "/dashboard/workflows",
-        label: "Workflows",
+        label: "Fluxos de Trabalho",
         icon: Workflow,
         roles: ["ADMIN"],
       },
@@ -242,9 +242,9 @@ interface SidebarNavProps {
 export function SidebarNav({ userRole, collapsed = false }: SidebarNavProps) {
   const pathname = usePathname()
   const [expandedSections, setExpandedSections] = React.useState<string[]>([
-    "Overview",
-    "Sales & Leads",
-    "Finance",
+    "Visão Geral",
+    "Vendas & Leads",
+    "Financeiro",
   ])
 
   const toggleSection = (title: string) => {

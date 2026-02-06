@@ -27,8 +27,8 @@ export function DeleteInvoiceButton({
 
   const handleDelete = async () => {
     const confirmMessage = hasQuickbooksId
-      ? `Void invoice ${invoiceNumber}?\n\nThis will mark it as voided in QuickBooks (setting balance to $0) and remove it from the system.\n\nVoiding sets the invoice balance to $0 and marks it as voided. This operation cannot be undone.`
-      : `Are you sure you want to delete invoice ${invoiceNumber}?\n\nThis will remove it from the local database.\n\nThis action cannot be undone.`;
+      ? `Anular fatura ${invoiceNumber}?\n\nIsso marcará como anulada no QuickBooks (definindo o saldo como $0) e a removerá do sistema.\n\nA anulação define o saldo da fatura como $0 e a marca como anulada. Esta operação não pode ser desfeita.`
+      : `Tem certeza que deseja excluir a fatura ${invoiceNumber}?\n\nIsso a removerá do banco de dados local.\n\nEsta ação não pode ser desfeita.`;
 
     if (!confirm(confirmMessage)) {
       return;
@@ -43,7 +43,7 @@ export function DeleteInvoiceButton({
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to void invoice");
+        throw new Error(error.error || "Falha ao anular fatura");
       }
 
       const result = await response.json();
@@ -51,18 +51,18 @@ export function DeleteInvoiceButton({
       // Show appropriate success message
       if (result.quickbooksError) {
         alert(
-          `Invoice deleted locally, but QuickBooks void operation failed:\n${result.quickbooksError}\n\nCheck Integration Logs for details.`
+          `Fatura excluída localmente, mas a anulação no QuickBooks falhou:\n${result.quickbooksError}\n\nVerifique os Logs de Integração para detalhes.`
         );
       } else if (result.voidedInQuickBooks) {
-        alert(`Invoice ${invoiceNumber} voided successfully in QuickBooks and removed from local database.`);
+        alert(`Fatura ${invoiceNumber} anulada com sucesso no QuickBooks e removida do banco de dados local.`);
       } else {
-        alert(`Invoice ${invoiceNumber} deleted successfully.`);
+        alert(`Fatura ${invoiceNumber} excluída com sucesso.`);
       }
 
       // Redirect to invoice list instead of just refreshing
       router.push('/dashboard/invoices');
     } catch (error: any) {
-      alert(`Failed to void invoice: ${error.message || "Unknown error"}`);
+      alert(`Falha ao anular fatura: ${error.message || "Erro desconhecido"}`);
       setIsDeleting(false);
     }
   };
@@ -72,10 +72,10 @@ export function DeleteInvoiceButton({
       onClick={handleDelete}
       disabled={isDeleting}
       className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed transition-colors"
-      title={hasQuickbooksId ? "Void invoice in QuickBooks" : "Delete invoice"}
+      title={hasQuickbooksId ? "Anular fatura no QuickBooks" : "Excluir fatura"}
     >
       <Trash2 className="w-4 h-4" />
-      {isDeleting ? (hasQuickbooksId ? 'Voiding...' : 'Deleting...') : (hasQuickbooksId ? 'Void Invoice' : 'Delete')}
+      {isDeleting ? (hasQuickbooksId ? 'Anulando...' : 'Excluindo...') : (hasQuickbooksId ? 'Anular Fatura' : 'Excluir')}
     </button>
   );
 }

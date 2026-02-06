@@ -63,7 +63,7 @@ export function NewCustomerForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Erro ao criar customer");
+        throw new Error(data.error || "Erro ao criar cliente");
       }
 
       setSuccess(`Cliente ${data.customer.name} criado com sucesso!`);
@@ -90,7 +90,7 @@ export function NewCustomerForm() {
         router.push(`/dashboard/customers/${data.customer.id}`);
       }, 2000);
     } catch (err: any) {
-      setError(err.message || "Erro ao criar customer");
+      setError(err.message || "Erro ao criar cliente");
     } finally {
       setSubmitting(false);
     }
@@ -100,14 +100,14 @@ export function NewCustomerForm() {
     <div className="container mx-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Novo Customer</h1>
+          <h1 className="text-3xl font-bold">Novo Cliente</h1>
           <p className="text-gray-600">Cadastro rápido de cliente</p>
         </div>
         <Link
           href="/dashboard/customers"
           className="text-blue-600 hover:underline"
         >
-          ← Voltar para Customers
+          ← Voltar para Clientes
         </Link>
       </div>
 
@@ -208,7 +208,7 @@ export function NewCustomerForm() {
             required
           />
           <p className="text-xs text-gray-500 mt-1">
-            Email será usado para enviar invoices do QuickBooks
+            Email será usado para enviar faturas do QuickBooks
           </p>
         </div>
 
@@ -345,7 +345,7 @@ export function NewCustomerForm() {
             disabled={submitting}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
           >
-            {submitting ? "Salvando..." : "Salvar Customer"}
+            {submitting ? "Salvando..." : "Salvar Cliente"}
           </button>
         </div>
       </form>

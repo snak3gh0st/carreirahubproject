@@ -61,7 +61,7 @@ export function TopCustomersChart({ data }: TopCustomersChartProps) {
             {data.email}
           </p>
           <p className="text-sm text-gray-600">
-            Revenue: ${data.revenue.toLocaleString()}
+            Receita: ${data.revenue.toLocaleString()}
           </p>
         </div>
       );
@@ -73,7 +73,7 @@ export function TopCustomersChart({ data }: TopCustomersChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center text-gray-500">
-        No customer data available
+        Nenhum dado de cliente disponível
       </div>
     );
   }

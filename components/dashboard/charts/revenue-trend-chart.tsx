@@ -45,7 +45,7 @@ export function RevenueTrendChart({ data }: RevenueTrendChartProps) {
             {data.month}
           </p>
           <p className="text-sm text-gray-600">
-            Revenue: ${data.revenue.toLocaleString()}
+            Receita: ${data.revenue.toLocaleString()}
           </p>
         </div>
       );
@@ -57,7 +57,7 @@ export function RevenueTrendChart({ data }: RevenueTrendChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[400px] flex items-center justify-center text-gray-500">
-        No revenue data available
+        Nenhum dado de receita disponível
       </div>
     );
   }

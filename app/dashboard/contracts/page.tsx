@@ -37,13 +37,13 @@ interface Contract {
 }
 
 const statusConfig: Record<ContractStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
-  DRAFT: { label: 'Draft', variant: 'default' },
-  SENT_FOR_SIGNATURE: { label: 'Sent', variant: 'info' },
-  VIEWED: { label: 'Viewed', variant: 'info' },
-  SIGNED: { label: 'Signed', variant: 'success' },
-  DECLINED: { label: 'Declined', variant: 'error' },
-  VOIDED: { label: 'Voided', variant: 'default' },
-  EXPIRED: { label: 'Expired', variant: 'error' },
+  DRAFT: { label: 'Rascunho', variant: 'default' },
+  SENT_FOR_SIGNATURE: { label: 'Enviado', variant: 'info' },
+  VIEWED: { label: 'Visualizado', variant: 'info' },
+  SIGNED: { label: 'Assinado', variant: 'success' },
+  DECLINED: { label: 'Recusado', variant: 'error' },
+  VOIDED: { label: 'Anulado', variant: 'default' },
+  EXPIRED: { label: 'Expirado', variant: 'error' },
 };
 
 export default function ContractsPage() {
@@ -125,46 +125,46 @@ export default function ContractsPage() {
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-display font-semibold text-gray-900">Contracts</h1>
-            <p className="text-gray-600 mt-1">Manage DocuSign contracts and track signature status</p>
+            <h1 className="text-3xl font-display font-semibold text-gray-900">Contratos</h1>
+            <p className="text-gray-600 mt-1">Gerencie contratos DocuSign e acompanhe o status das assinaturas</p>
           </div>
           <Link
             href="/dashboard/contracts/new"
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
           >
             <Plus className="h-5 w-5" />
-            <span className="hidden sm:inline">Create Contract</span>
+            <span className="hidden sm:inline">Criar Contrato</span>
           </Link>
         </div>
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
-            label="Total Contracts"
+            label="Total de Contratos"
             value={totalContracts.toString()}
             icon={<FileText className="h-5 w-5" />}
           />
           <StatCard
-            label="Signed"
+            label="Assinados"
             value={signedCount.toString()}
-            description="Completed contracts"
+            description="Contratos concluídos"
           />
           <StatCard
-            label="Pending Signature"
+            label="Aguardando Assinatura"
             value={sentCount.toString()}
-            description="Awaiting signature"
+            description="Pendentes de assinatura"
           />
           <StatCard
-            label="Expired"
+            label="Expirados"
             value={expiredCount.toString()}
-            description="Need attention"
+            description="Precisam de atenção"
           />
         </div>
 
         {/* Status filter chips */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-display font-medium text-gray-500 uppercase">Filter by Status:</span>
+            <span className="text-xs font-display font-medium text-gray-500 uppercase">Filtrar por Status:</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -173,7 +173,7 @@ export default function ContractsPage() {
                 !activeStatus ? 'bg-primary-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
-              All ({totalContracts})
+              Todos ({totalContracts})
             </button>
             {(Object.keys(statusConfig) as ContractStatus[]).map((status) => {
               const config = statusConfig[status];
@@ -204,7 +204,7 @@ export default function ContractsPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && updateFilters(activeStatus, searchTerm)}
-              placeholder="Search by customer name or email..."
+              placeholder="Buscar por nome ou e-mail do cliente..."
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
             />
           </div>
@@ -233,25 +233,25 @@ export default function ContractsPage() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                        Customer
+                        Cliente
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                        Invoice
+                        Fatura
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                         Status
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                        Sent
+                        Enviado
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                        Expires
+                        Expira
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                        Reminders
+                        Lembretes
                       </th>
                       <th className="px-6 py-3 text-right text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                        Actions
+                        Ações
                       </th>
                     </tr>
                   </thead>
@@ -262,8 +262,8 @@ export default function ContractsPage() {
                           <div className="py-12">
                             <EmptyState
                               icon={<FileText className="h-12 w-12" />}
-                              title="No contracts found"
-                              description="Try adjusting your filters or create a new contract"
+                              title="Nenhum contrato encontrado"
+                              description="Tente ajustar os filtros ou crie um novo contrato"
                             />
                           </div>
                         </td>
@@ -315,7 +315,7 @@ export default function ContractsPage() {
                                 href={`/dashboard/contracts/${contract.id}`}
                                 className="text-primary-600 hover:text-primary-700 font-medium"
                               >
-                                View
+                                Ver
                               </Link>
                             </td>
                           </tr>
@@ -331,9 +331,9 @@ export default function ContractsPage() {
             {pagination.totalPages > 1 && (
               <div className="bg-white border-t border-gray-200 px-6 py-4 flex justify-between items-center">
                 <div className="text-sm text-gray-700">
-                  Showing <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
-                  <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
-                  <span className="font-medium">{pagination.total}</span> contracts
+                  Exibindo <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> a{' '}
+                  <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> de{' '}
+                  <span className="font-medium">{pagination.total}</span> contratos
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -341,14 +341,14 @@ export default function ContractsPage() {
                     disabled={pagination.page === 1}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Previous
+                    Anterior
                   </button>
                   <button
                     onClick={() => updateFilters(activeStatus, searchTerm, pagination.page + 1)}
                     disabled={pagination.page === pagination.totalPages}
                     className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    Next
+                    Próximo
                   </button>
                 </div>
               </div>

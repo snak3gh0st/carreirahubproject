@@ -208,7 +208,7 @@ export default function DashboardPage() {
             {getGreeting()}, {firstName}
           </h1>
           <p className="text-lg text-gray-500">
-            Here's what's happening with your business today
+            Veja o que está acontecendo com o seu negócio hoje
           </p>
         </div>
 
@@ -221,35 +221,35 @@ export default function DashboardPage() {
         <div className="mb-8">
           <h2 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2 mb-6">
             <DollarSign className="h-6 w-6 text-gold-600" />
-            Finance Metrics
+            Métricas Financeiras
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <StatCard
-              label="Total Revenue"
+              label="Receita Total"
               value={formatCurrency(metrics.finance.totalRevenue)}
               change={`+${metrics.finance.revenueGrowth}%`}
               trend={parseFloat(metrics.finance.revenueGrowth) > 0 ? "up" : parseFloat(metrics.finance.revenueGrowth) < 0 ? "down" : "neutral"}
-              description="from last month"
+              description="em relação ao mês passado"
               icon={<DollarSign className="h-5 w-5 text-success-600" />}
             />
             <StatCard
-              label="Total Invoices"
+              label="Total de Faturas"
               value={formatNumber(metrics.finance.totalInvoices)}
-              description={`${metrics.finance.totalInvoices - metrics.finance.overdueCount} paid`}
+              description={`${metrics.finance.totalInvoices - metrics.finance.overdueCount} pagas`}
               icon={<FileText className="h-5 w-5 text-gold-600" />}
             />
             <StatCard
-              label="Active Customers"
+              label="Clientes Ativos"
               value={formatNumber(metrics.customers.totalCustomers)}
               change={`+${metrics.customers.newCustomersThisMonth}`}
               trend="up"
-              description="new this month"
+              description="novos este mês"
               icon={<Users className="h-5 w-5 text-info-600" />}
             />
             <StatCard
-              label="Overdue Invoices"
+              label="Faturas Vencidas"
               value={formatCurrency(metrics.finance.overdueAmount)}
-              description={`${metrics.finance.overdueCount} invoices need attention`}
+              description={`${metrics.finance.overdueCount} faturas precisam de atenção`}
               icon={<AlertCircle className="h-5 w-5 text-error-600" />}
             />
           </div>
@@ -258,7 +258,7 @@ export default function DashboardPage() {
         {/* ========== QUICK ACTIONS ========== */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold text-gray-900 mb-4">
-            Quick Actions
+            Ações Rápidas
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <Link
@@ -271,10 +271,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    Create Invoice
+                    Criar Fatura
                   </h3>
                   <p className="text-base text-gray-500">
-                    Generate new invoice for customers
+                    Gerar nova fatura para clientes
                   </p>
                 </div>
               </div>
@@ -289,10 +289,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    Sync QuickBooks
+                    Sincronizar QuickBooks
                   </h3>
                   <p className="text-base text-gray-500">
-                    Update invoices and customers
+                    Atualizar faturas e clientes
                   </p>
                 </div>
               </div>
@@ -307,10 +307,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    View Reports
+                    Ver Relatórios
                   </h3>
                   <p className="text-base text-gray-500">
-                    Business insights and analytics
+                    Insights e análises do negócio
                   </p>
                 </div>
               </div>

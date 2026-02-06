@@ -27,10 +27,10 @@ function getCustomerStatus(customer: any): { variant: BadgeVariant; label: strin
     (inv: any) => inv.status !== "PAID" && inv.status !== "VOID"
   );
 
-  if (hasOverdue) return { variant: "error", label: "Overdue" };
-  if (hasUnpaid) return { variant: "warning", label: "Pending" };
-  if (customer.invoices.length > 0) return { variant: "success", label: "Good Standing" };
-  return { variant: "default", label: "No Invoices" };
+  if (hasOverdue) return { variant: "error", label: "Vencido" };
+  if (hasUnpaid) return { variant: "warning", label: "Pendente" };
+  if (customer.invoices.length > 0) return { variant: "success", label: "Em Dia" };
+  return { variant: "default", label: "Sem Faturas" };
 }
 
 /**
@@ -268,7 +268,7 @@ export default async function CustomersPage({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-display font-semibold text-gray-900">
-              Customers
+              Clientes
             </h1>
             <Link
               href="/dashboard/customers/new"
@@ -277,7 +277,7 @@ export default async function CustomersPage({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add Customer
+              Criar Cliente
             </Link>
           </div>
         </div>
@@ -285,28 +285,28 @@ export default async function CustomersPage({
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
-            label="Total Customers"
+            label="Total de Clientes"
             value={stats._count.id.toString()}
             icon={<Users className="w-5 h-5" />}
           />
           <StatCard
-            label="With Invoices"
+            label="Com Faturas"
             value={customersWithInvoices.toString()}
-            change={`${((customersWithInvoices / stats._count.id) * 100).toFixed(1)}% of total`}
+            change={`${((customersWithInvoices / stats._count.id) * 100).toFixed(1)}% do total`}
             trend="up"
             icon={<TrendingUp className="w-5 h-5" />}
           />
           <StatCard
-            label="From QuickBooks"
+            label="Do QuickBooks"
             value={qbCustomers.toString()}
-            description="Synced from QB"
+            description="Sincronizados do QB"
           />
           <StatCard
-            label="With Overdue"
+            label="Com Vencidos"
             value={customersWithOverdue.toString()}
             trend="down"
             icon={<AlertCircle className="w-5 h-5" />}
-            description={customersWithOverdue > 0 ? "Need attention" : "All good"}
+            description={customersWithOverdue > 0 ? "Precisam de atenção" : "Tudo em dia"}
           />
         </div>
 
@@ -323,7 +323,7 @@ export default async function CustomersPage({
                 type="text"
                 name="search"
                 defaultValue={search}
-                placeholder="Search by name, email, or phone..."
+                placeholder="Buscar por nome, email ou telefone..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-primary-500 focus:border-primary-500"
               />
               <svg
@@ -344,7 +344,7 @@ export default async function CustomersPage({
 
           {/* Source Filter */}
           <div className="flex items-center gap-2">
-            <span className="text-sm font-display font-medium text-gray-700">Source:</span>
+            <span className="text-sm font-display font-medium text-gray-700">Fonte:</span>
             <Link
               href={`/dashboard/customers${search ? `?search=${search}` : ""}`}
               className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
@@ -353,7 +353,7 @@ export default async function CustomersPage({
                   : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
               }`}
             >
-              All
+              Todos
             </Link>
             <Link
               href={`/dashboard/customers?source=quickbooks${search ? `&search=${search}` : ""}`}
@@ -405,7 +405,7 @@ export default async function CustomersPage({
         {/* Advanced Filters (Desktop) */}
         <details className="hidden md:block border-t pt-4">
           <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
-            <span>Advanced Filters</span>
+            <span>Filtros Avançados</span>
             {activeFilterCount > 0 && (
               <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
                 {activeFilterCount}
@@ -423,24 +423,24 @@ export default async function CustomersPage({
               {/* Balance Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Balance Status
+                  Status do Saldo
                 </label>
                 <select
                   name="balanceStatus"
                   defaultValue={searchParams.balanceStatus || ""}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="">All</option>
-                  <option value="no-balance">No Balance</option>
-                  <option value="has-balance">Has Balance</option>
-                  <option value="overdue-balance">Overdue Balance</option>
+                  <option value="">Todos</option>
+                  <option value="no-balance">Sem Saldo</option>
+                  <option value="has-balance">Com Saldo</option>
+                  <option value="overdue-balance">Saldo Vencido</option>
                 </select>
               </div>
 
               {/* Invoice Count Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Invoices
+                  Mín. Faturas
                 </label>
                 <input
                   type="number"
@@ -453,13 +453,13 @@ export default async function CustomersPage({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Invoices
+                  Máx. Faturas
                 </label>
                 <input
                   type="number"
                   name="maxInvoices"
                   defaultValue={searchParams.maxInvoices}
-                  placeholder="Unlimited"
+                  placeholder="Ilimitado"
                   min="0"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -468,7 +468,7 @@ export default async function CustomersPage({
               {/* Total Invoiced Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Min Total Invoiced ($)
+                  Mín. Total Faturado ($)
                 </label>
                 <input
                   type="number"
@@ -481,13 +481,13 @@ export default async function CustomersPage({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Max Total Invoiced ($)
+                  Máx. Total Faturado ($)
                 </label>
                 <input
                   type="number"
                   name="maxTotalInvoiced"
                   defaultValue={searchParams.maxTotalInvoiced}
-                  placeholder="Unlimited"
+                  placeholder="Ilimitado"
                   step="0.01"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
@@ -496,7 +496,7 @@ export default async function CustomersPage({
               {/* Created Date Range */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Created From
+                  Criado De
                 </label>
                 <input
                   type="date"
@@ -507,7 +507,7 @@ export default async function CustomersPage({
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Created To
+                  Criado Até
                 </label>
                 <input
                   type="date"
@@ -524,13 +524,13 @@ export default async function CustomersPage({
                 type="submit"
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition font-medium"
               >
-                Apply Filters
+                Aplicar Filtros
               </button>
               <Link
                 href="/dashboard/customers"
                 className="px-4 py-2 text-gray-700 hover:text-gray-900 transition"
               >
-                Clear Filters
+                Limpar Filtros
               </Link>
             </div>
           </form>
@@ -540,7 +540,7 @@ export default async function CustomersPage({
       {/* Quick Filter Chips */}
       <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Quick Filters:</span>
+          <span className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Filtros Rápidos:</span>
         </div>
         <div className="flex md:flex-wrap gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-2 -mx-2 px-2">
           {(() => {
@@ -565,7 +565,7 @@ export default async function CustomersPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
-                  Has Overdue Invoices
+                  Com Faturas Vencidas
                 </Link>
 
                 {/* High Balance */}
@@ -577,7 +577,7 @@ export default async function CustomersPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
-                  High Balance (&gt;$5k)
+                  Alto Saldo (&gt;$5k)
                 </Link>
 
                 {/* No Invoices */}
@@ -589,7 +589,7 @@ export default async function CustomersPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
-                  No Invoices
+                  Sem Faturas
                 </Link>
 
                 {/* Active This Month */}
@@ -601,7 +601,7 @@ export default async function CustomersPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
-                  Active This Month
+                  Ativos Este Mês
                 </Link>
 
                 {/* From QuickBooks Only */}
@@ -613,7 +613,7 @@ export default async function CustomersPage({
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
-                  From QuickBooks Only
+                  Apenas do QuickBooks
                 </Link>
               </>
             );
@@ -632,20 +632,20 @@ export default async function CustomersPage({
                   href={buildSortUrl("name")}
                   className="hover:text-gray-900 cursor-pointer"
                 >
-                  Name<SortIndicator field="name" />
+                  Nome<SortIndicator field="name" />
                 </Link>
               </th>
               <th className="px-6 py-3 text-right text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                Total Invoiced
+                Total Faturado
               </th>
               <th className="px-6 py-3 text-right text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                Balance
+                Saldo
               </th>
               <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                Actions
+                Ações
               </th>
             </tr>
           </thead>
@@ -655,8 +655,8 @@ export default async function CustomersPage({
                 <td colSpan={5} className="p-0">
                   <EmptyState
                     icon={<Users className="w-16 h-16" />}
-                    title="No customers found"
-                    description="Get started by adding your first customer or adjust your filters."
+                    title="Nenhum cliente encontrado"
+                    description="Comece adicionando seu primeiro cliente ou ajuste seus filtros."
                   />
                 </td>
               </tr>
@@ -706,7 +706,7 @@ export default async function CustomersPage({
                         href={`/dashboard/customers/${customer.id}`}
                         className="text-primary-600 hover:text-primary-700 font-medium"
                       >
-                        View
+                        Ver
                       </Link>
                     </td>
                   </tr>

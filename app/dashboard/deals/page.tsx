@@ -96,7 +96,7 @@ export default async function DealsPage({
         {/* Métricas */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
-            <h3 className="text-sm font-medium text-gray-500">Total Deals</h3>
+            <h3 className="text-sm font-medium text-gray-500">Total de Deals</h3>
             <p className="text-3xl font-bold mt-2">{totalCount}</p>
           </div>
           <div className="bg-white p-6 rounded-lg shadow">
@@ -158,10 +158,10 @@ export default async function DealsPage({
               />
             </svg>
             <h3 className="mt-2 text-lg font-medium text-gray-900">
-              No deals found
+              Nenhum deal encontrado
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Create your first deal or adjust your filters
+              Crie seu primeiro deal ou ajuste seus filtros
             </p>
           </div>
         ) : (
@@ -184,7 +184,7 @@ export default async function DealsPage({
                       Status
                     </th>
                     <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                      Owner
+                      Responsável
                     </th>
                     <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                       Criado Em
@@ -248,7 +248,7 @@ export default async function DealsPage({
             {totalPages > 1 && (
               <div className="mt-6 flex items-center justify-between">
                 <p className="text-sm text-gray-700">
-                  Page {currentPage} of {totalPages} ({totalCount} total deals)
+                  Página {currentPage} de {totalPages} ({totalCount} deals no total)
                 </p>
                 <div className="flex gap-2">
                   <Link
@@ -260,7 +260,7 @@ export default async function DealsPage({
                     }`}
                     aria-disabled={currentPage === 1}
                   >
-                    Previous
+                    Anterior
                   </Link>
                   <Link
                     href={`?page=${currentPage + 1}`}
@@ -271,7 +271,7 @@ export default async function DealsPage({
                     }`}
                     aria-disabled={currentPage === totalPages}
                   >
-                    Next
+                    Próximo
                   </Link>
                 </div>
               </div>
@@ -300,16 +300,16 @@ export default async function DealsPage({
             />
           </svg>
           <h3 className="mt-2 text-lg font-medium text-red-900">
-            Error loading deals
+            Erro ao carregar deals
           </h3>
           <p className="mt-1 text-sm text-red-700">
-            Unable to fetch deals data. Please try again.
+            Não foi possível buscar os dados dos deals. Tente novamente.
           </p>
           <button
             onClick={() => window.location.reload()}
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
           >
-            Retry
+            Tentar novamente
           </button>
         </div>
       </div>

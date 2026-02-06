@@ -40,13 +40,13 @@ interface Contract {
 }
 
 const statusConfig: Record<string, { label: string; color: string; bgColor: string }> = {
-  DRAFT: { label: 'Draft', color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  SENT_FOR_SIGNATURE: { label: 'Pending Signature', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
-  VIEWED: { label: 'Viewed by Customer', color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  SIGNED: { label: 'Signed', color: 'text-green-600', bgColor: 'bg-green-100' },
-  DECLINED: { label: 'Declined', color: 'text-red-600', bgColor: 'bg-red-100' },
-  VOIDED: { label: 'Voided', color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  EXPIRED: { label: 'Expired', color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  DRAFT: { label: 'Rascunho', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  SENT_FOR_SIGNATURE: { label: 'Aguardando Assinatura', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+  VIEWED: { label: 'Visualizado pelo Cliente', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  SIGNED: { label: 'Assinado', color: 'text-green-600', bgColor: 'bg-green-100' },
+  DECLINED: { label: 'Recusado', color: 'text-red-600', bgColor: 'bg-red-100' },
+  VOIDED: { label: 'Anulado', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  EXPIRED: { label: 'Expirado', color: 'text-orange-600', bgColor: 'bg-orange-100' },
 };
 
 export default function ContractDetailPage() {
@@ -90,9 +90,9 @@ export default function ContractDetailPage() {
 
       // Open download URL in new tab
       window.open(data.downloadUrl, '_blank');
-      setMessage({ type: 'success', text: 'Download started' });
+      setMessage({ type: 'success', text: 'Download iniciado' });
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Download failed' });
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Falha no download' });
     } finally {
       setActionLoading(null);
     }
@@ -111,10 +111,10 @@ export default function ContractDetailPage() {
         throw new Error(data.error || 'Failed to send reminder');
       }
 
-      setMessage({ type: 'success', text: 'Reminder sent successfully' });
+      setMessage({ type: 'success', text: 'Lembrete enviado com sucesso' });
       fetchContract(); // Refresh to update reminder count
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to send reminder' });
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Falha ao enviar lembrete' });
     } finally {
       setActionLoading(null);
     }
@@ -154,10 +154,10 @@ export default function ContractDetailPage() {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          {error || 'Contract not found'}
+          {error || 'Contrato não encontrado'}
         </div>
         <Link href="/dashboard/contracts" className="mt-4 inline-block text-blue-600 hover:text-blue-800">
-          Back to Contracts
+          Voltar para Contratos
         </Link>
       </div>
     );
@@ -172,11 +172,11 @@ export default function ContractDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <Link href="/dashboard/contracts" className="text-blue-600 hover:text-blue-800 text-sm mb-2 inline-block">
-          &larr; Back to Contracts
+          &larr; Voltar para Contratos
         </Link>
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Contract Details</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Detalhes do Contrato</h1>
             <p className="text-gray-600">{contract.signerName} - {contract.signerEmail}</p>
           </div>
           <span className={`px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color}`}>
@@ -202,7 +202,7 @@ export default function ContractDetailPage() {
             disabled={actionLoading === 'download'}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
           >
-            {actionLoading === 'download' ? 'Getting URL...' : 'Download Signed PDF'}
+            {actionLoading === 'download' ? 'Obtendo URL...' : 'Baixar PDF Assinado'}
           </button>
         )}
         {canResend && (
@@ -211,7 +211,7 @@ export default function ContractDetailPage() {
             disabled={actionLoading === 'resend'}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            {actionLoading === 'resend' ? 'Sending...' : 'Send Reminder'}
+            {actionLoading === 'resend' ? 'Enviando...' : 'Enviar Lembrete'}
           </button>
         )}
       </div>
@@ -220,14 +220,14 @@ export default function ContractDetailPage() {
       {contract.status === 'SIGNED' && contract.signedS3Url && (
         <div className="mb-6 bg-white rounded-lg shadow p-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Contract Preview</h2>
+            <h2 className="text-lg font-semibold">Pré-visualização do Contrato</h2>
             <a
               href={contract.signedS3Url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
             >
-              View in New Tab &rarr;
+              Abrir em Nova Aba &rarr;
             </a>
           </div>
           <div className="relative w-full">
@@ -235,14 +235,14 @@ export default function ContractDetailPage() {
               src={contract.signedS3Url}
               className="w-full border border-gray-200 rounded-lg"
               style={{ height: '600px', minHeight: '600px' }}
-              title="Contract Preview"
+              title="Pré-visualização do Contrato"
               onError={() => {
-                setMessage({ type: 'error', text: 'Failed to load PDF preview. Please use the download button or open in new tab.' });
+                setMessage({ type: 'error', text: 'Falha ao carregar pré-visualização do PDF. Use o botão de download ou abra em nova aba.' });
               }}
             />
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Tip: Use the download button above for the best viewing experience, or click &quot;View in New Tab&quot; to open in a separate window.
+            Dica: Use o botão de download acima para melhor visualização, ou clique em &quot;Abrir em Nova Aba&quot; para abrir em uma janela separada.
           </p>
         </div>
       )}
@@ -250,39 +250,39 @@ export default function ContractDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Contract Info */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Contract Information</h2>
+          <h2 className="text-lg font-semibold mb-4">Informações do Contrato</h2>
           <dl className="space-y-3">
             <div className="flex justify-between">
               <dt className="text-gray-500">DocuSign Envelope ID</dt>
               <dd className="text-gray-900 font-mono text-sm">{contract.docusign_env_id || '-'}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Sent At</dt>
+              <dt className="text-gray-500">Enviado em</dt>
               <dd className="text-gray-900">{formatDate(contract.sentAt)}</dd>
             </div>
             <div className="flex justify-between">
-              <dt className="text-gray-500">Expires At</dt>
+              <dt className="text-gray-500">Expira em</dt>
               <dd className="text-gray-900">{formatDate(contract.expiresAt)}</dd>
             </div>
             {contract.signedAt && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">Signed At</dt>
+                <dt className="text-gray-500">Assinado em</dt>
                 <dd className="text-green-600 font-medium">{formatDate(contract.signedAt)}</dd>
               </div>
             )}
             {contract.declinedAt && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">Declined At</dt>
+                <dt className="text-gray-500">Recusado em</dt>
                 <dd className="text-red-600">{formatDate(contract.declinedAt)}</dd>
               </div>
             )}
             <div className="flex justify-between">
-              <dt className="text-gray-500">Reminders Sent</dt>
+              <dt className="text-gray-500">Lembretes Enviados</dt>
               <dd className="text-gray-900">{contract.reminderCount}</dd>
             </div>
             {contract.lastReminderAt && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">Last Reminder</dt>
+                <dt className="text-gray-500">Último Lembrete</dt>
                 <dd className="text-gray-900">{formatDate(contract.lastReminderAt)}</dd>
               </div>
             )}
@@ -291,10 +291,10 @@ export default function ContractDetailPage() {
 
         {/* Customer Info */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-lg font-semibold mb-4">Customer</h2>
+          <h2 className="text-lg font-semibold mb-4">Cliente</h2>
           <dl className="space-y-3">
             <div className="flex justify-between">
-              <dt className="text-gray-500">Name</dt>
+              <dt className="text-gray-500">Nome</dt>
               <dd className="text-gray-900">{contract.customer.name}</dd>
             </div>
             <div className="flex justify-between">
@@ -303,7 +303,7 @@ export default function ContractDetailPage() {
             </div>
             {contract.customer.phone && (
               <div className="flex justify-between">
-                <dt className="text-gray-500">Phone</dt>
+                <dt className="text-gray-500">Telefone</dt>
                 <dd className="text-gray-900">{contract.customer.phone}</dd>
               </div>
             )}
@@ -312,21 +312,21 @@ export default function ContractDetailPage() {
             href={`/dashboard/customers/${contract.customer.id}`}
             className="mt-4 inline-block text-blue-600 hover:text-blue-800 text-sm"
           >
-            View Customer Profile &rarr;
+            Ver Perfil do Cliente &rarr;
           </Link>
         </div>
 
         {/* Invoice Info */}
         {contract.invoice && (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Related Invoice</h2>
+            <h2 className="text-lg font-semibold mb-4">Fatura Relacionada</h2>
             <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="text-gray-500">Invoice Number</dt>
+                <dt className="text-gray-500">Número da Fatura</dt>
                 <dd className="text-gray-900">{contract.invoice.invoiceNumber || '-'}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-gray-500">Amount</dt>
+                <dt className="text-gray-500">Valor</dt>
                 <dd className="text-gray-900 font-semibold">{formatCurrency(contract.invoice.amount)}</dd>
               </div>
               <div className="flex justify-between">
@@ -338,7 +338,7 @@ export default function ContractDetailPage() {
               href={`/dashboard/invoices/${contract.invoice.id}`}
               className="mt-4 inline-block text-blue-600 hover:text-blue-800 text-sm"
             >
-              View Invoice &rarr;
+              Ver Fatura &rarr;
             </Link>
           </div>
         )}
@@ -346,10 +346,10 @@ export default function ContractDetailPage() {
         {/* Deal Info */}
         {contract.deal && (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Related Deal</h2>
+            <h2 className="text-lg font-semibold mb-4">Negócio Relacionado</h2>
             <dl className="space-y-3">
               <div className="flex justify-between">
-                <dt className="text-gray-500">Title</dt>
+                <dt className="text-gray-500">Título</dt>
                 <dd className="text-gray-900">{contract.deal.title}</dd>
               </div>
             </dl>
@@ -357,7 +357,7 @@ export default function ContractDetailPage() {
               href={`/dashboard/deals/${contract.deal.id}`}
               className="mt-4 inline-block text-blue-600 hover:text-blue-800 text-sm"
             >
-              View Deal &rarr;
+              Ver Negócio &rarr;
             </Link>
           </div>
         )}

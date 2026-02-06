@@ -56,7 +56,7 @@ export function AnalyticsSection() {
     return (
       <div className="rounded-lg border border-red-200 bg-red-50 p-6">
         <p className="text-red-800">
-          {error || "Failed to load analytics data"}
+          {error || "Falha ao carregar dados de análise"}
         </p>
       </div>
     )
@@ -64,7 +64,7 @@ export function AnalyticsSection() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-6">Analytics</h2>
+      <h2 className="text-2xl font-bold mb-6">Análises</h2>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <RevenueChart data={data.revenue} />
         <InvoiceStatusChart data={data.invoiceStatus} />

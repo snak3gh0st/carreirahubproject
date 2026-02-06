@@ -53,10 +53,10 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Invoice Voided
+            Fatura Anulada
           </h1>
           <p className="text-gray-600">
-            This invoice has been voided and is no longer valid for payment.
+            Esta fatura foi anulada e não é mais válida para pagamento.
           </p>
         </div>
       </div>
@@ -86,14 +86,14 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Contract Required
+            Contrato Necessário
           </h1>
           <p className="text-gray-600 mb-4">
-            Please sign the contract before proceeding with payment. Check your email for the DocuSign contract.
+            Por favor, assine o contrato antes de prosseguir com o pagamento. Verifique seu e-mail para o contrato do DocuSign.
           </p>
           {invoice.contract && (
             <p className="text-sm text-gray-500">
-              Contract status: {invoice.contract.status.replace(/_/g, " ")}
+              Status do contrato: {invoice.contract.status.replace(/_/g, " ")}
             </p>
           )}
         </div>
@@ -127,7 +127,7 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Carreira U.S.A.</h1>
-          <p className="text-gray-600 mt-2">Complete Your Payment</p>
+          <p className="text-gray-600 mt-2">Complete Seu Pagamento</p>
         </div>
 
         {/* Invoice Card */}
@@ -136,13 +136,13 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
           <div className="bg-blue-600 text-white p-6">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-blue-200 text-sm">Invoice</p>
+                <p className="text-blue-200 text-sm">Fatura</p>
                 <p className="text-xl font-bold">
                   {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-blue-200 text-sm">Amount Due</p>
+                <p className="text-blue-200 text-sm">Valor Devido</p>
                 <p className="text-3xl font-bold">
                   ${Number(invoice.amount).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
@@ -158,7 +158,7 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
             {isOverdue && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
                 <p className="text-red-800 font-medium">
-                  This invoice is {Math.abs(daysUntilDue)} days overdue
+                  Esta fatura está {Math.abs(daysUntilDue)} dias em atraso
                 </p>
               </div>
             )}
@@ -166,7 +166,7 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
             {!isOverdue && daysUntilDue <= 7 && (
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                 <p className="text-yellow-800 font-medium">
-                  Due in {daysUntilDue} day{daysUntilDue !== 1 ? "s" : ""}
+                  Vence em {daysUntilDue} dia{daysUntilDue !== 1 ? "s" : ""}
                 </p>
               </div>
             )}
@@ -174,7 +174,7 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
             {/* Details */}
             <div className="space-y-4">
               <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Customer</span>
+                <span className="text-gray-600">Cliente</span>
                 <span className="font-medium">{invoice.customer.name}</span>
               </div>
               <div className="flex justify-between py-2 border-b">
@@ -182,7 +182,7 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
                 <span className="font-medium">{invoice.customer.email}</span>
               </div>
               <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Due Date</span>
+                <span className="text-gray-600">Data de Vencimento</span>
                 <span
                   className={`font-medium ${
                     isOverdue ? "text-red-600" : ""
@@ -196,8 +196,8 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b">
-                <span className="text-gray-600">Contract</span>
-                <span className="font-medium text-green-600">Signed</span>
+                <span className="text-gray-600">Contrato</span>
+                <span className="font-medium text-green-600">Assinado</span>
               </div>
             </div>
 
@@ -208,20 +208,20 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
                   href={checkoutUrl}
                   className="block w-full py-4 bg-green-600 text-white text-center font-bold text-lg rounded-lg hover:bg-green-700 transition"
                 >
-                  Pay Now - ${Number(invoice.amount).toLocaleString("en-US", {
+                  Pagar Agora - ${Number(invoice.amount).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                   })}
                 </a>
               ) : (
                 <div className="text-center">
                   <p className="text-red-600 mb-4">
-                    Unable to create payment session. Please try again later.
+                    Não foi possível criar a sessão de pagamento. Tente novamente mais tarde.
                   </p>
                   <button
                     onClick={() => window.location.reload()}
                     className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
                   >
-                    Retry
+                    Tentar Novamente
                   </button>
                 </div>
               )}
@@ -230,14 +230,14 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
             {/* Payment Methods */}
             <div className="mt-6 pt-6 border-t">
               <p className="text-sm text-gray-500 text-center mb-4">
-                Secure payment powered by Stripe
+                Pagamento seguro processado por Stripe
               </p>
               <div className="flex justify-center space-x-4">
                 <div className="text-gray-400 text-xs">
-                  Credit Card
+                  Cartão de Crédito
                 </div>
                 <div className="text-gray-400 text-xs">
-                  Bank Transfer
+                  Transferência Bancária
                 </div>
               </div>
             </div>
@@ -247,12 +247,12 @@ export default async function PaymentPage({ params }: PaymentPageProps) {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-gray-500">
-            Questions about your invoice?{" "}
+            Dúvidas sobre sua fatura?{" "}
             <a
               href="mailto:support@carreirausa.com"
               className="text-blue-600 hover:underline"
             >
-              Contact Support
+              Fale com o Suporte
             </a>
           </p>
         </div>

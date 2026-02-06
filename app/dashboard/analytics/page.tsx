@@ -60,10 +60,10 @@ export default function AnalyticsPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900">
-            Comprehensive Analytics
+            Análises Completas
           </h1>
           <p className="text-gray-600">
-            Database + QuickBooks Data Integration
+            Integração de Dados do Banco + QuickBooks
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-3">
               <AlertCircle className="text-red-500" />
               <div>
-                <h3 className="text-red-800">Error Loading Analytics</h3>
+                <h3 className="text-red-800">Erro ao Carregar Análises</h3>
                 <p className="text-red-600">{error?.message}</p>
               </div>
             </div>
@@ -86,34 +86,34 @@ export default function AnalyticsPage() {
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900">
                 <DollarSign className="h-6 w-6 text-blue-600" />
-                QuickBooks Receivables
+                Contas a Receber QuickBooks
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KpiCard
-                  title="Total Receivables"
+                  title="Total a Receber"
                   value={formatCurrency(data.combined.totalReceivables)}
-                  subtitle="Outstanding balance"
+                  subtitle="Saldo pendente"
                   icon={<div className="text-blue-500"><DollarSign className="w-5 h-5" /></div>}
                   isLoading={isLoading}
                 />
                 <KpiCard
-                  title="Days Outstanding (DSO)"
-                  value={`${data.combined.daysOutstanding} days`}
-                  subtitle="Average collection period"
+                  title="Dias em Atraso (DSO)"
+                  value={`${data.combined.daysOutstanding} dias`}
+                  subtitle="Período médio de recebimento"
                   icon={<div className="text-orange-500"><TrendingUp className="w-5 h-5" /></div>}
                   isLoading={isLoading}
                 />
                 <KpiCard
-                  title="QB Customers"
+                  title="Clientes QB"
                   value={data.quickbooks?.summary?.totalCustomers || "0"}
-                  subtitle={data.syncStatus?.syncPercentageCustomers + "% synced"}
+                  subtitle={data.syncStatus?.syncPercentageCustomers + "% sincronizado"}
                   icon={<div className="text-purple-500"><Users className="w-5 h-5" /></div>}
                   isLoading={isLoading}
                 />
                 <KpiCard
-                  title="QB Invoices"
+                  title="Faturas QB"
                   value={data.quickbooks?.summary?.totalInvoices || "0"}
-                  subtitle={data.syncStatus?.syncPercentageInvoices + "% synced"}
+                  subtitle={data.syncStatus?.syncPercentageInvoices + "% sincronizado"}
                   icon={<div className="text-green-500"><FileText className="w-5 h-5" /></div>}
                   isLoading={isLoading}
                 />
@@ -124,35 +124,35 @@ export default function AnalyticsPage() {
             {data.combined.receivablesAging && (
               <div className="mb-8 bg-white">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Receivables Aging Analysis
+                  Análise de Vencimento de Recebíveis
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
                   <div className="bg-green-50">
-                    <p className="text-sm text-gray-600">Current</p>
+                    <p className="text-sm text-gray-600">Em dia</p>
                     <p className="text-2xl font-bold text-green-600">
                       {formatCurrency(data.combined.receivablesAging.current)}
                     </p>
                   </div>
                   <div className="bg-blue-50">
-                    <p className="text-sm text-gray-600">1-30 Days</p>
+                    <p className="text-sm text-gray-600">1-30 Dias</p>
                     <p className="text-2xl font-bold text-blue-600">
                       {formatCurrency(data.combined.receivablesAging.days1to30)}
                     </p>
                   </div>
                   <div className="bg-yellow-50">
-                    <p className="text-sm text-gray-600">31-60 Days</p>
+                    <p className="text-sm text-gray-600">31-60 Dias</p>
                     <p className="text-2xl font-bold text-yellow-600">
                       {formatCurrency(data.combined.receivablesAging.days31to60)}
                     </p>
                   </div>
                   <div className="bg-orange-50">
-                    <p className="text-sm text-gray-600">61-90 Days</p>
+                    <p className="text-sm text-gray-600">61-90 Dias</p>
                     <p className="text-2xl font-bold text-orange-600">
                       {formatCurrency(data.combined.receivablesAging.days61to90)}
                     </p>
                   </div>
                   <div className="bg-red-50">
-                    <p className="text-sm text-gray-600">90+ Days</p>
+                    <p className="text-sm text-gray-600">90+ Dias</p>
                     <p className="text-2xl font-bold text-red-600">
                       {formatCurrency(data.combined.receivablesAging.days90plus)}
                     </p>
@@ -163,11 +163,11 @@ export default function AnalyticsPage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart
                     data={[
-                      { name: "Current", value: data.combined.receivablesAging.current },
-                      { name: "1-30 Days", value: data.combined.receivablesAging.days1to30 },
-                      { name: "31-60 Days", value: data.combined.receivablesAging.days31to60 },
-                      { name: "61-90 Days", value: data.combined.receivablesAging.days61to90 },
-                      { name: "90+ Days", value: data.combined.receivablesAging.days90plus },
+                      { name: "Em dia", value: data.combined.receivablesAging.current },
+                      { name: "1-30 Dias", value: data.combined.receivablesAging.days1to30 },
+                      { name: "31-60 Dias", value: data.combined.receivablesAging.days31to60 },
+                      { name: "61-90 Dias", value: data.combined.receivablesAging.days61to90 },
+                      { name: "90+ Dias", value: data.combined.receivablesAging.days90plus },
                     ]}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -184,16 +184,16 @@ export default function AnalyticsPage() {
             {data.combined.topQBCustomersByAR && data.combined.topQBCustomersByAR.length > 0 && (
               <div className="mb-8 bg-white">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Top QB Customers by Receivables
+                  Principais Clientes QB por Recebíveis
                 </h3>
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 text-gray-900">Customer</th>
-                        <th className="text-right py-3 px-4 text-gray-900">Receivables</th>
-                        <th className="text-right py-3 px-4 text-gray-900">Total Paid</th>
-                        <th className="text-right py-3 px-4 text-gray-900">Invoices</th>
+                        <th className="text-left py-3 px-4 text-gray-900">Cliente</th>
+                        <th className="text-right py-3 px-4 text-gray-900">Recebíveis</th>
+                        <th className="text-right py-3 px-4 text-gray-900">Total Pago</th>
+                        <th className="text-right py-3 px-4 text-gray-900">Faturas</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -223,12 +223,12 @@ export default function AnalyticsPage() {
         {data?.syncStatus && (
           <div className="mb-8 bg-white">
             <h3 className="text-lg font-semibold text-gray-900">
-              Data Sync Status
+              Status de Sincronização
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600">Invoices Synced</span>
+                  <span className="text-gray-600">Faturas Sincronizadas</span>
                   <span className="font-semibold text-gray-900">
                     {data.syncStatus.invoicesSynced} / {data.syncStatus.invoicesInQB}
                   </span>
@@ -240,12 +240,12 @@ export default function AnalyticsPage() {
                   />
                 </div>
                 <p className="text-sm text-gray-600">
-                  {data.syncStatus.syncPercentageInvoices}% synced
+                  {data.syncStatus.syncPercentageInvoices}% sincronizado
                 </p>
               </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-600">Customers Synced</span>
+                  <span className="text-gray-600">Clientes Sincronizados</span>
                   <span className="font-semibold text-gray-900">
                     {data.syncStatus.customersSynced} / {data.syncStatus.customersInQB}
                   </span>
@@ -257,7 +257,7 @@ export default function AnalyticsPage() {
                   />
                 </div>
                 <p className="text-sm text-gray-600">
-                  {data.syncStatus.syncPercentageCustomers}% synced
+                  {data.syncStatus.syncPercentageCustomers}% sincronizado
                 </p>
               </div>
             </div>
@@ -268,11 +268,11 @@ export default function AnalyticsPage() {
         {data?.combined?.qbCompanyInfo && (
           <div className="bg-white">
             <h3 className="text-lg font-semibold text-gray-900">
-              QuickBooks Company Info
+              Informações da Empresa QuickBooks
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <p className="text-sm text-gray-600">Company Name</p>
+                <p className="text-sm text-gray-600">Nome da Empresa</p>
                 <p className="text-lg font-semibold text-gray-900">
                   {data.combined.qbCompanyInfo.name}
                 </p>

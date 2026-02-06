@@ -23,13 +23,13 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
 
   // Quick filter buttons
   const quickFilters: Array<{ label: string; value: QuickFilter }> = [
-    { label: "Last 7 Days", value: "last7" },
-    { label: "Last 30 Days", value: "last30" },
-    { label: "Last 90 Days", value: "last90" },
-    { label: "MTD", value: "mtd" },
-    { label: "YTD", value: "ytd" },
-    { label: "This Year", value: "thisYear" },
-    { label: "All Time", value: "allTime" },
+    { label: "Últimos 7 Dias", value: "last7" },
+    { label: "Últimos 30 Dias", value: "last30" },
+    { label: "Últimos 90 Dias", value: "last90" },
+    { label: "Mês Atual", value: "mtd" },
+    { label: "Ano Atual", value: "ytd" },
+    { label: "Este Ano", value: "thisYear" },
+    { label: "Todo Período", value: "allTime" },
   ];
 
   const handleQuickFilter = (filter: QuickFilter) => {
@@ -64,7 +64,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
       {/* Quick Filter Chips */}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300">
         <span className="text-sm font-medium text-gray-700">
-          Date Range:
+          Período:
         </span>
         {quickFilters.map((filter) => (
           <button
@@ -87,7 +87,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
               : "bg-white"
           }`}
         >
-          Custom Range
+          Personalizado
         </button>
       </div>
 
@@ -97,7 +97,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
           <div className="flex flex-col sm:flex-row gap-4 items-end">
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700">
-                Start Date
+                Data Inicial
               </label>
               <input
                 type="date"
@@ -108,7 +108,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
             </div>
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700">
-                End Date
+                Data Final
               </label>
               <input
                 type="date"
@@ -122,7 +122,7 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
               disabled={!customFrom || !customTo}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Apply
+              Aplicar
             </button>
           </div>
         </div>
@@ -133,66 +133,65 @@ export function DateRangeFilter({ onFilterChange }: DateRangeFilterProps) {
         <div className="text-sm text-gray-600">
           {isCustomRangeActive ? (
             <span>
-              Showing data from{" "}
+              Exibindo dados de{" "}
               <span className="font-semibold text-gray-900">
-                {format(new Date(currentFrom!), "MMM d, yyyy")}
+                {format(new Date(currentFrom!), "dd/MM/yyyy")}
               </span>{" "}
-              to{" "}
+              até{" "}
               <span className="font-semibold text-gray-900">
-                {format(new Date(currentTo!), "MMM d, yyyy")}
+                {format(new Date(currentTo!), "dd/MM/yyyy")}
               </span>
             </span>
           ) : currentFilter === "last7" ? (
             <span>
-              Showing data for the{" "}
+              Exibindo dados dos{" "}
               <span className="font-semibold text-gray-900">
-                last 7 days
+                últimos 7 dias
               </span>
             </span>
           ) : currentFilter === "last30" ? (
             <span>
-              Showing data for the{" "}
+              Exibindo dados dos{" "}
               <span className="font-semibold text-gray-900">
-                last 30 days
+                últimos 30 dias
               </span>
             </span>
            ) : currentFilter === "last90" ? (
             <span>
-              Showing data for the{" "}
+              Exibindo dados dos{" "}
               <span className="font-semibold text-gray-900">
-                last 90 days
+                últimos 90 dias
               </span>
             </span>
           ) : currentFilter === "mtd" ? (
             <span>
-              Showing data for{" "}
+              Exibindo dados do{" "}
               <span className="font-semibold text-gray-900">
-                this month
+                mês atual
               </span>{" "}
-              (Month to Date)
+              (Mês até Hoje)
             </span>
           ) : currentFilter === "ytd" ? (
             <span>
-              Showing data for{" "}
+              Exibindo dados do{" "}
               <span className="font-semibold text-gray-900">
-                this year
+                ano atual
               </span>{" "}
-              (Year to Date)
+              (Ano até Hoje)
             </span>
           ) : currentFilter === "thisYear" ? (
             <span>
-              Showing data for{" "}
+              Exibindo dados do{" "}
               <span className="font-semibold text-gray-900">
-                this year
+                ano atual
               </span>
             </span>
           ) : currentFilter === "allTime" ? (
             <span>
-              Showing{" "}
+              Exibindo{" "}
               <span className="font-semibold text-gray-900">
-                all time
-              </span>{" "}
-              data
+                todo o período
+              </span>
             </span>
           ) : null}
         </div>

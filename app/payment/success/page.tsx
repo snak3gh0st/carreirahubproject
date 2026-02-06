@@ -48,25 +48,25 @@ export default async function PaymentSuccessPage({
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Payment Successful!
+          Pagamento Realizado com Sucesso!
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Thank you for your payment. Your transaction has been completed successfully.
+          Obrigado pelo seu pagamento. Sua transação foi concluída com sucesso.
         </p>
 
         {invoice && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-            <h2 className="font-semibold text-gray-900 mb-3">Payment Details</h2>
+            <h2 className="font-semibold text-gray-900 mb-3">Detalhes do Pagamento</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Invoice</span>
+                <span className="text-gray-600">Fatura</span>
                 <span className="font-medium">
                   {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Amount</span>
+                <span className="text-gray-600">Valor</span>
                 <span className="font-medium text-green-600">
                   ${Number(invoice.amount).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
@@ -74,7 +74,7 @@ export default async function PaymentSuccessPage({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Customer</span>
+                <span className="text-gray-600">Cliente</span>
                 <span className="font-medium">{invoice.customer?.name}</span>
               </div>
             </div>
@@ -83,7 +83,7 @@ export default async function PaymentSuccessPage({
 
         <div className="space-y-3">
           <p className="text-sm text-gray-500">
-            A confirmation email has been sent to your registered email address.
+            Um e-mail de confirmação foi enviado para o seu endereço de e-mail cadastrado.
           </p>
 
           <div className="pt-4">
@@ -91,7 +91,7 @@ export default async function PaymentSuccessPage({
               href="/"
               className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition"
             >
-              Return to Homepage
+              Voltar para a Página Inicial
             </Link>
           </div>
         </div>
@@ -99,7 +99,7 @@ export default async function PaymentSuccessPage({
         {/* Footer */}
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-xs text-gray-400">
-            Carreira U.S.A. - Powered by Stripe
+            Carreira U.S.A. - Processado por Stripe
           </p>
         </div>
       </div>

@@ -47,25 +47,25 @@ export default async function PaymentCancelPage({
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Payment Cancelled
+          Pagamento Cancelado
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Your payment was not completed. Don&apos;t worry - no charges were made to your account.
+          Seu pagamento não foi concluído. Não se preocupe - nenhuma cobrança foi feita na sua conta.
         </p>
 
         {invoice && (
           <div className="bg-gray-50 rounded-lg p-4 mb-6 text-left">
-            <h2 className="font-semibold text-gray-900 mb-3">Invoice Details</h2>
+            <h2 className="font-semibold text-gray-900 mb-3">Detalhes da Fatura</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Invoice</span>
+                <span className="text-gray-600">Fatura</span>
                 <span className="font-medium">
                   {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Amount Due</span>
+                <span className="text-gray-600">Valor Devido</span>
                 <span className="font-medium">
                   ${Number(invoice.amount).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
@@ -73,7 +73,7 @@ export default async function PaymentCancelPage({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Due Date</span>
+                <span className="text-gray-600">Data de Vencimento</span>
                 <span className="font-medium">
                   {new Date(invoice.dueDate).toLocaleDateString("en-US")}
                 </span>
@@ -84,8 +84,8 @@ export default async function PaymentCancelPage({
 
         <div className="space-y-3">
           <p className="text-sm text-gray-500">
-            If you experienced any issues or have questions about your payment,
-            please contact our support team.
+            Se você teve algum problema ou tem dúvidas sobre seu pagamento,
+            entre em contato com nossa equipe de suporte.
           </p>
 
           <div className="pt-4 space-y-3">
@@ -94,7 +94,7 @@ export default async function PaymentCancelPage({
                 href={`/payment/${invoice.id}`}
                 className="block w-full px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition"
               >
-                Try Payment Again
+                Tentar Pagamento Novamente
               </Link>
             )}
 
@@ -102,7 +102,7 @@ export default async function PaymentCancelPage({
               href="/"
               className="block w-full px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition"
             >
-              Return to Homepage
+              Voltar para a Página Inicial
             </Link>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default async function PaymentCancelPage({
         {/* Support */}
         <div className="mt-8 pt-6 border-t border-gray-200">
           <p className="text-sm text-gray-600">
-            Need help? Contact us at{" "}
+            Precisa de ajuda? Entre em contato conosco em{" "}
             <a
               href="mailto:support@carreirausa.com"
               className="text-blue-600 hover:underline"

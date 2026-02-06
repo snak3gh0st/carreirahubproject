@@ -241,7 +241,7 @@ export default async function InvoicesPage({
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-display font-semibold text-gray-900">
-              Invoices
+              Faturas
             </h1>
             <Link
               href="/dashboard/invoices/new"
@@ -250,7 +250,7 @@ export default async function InvoicesPage({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Create Invoice
+              Criar Fatura
             </Link>
           </div>
         </div>
@@ -258,31 +258,31 @@ export default async function InvoicesPage({
         {/* Summary Stats - KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatCard
-            label="Total Invoices"
+            label="Total de Faturas"
             value={Object.values(statsMap).reduce((s, v) => s + v.count, 0).toString()}
-            description={`${qbInvoices} from QuickBooks`}
+            description={`${qbInvoices} do QuickBooks`}
           />
           <StatCard
-            label="Paid"
+            label="Pago"
             value={`$${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            change={totalAmount > 0 ? `${((paidAmount / totalAmount) * 100).toFixed(1)}% of total` : undefined}
+            change={totalAmount > 0 ? `${((paidAmount / totalAmount) * 100).toFixed(1)}% do total` : undefined}
             trend="up"
             icon={<TrendingUp className="w-5 h-5" />}
-            description={`${statsMap.PAID?.count || 0} invoices`}
+            description={`${statsMap.PAID?.count || 0} faturas`}
           />
           <StatCard
-            label="Pending"
+            label="Pendente"
             value={`$${pendingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            change={totalAmount > 0 ? `${((pendingAmount / totalAmount) * 100).toFixed(1)}% of total` : undefined}
-            description={`${(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} invoices`}
+            change={totalAmount > 0 ? `${((pendingAmount / totalAmount) * 100).toFixed(1)}% do total` : undefined}
+            description={`${(statsMap.SENT?.count || 0) + (statsMap.DRAFT?.count || 0)} faturas`}
           />
           <StatCard
-            label="Overdue"
+            label="Vencido"
             value={`$${overdueAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            change={totalAmount > 0 ? `${((overdueAmount / totalAmount) * 100).toFixed(1)}% of total` : undefined}
+            change={totalAmount > 0 ? `${((overdueAmount / totalAmount) * 100).toFixed(1)}% do total` : undefined}
             trend="down"
             icon={<AlertCircle className="w-5 h-5" />}
-            description={`${statsMap.OVERDUE?.count || 0} invoices`}
+            description={`${statsMap.OVERDUE?.count || 0} faturas`}
           />
         </div>
 
@@ -298,7 +298,7 @@ export default async function InvoicesPage({
         {/* Advanced Filters - Collapsible */}
         <details className="border-t border-gray-200 pt-4 mt-4">
           <summary className="cursor-pointer text-sm font-display font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
-            <span>More Filters</span>
+            <span>Mais Filtros</span>
             {activeFilterCount > 0 && (
               <span className="px-2 py-0.5 bg-gold-600 text-white text-xs font-semibold rounded-full">
                 {activeFilterCount}
@@ -310,7 +310,7 @@ export default async function InvoicesPage({
             {/* Quick Filters Chips */}
             <div>
               <label className="block text-xs font-display font-medium text-gray-500 uppercase tracking-wide mb-2">
-                Quick Filters
+                Filtros Rápidos
               </label>
               <div className="flex flex-wrap gap-2">
                 {(() => {
@@ -333,7 +333,7 @@ export default async function InvoicesPage({
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
-                        High Value (&gt;$10k)
+                        Alto Valor (&gt;$10k)
                       </Link>
 
                       {/* From QuickBooks */}
@@ -345,7 +345,7 @@ export default async function InvoicesPage({
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
-                        From QuickBooks ({qbInvoices})
+                        Do QuickBooks ({qbInvoices})
                       </Link>
                     </>
                   );
@@ -365,7 +365,7 @@ export default async function InvoicesPage({
                 {/* Custom Date Range */}
                 <div>
                   <label className="block text-xs font-display font-medium text-gray-700 mb-1">
-                    Due Date From
+                    Vencimento De
                   </label>
                   <input
                     type="date"
@@ -376,7 +376,7 @@ export default async function InvoicesPage({
                 </div>
                 <div>
                   <label className="block text-xs font-display font-medium text-gray-700 mb-1">
-                    Due Date To
+                    Vencimento Até
                   </label>
                   <input
                     type="date"
@@ -389,25 +389,25 @@ export default async function InvoicesPage({
                 {/* Payment Method */}
                 <div>
                   <label className="block text-xs font-display font-medium text-gray-700 mb-1">
-                    Payment Method
+                    Método de Pagamento
                   </label>
                   <select
                     name="paymentMethod"
                     defaultValue={searchParams.paymentMethod || ""}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
                   >
-                    <option value="">All</option>
-                    <option value="CARD">Card</option>
-                    <option value="BANK_TRANSFER">Bank Transfer</option>
-                    <option value="CASH">Cash</option>
-                    <option value="OTHER">Other</option>
+                    <option value="">Todos</option>
+                    <option value="CARD">Cartão</option>
+                    <option value="BANK_TRANSFER">Transferência Bancária</option>
+                    <option value="CASH">Dinheiro</option>
+                    <option value="OTHER">Outro</option>
                   </select>
                 </div>
 
                 {/* Amount Range */}
                 <div>
                   <label className="block text-xs font-display font-medium text-gray-700 mb-1">
-                    Min Amount ($)
+                    Valor Mínimo ($)
                   </label>
                   <input
                     type="number"
@@ -420,13 +420,13 @@ export default async function InvoicesPage({
                 </div>
                 <div>
                   <label className="block text-xs font-display font-medium text-gray-700 mb-1">
-                    Max Amount ($)
+                    Valor Máximo ($)
                   </label>
                   <input
                     type="number"
                     name="maxAmount"
                     defaultValue={searchParams.maxAmount}
-                    placeholder="Unlimited"
+                    placeholder="Ilimitado"
                     step="0.01"
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
                   />
@@ -439,13 +439,13 @@ export default async function InvoicesPage({
                   type="submit"
                   className="px-5 py-2 bg-gold-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-gold-700 transition-colors shadow-sm hover:shadow-md"
                 >
-                  Apply Filters
+                  Aplicar Filtros
                 </button>
                 <Link
                   href="/dashboard/invoices"
                   className="px-5 py-2 text-gray-700 text-sm font-display font-medium hover:text-gray-900 transition-colors"
                 >
-                  Clear All
+                  Limpar Tudo
                 </Link>
               </div>
             </form>
@@ -464,18 +464,18 @@ export default async function InvoicesPage({
                       href={buildSortUrl("invoiceNumber")}
                       className="hover:text-gray-900 cursor-pointer"
                     >
-                      Invoice #<SortIndicator field="invoiceNumber" />
+                      Fatura #<SortIndicator field="invoiceNumber" />
                     </Link>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    Customer
+                    Cliente
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                     <Link
                       href={buildSortUrl("amount")}
                       className="hover:text-gray-900 cursor-pointer"
                     >
-                      Amount<SortIndicator field="amount" />
+                      Valor<SortIndicator field="amount" />
                     </Link>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
@@ -486,11 +486,11 @@ export default async function InvoicesPage({
                       href={buildSortUrl("dueDate")}
                       className="hover:text-gray-900 cursor-pointer"
                     >
-                      Date<SortIndicator field="dueDate" />
+                      Data<SortIndicator field="dueDate" />
                     </Link>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    Actions
+                    Ações
                   </th>
                 </tr>
               </thead>
@@ -500,8 +500,8 @@ export default async function InvoicesPage({
                   <td colSpan={6} className="p-0">
                     <EmptyState
                       icon={<FileText className="w-16 h-16" />}
-                      title="No invoices found"
-                      description="Try adjusting your filters or create a new invoice to get started."
+                      title="Nenhuma fatura encontrada"
+                      description="Tente ajustar seus filtros ou crie uma nova fatura para começar."
                     />
                   </td>
                 </tr>
@@ -543,7 +543,7 @@ export default async function InvoicesPage({
                             href={`/dashboard/invoices/${invoice.id}`}
                             className="text-gold-600 hover:text-gold-700 font-medium"
                           >
-                            View
+                            Ver
                           </Link>
                           {(() => {
                             // Check if user can edit this invoice
@@ -559,7 +559,7 @@ export default async function InvoicesPage({
                                 href={`/dashboard/invoices/${invoice.id}/edit`}
                                 className="text-gold-600 hover:text-gold-700 font-medium"
                               >
-                                Edit
+                                Editar
                               </Link>
                             ) : null;
                           })()}

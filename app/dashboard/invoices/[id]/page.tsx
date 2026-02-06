@@ -106,21 +106,21 @@ export default async function InvoiceDetailPage({
   // Build workflow steps
   const workflowSteps = [
     {
-      title: "Invoice Created",
+      title: "Fatura Criada",
       status: "completed" as const,
       date: invoice.createdAt,
-      description: `Created by ${invoice.deal?.owner?.name || "System"}`,
+      description: `Criada por ${invoice.deal?.owner?.name || "Sistema"}`,
     },
     {
-      title: "QuickBooks Sync",
+      title: "Sincronização QuickBooks",
       status: invoice.quickbooks_invoice_id ? ("completed" as const) : ("current" as const),
       date: invoice.quickbooks_invoice_id ? invoice.createdAt : null,
-      description: invoice.quickbooks_invoice_id 
-        ? `Synced to QuickBooks (ID: ${invoice.quickbooks_invoice_id})`
-        : "Syncing to QuickBooks...",
+      description: invoice.quickbooks_invoice_id
+        ? `Sincronizado com QuickBooks (ID: ${invoice.quickbooks_invoice_id})`
+        : "Sincronizando com QuickBooks...",
     },
     {
-      title: "Email Sent",
+      title: "E-mail Enviado",
       status: invoice.emailSentAt
         ? ("completed" as const)
         : invoice.lastEmailSendError
@@ -128,13 +128,13 @@ export default async function InvoiceDetailPage({
         : ("pending" as const),
       date: invoice.emailSentAt,
       description: invoice.emailSentAt
-        ? `Email sent to ${invoice.customer.email} (${invoice.emailSendAttempts || 1} attempt${(invoice.emailSendAttempts || 1) > 1 ? 's' : ''})`
+        ? `E-mail enviado para ${invoice.customer.email} (${invoice.emailSendAttempts || 1} tentativa${(invoice.emailSendAttempts || 1) > 1 ? 's' : ''})`
         : invoice.lastEmailSendError
-        ? `Failed to send: ${invoice.lastEmailSendError} (${invoice.emailSendAttempts || 0} attempt${(invoice.emailSendAttempts || 0) !== 1 ? 's' : ''})`
-        : "Email will be sent automatically",
+        ? `Falha ao enviar: ${invoice.lastEmailSendError} (${invoice.emailSendAttempts || 0} tentativa${(invoice.emailSendAttempts || 0) !== 1 ? 's' : ''})`
+        : "O e-mail será enviado automaticamente",
     },
     {
-      title: "Contract Sent",
+      title: "Contrato Enviado",
       status: invoice.contract
         ? invoice.contract.status === ContractStatus.DECLINED ||
           invoice.contract.status === ContractStatus.EXPIRED
@@ -143,11 +143,11 @@ export default async function InvoiceDetailPage({
         : ("pending" as const),
       date: invoice.contract?.sentAt,
       description: invoice.contract
-        ? `Sent to ${invoice.contract.signerEmail}`
-        : "Contract will be generated automatically",
+        ? `Enviado para ${invoice.contract.signerEmail}`
+        : "O contrato será gerado automaticamente",
     },
     {
-      title: "Contract Signed",
+      title: "Contrato Assinado",
       status:
         invoice.contract?.status === ContractStatus.SIGNED
           ? ("completed" as const)
@@ -159,17 +159,17 @@ export default async function InvoiceDetailPage({
       date: invoice.contract?.signedAt,
       description:
         invoice.contract?.status === ContractStatus.SIGNED
-          ? "Client signed the contract"
+          ? "Cliente assinou o contrato"
           : invoice.contract?.status === ContractStatus.DECLINED
-          ? "Client declined to sign"
+          ? "Cliente recusou assinar"
           : invoice.contract?.status === ContractStatus.EXPIRED
-          ? "Contract expired"
+          ? "Contrato expirado"
           : invoice.contract?.status === ContractStatus.SENT_FOR_SIGNATURE
-          ? `Awaiting signature (${invoice.contract?.reminderCount || 0} reminders sent)`
-          : "Waiting for contract to be signed",
+          ? `Aguardando assinatura (${invoice.contract?.reminderCount || 0} lembretes enviados)`
+          : "Aguardando assinatura do contrato",
     },
     {
-      title: "Payment Link Sent",
+      title: "Link de Pagamento Enviado",
       status:
         invoice.stripePaymentLinkId
           ? ("completed" as const)
@@ -178,13 +178,13 @@ export default async function InvoiceDetailPage({
           : ("pending" as const),
       date: invoice.stripePaymentLinkId ? invoice.updatedAt : null,
       description: invoice.stripePaymentLinkId
-        ? "Payment link sent to customer"
+        ? "Link de pagamento enviado ao cliente"
         : invoice.contract?.status === ContractStatus.SIGNED
-        ? "Generating payment link..."
-        : "Payment link will be sent after contract is signed",
+        ? "Gerando link de pagamento..."
+        : "O link de pagamento será enviado após a assinatura do contrato",
     },
     {
-      title: "Payment Received",
+      title: "Pagamento Recebido",
       status:
         invoice.status === InvoiceStatus.PAID
           ? ("completed" as const)
@@ -194,10 +194,10 @@ export default async function InvoiceDetailPage({
       date: invoice.paidAt,
       description:
         invoice.status === InvoiceStatus.PAID
-          ? `Paid via ${invoice.paymentMethod || "Stripe"}`
+          ? `Pago via ${invoice.paymentMethod || "Stripe"}`
           : invoice.stripePaymentLinkId
-          ? `Awaiting payment (${invoice.paymentReminderCount || 0} reminders sent)`
-          : "Waiting for payment",
+          ? `Aguardando pagamento (${invoice.paymentReminderCount || 0} lembretes enviados)`
+          : "Aguardando pagamento",
     },
   ];
 
@@ -209,7 +209,7 @@ export default async function InvoiceDetailPage({
           <ol className="flex items-center gap-2 text-sm">
             <li>
               <Link href="/dashboard/invoices" className="text-gray-500 hover:text-gray-700 font-display">
-                Invoices
+                Faturas
               </Link>
             </li>
             <li className="text-gray-400">›</li>
@@ -224,11 +224,11 @@ export default async function InvoiceDetailPage({
           <div className="flex items-start justify-between mb-4">
             <div>
               <h1 className="text-3xl font-display font-semibold text-gray-900 mb-2">
-                Invoice #{invoice.invoiceNumber || invoice.id.slice(0, 8)}
+                Fatura #{invoice.invoiceNumber || invoice.id.slice(0, 8)}
               </h1>
               <Badge variant={getStatusVariant(invoice.status)}>
                 {invoice.status}
-                {isOverdue && invoice.status !== InvoiceStatus.PAID && " (Overdue)"}
+                {isOverdue && invoice.status !== InvoiceStatus.PAID && " (Vencida)"}
               </Badge>
             </div>
             <div className="flex items-center gap-3">
@@ -238,20 +238,20 @@ export default async function InvoiceDetailPage({
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-primary-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-primary-700 transition-colors"
                 >
                   <Edit className="w-4 h-4" />
-                  Edit Invoice
+                  Editar Fatura
                 </Link>
               ) : (
                 <button
                   disabled
                   title={
                     invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID
-                      ? `Cannot edit ${String(invoice.status).toLowerCase()} invoices`
-                      : "You don't have permission to edit this invoice"
+                      ? `Não é possível editar faturas ${String(invoice.status).toLowerCase()}`
+                      : "Você não tem permissão para editar esta fatura"
                   }
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-300 text-gray-500 text-sm font-display font-semibold rounded-lg cursor-not-allowed opacity-60"
                 >
                   <Edit className="w-4 h-4" />
-                  Edit Invoice
+                  Editar Fatura
                 </button>
               )}
 
@@ -263,7 +263,7 @@ export default async function InvoiceDetailPage({
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-display font-medium rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <Download className="w-4 h-4" />
-                  Download PDF
+                  Baixar PDF
                 </a>
               )}
               
@@ -282,7 +282,7 @@ export default async function InvoiceDetailPage({
           {/* Amount Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="flex items-start justify-between mb-2">
-              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Total Amount</p>
+              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Valor Total</p>
               <DollarSign className="h-5 w-5 text-gray-400" />
             </div>
             <p className="text-4xl font-bold text-gray-900 tabular-nums">
@@ -298,7 +298,7 @@ export default async function InvoiceDetailPage({
             isOverdue && invoice.status !== InvoiceStatus.PAID ? "border-error-500 bg-error-50" : "border-gray-200"
           }`}>
             <div className="flex items-start justify-between mb-2">
-              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Due Date</p>
+              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Data de Vencimento</p>
               <Calendar className="h-5 w-5 text-gray-400" />
             </div>
             <p className={`text-3xl font-bold tabular-nums ${
@@ -312,15 +312,15 @@ export default async function InvoiceDetailPage({
             </p>
             {isOverdue && invoice.status !== InvoiceStatus.PAID && (
               <p className="text-sm font-semibold text-error-600 mt-2">
-                Overdue by {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} days
+                Vencida há {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} dias
               </p>
             )}
           </div>
 
-          {/* Created Date Card */}
+          {/* Data de Criação Card */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <div className="flex items-start justify-between mb-2">
-              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Created Date</p>
+              <p className="text-xs font-display font-medium text-gray-500 uppercase tracking-wide">Data de Criação</p>
               <FileText className="h-5 w-5 text-gray-400" />
             </div>
             <p className="text-3xl font-bold text-gray-900 tabular-nums">
@@ -335,7 +335,7 @@ export default async function InvoiceDetailPage({
 
         {/* Workflow Timeline */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h2 className="text-xl font-display font-semibold text-gray-900 mb-6">Workflow Progress</h2>
+          <h2 className="text-xl font-display font-semibold text-gray-900 mb-6">Progresso do Fluxo</h2>
           <WorkflowTimeline steps={workflowSteps} />
         </div>
 
@@ -343,18 +343,18 @@ export default async function InvoiceDetailPage({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column: Invoice Details */}
           <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-xl font-display font-semibold text-gray-900 mb-6">Invoice Details</h2>
+            <h2 className="text-xl font-display font-semibold text-gray-900 mb-6">Detalhes da Fatura</h2>
           <div className="space-y-6">
             {/* Basic Info Grid */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Invoice Number</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">Número da Fatura</p>
                 <p className="text-base font-semibold text-gray-900">
                   {invoice.invoiceNumber || "N/A"}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Created Date</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">Data de Criação</p>
                 <p className="text-base text-gray-900">
                   {new Date(invoice.createdAt).toLocaleDateString("en-US", {
                     month: "short",
@@ -368,14 +368,14 @@ export default async function InvoiceDetailPage({
             {/* Payment Info */}
             {invoice.paidAt && (
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-600 mb-2">Payment Information</p>
+                <p className="text-sm font-medium text-gray-600 mb-2">Informações de Pagamento</p>
                 <div className="bg-green-50 rounded-lg p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                    <p className="text-sm font-semibold text-green-800">Payment Received</p>
+                    <p className="text-sm font-semibold text-green-800">Pagamento Recebido</p>
                   </div>
                   <p className="text-sm text-green-700">
-                    <span className="font-medium">Date:</span>{" "}
+                    <span className="font-medium">Data:</span>{" "}
                     {new Date(invoice.paidAt).toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
@@ -384,7 +384,7 @@ export default async function InvoiceDetailPage({
                   </p>
                   {invoice.paymentMethod && (
                     <p className="text-sm text-green-700">
-                      <span className="font-medium">Method:</span> {invoice.paymentMethod}
+                      <span className="font-medium">Método:</span> {invoice.paymentMethod}
                     </p>
                   )}
                 </div>
@@ -393,7 +393,7 @@ export default async function InvoiceDetailPage({
 
             {/* External IDs */}
             <div className="pt-4 border-t border-gray-200">
-              <p className="text-sm font-medium text-gray-600 mb-3">External System IDs</p>
+              <p className="text-sm font-medium text-gray-600 mb-3">IDs de Sistemas Externos</p>
               <div className="space-y-3">
                 {invoice.quickbooks_invoice_id && (
                   <div className="flex items-start gap-2">
@@ -422,7 +422,7 @@ export default async function InvoiceDetailPage({
                 {!invoice.quickbooks_invoice_id &&
                   !invoice.stripe_invoice_id &&
                   !invoice.stripePaymentIntentId && (
-                    <p className="text-gray-400 text-sm">No external IDs synced yet</p>
+                    <p className="text-gray-400 text-sm">Nenhum ID externo sincronizado ainda</p>
                   )}
               </div>
             </div>
@@ -432,11 +432,11 @@ export default async function InvoiceDetailPage({
         {/* Right Column: Customer Information */}
         {invoice.customer && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Customer Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-6">Informações do Cliente</h2>
             <div className="space-y-6">
               {/* Customer Name with Link */}
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-2">Customer</p>
+                <p className="text-sm font-medium text-gray-600 mb-2">Cliente</p>
                 <Link
                   href={`/dashboard/customers/${invoice.customer.id}`}
                   className="text-2xl font-bold text-blue-600 hover:text-blue-700 hover:underline"
@@ -457,7 +457,7 @@ export default async function InvoiceDetailPage({
                   </a>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Phone</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Telefone</p>
                   {invoice.customer.phone ? (
                     <a 
                       href={`tel:${invoice.customer.phone}`}
@@ -466,14 +466,14 @@ export default async function InvoiceDetailPage({
                       {invoice.customer.phone}
                     </a>
                   ) : (
-                    <p className="text-gray-400 text-sm">Not provided</p>
+                    <p className="text-gray-400 text-sm">Não informado</p>
                   )}
                 </div>
               </div>
 
               {/* Source Badges */}
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-600 mb-3">Data Sources</p>
+                <p className="text-sm font-medium text-gray-600 mb-3">Fontes de Dados</p>
                 <div className="flex flex-wrap gap-2">
                   {invoice.customer.quickbooks_id && (
                     <span className="px-3 py-1.5 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
@@ -487,7 +487,7 @@ export default async function InvoiceDetailPage({
                   )}
                   {!invoice.customer.quickbooks_id && !invoice.customer.pipedrive_id && (
                     <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
-                      Manual Entry
+                      Entrada Manual
                     </span>
                   )}
                 </div>
@@ -495,11 +495,11 @@ export default async function InvoiceDetailPage({
 
               {/* Customer Financial Summary */}
               <div className="pt-4 border-t border-gray-200">
-                <p className="text-sm font-medium text-gray-600 mb-4">Financial Summary</p>
+                <p className="text-sm font-medium text-gray-600 mb-4">Resumo Financeiro</p>
                 <div className="space-y-3">
                   {invoice.customer.qbBalance !== null && invoice.customer.qbBalance !== undefined && (
                     <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-700">Current Balance</span>
+                      <span className="text-sm font-medium text-gray-700">Saldo Atual</span>
                       <span className={`text-lg font-bold ${Number(invoice.customer.qbBalance) > 0 ? 'text-red-600' : 'text-green-600'}`}>
                         {Number(invoice.customer.qbBalance).toLocaleString("en-US", {
                           style: "currency",
@@ -510,7 +510,7 @@ export default async function InvoiceDetailPage({
                   )}
                   {invoice.customer.qbTotalInvoiced !== null && invoice.customer.qbTotalInvoiced !== undefined && (
                     <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-700">Total Invoiced</span>
+                      <span className="text-sm font-medium text-gray-700">Total Faturado</span>
                       <span className="text-lg font-semibold text-gray-900">
                         {Number(invoice.customer.qbTotalInvoiced).toLocaleString("en-US", {
                           style: "currency",
@@ -521,7 +521,7 @@ export default async function InvoiceDetailPage({
                   )}
                   {invoice.customer.qbTotalPaid !== null && invoice.customer.qbTotalPaid !== undefined && (
                     <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-700">Total Paid</span>
+                      <span className="text-sm font-medium text-gray-700">Total Pago</span>
                       <span className="text-lg font-semibold text-green-600">
                         {Number(invoice.customer.qbTotalPaid).toLocaleString("en-US", {
                           style: "currency",
@@ -532,13 +532,13 @@ export default async function InvoiceDetailPage({
                   )}
                   {(!invoice.customer.qbBalance && !invoice.customer.qbTotalInvoiced && !invoice.customer.qbTotalPaid) && (
                     <p className="text-sm text-gray-400 p-3 bg-gray-50 rounded-lg text-center">
-                      No financial data synced yet
+                      Nenhum dado financeiro sincronizado ainda
                     </p>
                   )}
                 </div>
                 {invoice.customer.lastQbBalanceSync && (
                   <p className="text-xs text-gray-500 mt-3">
-                    Last synced: {new Date(invoice.customer.lastQbBalanceSync).toLocaleDateString("en-US", {
+                    Última sincronização: {new Date(invoice.customer.lastQbBalanceSync).toLocaleDateString("pt-BR", {
                       month: "short",
                       day: "numeric",
                       year: "numeric"
@@ -553,7 +553,7 @@ export default async function InvoiceDetailPage({
                   href={`/dashboard/customers/${invoice.customer.id}`}
                   className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
                 >
-                  View All Customer Invoices →
+                  Ver Todas as Faturas do Cliente →
                 </Link>
               </div>
             </div>
@@ -568,10 +568,10 @@ export default async function InvoiceDetailPage({
           {/* Deal */}
           {invoice.deal && (
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Related Deal</h2>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Negócio Relacionado</h2>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Title</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Título</p>
                   <Link
                     href={`/dashboard/deals/${invoice.deal.id}`}
                     className="text-lg font-semibold text-blue-600 hover:text-blue-700 hover:underline"
@@ -581,7 +581,7 @@ export default async function InvoiceDetailPage({
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-600 mb-1">Deal Value</p>
+                    <p className="text-sm font-medium text-gray-600 mb-1">Valor do Negócio</p>
                     <p className="text-lg font-bold text-gray-900">
                       {invoice.deal.currency} {Number(invoice.deal.value).toLocaleString()}
                     </p>
@@ -633,7 +633,7 @@ export default async function InvoiceDetailPage({
             canApprove && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">Collection Calls</h3>
+                  <h3 className="text-lg font-semibold text-gray-900">Chamadas de Cobrança</h3>
                   <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-orange-100 text-orange-800">
                     AI Voice
                   </span>
@@ -653,11 +653,11 @@ export default async function InvoiceDetailPage({
 
           {/* Additional Information */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Informações Adicionais</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Created</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Criada em</p>
                   <p className="text-sm text-gray-900">
                     {new Date(invoice.createdAt).toLocaleDateString("en-US", {
                       month: "short",
@@ -669,7 +669,7 @@ export default async function InvoiceDetailPage({
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-600 mb-1">Last Updated</p>
+                  <p className="text-sm font-medium text-gray-600 mb-1">Última Atualização</p>
                   <p className="text-sm text-gray-900">
                     {new Date(invoice.updatedAt).toLocaleDateString("en-US", {
                       month: "short",
@@ -682,7 +682,7 @@ export default async function InvoiceDetailPage({
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">Internal ID</p>
+                <p className="text-sm font-medium text-gray-600 mb-1">ID Interno</p>
                 <p className="text-xs text-gray-500 font-mono bg-gray-50 p-2 rounded">
                   {invoice.id}
                 </p>
