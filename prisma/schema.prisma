@@ -24,6 +24,8 @@ model User {
   ownedInvoices          Invoice[]           @relation("InvoiceOwner")
   leadQualifications     LeadQualification[] @relation("LeadQualifications")
   qualifiedLeads         Lead[]              @relation("QualifiedLeads")
+  supportTickets         SupportTicket[]     @relation("UserSupportTickets")
+  assignedTickets        SupportTicket[]     @relation("AssignedSupportTickets")
 
   @@index([id])
   @@map("users")
@@ -684,4 +686,59 @@ enum AlertStatus {
   ACKNOWLEDGED
   RESOLVED
   DISMISSED
+}
+
+model SupportTicket {
+  id           String              @id @default(uuid())
+  userId       String
+  subject      String?
+  status       SupportTicketStatus @default(AI_HANDLING)
+  priority     SupportPriority     @default(MEDIUM)
+  assignedToId String?
+  escalatedAt  DateTime?
+  resolvedAt   DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  user         User                @relation("UserSupportTickets", fields: [userId], references: [id])
+  assignedTo   User?               @relation("AssignedSupportTickets", fields: [assignedToId], references: [id])
+  messages     SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([assignedToId])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id        String             @id @default(uuid())
+  ticketId  String
+  role      SupportMessageRole
+  content   String
+  metadata  Json?
+  createdAt DateTime           @default(now())
+  ticket    SupportTicket      @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@map("support_messages")
+}
+
+enum SupportTicketStatus {
+  AI_HANDLING
+  ESCALATED
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum SupportPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum SupportMessageRole {
+  USER
+  AI
+  AGENT
 }
