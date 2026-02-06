@@ -11,13 +11,42 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const AI_MODEL = process.env.AI_MODEL || "gpt-4-turbo-preview";
+// Use gpt-4o-mini for support chat (~95% cheaper than gpt-4-turbo)
+const SUPPORT_AI_MODEL = process.env.SUPPORT_AI_MODEL || "gpt-4o-mini";
+
+// Cost protection limits
+const MAX_MESSAGES_PER_HOUR = 10;
+const MAX_ACTIVE_TICKETS_PER_USER = 3;
+const MAX_HISTORY_MESSAGES = 8; // Limit context window to reduce token usage
 
 class SupportChatService {
   async createTicket(userId: string): Promise<SupportTicket> {
+    // Check active ticket limit
+    const activeTickets = await prisma.supportTicket.count({
+      where: {
+        userId,
+        status: { in: ["AI_HANDLING", "ESCALATED", "IN_PROGRESS"] },
+      },
+    });
+    if (activeTickets >= MAX_ACTIVE_TICKETS_PER_USER) {
+      throw new Error("TICKET_LIMIT_REACHED");
+    }
+
     return prisma.supportTicket.create({
       data: { userId },
     });
+  }
+
+  private async checkRateLimit(userId: string): Promise<boolean> {
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const recentMessages = await prisma.supportMessage.count({
+      where: {
+        role: "USER",
+        createdAt: { gte: oneHourAgo },
+        ticket: { userId },
+      },
+    });
+    return recentMessages < MAX_MESSAGES_PER_HOUR;
   }
 
   async sendMessage(
@@ -25,6 +54,12 @@ class SupportChatService {
     userId: string,
     content: string
   ): Promise<{ userMsg: SupportMessage; aiResponse: SupportMessage | null; shouldEscalate: boolean }> {
+    // Rate limit check
+    const allowed = await this.checkRateLimit(userId);
+    if (!allowed) {
+      throw new Error("RATE_LIMIT_EXCEEDED");
+    }
+
     // Save user message
     const userMsg = await prisma.supportMessage.create({
       data: {
@@ -72,12 +107,13 @@ class SupportChatService {
       return { userMsg, aiResponse, shouldEscalate: true };
     }
 
-    // Get conversation history for AI context
+    // Get conversation history for AI context (limited to reduce token costs)
     const messages = await prisma.supportMessage.findMany({
       where: { ticketId },
-      orderBy: { createdAt: "asc" },
-      take: 20,
+      orderBy: { createdAt: "desc" },
+      take: MAX_HISTORY_MESSAGES,
     });
+    messages.reverse();
 
     // Call AI
     const { response: aiText, shouldEscalate } = await this.callAI(
@@ -131,7 +167,7 @@ class SupportChatService {
         .join("\n");
 
       const completion = await openai.chat.completions.create({
-        model: AI_MODEL,
+        model: SUPPORT_AI_MODEL,
         messages: [
           { role: "system", content: SUPPORT_CHAT_SYSTEM_PROMPT },
           {

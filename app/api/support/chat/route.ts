@@ -44,7 +44,19 @@ export async function POST(request: NextRequest) {
       status: ticket?.status,
       shouldEscalate: result.shouldEscalate,
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "RATE_LIMIT_EXCEEDED") {
+      return NextResponse.json(
+        { error: "Voce atingiu o limite de mensagens. Tente novamente em alguns minutos." },
+        { status: 429 }
+      );
+    }
+    if (error?.message === "TICKET_LIMIT_REACHED") {
+      return NextResponse.json(
+        { error: "Voce ja tem tickets abertos. Resolva ou feche um antes de abrir outro." },
+        { status: 429 }
+      );
+    }
     console.error("[Support Chat] Error:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
