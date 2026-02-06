@@ -75,6 +75,14 @@ export async function GET(request: NextRequest) {
           startDate = subDays(now, 90);
           endDate = now;
           break;
+        case "mtd":
+          startDate = startOfMonth(now);
+          endDate = now;
+          break;
+        case "ytd":
+          startDate = startOfYear(now);
+          endDate = now;
+          break;
         case "thisYear":
           startDate = startOfYear(now);
           endDate = now;
