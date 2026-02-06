@@ -7,9 +7,14 @@ import {
   ESCALATION_KEYWORDS,
 } from "@/lib/prompts/support-chat";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-init OpenAI client to ensure env vars are available at runtime
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 // Use gpt-4o-mini for support chat (~95% cheaper than gpt-4-turbo)
 const SUPPORT_AI_MODEL = process.env.SUPPORT_AI_MODEL || "gpt-4o-mini";
@@ -144,7 +149,9 @@ class SupportChatService {
     history: SupportMessage[],
     latestMessage: string
   ): Promise<{ response: string; shouldEscalate: boolean }> {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      console.error("[SupportChat] OPENAI_API_KEY not configured");
       return {
         response:
           "Desculpe, nosso assistente esta temporariamente indisponivel. Estou transferindo voce para a equipe de suporte.",
@@ -153,6 +160,7 @@ class SupportChatService {
     }
 
     try {
+      console.log(`[SupportChat] Calling AI with model=${SUPPORT_AI_MODEL}, key=${apiKey.slice(0, 8)}...`);
       // Get user name
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -166,7 +174,7 @@ class SupportChatService {
         })
         .join("\n");
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: SUPPORT_AI_MODEL,
         messages: [
           { role: "system", content: SUPPORT_CHAT_SYSTEM_PROMPT },
@@ -194,8 +202,8 @@ class SupportChatService {
         .trim();
 
       return { response, shouldEscalate };
-    } catch (error) {
-      console.error("[SupportChat] AI error:", error);
+    } catch (error: any) {
+      console.error("[SupportChat] AI error:", error?.message || error, error?.status, error?.code);
       return {
         response:
           "Desculpe, tive um problema ao processar sua mensagem. Vou transferir voce para a equipe de suporte.",
