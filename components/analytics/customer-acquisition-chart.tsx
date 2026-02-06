@@ -1,8 +1,8 @@
 "use client";
 
 import {
-  LineChart,
-  Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -27,9 +27,32 @@ export function CustomerAcquisitionChart({ data, isLoading }: CustomerAcquisitio
     );
   }
 
+  // Empty state
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-[300px] flex flex-col items-center justify-center text-gray-500">
+        <svg
+          className="w-16 h-16 mb-4 text-gray-300"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+          />
+        </svg>
+        <p className="text-lg font-medium text-gray-700 mb-1">No acquisition data available</p>
+        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+      </div>
+    );
+  }
+
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+      <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis
           dataKey="month"
@@ -51,25 +74,13 @@ export function CustomerAcquisitionChart({ data, isLoading }: CustomerAcquisitio
           }}
         />
         <Legend />
-        <Line
-          type="monotone"
+        <Bar
           dataKey="new"
           name="New Customers"
-          stroke="#0F52BA"
-          strokeWidth={2}
-          dot={{ fill: "#0F52BA", strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, fill: "#0F52BA" }}
+          fill="#0F52BA"
+          radius={[4, 4, 0, 0]}
         />
-        <Line
-          type="monotone"
-          dataKey="active"
-          name="Active Customers"
-          stroke="#22c55e"
-          strokeWidth={2}
-          dot={{ fill: "#22c55e", strokeWidth: 2, r: 4 }}
-          activeDot={{ r: 6, fill: "#22c55e" }}
-        />
-      </LineChart>
+      </BarChart>
     </ResponsiveContainer>
   );
 }

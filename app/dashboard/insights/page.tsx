@@ -308,9 +308,9 @@ export default function InsightsPage() {
           </div>
         </div>
 
-        {/* Charts - Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Revenue Trend */}
+        {/* Charts Section */}
+        <div className="space-y-6">
+          {/* Revenue Trend - Full Width Hero */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend (12 Months)</h3>
             <RevenueTrendChart
@@ -319,49 +319,7 @@ export default function InsightsPage() {
             />
           </div>
 
-          {/* Invoice Status */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Status Distribution</h3>
-            <InvoiceStatusChart
-              data={data?.charts.invoiceStatus || []}
-              isLoading={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Charts - Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Invoice Aging */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Aging</h3>
-            <InvoiceAgingChart
-              data={data?.charts.invoiceAging || []}
-              isLoading={isLoading}
-            />
-          </div>
-
-          {/* Top Customers */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Customers by Revenue</h3>
-            <TopCustomersChart
-              data={data?.charts.topCustomers || []}
-              isLoading={isLoading}
-            />
-          </div>
-        </div>
-
-        {/* Charts - Row 3 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Payment Methods */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Payments by Method</h3>
-            <PaymentMethodsChart
-              data={data?.charts.paymentMethods || []}
-              isLoading={isLoading}
-            />
-          </div>
-
-          {/* Cash Flow */}
+          {/* Cash Flow - Full Width Hero */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Cash Flow: Invoiced vs Received</h3>
             <CashFlowChart
@@ -369,20 +327,55 @@ export default function InsightsPage() {
               isLoading={isLoading}
             />
           </div>
-        </div>
 
-        {/* Charts - Row 4 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Customer Segments */}
+          {/* Top Customers - Full Width (needs more vertical space) */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Segments by Revenue</h3>
-            <CustomerSegmentsChart
-              data={data?.charts.customerSegments || []}
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top 10 Customers by Revenue</h3>
+            <TopCustomersChart
+              data={data?.charts.topCustomers || []}
               isLoading={isLoading}
             />
           </div>
 
-          {/* Customer Acquisition */}
+          {/* Invoice Status + Aging - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Status Distribution</h3>
+              <InvoiceStatusChart
+                data={data?.charts.invoiceStatus || []}
+                isLoading={isLoading}
+              />
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Invoice Aging</h3>
+              <InvoiceAgingChart
+                data={data?.charts.invoiceAging || []}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Payment Methods + Customer Segments - Side by Side */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Payments by Method</h3>
+              <PaymentMethodsChart
+                data={data?.charts.paymentMethods || []}
+                isLoading={isLoading}
+              />
+            </div>
+
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Segments by Revenue</h3>
+              <CustomerSegmentsChart
+                data={data?.charts.customerSegments || []}
+                isLoading={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Customer Acquisition - Full Width at Bottom */}
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Customer Acquisition Trend</h3>
             <CustomerAcquisitionChart

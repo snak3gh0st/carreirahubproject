@@ -36,8 +36,31 @@ export function RevenueTrendChart({ data, isLoading }: RevenueTrendChartProps) {
     );
   }
 
+  // Empty state
+  if (!data || data.length === 0) {
+    return (
+      <div className="h-[350px] flex flex-col items-center justify-center text-gray-500">
+        <svg
+          className="w-16 h-16 mb-4 text-gray-300"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+          />
+        </svg>
+        <p className="text-lg font-medium text-gray-700 mb-1">No revenue data available</p>
+        <p className="text-sm text-gray-500">Try adjusting your date range filter</p>
+      </div>
+    );
+  }
+
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={350}>
       <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis

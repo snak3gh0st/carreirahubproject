@@ -664,29 +664,26 @@ export async function GET(request: NextRequest) {
       _count: { id: true },
     });
 
-    const acquisitionByMonthMap = new Map<string, { new: number; active: number }>();
+    const acquisitionByMonthMap = new Map<string, number>();
     eachMonthOfInterval({
       start: chartStartDate,
       end: chartEndDate,
     }).forEach((month) => {
       const key = format(month, "yyyy-MM");
-      acquisitionByMonthMap.set(key, { new: 0, active: 0 });
+      acquisitionByMonthMap.set(key, 0);
     });
 
     newCustomersByMonth.forEach((c) => {
       const key = format(startOfMonth(parseUtcDate(c.createdAt)), "yyyy-MM");
-      const existing = acquisitionByMonthMap.get(key) || { new: 0, active: 0 };
-      acquisitionByMonthMap.set(key, {
-        new: existing.new + c._count.id,
-        active: existing.active,
-      });
+      const existing = acquisitionByMonthMap.get(key) || 0;
+      acquisitionByMonthMap.set(key, existing + c._count.id);
     });
 
     const customerAcquisition = Array.from(acquisitionByMonthMap.entries())
-      .map(([month, data]) => ({
+      .map(([month, count]) => ({
         month: format(new Date(month + "-01"), "MMM yyyy"),
-        new: data.new,
-        active: data.active,
+        new: count,
+        active: 0, // Keep for backward compatibility with chart component
       }));
 
     // ====================
