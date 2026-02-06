@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Send, X, UserCircle, Bot, HeadphonesIcon } from "lucide-react";
+import { Send, X, UserCircle, Bot, HeadphonesIcon, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface Message {
@@ -156,13 +156,25 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
             </Badge>
           )}
         </div>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-white transition-colors"
-          aria-label="Fechar"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-2">
+          {ticketId && (
+            <button
+              onClick={() => { setTicketId(null); setMessages([]); setStatus("AI_HANDLING"); }}
+              className="text-gray-400 hover:text-white transition-colors"
+              aria-label="Nova Conversa"
+              title="Nova Conversa"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -274,10 +286,19 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
         </div>
       )}
 
-      {/* Resolved/Closed state */}
+      {/* Resolved/Closed state + New Conversation button */}
       {["RESOLVED", "CLOSED"].includes(status) && (
-        <div className="border-t border-gray-200 px-4 py-3 text-center text-sm text-gray-500 flex-shrink-0">
-          Este ticket foi {status === "RESOLVED" ? "resolvido" : "encerrado"}.
+        <div className="border-t border-gray-200 px-4 py-3 text-center flex-shrink-0">
+          <p className="text-sm text-gray-500 mb-2">
+            Este ticket foi {status === "RESOLVED" ? "resolvido" : "encerrado"}.
+          </p>
+          <button
+            onClick={() => { setTicketId(null); setMessages([]); setStatus("AI_HANDLING"); }}
+            className="bg-gold-600 hover:bg-gold-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Nova Conversa
+          </button>
         </div>
       )}
     </div>
