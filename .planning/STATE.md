@@ -451,13 +451,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 039b | Translate remaining pages to PT-BR (round 2) | 2026-02-06 | b1a38ad | [039-translate-webapp-to-pt-br](.planning/quick/039-translate-webapp-to-pt-br/) |
 | 039c | Translate sidebar, quick filters, insights, analytics charts (round 3) | 2026-02-06 | 9ce193b | [039-translate-webapp-to-pt-br](.planning/quick/039-translate-webapp-to-pt-br/) |
 | 041 | User support chat with AI escalation | 2026-02-06 | 91dd325 | [041-user-support-chat-with-ai-escalation](.planning/quick/041-user-support-chat-with-ai-escalation/) |
+| 042 | View open tickets and delete from chat widget | 2026-02-06 | e58870e | [042-ver-tickets-abertos-e-deletar](.planning/quick/042-ver-tickets-abertos-e-deletar/) |
 
 ## Session Continuity
 
 Last session: 2026-02-06
-Stopped at: Completed quick task 041 - User support chat with AI escalation
-Resume file: .planning/quick/041-user-support-chat-with-ai-escalation/041-SUMMARY.md
-Next action: Test support chat in browser
+Stopped at: Completed quick task 042 - View open tickets and delete from chat widget
+Resume file: .planning/quick/042-ver-tickets-abertos-e-deletar/042-SUMMARY.md
+Next action: Test ticket list and delete functionality in browser
 
 ## Sprint 1 Success Criteria
 
