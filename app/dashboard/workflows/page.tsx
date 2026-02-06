@@ -108,9 +108,9 @@ export default async function WorkflowsPage({
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">Finance Workflows</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Fluxos Financeiros</h1>
         <p className="text-gray-600 mt-2">
-          Monitor Deal Won workflows: Invoice creation → Contract generation → Payment
+          Monitorar fluxos de Deal Won: Criação de fatura → Geração de contrato → Pagamento
         </p>
       </div>
 
@@ -124,7 +124,7 @@ export default async function WorkflowsPage({
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          All ({totalDeals})
+          Todos ({totalDeals})
         </Link>
         <Link
           href="/dashboard/workflows?workflowStatus=IN_PROGRESS"
@@ -134,7 +134,7 @@ export default async function WorkflowsPage({
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          In Progress ({statusCountMap["IN_PROGRESS"] || 0})
+          Em Andamento ({statusCountMap["IN_PROGRESS"] || 0})
         </Link>
         <Link
           href="/dashboard/workflows?workflowStatus=FAILED"
@@ -144,7 +144,7 @@ export default async function WorkflowsPage({
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          Failed ({statusCountMap["FAILED"] || 0})
+          Falhou ({statusCountMap["FAILED"] || 0})
         </Link>
         <Link
           href="/dashboard/workflows?workflowStatus=COMPLETED"
@@ -154,7 +154,7 @@ export default async function WorkflowsPage({
               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
           }`}
         >
-          Completed ({statusCountMap["COMPLETED"] || 0})
+          Concluído ({statusCountMap["COMPLETED"] || 0})
         </Link>
       </div>
 
@@ -168,19 +168,19 @@ export default async function WorkflowsPage({
                   Deal
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Customer
+                  Cliente
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Workflow Status
+                  Status do Fluxo
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Invoice
+                  Fatura
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contract
+                  Contrato
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Ações
                 </th>
               </tr>
             </thead>
@@ -188,7 +188,7 @@ export default async function WorkflowsPage({
               {deals.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
-                    No workflows found matching the selected filters.
+                    Nenhum fluxo encontrado para os filtros selecionados.
                   </td>
                 </tr>
               ) : (
@@ -234,7 +234,7 @@ export default async function WorkflowsPage({
                             </div>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">No invoice</span>
+                          <span className="text-sm text-gray-400">Sem fatura</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -250,7 +250,7 @@ export default async function WorkflowsPage({
                             )}
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">No contract</span>
+                          <span className="text-sm text-gray-400">Sem contrato</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -259,7 +259,7 @@ export default async function WorkflowsPage({
                             href={`/dashboard/deals/${deal.id}/workflow`}
                             className="text-blue-600 hover:text-blue-800 font-medium"
                           >
-                            View Details
+                            Ver Detalhes
                           </Link>
                           {deal.workflowStatus === "FAILED" && (
                             <form
@@ -271,7 +271,7 @@ export default async function WorkflowsPage({
                                 type="submit"
                                 className="text-red-600 hover:text-red-800 font-medium"
                               >
-                                Retry
+                                Tentar Novamente
                               </button>
                             </form>
                           )}

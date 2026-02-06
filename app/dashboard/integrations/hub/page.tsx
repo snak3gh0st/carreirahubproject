@@ -100,16 +100,16 @@ export default async function IntegrationHubPage() {
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Integration Hub</h1>
+          <h1 className="text-3xl font-bold">Hub de Integrações</h1>
           <p className="text-gray-600">
-            Central view of all system integrations
+            Visão central de todas as integrações do sistema
           </p>
         </div>
         <Link
           href="/dashboard/integrations"
           className="text-blue-600 hover:underline"
         >
-          View All Integrations
+          Ver Todas as Integrações
         </Link>
       </div>
 
@@ -129,29 +129,29 @@ export default async function IntegrationHubPage() {
               }`}
             >
               {qbConnected && qbTokenValid
-                ? "Connected"
+                ? "Conectado"
                 : qbConnected
-                  ? "Token Expired"
-                  : "Disconnected"}
+                  ? "Token Expirado"
+                  : "Desconectado"}
             </span>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">Company ID:</span>
+              <span className="text-gray-500">ID da Empresa:</span>
               <span className="font-medium">
                 {systemConfig?.quickbooks_company_id || "N/A"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Last Sync:</span>
+              <span className="text-gray-500">Última Sincronização:</span>
               <span className="font-medium">
                 {systemConfig?.last_qb_sync
                   ? new Date(systemConfig.last_qb_sync).toLocaleString()
-                  : "Never"}
+                  : "Nunca"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Token Expires:</span>
+              <span className="text-gray-500">Token Expira:</span>
               <span className="font-medium">
                 {systemConfig?.quickbooks_token_expires_at
                   ? new Date(
@@ -162,7 +162,7 @@ export default async function IntegrationHubPage() {
             </div>
             {errorsByService.QUICKBOOKS && (
               <div className="flex justify-between text-red-600">
-                <span>Errors (24h):</span>
+                <span>Erros (24h):</span>
                 <span className="font-medium">{errorsByService.QUICKBOOKS}</span>
               </div>
             )}
@@ -173,14 +173,14 @@ export default async function IntegrationHubPage() {
                 href="/api/quickbooks/auth/connect"
                 className="text-sm text-blue-600 hover:underline"
               >
-                Reconnect
+                Reconectar
               </Link>
             ) : (
               <Link
                 href="/api/quickbooks/auth/connect"
                 className="text-sm text-blue-600 hover:underline"
               >
-                Connect Now
+                Conectar Agora
               </Link>
             )}
           </div>
@@ -197,36 +197,36 @@ export default async function IntegrationHubPage() {
                   : "bg-red-100 text-red-800"
               }`}
             >
-              {pipedriveConfigured ? "Configured" : "Not Configured"}
+              {pipedriveConfigured ? "Configurado" : "Não Configurado"}
             </span>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">API Key:</span>
+              <span className="text-gray-500">Chave API:</span>
               <span className="font-medium">
-                {pipedriveConfigured ? "Configured" : "Missing"}
+                {pipedriveConfigured ? "Configurado" : "Ausente"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Webhook Secret:</span>
+              <span className="text-gray-500">Segredo do Webhook:</span>
               <span className="font-medium">
                 {systemConfig?.pipedrive_webhook_secret ||
                 process.env.PIPEDRIVE_WEBHOOK_SECRET
-                  ? "Configured"
-                  : "Missing"}
+                  ? "Configurado"
+                  : "Ausente"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Last Sync:</span>
+              <span className="text-gray-500">Última Sincronização:</span>
               <span className="font-medium">
                 {systemConfig?.last_pipedrive_sync
                   ? new Date(systemConfig.last_pipedrive_sync).toLocaleString()
-                  : "Never"}
+                  : "Nunca"}
               </span>
             </div>
             {errorsByService.PIPEDRIVE && (
               <div className="flex justify-between text-red-600">
-                <span>Errors (24h):</span>
+                <span>Erros (24h):</span>
                 <span className="font-medium">{errorsByService.PIPEDRIVE}</span>
               </div>
             )}
@@ -244,25 +244,25 @@ export default async function IntegrationHubPage() {
                   : "bg-red-100 text-red-800"
               }`}
             >
-              {stripeConfigured ? "Configured" : "Not Configured"}
+              {stripeConfigured ? "Configurado" : "Não Configurado"}
             </span>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">API Key:</span>
+              <span className="text-gray-500">Chave API:</span>
               <span className="font-medium">
-                {stripeConfigured ? "Configured" : "Missing"}
+                {stripeConfigured ? "Configurado" : "Ausente"}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Webhook Secret:</span>
+              <span className="text-gray-500">Segredo do Webhook:</span>
               <span className="font-medium">
-                {process.env.STRIPE_WEBHOOK_SECRET ? "Configured" : "Missing"}
+                {process.env.STRIPE_WEBHOOK_SECRET ? "Configurado" : "Ausente"}
               </span>
             </div>
             {errorsByService.STRIPE && (
               <div className="flex justify-between text-red-600">
-                <span>Errors (24h):</span>
+                <span>Erros (24h):</span>
                 <span className="font-medium">{errorsByService.STRIPE}</span>
               </div>
             )}
@@ -273,12 +273,12 @@ export default async function IntegrationHubPage() {
       {/* Sync Statistics */}
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Sync Statistics
+          Estatísticas de Sincronização
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Customers */}
           <div>
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Customers</h4>
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Clientes</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Total:</span>
@@ -301,7 +301,7 @@ export default async function IntegrationHubPage() {
 
           {/* Invoices */}
           <div>
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Invoices</h4>
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Faturas</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Total:</span>
@@ -316,7 +316,7 @@ export default async function IntegrationHubPage() {
 
           {/* Payments */}
           <div>
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Payments</h4>
+            <h4 className="text-sm font-medium text-gray-500 mb-2">Pagamentos</h4>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Total:</span>
@@ -338,26 +338,26 @@ export default async function IntegrationHubPage() {
       {/* Recent Activity */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="px-6 py-4 border-b">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Atividade Recente</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Time
+                  Horário
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Service
+                  Serviço
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Action
+                  Ação
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Error
+                  Erro
                 </th>
               </tr>
             </thead>
@@ -365,7 +365,7 @@ export default async function IntegrationHubPage() {
               {recentActivity.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                    No recent activity
+                    Nenhuma atividade recente
                   </td>
                 </tr>
               ) : (
@@ -417,7 +417,7 @@ export default async function IntegrationHubPage() {
             href="/dashboard/integrations/logs"
             className="text-sm text-blue-600 hover:underline"
           >
-            View All Logs
+            Ver Todos os Logs
           </Link>
         </div>
       </div>

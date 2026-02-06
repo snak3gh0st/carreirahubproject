@@ -82,19 +82,19 @@ export default function CreateContractPage() {
         
         // Fetch customers
         const customersRes = await fetch('/api/customers');
-        if (!customersRes.ok) throw new Error('Failed to fetch customers');
+        if (!customersRes.ok) throw new Error('Falha ao buscar clientes');
         const customersData = await customersRes.json();
         setCustomers(customersData.customers || []);
         
         // Fetch invoices
         const invoicesRes = await fetch('/api/invoices?limit=1000');
-        if (!invoicesRes.ok) throw new Error('Failed to fetch invoices');
+        if (!invoicesRes.ok) throw new Error('Falha ao buscar faturas');
         const invoicesData = await invoicesRes.json();
         setInvoices(invoicesData.invoices || []);
         
       } catch (err) {
         console.error('Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
+        setError(err instanceof Error ? err.message : 'Falha ao carregar dados');
       } finally {
         setLoadingData(false);
       }
@@ -169,17 +169,17 @@ export default function CreateContractPage() {
     e.preventDefault();
     
     if (!customerId) {
-      setError('Please select a customer');
+      setError('Por favor, selecione um cliente');
       return;
     }
     
     if (!templateId) {
-      setError('Please select a contract template');
+      setError('Por favor, selecione um modelo de contrato');
       return;
     }
     
     if (!signerEmail || !signerName) {
-      setError('Signer name and email are required');
+      setError('Nome e email do signatário são obrigatórios');
       return;
     }
     
@@ -204,7 +204,7 @@ export default function CreateContractPage() {
       
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to create contract');
+        throw new Error(data.error || 'Falha ao criar contrato');
       }
       
       const data = await response.json();
@@ -214,7 +214,7 @@ export default function CreateContractPage() {
       
     } catch (err) {
       console.error('Error creating contract:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create contract');
+      setError(err instanceof Error ? err.message : 'Falha ao criar contrato');
     } finally {
       setLoading(false);
     }
@@ -235,7 +235,7 @@ export default function CreateContractPage() {
         <Link href="/dashboard/contracts">
           <Button variant="ghost" size="sm" className="mb-4">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Contracts
+            Voltar para Contratos
           </Button>
         </Link>
         
@@ -244,8 +244,8 @@ export default function CreateContractPage() {
             <FileSignature className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Create Contract</h1>
-            <p className="text-sm text-gray-500">Send a new contract for signature via DocuSign</p>
+            <h1 className="text-2xl font-bold text-gray-900">Criar Contrato</h1>
+            <p className="text-sm text-gray-500">Enviar um novo contrato para assinatura via DocuSign</p>
           </div>
         </div>
       </div>

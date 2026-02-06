@@ -100,14 +100,14 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
     <div className="container mx-auto p-6">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Editar Customer</h1>
+          <h1 className="text-3xl font-bold">Editar Cliente</h1>
           <p className="text-gray-600">Atualização de dados do cliente</p>
         </div>
         <Link
           href={`/dashboard/customers/${customer.id}`}
           className="text-blue-600 hover:underline"
         >
-          ← Voltar para Customer
+          ← Voltar para Cliente
         </Link>
       </div>
 
@@ -243,7 +243,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone <span className="text-gray-400 text-xs">(Optional)</span>
+            Telefone <span className="text-gray-400 text-xs">(Opcional)</span>
           </label>
           <input
             type="text"
@@ -257,7 +257,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              SSN <span className="text-gray-400 text-xs">(Optional)</span>
+              SSN <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -270,19 +270,19 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passport <span className="text-gray-400 text-xs">(Optional)</span>
+              Passaporte <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
               value={form.passport}
               onChange={(e) => handleChange("passport", e.target.value)}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Passport number"
+              placeholder="Número do passaporte"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              CPF <span className="text-gray-400 text-xs">(Optional)</span>
+              CPF <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -297,7 +297,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Address <span className="text-gray-400 text-xs">(Optional)</span>
+            Endereço <span className="text-gray-400 text-xs">(Opcional)</span>
           </label>
           <input
             type="text"
@@ -311,7 +311,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              City <span className="text-gray-400 text-xs">(Optional)</span>
+              Cidade <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -323,7 +323,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              State <span className="text-gray-400 text-xs">(Optional)</span>
+              Estado <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
@@ -336,7 +336,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ZIP Code <span className="text-gray-400 text-xs">(Optional)</span>
+              CEP <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"

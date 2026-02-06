@@ -31,7 +31,7 @@ export default function BulkImportPage() {
 
       if (source === "PIPEDRIVE") {
         if (!importPersons && !importDeals) {
-          alert("Please select at least one entity to import from Pipedrive");
+          alert("Por favor, selecione pelo menos uma entidade para importar do Pipedrive");
           setIsLoading(false);
           return;
         }
@@ -39,7 +39,7 @@ export default function BulkImportPage() {
         body = { importPersons, importDeals };
       } else {
         if (!importCustomers && !importInvoices && !importItems) {
-          alert("Please select at least one entity to import from QuickBooks");
+          alert("Por favor, selecione pelo menos uma entidade para importar do QuickBooks");
           setIsLoading(false);
           return;
         }
@@ -58,14 +58,14 @@ export default function BulkImportPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to start import");
+        throw new Error(data.error || "Falha ao iniciar importação");
       }
 
       // Redirect to progress page
       router.push(`/dashboard/integrations/bulk-import/${data.importId}`);
     } catch (err) {
       console.error("Error starting import:", err);
-      setError(err instanceof Error ? err.message : "Failed to start import");
+      setError(err instanceof Error ? err.message : "Falha ao iniciar importação");
       setIsLoading(false);
     }
   };
@@ -75,14 +75,14 @@ export default function BulkImportPage() {
       {/* Breadcrumb */}
       <div className="mb-4">
         <a href="/dashboard/integrations" className="text-blue-600 hover:underline text-sm">
-          ← Back to Integrations
+          ← Voltar para Integrações
         </a>
       </div>
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Bulk Import</h1>
+        <h1 className="text-3xl font-bold">Importação em Massa</h1>
         <p className="text-gray-600 mt-2">
-          Import existing data from Pipedrive or QuickBooks into the Hub
+          Importar dados existentes do Pipedrive ou QuickBooks para o Hub
         </p>
       </div>
 
@@ -94,7 +94,7 @@ export default function BulkImportPage() {
 
       {/* Source Selection */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">1. Select Source</h2>
+        <h2 className="text-xl font-semibold mb-4">1. Selecione a Fonte</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={() => setSource("PIPEDRIVE")}
@@ -112,7 +112,7 @@ export default function BulkImportPage() {
               )}
             </div>
             <p className="text-sm text-gray-600">
-              Import contacts (persons) and deals from Pipedrive CRM
+              Importar contatos (pessoas) e negócios do Pipedrive CRM
             </p>
           </button>
 
@@ -132,7 +132,7 @@ export default function BulkImportPage() {
               )}
             </div>
             <p className="text-sm text-gray-600">
-              Import customers, invoices, and service items from QuickBooks
+              Importar clientes, faturas e itens de serviço do QuickBooks
             </p>
           </button>
         </div>
@@ -140,7 +140,7 @@ export default function BulkImportPage() {
 
       {/* Entity Selection */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">2. Select Entities to Import</h2>
+        <h2 className="text-xl font-semibold mb-4">2. Selecione as Entidades para Importar</h2>
 
         {source === "PIPEDRIVE" && (
           <div className="space-y-4">
@@ -153,10 +153,10 @@ export default function BulkImportPage() {
                 disabled={isLoading}
               />
               <div>
-                <div className="font-medium text-gray-900">Persons (Contacts)</div>
+                <div className="font-medium text-gray-900">Pessoas (Contatos)</div>
                 <div className="text-sm text-gray-600">
-                  Import all Pipedrive persons as customers in the Hub. Duplicates will be
-                  merged based on email.
+                  Importar todas as pessoas do Pipedrive como clientes no Hub. Duplicatas serão
+                  mescladas com base no email.
                 </div>
               </div>
             </label>
@@ -170,10 +170,10 @@ export default function BulkImportPage() {
                 disabled={isLoading}
               />
               <div>
-                <div className="font-medium text-gray-900">Deals</div>
+                <div className="font-medium text-gray-900">Negócios</div>
                 <div className="text-sm text-gray-600">
-                  Import all Pipedrive deals. Only "won" deals will be imported to maintain
-                  data quality.
+                  Importar todos os negócios do Pipedrive. Apenas negócios "ganhos" serão importados para manter
+                  a qualidade dos dados.
                 </div>
               </div>
             </label>
@@ -191,10 +191,10 @@ export default function BulkImportPage() {
                 disabled={isLoading}
               />
               <div>
-                <div className="font-medium text-gray-900">Customers</div>
+                <div className="font-medium text-gray-900">Clientes</div>
                 <div className="text-sm text-gray-600">
-                  Import all QuickBooks customers into the Hub. Duplicates will be merged
-                  based on email.
+                  Importar todos os clientes do QuickBooks para o Hub. Duplicatas serão mescladas
+                  com base no email.
                 </div>
               </div>
             </label>
@@ -208,10 +208,10 @@ export default function BulkImportPage() {
                 disabled={isLoading}
               />
               <div>
-                <div className="font-medium text-gray-900">Invoices</div>
+                <div className="font-medium text-gray-900">Faturas</div>
                 <div className="text-sm text-gray-600">
-                  Import all QuickBooks invoices. These will be automatically approved as
-                  they already exist in QuickBooks.
+                  Importar todas as faturas do QuickBooks. Estas serão automaticamente aprovadas pois
+                  já existem no QuickBooks.
                 </div>
               </div>
             </label>
@@ -225,9 +225,9 @@ export default function BulkImportPage() {
                 disabled={isLoading}
               />
               <div>
-                <div className="font-medium text-gray-900">Service Items</div>
+                <div className="font-medium text-gray-900">Itens de Serviço</div>
                 <div className="text-sm text-gray-600">
-                  Import QuickBooks service items/products for use in invoice creation.
+                  Importar itens de serviço/produtos do QuickBooks para uso na criação de faturas.
                 </div>
               </div>
             </label>
@@ -240,13 +240,13 @@ export default function BulkImportPage() {
         <div className="flex items-start">
           <span className="text-2xl mr-3">⚠️</span>
           <div>
-            <h3 className="font-semibold text-yellow-900 mb-2">Important Notes</h3>
+            <h3 className="font-semibold text-yellow-900 mb-2">Notas Importantes</h3>
             <ul className="text-sm text-yellow-800 space-y-1">
-              <li>• This process may take several minutes depending on the amount of data</li>
-              <li>• You can monitor progress on the next page</li>
-              <li>• Existing records will not be duplicated (matched by email)</li>
-              <li>• The import can be cancelled at any time</li>
-              <li>• A log of all imported records will be available after completion</li>
+              <li>• Este processo pode levar vários minutos dependendo da quantidade de dados</li>
+              <li>• Você pode acompanhar o progresso na próxima página</li>
+              <li>• Registros existentes não serão duplicados (correspondidos por email)</li>
+              <li>• A importação pode ser cancelada a qualquer momento</li>
+              <li>• Um log de todos os registros importados estará disponível após a conclusão</li>
             </ul>
           </div>
         </div>
@@ -259,7 +259,7 @@ export default function BulkImportPage() {
           onClick={() => router.push("/dashboard/integrations/sync-status")}
           disabled={isLoading}
         >
-          Cancel
+          Cancelar
         </Button>
 
         <Button
@@ -283,7 +283,7 @@ export default function BulkImportPage() {
             </svg>
           }
         >
-          Start Import
+          Iniciar Importação
         </Button>
       </div>
     </div>

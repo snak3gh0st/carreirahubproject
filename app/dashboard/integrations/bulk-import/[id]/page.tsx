@@ -45,14 +45,14 @@ export default function ImportProgressPage({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch import status");
+        throw new Error(data.error || "Falha ao buscar status da importação");
       }
 
       setImportData(data.import);
       setIsLoading(false);
     } catch (err) {
       console.error("Error fetching import status:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch import status");
+      setError(err instanceof Error ? err.message : "Falha ao buscar status da importação");
       setIsLoading(false);
     }
   };
@@ -71,7 +71,7 @@ export default function ImportProgressPage({
   }, [params.id, importData?.status]);
 
   const handleCancel = async () => {
-    if (!confirm("Are you sure you want to cancel this import?")) {
+    if (!confirm("Tem certeza que deseja cancelar esta importação?")) {
       return;
     }
 
@@ -85,14 +85,14 @@ export default function ImportProgressPage({
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to cancel import");
+        throw new Error(data.error || "Falha ao cancelar importação");
       }
 
-      alert("Import cancelled successfully");
+      alert("Importação cancelada com sucesso");
       fetchImportStatus();
     } catch (err) {
       console.error("Error cancelling import:", err);
-      alert(err instanceof Error ? err.message : "Failed to cancel import");
+      alert(err instanceof Error ? err.message : "Falha ao cancelar importação");
     } finally {
       setIsCancelling(false);
     }
@@ -123,7 +123,7 @@ export default function ImportProgressPage({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            <p className="text-gray-600">Loading import status...</p>
+            <p className="text-gray-600">Carregando status da importação...</p>
           </div>
         </div>
       </div>
@@ -134,14 +134,14 @@ export default function ImportProgressPage({
     return (
       <div className="container mx-auto p-6 max-w-4xl">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-red-900 mb-2">Error</h2>
-          <p className="text-red-700">{error || "Import not found"}</p>
+          <h2 className="text-lg font-semibold text-red-900 mb-2">Erro</h2>
+          <p className="text-red-700">{error || "Importação não encontrada"}</p>
           <Button
             variant="primary"
             onClick={() => router.push("/dashboard/integrations/bulk-import")}
             className="mt-4"
           >
-            Go Back
+            Voltar
           </Button>
         </div>
       </div>
@@ -168,7 +168,7 @@ export default function ImportProgressPage({
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-3xl font-bold">Bulk Import Progress</h1>
+          <h1 className="text-3xl font-bold">Progresso da Importação em Massa</h1>
           <Badge variant={statusVariant}>{importData.status}</Badge>
         </div>
         <p className="text-gray-600">
@@ -190,19 +190,19 @@ export default function ImportProgressPage({
             <div className="text-3xl font-bold text-gray-900">
               {importData.totalRecords}
             </div>
-            <div className="text-sm text-gray-600 mt-1">Total Records</div>
+            <div className="text-sm text-gray-600 mt-1">Total de Registros</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-green-600">
               {importData.successCount}
             </div>
-            <div className="text-sm text-gray-600 mt-1">Successful</div>
+            <div className="text-sm text-gray-600 mt-1">Sucesso</div>
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-red-600">
               {importData.errorCount}
             </div>
-            <div className="text-sm text-gray-600 mt-1">Errors</div>
+            <div className="text-sm text-gray-600 mt-1">Erros</div>
           </div>
         </div>
 
@@ -230,8 +230,8 @@ export default function ImportProgressPage({
                 ></path>
               </svg>
               <span className="text-blue-900 font-medium">
-                Import in progress... {importData.processedRecords} / {importData.totalRecords}{" "}
-                records processed
+                Importação em andamento... {importData.processedRecords} / {importData.totalRecords}{" "}
+                registros processados
               </span>
             </div>
             <Button
@@ -240,7 +240,7 @@ export default function ImportProgressPage({
               onClick={handleCancel}
               isLoading={isCancelling}
             >
-              Cancel Import
+              Cancelar Importação
             </Button>
           </div>
         )}
@@ -250,9 +250,9 @@ export default function ImportProgressPage({
             <div className="flex items-center">
               <span className="text-2xl mr-3">✓</span>
               <div>
-                <div className="text-green-900 font-semibold">Import Completed Successfully</div>
+                <div className="text-green-900 font-semibold">Importação Concluída com Sucesso</div>
                 <div className="text-sm text-green-700">
-                  Completed at {new Date(importData.completedAt!).toLocaleString()}
+                  Concluída em {new Date(importData.completedAt!).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -264,9 +264,9 @@ export default function ImportProgressPage({
             <div className="flex items-center">
               <span className="text-2xl mr-3">✗</span>
               <div>
-                <div className="text-red-900 font-semibold">Import Failed</div>
+                <div className="text-red-900 font-semibold">Importação Falhou</div>
                 <div className="text-sm text-red-700">
-                  The import encountered critical errors and was stopped.
+                  A importação encontrou erros críticos e foi interrompida.
                 </div>
               </div>
             </div>
@@ -278,9 +278,9 @@ export default function ImportProgressPage({
             <div className="flex items-center">
               <span className="text-2xl mr-3">⊘</span>
               <div>
-                <div className="text-gray-900 font-semibold">Import Cancelled</div>
+                <div className="text-gray-900 font-semibold">Importação Cancelada</div>
                 <div className="text-sm text-gray-700">
-                  The import was cancelled at {new Date(importData.completedAt!).toLocaleString()}
+                  A importação foi cancelada em {new Date(importData.completedAt!).toLocaleString()}
                 </div>
               </div>
             </div>
@@ -290,31 +290,31 @@ export default function ImportProgressPage({
 
       {/* Import Details */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Import Details</h2>
+        <h2 className="text-lg font-semibold mb-4">Detalhes da Importação</h2>
         <div className="space-y-3 text-sm">
           <div className="flex justify-between">
-            <span className="text-gray-600">Import ID:</span>
+            <span className="text-gray-600">ID da Importação:</span>
             <span className="font-mono text-gray-900">{importData.id}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Source:</span>
+            <span className="text-gray-600">Fonte:</span>
             <span className="font-medium text-gray-900">{importData.source}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Type:</span>
+            <span className="text-gray-600">Tipo:</span>
             <span className="font-medium text-gray-900">
               {importData.type.replace(/_AND_/g, " + ")}
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Started At:</span>
+            <span className="text-gray-600">Iniciada Em:</span>
             <span className="text-gray-900">
               {new Date(importData.startedAt).toLocaleString()}
             </span>
           </div>
           {importData.completedAt && (
             <div className="flex justify-between">
-              <span className="text-gray-600">Completed At:</span>
+              <span className="text-gray-600">Concluída Em:</span>
               <span className="text-gray-900">
                 {new Date(importData.completedAt).toLocaleString()}
               </span>
@@ -322,7 +322,7 @@ export default function ImportProgressPage({
           )}
           {importData.initiator && (
             <div className="flex justify-between">
-              <span className="text-gray-600">Initiated By:</span>
+              <span className="text-gray-600">Iniciada Por:</span>
               <span className="text-gray-900">{importData.initiator.name}</span>
             </div>
           )}
@@ -333,7 +333,7 @@ export default function ImportProgressPage({
       {importData.errorCount > 0 && importData.errors && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4 text-red-900">
-            Errors ({importData.errorCount})
+            Erros ({importData.errorCount})
           </h2>
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {Array.isArray(importData.errors) ? (
@@ -343,7 +343,7 @@ export default function ImportProgressPage({
                   className="p-3 bg-red-50 border border-red-200 rounded text-sm"
                 >
                   <div className="font-medium text-red-900">
-                    Record {error.recordId || index + 1}
+                    Registro {error.recordId || index + 1}
                   </div>
                   <div className="text-red-700">{error.message || JSON.stringify(error)}</div>
                 </div>
@@ -363,7 +363,7 @@ export default function ImportProgressPage({
           variant="ghost"
           onClick={() => router.push("/dashboard/integrations/sync-status")}
         >
-          View Sync Status
+          Ver Status de Sincronização
         </Button>
 
         {importData.status !== "RUNNING" && (
@@ -371,7 +371,7 @@ export default function ImportProgressPage({
             variant="primary"
             onClick={() => router.push("/dashboard/integrations/bulk-import")}
           >
-            Start New Import
+            Nova Importação
           </Button>
         )}
       </div>

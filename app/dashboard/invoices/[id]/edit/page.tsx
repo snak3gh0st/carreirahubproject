@@ -81,17 +81,17 @@ export default async function EditInvoicePage({
         className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Invoice
+        Voltar para Fatura
       </Link>
 
       {/* Header */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Edit Invoice {invoice.invoiceNumber || invoice.id.slice(0, 8)}
+          Editar Fatura {invoice.invoiceNumber || invoice.id.slice(0, 8)}
         </h1>
         <div className="flex items-center gap-4 text-sm text-gray-600">
           <div>
-            <span className="font-medium">Customer:</span>{" "}
+            <span className="font-medium">Cliente:</span>{" "}
             <Link
               href={`/dashboard/customers/${invoice.customer.id}`}
               className="text-blue-600 hover:underline"
@@ -135,12 +135,12 @@ export default async function EditInvoicePage({
 
       {/* Help Text */}
       <div className="mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-gray-900 mb-2">Editing Notes</h3>
+        <h3 className="text-sm font-medium text-gray-900 mb-2">Notas de Edição</h3>
         <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-          <li>Changes to amount, due date, and line items will sync to QuickBooks if this invoice is synced</li>
-          <li>Line items must sum to the total invoice amount</li>
-          <li>Due date cannot be set to a past date</li>
-          <li>PAID or VOIDED invoices cannot be edited</li>
+          <li>Alterações no valor, data de vencimento e itens serão sincronizadas com o QuickBooks se esta fatura estiver sincronizada</li>
+          <li>Os itens devem somar o valor total da fatura</li>
+          <li>A data de vencimento não pode ser definida para uma data passada</li>
+          <li>Faturas PAGAS ou ANULADAS não podem ser editadas</li>
         </ul>
       </div>
     </div>

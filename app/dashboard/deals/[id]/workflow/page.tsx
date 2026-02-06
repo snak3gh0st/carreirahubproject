@@ -69,7 +69,7 @@ export default async function WorkflowDetailPage({
     return (
       <div className="p-6 max-w-7xl mx-auto">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800 font-medium">Deal not found</p>
+          <p className="text-red-800 font-medium">Deal não encontrado</p>
         </div>
       </div>
     );
@@ -119,7 +119,7 @@ export default async function WorkflowDetailPage({
   deal.invoices.forEach((invoice) => {
     timelineEvents.push({
       timestamp: invoice.createdAt,
-      title: "Invoice Created",
+      title: "Fatura Criada",
       status: "success",
       description: `Invoice ${invoice.invoiceNumber || invoice.id.slice(0, 8)} - $${Number(invoice.amount).toFixed(2)}`,
       link: `/dashboard/invoices/${invoice.id}`,
@@ -130,7 +130,7 @@ export default async function WorkflowDetailPage({
   deal.contracts.forEach((contract) => {
     timelineEvents.push({
       timestamp: contract.createdAt,
-      title: "Contract Sent",
+      title: "Contrato Enviado",
       status: "success",
       description: `DocuSign envelope: ${contract.docusign_env_id?.slice(0, 12) || "—"}`,
     });
@@ -138,18 +138,18 @@ export default async function WorkflowDetailPage({
     if (contract.signedAt) {
       timelineEvents.push({
         timestamp: contract.signedAt,
-        title: "Contract Signed",
+        title: "Contrato Assinado",
         status: "success",
-        description: "Customer completed signature",
+        description: "Cliente completou a assinatura",
       });
     }
 
     if (contract.voidedAt) {
       timelineEvents.push({
         timestamp: contract.voidedAt,
-        title: "Contract Voided",
+        title: "Contrato Anulado",
         status: "error",
-        description: "Contract was cancelled",
+        description: "Contrato foi cancelado",
       });
     }
   });
@@ -158,9 +158,9 @@ export default async function WorkflowDetailPage({
   if (deal.workflowCompletedAt) {
     timelineEvents.push({
       timestamp: deal.workflowCompletedAt,
-      title: "Workflow Completed",
+      title: "Fluxo Concluído",
       status: "success",
-      description: "All steps finished successfully",
+      description: "Todas as etapas concluídas com sucesso",
     });
   }
 
@@ -168,7 +168,7 @@ export default async function WorkflowDetailPage({
   if (deal.workflowStatus === "FAILED" && deal.workflowError) {
     timelineEvents.push({
       timestamp: new Date(), // Use current time if no specific error timestamp
-      title: "Workflow Failed",
+      title: "Fluxo Falhou",
       status: "error",
       description: deal.workflowError,
     });
@@ -185,7 +185,7 @@ export default async function WorkflowDetailPage({
           href="/dashboard/workflows"
           className="text-blue-600 hover:text-blue-800 text-sm font-medium mb-2 inline-block"
         >
-          ← Back to Workflows
+          ← Voltar para Fluxos
         </Link>
         <h1 className="text-3xl font-bold text-gray-900">{deal.title}</h1>
         <p className="text-gray-600 mt-1">
@@ -199,7 +199,7 @@ export default async function WorkflowDetailPage({
           {/* Workflow Status Card */}
           <div className="bg-white rounded-lg shadow p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Workflow Status
+              Status do Fluxo
             </h2>
             <div className="flex items-center gap-4">
               <WorkflowStatusBadge
@@ -208,18 +208,18 @@ export default async function WorkflowDetailPage({
               />
               {deal.workflowStartedAt && (
                 <span className="text-sm text-gray-600">
-                  Started: {new Date(deal.workflowStartedAt).toLocaleString()}
+                  Início: {new Date(deal.workflowStartedAt).toLocaleString()}
                 </span>
               )}
               {deal.workflowCompletedAt && (
                 <span className="text-sm text-gray-600">
-                  Completed: {new Date(deal.workflowCompletedAt).toLocaleString()}
+                  Concluído: {new Date(deal.workflowCompletedAt).toLocaleString()}
                 </span>
               )}
             </div>
             {deal.workflowError && (
               <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm font-medium text-red-800 mb-1">Error Details:</p>
+                <p className="text-sm font-medium text-red-800 mb-1">Detalhes do Erro:</p>
                 <p className="text-sm text-red-700">{deal.workflowError}</p>
               </div>
             )}
@@ -233,7 +233,7 @@ export default async function WorkflowDetailPage({
                   type="submit"
                   className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
                 >
-                  Retry Workflow
+                  Tentar Novamente
                 </button>
               </form>
             )}
@@ -242,12 +242,12 @@ export default async function WorkflowDetailPage({
           {/* Timeline */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              Workflow Timeline
+              Linha do Tempo do Fluxo
             </h2>
             <div className="space-y-4">
               {timelineEvents.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">
-                  No workflow events yet
+                  Nenhum evento de fluxo ainda
                 </p>
               ) : (
                 timelineEvents.map((event, index) => (
@@ -321,7 +321,7 @@ export default async function WorkflowDetailPage({
                               href={event.link}
                               className="text-sm text-blue-600 hover:text-blue-800 mt-1 inline-block"
                             >
-                              View Details →
+                              Ver Detalhes →
                             </Link>
                           )}
                         </div>
@@ -342,7 +342,7 @@ export default async function WorkflowDetailPage({
           {/* Customer Info */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Customer
+              Cliente
             </h3>
             {deal.customer ? (
               <div className="space-y-2">
@@ -355,21 +355,21 @@ export default async function WorkflowDetailPage({
                   href={`/dashboard/customers/${deal.customer.id}`}
                   className="text-sm text-blue-600 hover:text-blue-800 inline-block mt-2"
                 >
-                  View Customer →
+                  Ver Cliente →
                 </Link>
               </div>
             ) : (
-              <p className="text-gray-500">No customer linked</p>
+              <p className="text-gray-500">Nenhum cliente vinculado</p>
             )}
           </div>
 
           {/* Invoices Summary */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Invoices ({deal.invoices.length})
+              Faturas ({deal.invoices.length})
             </h3>
             {deal.invoices.length === 0 ? (
-              <p className="text-gray-500">No invoices created yet</p>
+              <p className="text-gray-500">Nenhuma fatura criada ainda</p>
             ) : (
               <div className="space-y-3">
                 {deal.invoices.map((invoice) => (
@@ -395,10 +395,10 @@ export default async function WorkflowDetailPage({
           {/* Contracts Summary */}
           <div className="bg-white rounded-lg shadow p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Contracts ({deal.contracts.length})
+              Contratos ({deal.contracts.length})
             </h3>
             {deal.contracts.length === 0 ? (
-              <p className="text-gray-500">No contracts sent yet</p>
+              <p className="text-gray-500">Nenhum contrato enviado ainda</p>
             ) : (
               <div className="space-y-3">
                 {deal.contracts.map((contract) => (

@@ -55,7 +55,7 @@ export default function SyncStatusPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to fetch sync status");
+        throw new Error(data.error || "Falha ao carregar status de sincronização");
       }
 
       setSyncStatus(data.syncStatus);
@@ -63,7 +63,7 @@ export default function SyncStatusPage() {
       setError(null);
     } catch (err) {
       console.error("Error fetching sync status:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch sync status");
+      setError(err instanceof Error ? err.message : "Falha ao carregar status de sincronização");
       setIsLoading(false);
     }
   };
@@ -89,14 +89,14 @@ export default function SyncStatusPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Sync failed");
+        throw new Error(data.error || "Falha na sincronização");
       }
 
       const customersCount = data.results?.customers?.total || 0;
       const invoicesCount = data.results?.invoices?.total || 0;
 
       setSyncResult(
-        `✓ Sync completed! Synced ${customersCount} customers and ${invoicesCount} invoices in ${Math.round(data.duration / 1000)}s`
+        `✓ Sincronização concluída! Sincronizados ${customersCount} clientes e ${invoicesCount} faturas em ${Math.round(data.duration / 1000)}s`
       );
 
       // Refresh status after sync
@@ -104,7 +104,7 @@ export default function SyncStatusPage() {
     } catch (err) {
       console.error("Error triggering sync:", err);
       setSyncResult(
-        `✗ Sync failed: ${err instanceof Error ? err.message : "Unknown error"}`
+        `✗ Falha na sincronização: ${err instanceof Error ? err.message : "Erro desconhecido"}`
       );
     } finally {
       setIsSyncing(false);
@@ -145,7 +145,7 @@ export default function SyncStatusPage() {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            <p className="text-gray-600">Loading sync status...</p>
+            <p className="text-gray-600">Carregando status de sincronização...</p>
           </div>
         </div>
       </div>
@@ -156,8 +156,8 @@ export default function SyncStatusPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <h2 className="text-lg font-semibold text-red-900 mb-2">Error</h2>
-          <p className="text-red-700">{error || "Failed to load sync status"}</p>
+          <h2 className="text-lg font-semibold text-red-900 mb-2">Erro</h2>
+          <p className="text-red-700">{error || "Falha ao carregar status de sincronização"}</p>
           <Button variant="primary" onClick={fetchSyncStatus} className="mt-4">
             Retry
           </Button>
@@ -175,15 +175,15 @@ export default function SyncStatusPage() {
       {/* Breadcrumb */}
       <div className="mb-4">
         <Link href="/dashboard/integrations" className="text-blue-600 hover:underline text-sm">
-          ← Back to Integrations
+          ← Voltar para Integrações
         </Link>
       </div>
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Integration Sync Status</h1>
+          <h1 className="text-3xl font-bold">Status de Sincronização das Integrações</h1>
           <p className="text-gray-600 mt-1">
-            Monitor the health of QuickBooks and Pipedrive integrations • {syncStatus.timeframe}
+            Monitore a saúde das integrações QuickBooks e Pipedrive • {syncStatus.timeframe}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -194,7 +194,7 @@ export default function SyncStatusPage() {
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded"
             />
-            Auto-refresh (30s)
+            Atualização automática (30s)
           </label>
           <Button variant="ghost" size="sm" onClick={fetchSyncStatus}>
             <svg
@@ -210,7 +210,7 @@ export default function SyncStatusPage() {
                 d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
               />
             </svg>
-            Refresh
+            Atualizar
           </Button>
           <Button
             variant="primary"
@@ -239,7 +239,7 @@ export default function SyncStatusPage() {
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                Syncing...
+                Sincronizando...
               </>
             ) : (
               <>
@@ -256,7 +256,7 @@ export default function SyncStatusPage() {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                   />
                 </svg>
-                Sync Now
+                Sincronizar Agora
               </>
             )}
           </Button>
@@ -313,7 +313,7 @@ export default function SyncStatusPage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold mb-1">
-              {overallHealthy ? "✓ All Systems Operational" : "⚠️ Some Issues Detected"}
+              {overallHealthy ? "✓ Todos os Sistemas Operacionais" : "⚠️ Alguns Problemas Detectados"}
             </h2>
             <p
               className={`text-sm ${
@@ -321,8 +321,8 @@ export default function SyncStatusPage() {
               }`}
             >
               {overallHealthy
-                ? "All integrations are syncing successfully"
-                : "Some integrations require attention"}
+                ? "Todas as integrações estão sincronizando com sucesso"
+                : "Algumas integrações precisam de atenção"}
             </p>
           </div>
           <StatusIndicator
@@ -344,25 +344,25 @@ export default function SyncStatusPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-600">Success Rate</div>
+                <div className="text-sm text-gray-600">Taxa de Sucesso</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {syncStatus.pipedrive.successRate}%
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Total Operations</div>
+                <div className="text-sm text-gray-600">Total de Operações</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {syncStatus.pipedrive.total}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Successful</div>
+                <div className="text-sm text-gray-600">Sucesso</div>
                 <div className="text-lg font-semibold text-green-600">
                   {syncStatus.pipedrive.successCount}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Errors</div>
+                <div className="text-sm text-gray-600">Erros</div>
                 <div className="text-lg font-semibold text-red-600">
                   {syncStatus.pipedrive.errorCount}
                 </div>
@@ -371,7 +371,7 @@ export default function SyncStatusPage() {
 
             {syncStatus.pipedrive.lastSync && (
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">Last Sync</div>
+                <div className="text-sm text-gray-600">Última Sincronização</div>
                 <div className="text-sm font-medium text-gray-900">
                   {new Date(syncStatus.pipedrive.lastSync).toLocaleString()}
                 </div>
@@ -384,7 +384,7 @@ export default function SyncStatusPage() {
               href="/dashboard/settings/integrations?source=pipedrive"
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
-              Configure Pipedrive →
+              Configurar Pipedrive →
             </Link>
           </div>
         </div>
@@ -399,31 +399,31 @@ export default function SyncStatusPage() {
 
             {!syncStatus.quickbooks.isAuthenticated && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-                ⚠️ QuickBooks is not authenticated. Please reconnect.
+                ⚠️ QuickBooks não está autenticado. Por favor, reconecte.
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <div className="text-sm text-gray-600">Success Rate</div>
+                <div className="text-sm text-gray-600">Taxa de Sucesso</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {syncStatus.quickbooks.successRate}%
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Total Operations</div>
+                <div className="text-sm text-gray-600">Total de Operações</div>
                 <div className="text-2xl font-bold text-gray-900">
                   {syncStatus.quickbooks.total}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Successful</div>
+                <div className="text-sm text-gray-600">Sucesso</div>
                 <div className="text-lg font-semibold text-green-600">
                   {syncStatus.quickbooks.successCount}
                 </div>
               </div>
               <div>
-                <div className="text-sm text-gray-600">Errors</div>
+                <div className="text-sm text-gray-600">Erros</div>
                 <div className="text-lg font-semibold text-red-600">
                   {syncStatus.quickbooks.errorCount}
                 </div>
@@ -432,7 +432,7 @@ export default function SyncStatusPage() {
 
             {syncStatus.quickbooks.lastSync && (
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="text-sm text-gray-600">Last Sync</div>
+                <div className="text-sm text-gray-600">Última Sincronização</div>
                 <div className="text-sm font-medium text-gray-900">
                   {new Date(syncStatus.quickbooks.lastSync).toLocaleString()}
                 </div>
@@ -445,7 +445,7 @@ export default function SyncStatusPage() {
               href="/dashboard/settings/integrations?source=quickbooks"
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
-              Configure QuickBooks →
+              Configurar QuickBooks →
             </Link>
           </div>
         </div>
@@ -454,35 +454,35 @@ export default function SyncStatusPage() {
       {/* Bulk Import Status */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold">Bulk Imports</h3>
+          <h3 className="text-xl font-semibold">Importações em Massa</h3>
           <Link href="/dashboard/integrations/bulk-import">
             <Button variant="ghost" size="sm">
-              Start New Import →
+              Nova Importação →
             </Button>
           </Link>
         </div>
 
         <div className="grid grid-cols-4 gap-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded">
-            <div className="text-sm text-blue-700">Running</div>
+            <div className="text-sm text-blue-700">Em Andamento</div>
             <div className="text-3xl font-bold text-blue-900">
               {syncStatus.bulkImports.running}
             </div>
           </div>
           <div className="p-4 bg-green-50 border border-green-200 rounded">
-            <div className="text-sm text-green-700">Completed</div>
+            <div className="text-sm text-green-700">Concluído</div>
             <div className="text-3xl font-bold text-green-900">
               {syncStatus.bulkImports.completed}
             </div>
           </div>
           <div className="p-4 bg-red-50 border border-red-200 rounded">
-            <div className="text-sm text-red-700">Failed</div>
+            <div className="text-sm text-red-700">Falhou</div>
             <div className="text-3xl font-bold text-red-900">
               {syncStatus.bulkImports.failed}
             </div>
           </div>
           <div className="p-4 bg-gray-50 border border-gray-200 rounded">
-            <div className="text-sm text-gray-700">Cancelled</div>
+            <div className="text-sm text-gray-700">Cancelado</div>
             <div className="text-3xl font-bold text-gray-900">
               {syncStatus.bulkImports.cancelled}
             </div>
@@ -494,7 +494,7 @@ export default function SyncStatusPage() {
       {syncStatus.recentErrors.length > 0 && (
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-xl font-semibold mb-4">
-            Recent Errors ({syncStatus.recentErrors.length})
+            Erros Recentes ({syncStatus.recentErrors.length})
           </h3>
 
           <div className="space-y-3">
@@ -527,10 +527,10 @@ export default function SyncStatusPage() {
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <div className="text-6xl mb-4">✓</div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            No Recent Errors
+            Sem Erros Recentes
           </h3>
           <p className="text-gray-600">
-            All sync operations completed successfully in the last 24 hours
+            Todas as operações de sincronização foram concluídas com sucesso nas últimas 24 horas
           </p>
         </div>
       )}

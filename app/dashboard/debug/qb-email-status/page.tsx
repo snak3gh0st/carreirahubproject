@@ -19,10 +19,10 @@ export default function QBEmailStatusPage() {
           const result = await res.json();
           setData(result);
         } else {
-          setError("Failed to fetch status");
+          setError("Falha ao buscar status");
         }
       } catch (err) {
-        setError("Error loading status");
+        setError("Erro ao carregar status");
       } finally {
         setLoading(false);
       }
@@ -34,7 +34,7 @@ export default function QBEmailStatusPage() {
   }, [session]);
 
   if (status === "loading") {
-    return <div className="p-8">Loading...</div>;
+    return <div className="p-8">Carregando...</div>;
   }
 
   if (!session) {
@@ -47,7 +47,7 @@ export default function QBEmailStatusPage() {
   }
 
   if (loading) {
-    return <div className="p-8">Loading email status...</div>;
+    return <div className="p-8">Carregando status de email...</div>;
   }
 
   if (error) {
@@ -63,9 +63,9 @@ export default function QBEmailStatusPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">QuickBooks Email Status</h1>
+        <h1 className="text-3xl font-bold mb-2">Status de Email do QuickBooks</h1>
         <p className="text-gray-600">
-          Verify if QuickBooks is sending invoice emails to customers
+          Verificar se o QuickBooks está enviando emails de fatura para os clientes
         </p>
       </div>
 
@@ -78,10 +78,10 @@ export default function QBEmailStatusPage() {
         }`}
       >
         <h2 className="text-xl font-bold mb-2">
-          {data.isSandbox ? "⚠️ SANDBOX MODE" : "✓ PRODUCTION MODE"}
+          {data.isSandbox ? "⚠️ MODO SANDBOX" : "✓ MODO PRODUÇÃO"}
         </h2>
         <p className="text-sm font-medium mb-2">
-          Environment: <code className="bg-white px-2 py-1 rounded">{data.environment}</code>
+          Ambiente: <code className="bg-white px-2 py-1 rounded">{data.environment}</code>
         </p>
         {data.isSandbox && (
           <div className="bg-orange-100 border border-orange-300 rounded p-4 mt-3">
@@ -128,7 +128,7 @@ export default function QBEmailStatusPage() {
         <div className="overflow-x-auto">
           {data.recentEmailLogs.length === 0 ? (
             <div className="p-6 text-center text-gray-500">
-              Nenhum log de email encontrado. Crie uma invoice para testar.
+              Nenhum log de email encontrado. Crie uma fatura para testar.
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
@@ -202,19 +202,19 @@ export default function QBEmailStatusPage() {
       {/* Recent Invoices */}
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="px-6 py-4 bg-gray-50 border-b">
-          <h2 className="text-lg font-semibold">Invoices Recentes (últimas 10)</h2>
+          <h2 className="text-lg font-semibold">Faturas Recentes (últimas 10)</h2>
         </div>
         <div className="overflow-x-auto">
           {data.recentInvoices.length === 0 ? (
             <div className="p-6 text-center text-gray-500">
-              Nenhuma invoice encontrada no QuickBooks.
+              Nenhuma fatura encontrada no QuickBooks.
             </div>
           ) : (
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Invoice #
+                    Fatura #
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     QB ID
@@ -308,7 +308,7 @@ export default function QBEmailStatusPage() {
               href="/dashboard/invoices/new"
               className="text-blue-600 hover:underline text-sm"
             >
-              Criar Nova Invoice
+              Criar Nova Fatura
             </Link>
             <Link
               href="/dashboard/invoices/approval-queue"

@@ -103,7 +103,7 @@ export default async function PaymentDetailPage({
           href="/dashboard/payments"
           className="text-blue-600 hover:underline mb-4 inline-block"
         >
-          ← Back to Payments
+          ← Voltar para Pagamentos
         </Link>
       </div>
 
@@ -129,7 +129,7 @@ export default async function PaymentDetailPage({
               </div>
               <div className="flex flex-col items-end gap-2">
                 <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                  Applied
+                  Aplicado
                 </span>
                 {isQBSynced && (
                   <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
@@ -151,7 +151,7 @@ export default async function PaymentDetailPage({
 
             <div className="border-t pt-4 grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500">Transaction Reference</p>
+                <p className="text-sm text-gray-500">Referência da Transação</p>
                 <div className="flex items-center gap-2 mt-1">
                   <p className="font-mono text-sm font-medium">
                     {payment.referenceNumber || payment.id.slice(0, 12)}
@@ -162,7 +162,7 @@ export default async function PaymentDetailPage({
                         navigator.clipboard.writeText(payment.referenceNumber!);
                       }}
                       className="text-gray-400 hover:text-gray-600"
-                      title="Copy reference"
+                      title="Copiar referência"
                     >
                       <svg
                         className="h-4 w-4"
@@ -182,9 +182,9 @@ export default async function PaymentDetailPage({
                 </div>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Payment Method</p>
+                <p className="text-sm text-gray-500">Método de Pagamento</p>
                 <p className="text-sm font-medium mt-1">
-                  {payment.paymentMethod || "N/A"}
+                  {payment.paymentMethod || "N/D"}
                 </p>
               </div>
               {isQBSynced && (
@@ -207,7 +207,7 @@ export default async function PaymentDetailPage({
 
             {payment.notes && (
               <div className="border-t pt-4 mt-4">
-                <p className="text-sm text-gray-500 mb-1">Private Notes</p>
+                <p className="text-sm text-gray-500 mb-1">Notas Privadas</p>
                 <p className="text-sm text-gray-700">{payment.notes}</p>
               </div>
             )}
@@ -215,10 +215,10 @@ export default async function PaymentDetailPage({
 
           {/* Payment Details Section */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Payment Details</h2>
+            <h2 className="text-lg font-semibold mb-4">Detalhes do Pagamento</h2>
             <div className="space-y-3">
               <div className="flex justify-between py-2 border-b">
-                <span className="text-sm text-gray-500">Payment Date</span>
+                <span className="text-sm text-gray-500">Data do Pagamento</span>
                 <span className="text-sm font-medium">
                   {new Date(payment.paymentDate).toLocaleString("en-US", {
                     year: "numeric",
@@ -230,19 +230,19 @@ export default async function PaymentDetailPage({
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b">
-                <span className="text-sm text-gray-500">Payment Method</span>
+                <span className="text-sm text-gray-500">Método de Pagamento</span>
                 <span className="text-sm font-medium">
-                  {payment.paymentMethod || "Not specified"}
+                  {payment.paymentMethod || "Não especificado"}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b">
-                <span className="text-sm text-gray-500">Transaction Reference</span>
+                <span className="text-sm text-gray-500">Referência da Transação</span>
                 <span className="text-sm font-mono">
                   {payment.referenceNumber || payment.id.slice(0, 12)}
                 </span>
               </div>
               <div className="flex justify-between py-2 border-b">
-                <span className="text-sm text-gray-500">Applied to Invoice</span>
+                <span className="text-sm text-gray-500">Aplicado à Fatura</span>
                 <Link
                   href={`/dashboard/invoices/${payment.invoice.id}`}
                   className="text-sm text-blue-600 hover:underline font-medium"
@@ -251,7 +251,7 @@ export default async function PaymentDetailPage({
                 </Link>
               </div>
               <div className="flex justify-between py-2 border-b">
-                <span className="text-sm text-gray-500">Created At</span>
+                <span className="text-sm text-gray-500">Criado Em</span>
                 <span className="text-sm">
                   {new Date(payment.createdAt).toLocaleString("en-US", {
                     year: "numeric",
@@ -263,7 +263,7 @@ export default async function PaymentDetailPage({
                 </span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-sm text-gray-500">Last Updated</span>
+                <span className="text-sm text-gray-500">Última Atualização</span>
                 <span className="text-sm">
                   {new Date(payment.updatedAt).toLocaleString("en-US", {
                     year: "numeric",
@@ -282,13 +282,13 @@ export default async function PaymentDetailPage({
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold">
-                  Recent Payments from {payment.customer.name}
+                  Pagamentos Recentes de {payment.customer.name}
                 </h2>
                 <Link
                   href={`/dashboard/customers/${payment.customer.id}`}
                   className="text-sm text-blue-600 hover:underline"
                 >
-                  View All →
+                  Ver Todos →
                 </Link>
               </div>
               <div className="overflow-x-auto">
@@ -296,16 +296,16 @@ export default async function PaymentDetailPage({
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                        Date
+                        Data
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                        Amount
+                        Valor
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                        Invoice #
+                        Fatura #
                       </th>
                       <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                        Method
+                        Método
                       </th>
                     </tr>
                   </thead>
@@ -328,7 +328,7 @@ export default async function PaymentDetailPage({
                           </Link>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          {recentPayment.paymentMethod || "N/A"}
+                          {recentPayment.paymentMethod || "N/D"}
                         </td>
                       </tr>
                     ))}
@@ -343,10 +343,10 @@ export default async function PaymentDetailPage({
         <div className="lg:col-span-1 space-y-6">
           {/* Invoice Information Card */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Invoice Information</h2>
+            <h2 className="text-lg font-semibold mb-4">Informações da Fatura</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Invoice Number</p>
+                <p className="text-sm text-gray-500">Número da Fatura</p>
                 <Link
                   href={`/dashboard/invoices/${payment.invoice.id}`}
                   className="text-blue-600 hover:underline font-medium"
@@ -355,25 +355,25 @@ export default async function PaymentDetailPage({
                 </Link>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Invoice Total</p>
+                <p className="text-sm text-gray-500">Total da Fatura</p>
                 <p className="text-lg font-semibold">
                   ${Number(payment.invoice.amount).toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Balance Before Payment</p>
+                <p className="text-sm text-gray-500">Saldo Antes do Pagamento</p>
                 <p className="text-sm font-medium text-orange-600">
                   ${invoiceBalanceBefore.toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Balance After Payment</p>
+                <p className="text-sm text-gray-500">Saldo Após Pagamento</p>
                 <p className="text-sm font-medium text-green-600">
                   ${invoiceBalanceAfter.toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Invoice Status</p>
+                <p className="text-sm text-gray-500">Status da Fatura</p>
                 <span
                   className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
                     payment.invoice.status === "PAID"
@@ -389,7 +389,7 @@ export default async function PaymentDetailPage({
                 </span>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Due Date</p>
+                <p className="text-sm text-gray-500">Data de Vencimento</p>
                 <p className="text-sm">
                   {new Date(payment.invoice.dueDate).toLocaleDateString()}
                 </p>
@@ -399,10 +399,10 @@ export default async function PaymentDetailPage({
 
           {/* Customer Information Card */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
+            <h2 className="text-lg font-semibold mb-4">Informações do Cliente</h2>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Customer Name</p>
+                <p className="text-sm text-gray-500">Nome do Cliente</p>
                 <Link
                   href={`/dashboard/customers/${payment.customer.id}`}
                   className="text-blue-600 hover:underline font-medium"
@@ -416,12 +416,12 @@ export default async function PaymentDetailPage({
               </div>
               {payment.customer.phone && (
                 <div>
-                  <p className="text-sm text-gray-500">Phone</p>
+                  <p className="text-sm text-gray-500">Telefone</p>
                   <p className="text-sm">{payment.customer.phone}</p>
                 </div>
               )}
               <div>
-                <p className="text-sm text-gray-500">Current Balance</p>
+                <p className="text-sm text-gray-500">Saldo Atual</p>
                 <p
                   className={`text-lg font-semibold ${
                     customerBalance > 0 ? "text-red-600" : "text-green-600"
@@ -431,13 +431,13 @@ export default async function PaymentDetailPage({
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Paid to Date</p>
+                <p className="text-sm text-gray-500">Total Pago até Hoje</p>
                 <p className="text-sm font-medium text-green-600">
                   ${customerTotalPaid.toLocaleString()}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Payment History</p>
+                <p className="text-sm text-gray-500">Histórico de Pagamentos</p>
                 <p className="text-sm">
                   {recentPayments.length + 1} payment{recentPayments.length !== 0 ? "s" : ""}
                 </p>
@@ -453,19 +453,19 @@ export default async function PaymentDetailPage({
           href="/dashboard/payments"
           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
         >
-          Back to Payments List
+          Voltar para Lista de Pagamentos
         </Link>
         <Link
           href={`/dashboard/invoices/${payment.invoice.id}`}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
-          View Invoice
+          Ver Fatura
         </Link>
         <Link
           href={`/dashboard/customers/${payment.customer.id}`}
           className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
         >
-          View Customer
+          Ver Cliente
         </Link>
       </div>
     </div>
