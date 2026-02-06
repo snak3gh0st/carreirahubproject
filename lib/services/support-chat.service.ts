@@ -16,8 +16,8 @@ function getOpenAI(): OpenAI {
   return _openai;
 }
 
-// Use gpt-4o-mini for support chat (~95% cheaper than gpt-4-turbo)
-const SUPPORT_AI_MODEL = process.env.SUPPORT_AI_MODEL || "gpt-4o-mini";
+// Use SUPPORT_AI_MODEL env var or fallback to gpt-3.5-turbo (cheap and widely available)
+const SUPPORT_AI_MODEL = process.env.SUPPORT_AI_MODEL || "gpt-3.5-turbo";
 
 // Cost protection limits
 const MAX_MESSAGES_PER_HOUR = 10;
