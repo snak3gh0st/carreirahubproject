@@ -203,7 +203,13 @@ class SupportChatService {
 
       return { response, shouldEscalate };
     } catch (error: any) {
-      console.error("[SupportChat] AI error:", error?.message || error, error?.status, error?.code);
+      console.error("[SupportChat] AI FULL ERROR:", JSON.stringify({
+        message: error?.message,
+        status: error?.status,
+        code: error?.code,
+        type: error?.type,
+        error: error?.error,
+      }));
       return {
         response:
           "Desculpe, tive um problema ao processar sua mensagem. Vou transferir voce para a equipe de suporte.",

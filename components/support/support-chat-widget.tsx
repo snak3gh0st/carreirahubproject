@@ -32,6 +32,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState<string>("AI_HANDLING");
   const [loading, setLoading] = useState(true);
+  const [started, setStarted] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -137,7 +138,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
   };
 
   const startConversation = () => {
-    setLoading(false);
+    setStarted(true);
     // Ticket will be created on first message
   };
 
@@ -159,7 +160,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
         <div className="flex items-center gap-2">
           {ticketId && (
             <button
-              onClick={() => { setTicketId(null); setMessages([]); setStatus("AI_HANDLING"); }}
+              onClick={() => { setTicketId(null); setMessages([]); setStatus("AI_HANDLING"); setStarted(false); }}
               className="text-gray-400 hover:text-white transition-colors"
               aria-label="Nova Conversa"
               title="Nova Conversa"
@@ -182,7 +183,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin h-6 w-6 border-2 border-gold-600 border-t-transparent rounded-full" />
         </div>
-      ) : !ticketId && messages.length === 0 ? (
+      ) : !ticketId && messages.length === 0 && !started ? (
         /* Welcome screen */
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           <HeadphonesIcon className="h-12 w-12 text-gold-500 mb-4" />
@@ -252,7 +253,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
       )}
 
       {/* Footer - input area */}
-      {(ticketId || (!loading && messages.length === 0)) && !["RESOLVED", "CLOSED"].includes(status) && (
+      {(ticketId || started) && !["RESOLVED", "CLOSED"].includes(status) && (
         <div className="border-t border-gray-200 px-3 py-2 flex-shrink-0">
           {/* Escalation button */}
           {status === "AI_HANDLING" && ticketId && (
@@ -293,7 +294,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
             Este ticket foi {status === "RESOLVED" ? "resolvido" : "encerrado"}.
           </p>
           <button
-            onClick={() => { setTicketId(null); setMessages([]); setStatus("AI_HANDLING"); }}
+            onClick={() => { setTicketId(null); setMessages([]); setStatus("AI_HANDLING"); setStarted(false); }}
             className="bg-gold-600 hover:bg-gold-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
           >
             <Plus className="h-3.5 w-3.5" />
