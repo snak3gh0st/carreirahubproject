@@ -43,6 +43,14 @@
     {
       "path": "/api/cron/send-scheduled-invoices",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/daily-ar-digest",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/overdue-invoice-alerts",
+      "schedule": "0 */6 * * *"
     }
   ]
 }

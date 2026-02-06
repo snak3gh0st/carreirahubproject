@@ -655,15 +655,17 @@ export async function GET(request: NextRequest) {
         invoiced: data.invoiced,
       }));
 
-    // Customer Acquisition Trend
-    const newCustomersByMonth = await prisma.customer.groupBy({
-      by: ["createdAt"],
+    // Customer Acquisition Trend - fetch customers and group manually
+    const customersForAcquisition = await prisma.customer.findMany({
       where: {
         createdAt: { gte: chartStartDate, lte: chartEndDate },
       },
-      _count: { id: true },
+      select: {
+        createdAt: true,
+      },
     });
 
+    // Initialize all months with 0
     const acquisitionByMonthMap = new Map<string, number>();
     eachMonthOfInterval({
       start: chartStartDate,
@@ -673,10 +675,11 @@ export async function GET(request: NextRequest) {
       acquisitionByMonthMap.set(key, 0);
     });
 
-    newCustomersByMonth.forEach((c) => {
-      const key = format(startOfMonth(parseUtcDate(c.createdAt)), "yyyy-MM");
+    // Group customers by month
+    customersForAcquisition.forEach((customer) => {
+      const key = format(startOfMonth(parseUtcDate(customer.createdAt)), "yyyy-MM");
       const existing = acquisitionByMonthMap.get(key) || 0;
-      acquisitionByMonthMap.set(key, existing + c._count.id);
+      acquisitionByMonthMap.set(key, existing + 1);
     });
 
     const customerAcquisition = Array.from(acquisitionByMonthMap.entries())
