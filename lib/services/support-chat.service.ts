@@ -169,13 +169,63 @@ class SupportChatService {
   }
 
   async escalateTicket(ticketId: string, reason?: string): Promise<SupportTicket> {
-    return prisma.supportTicket.update({
+    const ticket = await prisma.supportTicket.update({
       where: { id: ticketId },
       data: {
         status: "ESCALATED",
         escalatedAt: new Date(),
       },
+      include: {
+        user: { select: { name: true, email: true } },
+        messages: { orderBy: { createdAt: "desc" }, take: 3 },
+      },
     });
+
+    // Send email notification to Sigma team
+    const SUPPORT_EMAIL = process.env.EMAIL_SUPPORT_TEAM || "paulo@sigmaintel.io";
+    const APP_URL = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const userName = (ticket as any).user?.name || "Usuário";
+    const userEmail = (ticket as any).user?.email || "";
+    const lastMessages = (ticket as any).messages
+      ?.map((m: any) => `<b>${m.role === "USER" ? userName : "AI"}:</b> ${m.content}`)
+      .reverse()
+      .join("<br/>") || "";
+
+    this.sendEscalationEmail(SUPPORT_EMAIL, `🚨 Novo Ticket de Suporte Escalado - ${userName}`, `
+<!DOCTYPE html>
+<html><head><style>
+  body { font-family: Arial, sans-serif; color: #333; }
+  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+  .header { background: #f59e0b; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+  .content { background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; }
+  .messages { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; }
+  .button { display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+  .footer { text-align: center; padding: 15px; font-size: 12px; color: #6b7280; }
+</style></head>
+<body><div class="container">
+  <div class="header">
+    <h1 style="margin:0;">🚨 Ticket de Suporte Escalado</h1>
+  </div>
+  <div class="content">
+    <p><strong>Usuário:</strong> ${userName} (${userEmail})</p>
+    <p><strong>Motivo:</strong> ${reason || "Solicitação do usuário"}</p>
+    <p><strong>Ticket:</strong> ${ticketId}</p>
+    <p><strong>Assunto:</strong> ${ticket.subject || "Sem assunto"}</p>
+
+    <div class="messages">
+      <h3 style="margin-top:0;">Últimas Mensagens:</h3>
+      ${lastMessages}
+    </div>
+
+    <a href="${APP_URL}/dashboard/support/${ticketId}" class="button">Responder Ticket</a>
+  </div>
+  <div class="footer">
+    <p>Carreira USA Hub - Suporte</p>
+  </div>
+</div></body></html>`
+    ).catch((err: any) => console.error("[SupportChat] Email notification failed:", err));
+
+    return ticket;
   }
 
   async sendAgentReply(
@@ -199,6 +249,29 @@ class SupportChatService {
         content,
       },
     });
+  }
+
+  private async sendEscalationEmail(to: string, subject: string, html: string): Promise<void> {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+      console.log(`[SupportChat] Resend not configured, skipping email to ${to}`);
+      return;
+    }
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        from: process.env.EMAIL_FROM || "noreply@carreirausa.com",
+        to: [to],
+        subject,
+        html,
+      }),
+    });
+    if (!res.ok) {
+      console.error("[SupportChat] Email send failed:", await res.text());
+    } else {
+      console.log("[SupportChat] Escalation email sent to", to);
+    }
   }
 
   async getTicketsByUser(userId: string): Promise<SupportTicket[]> {
