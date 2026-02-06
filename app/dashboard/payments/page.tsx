@@ -765,23 +765,6 @@ export default async function PaymentsPage({
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/dashboard/invoices/${payment.invoice.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-gold-600 hover:text-gold-700 font-medium"
-                        >
-                          {payment.invoice.invoiceNumber || payment.invoice.id.slice(0, 8)}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900 tabular-nums">
-                        ${Number(payment.amount).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={methodVariant as any}>
-                          {payment.paymentMethod || "N/A"}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
                         {isQBSynced && <Badge variant="success">QuickBooks</Badge>}
                         {isStripeSynced && <Badge variant="info">Stripe</Badge>}
                         {isManual && <Badge variant="default">Manual</Badge>}
