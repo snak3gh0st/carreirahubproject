@@ -190,6 +190,15 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
         body: JSON.stringify({ status: "ESCALATED" }),
       });
       setStatus("ESCALATED");
+      // Add feedback message locally so user sees confirmation immediately
+      const feedbackMsg: Message = {
+        id: `escalate-${Date.now()}`,
+        role: "AI",
+        content:
+          "Sua conversa foi transferida para a equipe Sigma. Um membro da equipe vai responder em breve. Voce sera notificado aqui mesmo quando houver uma resposta. Obrigado pela paciencia! 🙏",
+        createdAt: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, feedbackMsg]);
     } catch (error) {
       console.error("Failed to escalate:", error);
     }
