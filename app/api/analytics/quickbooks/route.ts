@@ -31,6 +31,9 @@ export const dynamic = "force-dynamic";
  * - Customer Analytics: active/new customers, avgLTV, segments, geography
  * - Payment Analytics: totals by method, refunds, reconciliation
  *
+ * Uses Payment table when available, falls back to Invoice fields (amountPaid, paidAt, paymentMethod)
+ * for revenue metrics when Payment table is empty.
+ *
  * Query Parameters:
  * - dateRange: last7 | last30 | last90 | thisYear | allTime | custom
  * - from: ISO date string (for custom range)
@@ -100,24 +103,46 @@ export async function GET(request: NextRequest) {
       ? { gte: startDate, lte: endDate }
       : undefined;
 
+    // Detect if Payment table has data — drives fallback logic throughout
+    const paymentCount = await prisma.payment.count();
+    const hasPayments = paymentCount > 0;
+
     // Calculate chart data range
     let chartStartDate = startDate || subMonths(startOfMonth(now), 11);
     let chartEndDate = endDate || endOfMonth(now);
 
-    // For "allTime", find actual min/max dates from payments
+    // For "allTime", find actual min/max dates from payments or paid invoices
     if (dateRange === "allTime") {
-      const oldestPayment = await prisma.payment.findFirst({
-        orderBy: { paymentDate: "asc" },
-        select: { paymentDate: true },
-      });
-      const newestPayment = await prisma.payment.findFirst({
-        orderBy: { paymentDate: "desc" },
-        select: { paymentDate: true },
-      });
+      if (hasPayments) {
+        const oldestPayment = await prisma.payment.findFirst({
+          orderBy: { paymentDate: "asc" },
+          select: { paymentDate: true },
+        });
+        const newestPayment = await prisma.payment.findFirst({
+          orderBy: { paymentDate: "desc" },
+          select: { paymentDate: true },
+        });
 
-      if (oldestPayment && newestPayment) {
-        chartStartDate = startOfMonth(parseUtcDate(oldestPayment.paymentDate));
-        chartEndDate = endOfMonth(parseUtcDate(newestPayment.paymentDate));
+        if (oldestPayment && newestPayment) {
+          chartStartDate = startOfMonth(parseUtcDate(oldestPayment.paymentDate));
+          chartEndDate = endOfMonth(parseUtcDate(newestPayment.paymentDate));
+        }
+      } else {
+        const oldestPaidInvoice = await prisma.invoice.findFirst({
+          where: { status: "PAID", paidAt: { not: null } },
+          orderBy: { paidAt: "asc" },
+          select: { paidAt: true },
+        });
+        const newestPaidInvoice = await prisma.invoice.findFirst({
+          where: { status: "PAID", paidAt: { not: null } },
+          orderBy: { paidAt: "desc" },
+          select: { paidAt: true },
+        });
+
+        if (oldestPaidInvoice?.paidAt && newestPaidInvoice?.paidAt) {
+          chartStartDate = startOfMonth(parseUtcDate(oldestPaidInvoice.paidAt));
+          chartEndDate = endOfMonth(parseUtcDate(newestPaidInvoice.paidAt));
+        }
       }
     }
 
@@ -125,17 +150,30 @@ export async function GET(request: NextRequest) {
     // FINANCIAL KPIs
     // ====================
 
-    // Total Revenue (all payments received)
-    const totalRevenueResult = await prisma.payment.aggregate({
-      where: {
-        ...(dateFilter && { paymentDate: dateFilter }),
-      },
-      _sum: { amount: true },
-    });
+    // Total Revenue — from Payment.amount or Invoice.amountPaid (PAID invoices)
+    let totalRevenueInRange: number;
 
-    // MRR - Monthly Recurring Revenue (average of last 3 months)
-    // FIXED: Now uses dateFilter to calculate MRR based on payments in range
-    const totalRevenueInRange = Number(totalRevenueResult._sum.amount || 0);
+    if (hasPayments) {
+      const totalRevenueResult = await prisma.payment.aggregate({
+        where: {
+          ...(dateFilter && { paymentDate: dateFilter }),
+        },
+        _sum: { amount: true },
+      });
+      totalRevenueInRange = Number(totalRevenueResult._sum.amount || 0);
+    } else {
+      const totalRevenueResult = await prisma.invoice.aggregate({
+        where: {
+          status: "PAID",
+          amountPaid: { not: null },
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
+        _sum: { amountPaid: true },
+      });
+      totalRevenueInRange = Number(totalRevenueResult._sum.amountPaid || 0);
+    }
+
+    // MRR - Monthly Recurring Revenue (average per month in range)
     const monthsInRange = startDate && endDate
       ? Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30)))
       : 3;
@@ -147,12 +185,12 @@ export async function GET(request: NextRequest) {
     // Cash Flow - Payments received vs Invoiced in period
     const invoicedResult = await prisma.invoice.aggregate({
       where: {
-        ...(dateFilter && { createdAt: dateFilter }),
+        ...(dateFilter && { dueDate: dateFilter }),
         status: { notIn: ["DRAFT", "VOID"] },
       },
       _sum: { amount: true },
     });
-    const cashFlow = Number(totalRevenueResult._sum.amount || 0);
+    const cashFlow = totalRevenueInRange;
     const invoicedAmount = Number(invoicedResult._sum.amount || 0);
 
     // Collection Rate
@@ -186,7 +224,6 @@ export async function GET(request: NextRequest) {
     const overdueRate = totalInvoiced > 0 ? (overdueAmount / totalInvoiced) * 100 : 0;
 
     // Average Invoice Value
-    // FIXED: Added dateFilter to filter by createdAt in date range
     const avgInvoiceValueResult = await prisma.invoice.aggregate({
       where: {
         status: { notIn: ["DRAFT", "VOID"] },
@@ -209,7 +246,6 @@ export async function GET(request: NextRequest) {
     });
 
     // Invoice Aging Buckets
-    // FIXED: Added dateFilter to filter invoices by createdAt in date range
     const nowDate = new Date();
     const agingResult = await prisma.invoice.findMany({
       where: {
@@ -254,7 +290,6 @@ export async function GET(request: NextRequest) {
     });
 
     // Average Days to Payment
-    // FIXED: Added dateFilter to filter by createdAt in date range
     const paidInvoices = await prisma.invoice.findMany({
       where: {
         status: "PAID",
@@ -283,7 +318,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Invoice Volume Trends
-    // FIXED: Now uses dateFilter instead of fixed 12 months
     const invoiceTrendStartDate = startDate || subMonths(startOfMonth(now), 11);
     const invoicesByMonth = await prisma.invoice.groupBy({
       by: ["createdAt"],
@@ -315,21 +349,36 @@ export async function GET(request: NextRequest) {
     });
     const newCustomers = newCustomersResult;
 
-    // Average LTV
-    // FIXED: Now calculates from payments in dateFilter instead of all-time qbTotalPaid
-    const paymentsForLtv = await prisma.payment.findMany({
-      where: {
-        ...(dateFilter && { paymentDate: dateFilter }),
-      },
-      select: { customerId: true, amount: true },
-    });
-
-    // Aggregate payments by customer
+    // Average LTV — from Payment or Invoice (paid) data
     const customerPayments = new Map<string, number>();
-    paymentsForLtv.forEach((p) => {
-      const current = customerPayments.get(p.customerId) || 0;
-      customerPayments.set(p.customerId, current + Number(p.amount));
-    });
+
+    if (hasPayments) {
+      const paymentsForLtv = await prisma.payment.findMany({
+        where: {
+          ...(dateFilter && { paymentDate: dateFilter }),
+        },
+        select: { customerId: true, amount: true },
+      });
+
+      paymentsForLtv.forEach((p) => {
+        const current = customerPayments.get(p.customerId) || 0;
+        customerPayments.set(p.customerId, current + Number(p.amount));
+      });
+    } else {
+      const invoicesForLtv = await prisma.invoice.findMany({
+        where: {
+          status: "PAID",
+          amountPaid: { not: null },
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
+        select: { customerId: true, amountPaid: true },
+      });
+
+      invoicesForLtv.forEach((inv) => {
+        const current = customerPayments.get(inv.customerId) || 0;
+        customerPayments.set(inv.customerId, current + Number(inv.amountPaid || 0));
+      });
+    }
 
     // Get customer details for segments and top customers
     const customerIds = Array.from(customerPayments.keys());
@@ -340,7 +389,7 @@ export async function GET(request: NextRequest) {
         })
       : [];
 
-    // Update with actual paid amounts from date-filtered payments
+    // Update with actual paid amounts from date-filtered data
     const customersWithLtv = customersWithPayments.map((c) => ({
       ...c,
       totalPaidInRange: customerPayments.get(c.id) || 0,
@@ -353,7 +402,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Customer Segments by Revenue
-    // FIXED: Now uses totalPaidInRange from date-filtered payments
     const segments = {
       "Premium ($10k+)": { count: 0, revenue: 0 },
       "High ($5k-10k)": { count: 0, revenue: 0 },
@@ -392,27 +440,66 @@ export async function GET(request: NextRequest) {
     // PAYMENT ANALYTICS
     // ====================
 
-    // Total Payments
-    const totalPaymentsResult = await prisma.payment.aggregate({
-      where: dateFilter ? { paymentDate: dateFilter } : undefined,
-      _count: { id: true },
-      _sum: { amount: true },
-    });
+    // Total Payments, Payments by Method, Avg Payment Amount — from Payment or Invoice
+    let totalPaymentsCount: number;
+    let paymentsByMethod: { method: string; count: number; amount: number }[];
+    let avgPaymentAmount: number;
 
-    // Payments by Method
-    const paymentsByMethodResult = await prisma.payment.groupBy({
-      by: ["paymentMethod"],
-      where: dateFilter ? { paymentDate: dateFilter } : undefined,
-      _count: { id: true },
-      _sum: { amount: true },
-    });
+    if (hasPayments) {
+      const totalPaymentsResult = await prisma.payment.aggregate({
+        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        _count: { id: true },
+        _sum: { amount: true },
+      });
+      totalPaymentsCount = totalPaymentsResult._count.id;
 
-    // Average Payment Amount
-    const avgPaymentAmountResult = await prisma.payment.aggregate({
-      where: dateFilter ? { paymentDate: dateFilter } : undefined,
-      _avg: { amount: true },
-    });
-    const avgPaymentAmount = Number(avgPaymentAmountResult._avg.amount || 0);
+      const paymentsByMethodResult = await prisma.payment.groupBy({
+        by: ["paymentMethod"],
+        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        _count: { id: true },
+        _sum: { amount: true },
+      });
+      paymentsByMethod = paymentsByMethodResult.map((item) => ({
+        method: item.paymentMethod || "Unknown",
+        count: item._count.id,
+        amount: Number(item._sum.amount || 0),
+      }));
+
+      const avgPaymentAmountResult = await prisma.payment.aggregate({
+        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        _avg: { amount: true },
+      });
+      avgPaymentAmount = Number(avgPaymentAmountResult._avg.amount || 0);
+    } else {
+      const totalPaidInvoicesResult = await prisma.invoice.aggregate({
+        where: {
+          status: "PAID",
+          amountPaid: { not: null },
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
+        _count: { id: true },
+        _sum: { amountPaid: true },
+        _avg: { amountPaid: true },
+      });
+      totalPaymentsCount = totalPaidInvoicesResult._count.id;
+      avgPaymentAmount = Number(totalPaidInvoicesResult._avg.amountPaid || 0);
+
+      const invoicesByMethodResult = await prisma.invoice.groupBy({
+        by: ["paymentMethod"],
+        where: {
+          status: "PAID",
+          amountPaid: { not: null },
+          ...(dateFilter && { paidAt: dateFilter }),
+        },
+        _count: { id: true },
+        _sum: { amountPaid: true },
+      });
+      paymentsByMethod = invoicesByMethodResult.map((item) => ({
+        method: item.paymentMethod || "Unknown",
+        count: item._count.id,
+        amount: Number(item._sum.amountPaid || 0),
+      }));
+    }
 
     // Refunds
     const refundsResult = await prisma.invoice.aggregate({
@@ -428,11 +515,7 @@ export async function GET(request: NextRequest) {
     // CHART DATA
     // ====================
 
-    // ====================
-    // CHART DATA
-    // ====================
-
-    // Revenue Trend chart data is already calculated above (chartStartDate/chartEndDate)
+    // Revenue Trend chart data
     const revenueByMonthMap = new Map<string, { revenue: number; invoices: number }>();
     eachMonthOfInterval({
       start: chartStartDate,
@@ -442,19 +525,43 @@ export async function GET(request: NextRequest) {
       revenueByMonthMap.set(key, { revenue: 0, invoices: 0 });
     });
 
-    // Add payment data - uses chartStartDate to respect dateFilter
-    const paymentsForTrend = await prisma.payment.findMany({
-      where: {
-        paymentDate: { gte: chartStartDate, lte: chartEndDate },
-      },
-      select: { paymentDate: true, amount: true },
-    });
+    // Revenue trend data source — Payment or paid Invoice
+    type TrendItem = { date: Date; amount: number };
+    let trendData: TrendItem[];
 
-    paymentsForTrend.forEach((p) => {
-      const key = format(startOfMonth(parseUtcDate(p.paymentDate)), "yyyy-MM");
+    if (hasPayments) {
+      const paymentsForTrend = await prisma.payment.findMany({
+        where: {
+          paymentDate: { gte: chartStartDate, lte: chartEndDate },
+        },
+        select: { paymentDate: true, amount: true },
+      });
+      trendData = paymentsForTrend.map((p) => ({
+        date: parseUtcDate(p.paymentDate),
+        amount: Number(p.amount),
+      }));
+    } else {
+      const invoicesForTrend = await prisma.invoice.findMany({
+        where: {
+          status: "PAID",
+          amountPaid: { not: null },
+          paidAt: { gte: chartStartDate, lte: chartEndDate },
+        },
+        select: { paidAt: true, amountPaid: true },
+      });
+      trendData = invoicesForTrend
+        .filter((inv): inv is typeof inv & { paidAt: Date; amountPaid: NonNullable<typeof inv.amountPaid> } => inv.paidAt !== null && inv.amountPaid !== null)
+        .map((inv) => ({
+          date: parseUtcDate(inv.paidAt),
+          amount: Number(inv.amountPaid),
+        }));
+    }
+
+    trendData.forEach((item) => {
+      const key = format(startOfMonth(item.date), "yyyy-MM");
       const existing = revenueByMonthMap.get(key) || { revenue: 0, invoices: 0 };
       revenueByMonthMap.set(key, {
-        revenue: existing.revenue + Number(p.amount),
+        revenue: existing.revenue + item.amount,
         invoices: existing.invoices + 1,
       });
     });
@@ -481,7 +588,6 @@ export async function GET(request: NextRequest) {
     }));
 
     // Top Customers by Revenue
-    // FIXED: Now uses totalPaidInRange from date-filtered payments
     const topCustomers = customersWithLtv
       .sort((a, b) => b.totalPaidInRange - a.totalPaidInRange)
       .slice(0, 10)
@@ -489,13 +595,6 @@ export async function GET(request: NextRequest) {
         name: c.name,
         revenue: c.totalPaidInRange,
       }));
-
-    // Payment Methods for Chart
-    const paymentMethods = paymentsByMethodResult.map((item) => ({
-      method: item.paymentMethod || "Unknown",
-      count: item._count.id,
-      amount: Number(item._sum.amount || 0),
-    }));
 
     // Customer Segments for Chart
     const customerSegments = Object.entries(segments).map(([segment, data]) => ({
@@ -511,7 +610,7 @@ export async function GET(request: NextRequest) {
       revenue: Number(item._sum.qbTotalPaid || 0),
     }));
 
-    // Cash Flow Trend (Area Chart) - respects dateFilter when set
+    // Cash Flow Trend (Area Chart)
     const cashFlowByMonthMap = new Map<string, { received: number; invoiced: number }>();
     eachMonthOfInterval({
       start: chartStartDate,
@@ -521,17 +620,17 @@ export async function GET(request: NextRequest) {
       cashFlowByMonthMap.set(key, { received: 0, invoiced: 0 });
     });
 
-    // Add invoiced data - uses chartStartDate/chartEndDate
+    // Add invoiced data
     const invoicesForCashFlow = await prisma.invoice.findMany({
       where: {
-        createdAt: { gte: chartStartDate, lte: chartEndDate },
+        dueDate: { gte: chartStartDate, lte: chartEndDate },
         status: { notIn: ["DRAFT", "VOID"] },
       },
-      select: { createdAt: true, amount: true, status: true },
+      select: { dueDate: true, amount: true, status: true },
     });
 
     invoicesForCashFlow.forEach((inv) => {
-      const key = format(startOfMonth(parseUtcDate(inv.createdAt)), "yyyy-MM");
+      const key = format(startOfMonth(parseUtcDate(inv.dueDate)), "yyyy-MM");
       const existing = cashFlowByMonthMap.get(key) || { received: 0, invoiced: 0 };
       cashFlowByMonthMap.set(key, {
         received: existing.received,
@@ -539,12 +638,12 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // Add received data (payments)
-    paymentsForTrend.forEach((p) => {
-      const key = format(startOfMonth(parseUtcDate(p.paymentDate)), "yyyy-MM");
+    // Add received data — reuse trendData (payments or paid invoices)
+    trendData.forEach((item) => {
+      const key = format(startOfMonth(item.date), "yyyy-MM");
       const existing = cashFlowByMonthMap.get(key) || { received: 0, invoiced: 0 };
       cashFlowByMonthMap.set(key, {
-        received: existing.received + Number(p.amount),
+        received: existing.received + item.amount,
         invoiced: existing.invoiced,
       });
     });
@@ -556,7 +655,7 @@ export async function GET(request: NextRequest) {
         invoiced: data.invoiced,
       }));
 
-    // Customer Acquisition Trend - respects dateFilter when set
+    // Customer Acquisition Trend
     const newCustomersByMonth = await prisma.customer.groupBy({
       by: ["createdAt"],
       where: {
@@ -618,7 +717,7 @@ export async function GET(request: NextRequest) {
         totalCustomers: customersWithLtv.length,
 
         // Payment
-        totalPayments: totalPaymentsResult._count.id,
+        totalPayments: totalPaymentsCount,
         avgPaymentAmount,
         refundsCount: refundsResult._count.id,
         refundsAmount: Number(refundsResult._sum.amountRefunded || 0),
@@ -628,7 +727,7 @@ export async function GET(request: NextRequest) {
         invoiceStatus,
         invoiceAging,
         topCustomers,
-        paymentMethods,
+        paymentMethods: paymentsByMethod,
         customerSegments,
         geographicDist,
         cashFlow: cashFlowChartData,

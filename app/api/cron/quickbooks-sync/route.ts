@@ -42,7 +42,7 @@ async function handleSync(request: NextRequest) {
     const options = {
       syncCustomers: body.syncCustomers !== false, // Padrão: true
       syncInvoices: body.syncInvoices !== false, // Padrão: true
-      syncPayments: body.syncPayments || false,
+      syncPayments: body.syncPayments !== false, // Padrão: true
       syncItems: body.syncItems || false,
       maxResults: body.maxResults || 1000,
       incremental: body.incremental !== false, // Padrão: true (sincronização incremental)

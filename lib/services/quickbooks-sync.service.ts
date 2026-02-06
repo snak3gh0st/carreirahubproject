@@ -873,7 +873,7 @@ export class QuickBooksSyncService {
       for (const qbPayment of qbPayments) {
         try {
           const qbPaymentId = qbPayment.Id;
-          const invoiceRef = qbPayment.Line?.[0]?.LinkedTxns?.[0]?.txnId;
+          const invoiceRef = qbPayment.Line?.[0]?.LinkedTxn?.[0]?.TxnId;
 
           if (!invoiceRef) {
             console.warn(`[QB Sync] Payment ${qbPaymentId} has no linked invoice`);
