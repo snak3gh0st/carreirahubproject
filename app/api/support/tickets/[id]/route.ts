@@ -77,8 +77,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Status invalido" }, { status: 400 });
     }
 
+    // Use service method for escalation so email notification is sent
+    if (status === "ESCALATED") {
+      const ticket = await supportChatService.escalateTicket(params.id, "Solicitacao manual do usuario");
+      return NextResponse.json({ ticket });
+    }
+
     const data: any = { status };
-    if (status === "ESCALATED") data.escalatedAt = new Date();
     if (status === "RESOLVED") data.resolvedAt = new Date();
 
     const ticket = await prisma.supportTicket.update({
