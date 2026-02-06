@@ -33,6 +33,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
   const [status, setStatus] = useState<string>("AI_HANDLING");
   const [loading, setLoading] = useState(true);
   const [started, setStarted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -98,7 +99,18 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
     if (!input.trim() || sending) return;
     const msg = input.trim();
     setInput("");
+    setError(null);
     setSending(true);
+
+    // Optimistic UI: show user message immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMsg: Message = {
+      id: tempId,
+      role: "USER",
+      content: msg,
+      createdAt: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
       const res = await fetch("/api/support/chat", {
@@ -107,6 +119,14 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
         body: JSON.stringify({ ticketId, message: msg }),
       });
       const data = await res.json();
+
+      if (!res.ok) {
+        // Remove optimistic message on error
+        setMessages((prev) => prev.filter((m) => m.id !== tempId));
+        setError(data.error || "Erro ao enviar mensagem. Tente novamente.");
+        return;
+      }
+
       if (data.ticketId) {
         setTicketId(data.ticketId);
       }
@@ -114,10 +134,17 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
         setStatus(data.status);
       }
       if (data.messages) {
-        setMessages((prev) => [...prev, ...data.messages]);
+        // Replace optimistic user message with real messages from API
+        setMessages((prev) => [
+          ...prev.filter((m) => m.id !== tempId),
+          ...data.messages,
+        ]);
       }
-    } catch (error) {
-      console.error("Failed to send message:", error);
+    } catch (err) {
+      console.error("Failed to send message:", err);
+      // Remove optimistic message on network error
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
+      setError("Falha na conexao. Verifique sua internet e tente novamente.");
     } finally {
       setSending(false);
     }
@@ -241,6 +268,13 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
               </div>
             </div>
           ))}
+          {error && (
+            <div className="flex justify-center">
+              <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-xs text-center max-w-[90%]">
+                {error}
+              </div>
+            </div>
+          )}
           {sending && (
             <div className="flex justify-start">
               <div className="bg-gray-100 px-3 py-2 rounded-lg text-sm text-gray-400">
