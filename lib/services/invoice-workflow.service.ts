@@ -315,7 +315,7 @@ export class InvoiceWorkflowService {
     // Enviar invoice por email
     if (customer.email) {
       await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
-      
+
       // Trigger contract workflow with delay (fire-and-forget)
       // This spawns async work, doesn't block response
       const { contractWorkflowService } = await import('@/lib/services/contract-workflow.service');
@@ -324,6 +324,15 @@ export class InvoiceWorkflowService {
         // Don't fail invoice send if contract scheduling fails
         // Finance team can manually trigger contract via UI if needed
       });
+    }
+
+    // Sync invoice to Pipedrive deal (await to prevent timing issues)
+    try {
+      await this.syncInvoiceToPipedriveDeal(invoice.id);
+      console.log(`[INVOICE_WORKFLOW] Invoice ${invoice.id} synced to Pipedrive`);
+    } catch (syncError) {
+      console.error(`[INVOICE_WORKFLOW] Failed to sync invoice ${invoice.id} to Pipedrive:`, syncError);
+      // Don't fail invoice creation if Pipedrive sync fails - can be retried later
     }
 
     return invoice.id;

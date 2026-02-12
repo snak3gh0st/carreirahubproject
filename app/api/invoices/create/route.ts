@@ -648,12 +648,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // NEW: Sync first invoice to Pipedrive deal (fire-and-forget)
+    // NEW: Sync first invoice to Pipedrive deal (await to prevent Vercel container shutdown)
+    // CRITICAL: Must await before response to avoid socket close errors in serverless
     if (invoiceCountToCreate > 0 && invoices[0]) {
       const firstInvoice = invoices[0];
-      invoiceWorkflowService.syncInvoiceToPipedriveDeal(firstInvoice.id).catch((error) => {
-        console.error("[INVOICE_CREATE] Pipedrive sync failed (non-blocking):", error);
-      });
+      try {
+        await invoiceWorkflowService.syncInvoiceToPipedriveDeal(firstInvoice.id);
+        console.log("[INVOICE_CREATE] ✓ Pipedrive sync completed successfully");
+      } catch (error) {
+        // Log but don't fail invoice creation - sync can be retried later
+        console.error("[INVOICE_CREATE] ✗ Pipedrive sync failed (non-blocking):", error);
+      }
     }
 
     return NextResponse.json({
