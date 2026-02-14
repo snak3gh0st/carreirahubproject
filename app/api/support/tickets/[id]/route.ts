@@ -79,7 +79,19 @@ export async function PATCH(
 
     // Use service method for escalation so email notification is sent
     if (status === "ESCALATED") {
-      const ticket = await supportChatService.escalateTicket(params.id, "Solicitacao manual do usuario");
+      const userMessage = body.message?.trim();
+      // Save user's escalation message in the ticket chat history
+      if (userMessage) {
+        await prisma.supportMessage.create({
+          data: {
+            ticketId: params.id,
+            role: "USER",
+            content: userMessage,
+          },
+        });
+      }
+      const reason = userMessage || "Solicitacao manual do usuario";
+      const ticket = await supportChatService.escalateTicket(params.id, reason);
       return NextResponse.json({ ticket });
     }
 

@@ -57,6 +57,8 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
   const [status, setStatus] = useState<string>("AI_HANDLING");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showEscalationInput, setShowEscalationInput] = useState(false);
+  const [escalationMessage, setEscalationMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -187,9 +189,11 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
       await fetch(`/api/support/tickets/${ticketId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "ESCALATED" }),
+        body: JSON.stringify({ status: "ESCALATED", message: escalationMessage.trim() || undefined }),
       });
       setStatus("ESCALATED");
+      setShowEscalationInput(false);
+      setEscalationMessage("");
       // Add feedback message locally so user sees confirmation immediately
       const feedbackMsg: Message = {
         id: `escalate-${Date.now()}`,
@@ -459,15 +463,41 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
       {/* Footer - input area (chat view only) */}
       {view === "chat" && (!ticketId || !["RESOLVED", "CLOSED"].includes(status)) && (
         <div className="border-t border-gray-200 px-3 py-2 flex-shrink-0">
-          {/* Escalation button */}
-          {status === "AI_HANDLING" && ticketId && (
+          {/* Escalation button / input */}
+          {status === "AI_HANDLING" && ticketId && !showEscalationInput && (
             <button
-              onClick={handleEscalate}
+              onClick={() => setShowEscalationInput(true)}
               className="text-[11px] text-gray-400 hover:text-gold-600 mb-2 flex items-center gap-1 transition-colors"
             >
               <UserCircle className="h-3 w-3" />
               Falar com um Humano
             </button>
+          )}
+          {showEscalationInput && (
+            <div className="mb-2 space-y-2">
+              <textarea
+                value={escalationMessage}
+                onChange={(e) => setEscalationMessage(e.target.value)}
+                placeholder="Descreva o que precisa..."
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 focus:border-gold-500 resize-none"
+                rows={2}
+                autoFocus
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleEscalate}
+                  className="bg-gold-600 hover:bg-gold-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Enviar para equipe
+                </button>
+                <button
+                  onClick={() => { setShowEscalationInput(false); setEscalationMessage(""); }}
+                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           )}
           <div className="flex items-center gap-2">
             <input

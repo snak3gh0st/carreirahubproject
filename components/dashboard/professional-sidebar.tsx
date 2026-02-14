@@ -44,37 +44,37 @@ const mainNavItems: NavItem[] = [
     href: "/dashboard/invoices",
     label: "Invoices",
     icon: FileText,
-    roles: ["ADMIN", "FINANCE", "SALES", "COMMERCIAL"],
+    roles: ["ADMIN", "OPERATIONAL", "FINANCE", "SALES", "COMMERCIAL"],
   },
   {
     href: "/dashboard/customers",
     label: "Customers",
     icon: Users,
-    roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL", "COMMERCIAL"],
+    roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT", "COMMERCIAL"],
   },
   {
     href: "/dashboard/payments",
     label: "Payments",
     icon: CreditCard,
-    roles: ["ADMIN", "FINANCE"],
+    roles: ["ADMIN", "OPERATIONAL", "FINANCE"],
   },
   {
     href: "/dashboard/contracts",
     label: "Contracts",
     icon: FileSignature,
-    roles: ["ADMIN", "FINANCE", "SALES", "COMMERCIAL"],
+    roles: ["ADMIN", "OPERATIONAL", "FINANCE", "SALES", "COMMERCIAL"],
   },
   {
     href: "/dashboard/insights",
     label: "Insights",
     icon: BarChart3,
-    roles: ["ADMIN", "FINANCE"],
+    roles: ["ADMIN", "OPERATIONAL", "FINANCE"],
   },
   {
     href: "/dashboard/support",
     label: "Suporte",
     icon: HeadphonesIcon,
-    roles: ["ADMIN", "SUPPORT", "OPERATIONAL"],
+    roles: ["ADMIN", "OPERATIONAL", "SUPPORT"],
   },
 ];
 

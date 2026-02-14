@@ -20,15 +20,17 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
 
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
-    { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "SDR", "SALES"] },
-    { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "SUPPORT", "SDR"] },
-    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
-    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/payments", label: "Pagamentos", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
-    { href: "/dashboard/insights", label: "Insights", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/integrations", label: "Integrações", roles: ["ADMIN", "FINANCE"] },
-    { href: "/", label: "Início", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
+    { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "OPERATIONAL", "SDR", "SALES"] },
+    { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "OPERATIONAL", "SUPPORT", "SDR"] },
+    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT"] },
+    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL", "SALES"] },
+    { href: "/dashboard/payments", label: "Pagamentos", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
+    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT", "COMMERCIAL"] },
+    { href: "/dashboard/contracts", label: "Contratos", roles: ["ADMIN", "OPERATIONAL", "FINANCE", "SALES", "COMMERCIAL"] },
+    { href: "/dashboard/insights", label: "Insights", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
+    { href: "/dashboard/support", label: "Suporte", roles: ["ADMIN", "OPERATIONAL", "SUPPORT"] },
+    { href: "/dashboard/integrations", label: "Integrações", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
+    { href: "/", label: "Início", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL", "COMMERCIAL"] },
   ]
 
   const visibleLinks = navLinks.filter((link) => link.roles.includes(userRole))

@@ -137,7 +137,7 @@ export class PipedriveService {
   }): Promise<any> {
     return this.circuitBreaker.execute(async () => {
       const response = await fetch(
-        `${this.baseUrl}/persons`,
+        `${this.baseUrl}/persons?api_token=${this.apiToken}`,
         {
           method: "POST",
           headers: {
