@@ -452,13 +452,16 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 039c | Translate sidebar, quick filters, insights, analytics charts (round 3) | 2026-02-06 | 9ce193b | [039-translate-webapp-to-pt-br](.planning/quick/039-translate-webapp-to-pt-br/) |
 | 041 | User support chat with AI escalation | 2026-02-06 | 91dd325 | [041-user-support-chat-with-ai-escalation](.planning/quick/041-user-support-chat-with-ai-escalation/) |
 | 042 | View open tickets and delete from chat widget | 2026-02-06 | e58870e | [042-ver-tickets-abertos-e-deletar](.planning/quick/042-ver-tickets-abertos-e-deletar/) |
+| 043-D1 | Fix QB cron connection pool exhaustion (P2024) | 2026-02-16 | aedbea7 | [qb-cron-connection-pool-exhaustion](.planning/debug/resolved/qb-cron-connection-pool-exhaustion.md) |
+| 043-D2 | Fix pre-existing build errors blocking deployment | 2026-02-16 | 698e4a4 | - |
+| INFRA | Migrate repo from GitHub to GitLab | 2026-02-16 | cb7adae | gitlab.com/sigma-group192807/carreirausahub |
 
 ## Session Continuity
 
-Last session: 2026-02-06
-Stopped at: Completed quick task 042 - View open tickets and delete from chat widget
-Resume file: .planning/quick/042-ver-tickets-abertos-e-deletar/042-SUMMARY.md
-Next action: Test ticket list and delete functionality in browser
+Last session: 2026-02-16
+Stopped at: Fixed QB cron connection pool exhaustion + build errors + migrated to GitLab + deployed
+Resume file: .planning/debug/resolved/qb-cron-connection-pool-exhaustion.md
+Next action: Monitor next QB cron run (every 6h) to confirm stability
 
 ## Sprint 1 Success Criteria
 
