@@ -49,6 +49,8 @@ export class CircuitBreaker {
   private successCount: number = 0;
   private lastStateChangeAt: Date = new Date();
   private lastErrorMessage?: string;
+  private lastPersistedAt: number = 0;
+  private static readonly PERSIST_THROTTLE_MS = 5000; // Only persist to DB every 5 seconds max
 
   constructor(serviceName: string, options?: CircuitBreakerOptions) {
     this.serviceName = serviceName;
@@ -179,14 +181,24 @@ export class CircuitBreaker {
       }`
     );
 
-    // Persist to database
-    await this.persistState();
+    // State transitions always persist immediately (bypass throttle)
+    await this.persistState(true);
   }
 
   /**
-   * Persist current state to database (atomic upsert)
+   * Persist current state to database (atomic upsert).
+   * Throttled to reduce DB connection pressure during high-frequency operations
+   * (e.g., QB sync doing hundreds of API calls). State transitions (OPEN/CLOSED/HALF_OPEN)
+   * always persist immediately; routine success/failure updates are throttled.
    */
-  private async persistState(): Promise<void> {
+  private async persistState(forceImmediate: boolean = false): Promise<void> {
+    const now = Date.now();
+
+    // Throttle routine persistence to avoid pool exhaustion during bulk operations
+    if (!forceImmediate && (now - this.lastPersistedAt) < CircuitBreaker.PERSIST_THROTTLE_MS) {
+      return;
+    }
+
     try {
       await prisma.circuitBreakerState.upsert({
         where: { serviceName: this.serviceName },
@@ -210,6 +222,7 @@ export class CircuitBreaker {
           updatedAt: new Date(),
         },
       });
+      this.lastPersistedAt = now;
     } catch (error) {
       console.error(`[CircuitBreaker] Failed to persist state for ${this.serviceName}:`, error);
     }

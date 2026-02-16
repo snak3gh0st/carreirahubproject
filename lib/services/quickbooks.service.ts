@@ -64,26 +64,50 @@ export class QuickbooksService {
 
   /**
    * Inicializar tokens a partir do banco de dados
-   * DEVE ser chamado antes de usar o serviço
+   * DEVE ser chamado antes de usar o servico
+   *
+   * Retries up to 3 times with exponential backoff to handle transient
+   * connection pool exhaustion (P2024) during heavy DB workloads.
    */
   async initialize(): Promise<void> {
-    try {
-      const config = await prisma.systemConfig.findUnique({
-        where: { id: "system" },
-      });
+    const maxRetries = 3;
+    const baseDelayMs = 1000;
 
-      if (config) {
-        this.accessToken = config.quickbooks_access_token;
-        this.refreshToken = config.quickbooks_refresh_token;
-        this.companyId = config.quickbooks_company_id || "";
-        console.log("[QuickBooks] Tokens carregados do banco de dados");
-      } else {
-        console.warn(
-          "[QuickBooks] Nenhuma configuração encontrada no banco. Use /api/quickbooks/auth/connect para autenticar."
-        );
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const config = await prisma.systemConfig.findUnique({
+          where: { id: "system" },
+        });
+
+        if (config) {
+          this.accessToken = config.quickbooks_access_token;
+          this.refreshToken = config.quickbooks_refresh_token;
+          this.companyId = config.quickbooks_company_id || "";
+          console.log("[QuickBooks] Tokens carregados do banco de dados");
+        } else {
+          console.warn(
+            "[QuickBooks] Nenhuma configuracao encontrada no banco. Use /api/quickbooks/auth/connect para autenticar."
+          );
+        }
+        return; // Success - exit retry loop
+      } catch (error: any) {
+        const isPoolExhaustion = error?.code === "P2024" || error?.message?.includes("connection pool");
+
+        if (isPoolExhaustion && attempt < maxRetries) {
+          const delay = baseDelayMs * Math.pow(2, attempt - 1);
+          console.warn(
+            `[QuickBooks] Connection pool exhausted on initialize (attempt ${attempt}/${maxRetries}). Retrying in ${delay}ms...`
+          );
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        console.error(`[QuickBooks] Erro ao carregar tokens (attempt ${attempt}/${maxRetries}):`, error);
+        if (attempt === maxRetries) {
+          // On final failure, don't silently swallow - let caller know
+          throw new Error(`Failed to load QuickBooks tokens after ${maxRetries} attempts: ${error.message}`);
+        }
       }
-    } catch (error) {
-      console.error("[QuickBooks] Erro ao carregar tokens:", error);
     }
   }
 
@@ -289,26 +313,44 @@ export class QuickbooksService {
     }
 
     // Salvar novo access token e refresh token em banco de dados
-    const expiresIn = data.expires_in || 3600; // padrão 1 hora
+    // Retry the DB upsert to handle transient pool exhaustion (P2024)
+    const expiresIn = data.expires_in || 3600; // padrao 1 hora
     const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-    await prisma.systemConfig.upsert({
-      where: { id: "system" },
-      update: {
-        quickbooks_access_token: this.accessToken,
-        quickbooks_refresh_token: this.refreshToken,
-        quickbooks_token_expires_at: expiresAt,
-        updatedAt: new Date(),
-      },
-      create: {
-        id: "system",
-        quickbooks_access_token: this.accessToken,
-        quickbooks_refresh_token: this.refreshToken,
-        quickbooks_token_expires_at: expiresAt,
-      },
-    });
-
-    console.log("[QuickBooks] Tokens atualizados no banco de dados");
+    const maxDbRetries = 3;
+    for (let dbAttempt = 1; dbAttempt <= maxDbRetries; dbAttempt++) {
+      try {
+        await prisma.systemConfig.upsert({
+          where: { id: "system" },
+          update: {
+            quickbooks_access_token: this.accessToken,
+            quickbooks_refresh_token: this.refreshToken,
+            quickbooks_token_expires_at: expiresAt,
+            updatedAt: new Date(),
+          },
+          create: {
+            id: "system",
+            quickbooks_access_token: this.accessToken,
+            quickbooks_refresh_token: this.refreshToken,
+            quickbooks_token_expires_at: expiresAt,
+          },
+        });
+        console.log("[QuickBooks] Tokens atualizados no banco de dados");
+        break; // Success
+      } catch (dbError: any) {
+        const isPoolExhaustion = dbError?.code === "P2024" || dbError?.message?.includes("connection pool");
+        if (isPoolExhaustion && dbAttempt < maxDbRetries) {
+          const delay = 1000 * Math.pow(2, dbAttempt - 1);
+          console.warn(`[QuickBooks] Pool exhausted saving tokens (attempt ${dbAttempt}/${maxDbRetries}). Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error(`[QuickBooks] Failed to save refreshed tokens to DB:`, dbError);
+          // Tokens are refreshed in-memory even if DB save fails,
+          // so current request can proceed. Log but don't throw.
+          break;
+        }
+      }
+    }
   }
 
   /**

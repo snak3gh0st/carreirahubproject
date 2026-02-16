@@ -70,6 +70,36 @@ export interface SyncResult {
 
 export class QuickBooksSyncService {
   /**
+   * Batch size for processing items to avoid connection pool exhaustion.
+   * After each batch, a brief pause lets the pool reclaim connections.
+   */
+  private static readonly BATCH_SIZE = 25;
+  private static readonly BATCH_PAUSE_MS = 100;
+
+  /**
+   * Process items in batches to reduce sustained connection pool pressure.
+   * Pauses briefly between batches to let the pool release connections.
+   */
+  private async processBatch<T, R>(
+    items: T[],
+    processor: (item: T) => Promise<R>,
+    batchSize: number = QuickBooksSyncService.BATCH_SIZE,
+  ): Promise<R[]> {
+    const results: R[] = [];
+    for (let i = 0; i < items.length; i += batchSize) {
+      const batch = items.slice(i, i + batchSize);
+      for (const item of batch) {
+        results.push(await processor(item));
+      }
+      // Brief pause between batches to let the connection pool breathe
+      if (i + batchSize < items.length) {
+        await new Promise(resolve => setTimeout(resolve, QuickBooksSyncService.BATCH_PAUSE_MS));
+      }
+    }
+    return results;
+  }
+
+  /**
    * Sync a single customer from QuickBooks by QB ID (for webhook processing)
    * Returns the local customer record after sync
    */
@@ -607,7 +637,8 @@ export class QuickBooksSyncService {
       const updated: string[] = [];
       const errors: Array<{ email: string; error: string }> = [];
 
-      for (const qbCustomer of qbCustomers) {
+      // Process customers in batches to avoid connection pool exhaustion
+      await this.processBatch(qbCustomers, async (qbCustomer) => {
         try {
           const email = qbCustomer.PrimaryEmailAddr?.Address;
           const name = qbCustomer.DisplayName || qbCustomer.CompanyName || "Unknown";
@@ -615,10 +646,10 @@ export class QuickBooksSyncService {
 
           if (!email) {
             errors.push({ email: "N/A", error: "Customer sem email" });
-            continue;
+            return;
           }
 
-          // Se incremental, verificar se já existe e se precisa atualizar
+          // Se incremental, verificar se ja existe e se precisa atualizar
           if (incremental) {
             const existing = await prisma.customer.findFirst({
               where: {
@@ -629,7 +660,7 @@ export class QuickBooksSyncService {
               },
             });
 
-            // Verificar se precisa atualizar (comparar última modificação)
+            // Verificar se precisa atualizar (comparar ultima modificacao)
             if (existing && existing.quickbooks_id === qbCustomer.Id) {
               const lastSync = existing.metadata as any;
               const lastSyncTime = lastSync?.quickbooks?.syncDate
@@ -641,8 +672,8 @@ export class QuickBooksSyncService {
               if (qbMetaUpdated && lastSyncTime) {
                 const qbUpdated = new Date(qbMetaUpdated);
                 if (qbUpdated <= lastSyncTime) {
-                  // Já sincronizado, pular
-                  continue;
+                  // Ja sincronizado, pular
+                  return;
                 }
               }
             }
@@ -678,7 +709,7 @@ export class QuickBooksSyncService {
             error: error.message,
           });
         }
-      }
+      });
 
       return {
         total: qbCustomers.length,
@@ -732,7 +763,8 @@ export class QuickBooksSyncService {
       const updated: string[] = [];
       const errors: Array<{ invoiceId: string; error: string }> = [];
 
-      for (const qbInvoice of qbInvoices) {
+      // Process invoices in batches to avoid connection pool exhaustion
+      await this.processBatch(qbInvoices, async (qbInvoice) => {
         try {
           const qbInvoiceId = qbInvoice.Id;
           const customerRef = qbInvoice.CustomerRef?.value;
@@ -742,12 +774,11 @@ export class QuickBooksSyncService {
               invoiceId: qbInvoiceId,
               error: "Invoice sem customer",
             });
-            continue;
+            return;
           }
 
           // Se incremental, verificar se precisa atualizar
-          // Nota: Invoice não tem campo metadata, então sempre sincronizamos
-          // Para melhorar performance, podemos usar updatedAt no futuro
+          // Nota: Invoice nao tem campo metadata, entao sempre sincronizamos
 
           const customer = await prisma.customer.findFirst({
             where: { quickbooks_id: customerRef },
@@ -756,9 +787,9 @@ export class QuickBooksSyncService {
           if (!customer) {
             errors.push({
               invoiceId: qbInvoiceId,
-              error: `Customer ${customerRef} não encontrado`,
+              error: `Customer ${customerRef} nao encontrado`,
             });
-            continue;
+            return;
           }
 
           const totalAmount = qbInvoice.TotalAmt || qbInvoice.Balance || 0;
@@ -799,32 +830,30 @@ export class QuickBooksSyncService {
             console.log(`[QuickBooks Sync] Created default deal for customer ${customer.id}: ${latestDeal.id}`);
           }
 
-            // Nota: Invoice não tem campo metadata, então salvamos dados extras no installments (Json)
-            // ou simplesmente não salvamos. Para rastreabilidade, podemos usar IntegrationLog
-            const balance = qbInvoice.Balance || 0;
-            const amountPaid = balance === 0 ? totalAmount : balance < totalAmount && balance > 0 ? totalAmount - balance : 0;
-            const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
+          // Nota: Invoice nao tem campo metadata, salvamos dados extras no installments (Json)
+          const balance = qbInvoice.Balance || 0;
+          const amountPaid = balance === 0 ? totalAmount : balance < totalAmount && balance > 0 ? totalAmount - balance : 0;
+          const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
 
-            const invoiceData = {
-              invoiceNumber: qbInvoice.DocNumber || undefined,
-              amount: totalAmount,
-              dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
-              status: qbStatus as any,
-              quickbooks_invoice_id: qbInvoiceId,
-              dealId: latestDeal.id,
-              customerId: customer.id,
-              amountPaid,
-              paidAt,
-              // installments pode ser usado para dados extras se necessário
-              installments: {
-                quickbooks: {
-                  syncDate: new Date().toISOString(),
-                  txnDate: qbInvoice.TxnDate,
-                  balance: qbInvoice.Balance,
-                  totalAmt: qbInvoice.TotalAmt,
-                },
-              } as any,
-            };
+          const invoiceData = {
+            invoiceNumber: qbInvoice.DocNumber || undefined,
+            amount: totalAmount,
+            dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
+            status: qbStatus as any,
+            quickbooks_invoice_id: qbInvoiceId,
+            dealId: latestDeal.id,
+            customerId: customer.id,
+            amountPaid,
+            paidAt,
+            installments: {
+              quickbooks: {
+                syncDate: new Date().toISOString(),
+                txnDate: qbInvoice.TxnDate,
+                balance: qbInvoice.Balance,
+                totalAmt: qbInvoice.TotalAmt,
+              },
+            } as any,
+          };
 
           if (existing) {
             await prisma.invoice.update({
@@ -844,7 +873,7 @@ export class QuickBooksSyncService {
             error: error.message,
           });
         }
-      }
+      });
 
       return {
         total: qbInvoices.length,
