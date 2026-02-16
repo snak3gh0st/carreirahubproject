@@ -25,10 +25,10 @@ export default async function ApprovalQueuePage() {
     redirect("/dashboard");
   }
 
-  // Fetch pending invoices
+  // Fetch pending invoices (using status DRAFT as "pending approval")
   const pendingInvoices = await prisma.invoice.findMany({
     where: {
-      approvalStatus: "PENDING",
+      status: "DRAFT",
     },
     orderBy: {
       createdAt: "asc", // Oldest first (FIFO)
@@ -50,9 +50,9 @@ export default async function ApprovalQueuePage() {
     },
   });
 
-  // Get statistics
+  // Get statistics by invoice status
   const stats = await prisma.invoice.groupBy({
-    by: ["approvalStatus"],
+    by: ["status"],
     _count: {
       id: true,
     },
@@ -60,7 +60,7 @@ export default async function ApprovalQueuePage() {
 
   const statsMap = stats.reduce(
     (acc, item) => {
-      acc[item.approvalStatus] = item._count.id;
+      acc[item.status] = item._count.id;
       return acc;
     },
     {} as Record<string, number>
@@ -100,25 +100,25 @@ export default async function ApprovalQueuePage() {
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg">
-          <h3 className="text-sm font-medium text-orange-700">Pending Approval</h3>
+          <h3 className="text-sm font-medium text-orange-700">Draft (Pending)</h3>
           <p className="text-4xl font-bold mt-2 text-orange-900">
-            {statsMap.PENDING || 0}
+            {statsMap.DRAFT || 0}
           </p>
           <p className="text-sm text-orange-600 mt-1">Require your attention</p>
         </div>
         <div className="bg-green-50 border border-green-200 p-6 rounded-lg">
-          <h3 className="text-sm font-medium text-green-700">Approved</h3>
+          <h3 className="text-sm font-medium text-green-700">Sent</h3>
           <p className="text-4xl font-bold mt-2 text-green-900">
-            {statsMap.APPROVED || 0}
+            {statsMap.SENT || 0}
           </p>
           <p className="text-sm text-green-600 mt-1">Synced to systems</p>
         </div>
         <div className="bg-red-50 border border-red-200 p-6 rounded-lg">
-          <h3 className="text-sm font-medium text-red-700">Rejected</h3>
+          <h3 className="text-sm font-medium text-red-700">Overdue</h3>
           <p className="text-4xl font-bold mt-2 text-red-900">
-            {statsMap.REJECTED || 0}
+            {statsMap.OVERDUE || 0}
           </p>
-          <p className="text-sm text-red-600 mt-1">Sent back to Sales</p>
+          <p className="text-sm text-red-600 mt-1">Past due date</p>
         </div>
       </div>
 
@@ -209,12 +209,16 @@ export default async function ApprovalQueuePage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/dashboard/deals/${invoice.deal.id}`}
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          {invoice.deal.title}
-                        </Link>
+                        {invoice.deal ? (
+                          <Link
+                            href={`/dashboard/deals/${invoice.deal.id}`}
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            {invoice.deal.title}
+                          </Link>
+                        ) : (
+                          <span className="text-sm text-gray-400">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap font-semibold text-gray-900">
                         ${Number(invoice.amount).toLocaleString()}

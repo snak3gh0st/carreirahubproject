@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
           Accept: "application/json",
+          Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
         },
         body: new URLSearchParams({
           grant_type: "authorization_code",
@@ -65,11 +66,6 @@ export async function GET(request: NextRequest) {
           redirect_uri:
             `${process.env.NODE_ENV === "production" ? "https" : "http"}://${request.headers.get("host")}/api/quickbooks/auth/callback`,
         }).toString(),
-        // Usar Basic Auth com client_id:client_secret
-        auth: {
-          username: clientId,
-          password: clientSecret,
-        },
       }
     );
 
