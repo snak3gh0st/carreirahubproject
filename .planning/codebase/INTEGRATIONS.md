@@ -1,247 +1,284 @@
 # External Integrations
 
-**Analysis Date:** 2026-01-27
+**Analysis Date:** 2026-02-17
 
 ## APIs & External Services
 
-**CRM:**
-- Pipedrive - Lead and deal management, sales pipeline
-  - SDK/Client: Custom HTTP client (`lib/services/pipedrive.service.ts`)
-  - Auth: API token via `PIPEDRIVE_API_TOKEN`
-  - Webhook secret: `PIPEDRIVE_WEBHOOK_SECRET`
-  - Company domain: `PIPEDRIVE_COMPANY_DOMAIN`
-  - Circuit breaker: Enabled (transient failure protection)
+### CRM - Pipedrive
+- **Purpose:** Lead and deal management (single source of truth for sales pipeline)
+- **Service:** `lib/services/pipedrive.service.ts` (PipedriveService class, singleton export)
+- **Sync Service:** `lib/services/pipedrive-sync.service.ts` (bidirectional sync, bulk import)
+- **Auth:** API token via `PIPEDRIVE_API_TOKEN`
+- **Base URL:** `https://{PIPEDRIVE_COMPANY_DOMAIN}.pipedrive.com/api/v1`
+- **Circuit Breaker:** Yes (via `lib/utils/circuit-breaker.ts`)
+- **Webhook Endpoints:**
+  - `app/api/webhooks/pipedrive/lead/route.ts` - New person webhook
+  - `app/api/webhooks/pipedrive/deal/route.ts` - Deal won/updated webhook
+- **Queues:** `pipedriveSync` (inbound), `pipedriveReverseSync` (outbound Hub->Pipedrive)
+- **Env Vars:** `PIPEDRIVE_API_TOKEN`, `PIPEDRIVE_COMPANY_DOMAIN`, `PIPEDRIVE_WEBHOOK_SECRET`
 
-**Finance/Accounting:**
-- QuickBooks Online - Invoice and customer synchronization
-  - SDK/Client: Custom OAuth2 client (`lib/services/quickbooks.service.ts`)
-  - Auth: OAuth2 (tokens stored in `SystemConfig` database table)
-  - Environment: `QUICKBOOKS_ENVIRONMENT` (sandbox/production)
-  - Client ID: `QUICKBOOKS_CLIENT_ID`
-  - Client Secret: `QUICKBOOKS_CLIENT_SECRET`
-  - Redirect URI: `QUICKBOOKS_REDIRECT_URI`
-  - Circuit breaker: Enabled
-  - Sync frequency: Every 6 hours via cron
+### Finance - QuickBooks Online
+- **Purpose:** Accounting, invoicing, payment tracking, customer financial records
+- **Service:** `lib/services/quickbooks.service.ts` (QuickbooksService class, singleton export)
+- **Sync Service:** `lib/services/quickbooks-sync.service.ts` (bidirectional sync, bulk import)
+- **Auth:** OAuth 2.0 with token refresh (tokens stored in `SystemConfig` table, not env vars)
+- **Base URL:** sandbox: `https://sandbox-quickbooks.api.intuit.com`, production: `https://quickbooks.api.intuit.com`
+- **Circuit Breaker:** Yes
+- **OAuth Endpoints:**
+  - `app/api/quickbooks/auth/` - OAuth callback, connect, disconnect
+- **API Endpoints:**
+  - `app/api/quickbooks/customers/` - Fetch QB customers
+  - `app/api/quickbooks/invoices/` - Fetch QB invoices
+  - `app/api/quickbooks/sync/` - Manual sync trigger
+- **Webhook Endpoint:** `app/api/webhooks/quickbooks/route.ts`
+- **Cron Jobs:**
+  - `/api/cron/quickbooks-sync` - Every 6 hours
+  - `/api/cron/refresh-quickbooks-token` - Daily at 2 AM
+- **Queue:** `quickbooksSync`
+- **Env Vars:** `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REDIRECT_URI`, `QUICKBOOKS_ENVIRONMENT`
+- **DB-stored tokens:** `SystemConfig.quickbooks_access_token`, `SystemConfig.quickbooks_refresh_token`, `SystemConfig.quickbooks_token_expires_at`, `SystemConfig.quickbooks_company_id`
 
-**Payments:**
-- Stripe - Payment processing and invoice payments
-  - SDK/Client: `stripe` 14.25.0 (`lib/services/stripe.service.ts`)
-  - Auth: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`
-  - Webhook secret: `STRIPE_WEBHOOK_SECRET`
-  - Payment URLs: `STRIPE_PAYMENT_SUCCESS_URL`, `STRIPE_PAYMENT_CANCEL_URL`
-  - API version: 2023-10-16
-  - Circuit breaker: Enabled
+### Payments - Stripe
+- **Purpose:** Payment processing, payment links, customer billing
+- **Service:** `lib/services/stripe.service.ts` (StripeService class, singleton export)
+- **SDK:** `stripe` ^14.25.0 (server) + `@stripe/stripe-js` ^8.6.1 (client)
+- **API Version:** `2023-10-16`
+- **Circuit Breaker:** Yes
+- **Webhook Endpoint:** `app/api/webhooks/stripe/route.ts`
+- **Env Vars:** `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PAYMENT_SUCCESS_URL`, `STRIPE_PAYMENT_CANCEL_URL`
 
-**AI/ML:**
-- OpenAI - Chatbot and lead qualification
-  - SDK/Client: `openai` 4.52.0 (`lib/services/ai.service.ts`)
-  - Auth: `OPENAI_API_KEY`
-  - Model: `AI_MODEL` (default: gpt-4-turbo-preview)
-  - Temperature: `AI_TEMPERATURE` (default: 0.7)
-  - Circuit breaker: Enabled
-  - Graceful degradation: Returns fallback message if API unavailable
+### Contracts - DocuSign
+- **Purpose:** Contract generation, e-signature, signed document retrieval
+- **Service:** `lib/services/docusign.service.ts` (DocuSignService class, singleton export)
+- **Workflow Service:** `lib/services/contract-workflow.service.ts`
+- **Auth:** JWT Grant with RSA private key (no SDK - uses direct HTTP with crypto module)
+- **PDF Generation:** Uses `pdf-lib` to generate contract PDFs inline
+- **OAuth Paths:** Demo: `account-d.docusign.com`, Production: `account.docusign.com`
+- **Circuit Breaker:** Yes
+- **Webhook Endpoint:** `app/api/webhooks/docusign/route.ts`
+- **Cron Jobs:**
+  - `/api/cron/contract-reminders` - Daily at 9 AM
+  - `/api/cron/contract-expiration` - Daily at 1 AM
+- **Env Vars:** `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_BASE_URL`, `DOCUSIGN_PRIVATE_KEY`, `DOCUSIGN_WEBHOOK_SECRET`, `DOCUSIGN_TEMPLATE_ID` (optional)
 
-**Voice AI (Collection Calls):**
-- RetellAI - AI-powered phone calls for overdue invoices
-  - SDK/Client: Custom HTTP client (`lib/services/retell.service.ts`)
-  - Auth: `RETELL_API_KEY`
-  - Agent ID: `RETELL_AGENT_ID` (Portuguese collection agent)
-  - Webhook secret: `RETELL_WEBHOOK_SECRET`
-  - Circuit breaker: Enabled
+### Messaging - Twilio (WhatsApp)
+- **Purpose:** WhatsApp Business messaging for lead engagement and notifications
+- **Service:** `lib/services/whatsapp.service.ts` (WhatsAppService class, singleton export)
+- **SDK:** `twilio` ^4.23.0
+- **Circuit Breaker:** Yes
+- **Webhook Endpoint:** `app/api/webhooks/whatsapp/route.ts`
+- **Queue:** `whatsappMessages`
+- **Env Vars:** `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`, `TWILIO_PHONE_NUMBER`
 
-**Messaging:**
-- Twilio WhatsApp - WhatsApp Business API messaging
-  - SDK/Client: `twilio` 4.23.0 (`lib/services/whatsapp.service.ts`)
-  - Auth: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`
-  - WhatsApp number: `TWILIO_WHATSAPP_NUMBER`
-  - Phone number: `TWILIO_PHONE_NUMBER` (outbound voice)
-  - Circuit breaker: Enabled
+### AI - OpenAI
+- **Purpose:** Customer service chatbot, lead qualification scoring, support chat
+- **Service:** `lib/services/ai.service.ts` (AIService class, singleton export)
+- **Support Chat:** `lib/services/support-chat.service.ts` (SupportChatService, uses `gpt-3.5-turbo` by default for cost efficiency)
+- **SDK:** `openai` ^4.52.0
+- **Models Used:**
+  - Lead qualification + chatbot: `gpt-4-turbo-preview` (configurable via `AI_MODEL`)
+  - Support chat: `gpt-3.5-turbo` (configurable via `SUPPORT_AI_MODEL`)
+- **Prompts:** `lib/prompts/customer-service.ts`, `lib/prompts/lead-qualification.ts`, `lib/prompts/support-chat.ts`
+- **Circuit Breaker:** Yes
+- **Graceful Degradation:** Returns fallback message and escalates to human if API key missing or API fails
+- **Env Vars:** `OPENAI_API_KEY`, `AI_MODEL`, `AI_TEMPERATURE`, `SUPPORT_AI_MODEL`
 
-**Contract Management:**
-- DocuSign - Contract generation and e-signature
-  - SDK/Client: Custom JWT client (`lib/services/docusign.service.ts`)
-  - Auth: JWT Grant (RSA private key)
-  - Integration key: `DOCUSIGN_INTEGRATION_KEY`
-  - User ID: `DOCUSIGN_USER_ID`
-  - Account ID: `DOCUSIGN_ACCOUNT_ID`
-  - Base URL: `DOCUSIGN_BASE_URL` (demo.docusign.net or production)
-  - Private key: `DOCUSIGN_PRIVATE_KEY` (base64 encoded RSA key)
-  - Webhook secret: `DOCUSIGN_WEBHOOK_SECRET`
-  - Template ID: `DOCUSIGN_TEMPLATE_ID` (optional, falls back to inline PDF)
-  - Circuit breaker: Enabled
+### Voice AI - RetellAI
+- **Purpose:** AI-powered collection calls for overdue invoices
+- **Service:** `lib/services/retell.service.ts` (RetellAI service)
+- **Collection Service:** `lib/services/collection-call.service.ts`
+- **Circuit Breaker:** Yes
+- **Webhook Endpoint:** `app/api/webhooks/retell/route.ts`
+- **Cron Job:** `/api/cron/collection-calls` - Daily at 1 PM
+- **Env Vars:** `RETELL_API_KEY`, `RETELL_AGENT_ID`, `RETELL_WEBHOOK_SECRET`
+- **Configuration Env Vars:** `COLLECTION_CALL_AUTO_DAYS`, `COLLECTION_CALL_MAX_ATTEMPTS`, `COLLECTION_CALL_HOURS_START`, `COLLECTION_CALL_HOURS_END`
 
-**Email:**
-- Resend - Transactional email service
-  - SDK/Client: `resend` 6.7.0 (`lib/services/notification.service.ts`)
-  - Auth: `RESEND_API_KEY`
-  - From address: `EMAIL_FROM`
-  - Finance team: `EMAIL_FINANCE_TEAM`
-  - Support team: `EMAIL_SUPPORT_TEAM`
-  - Circuit breaker: Enabled
+### Email - Resend
+- **Purpose:** Transactional email delivery (invoice notifications, contract reminders, daily digests, payment reminders)
+- **Service:** `lib/services/notification.service.ts` (uses Resend SDK)
+- **Email Templates:** `lib/services/email.service.ts` (HTML template builder), `lib/services/email-service.ts`
+- **React Email:** `@react-email/components` ^1.0.3 for template rendering
+- **SDK:** `resend` ^6.7.0
+- **Lazy Init:** Client only created when `RESEND_API_KEY` is available
+- **Cron Jobs:**
+  - `/api/cron/payment-reminders` - Daily at 10 AM
+  - `/api/cron/overdue-invoices` - Daily at 2 AM
+  - `/api/cron/send-scheduled-invoices` - Daily at 9 AM
+  - `/api/cron/daily-ar-digest` - Daily at 9 AM
+  - `/api/cron/overdue-invoice-alerts` - Every 6 hours
+- **Env Vars:** `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_FINANCE_TEAM`, `EMAIL_SUPPORT_TEAM`
 
 ## Data Storage
 
-**Databases:**
-- PostgreSQL (Neon)
-  - Connection (pooled): `POSTGRES_PRISMA_URL`
-  - Connection (direct): `POSTGRES_URL_NON_POOLING`
-  - Client: Prisma ORM 5.19.0
-  - Schema: `prisma/schema.prisma`
+**Primary Database:**
+- PostgreSQL on Neon
+- Connection: pooled via `POSTGRES_PRISMA_URL`, direct via `POSTGRES_URL_NON_POOLING`
+- Client: Prisma ORM (singleton in `lib/db.ts`)
+- Schema: `prisma/schema.prisma` (21 models, 20 enums)
+- Connection pooling: pgbouncer=true, connection_limit=10, pool_timeout=30s
 
 **File Storage:**
-- AWS S3 - Signed contract PDF storage
-  - Client: `@aws-sdk/client-s3` 3.974.0 (`lib/services/document-storage.service.ts`)
-  - Region: `AWS_REGION` (default: us-east-1)
-  - Access key: `AWS_ACCESS_KEY_ID`
-  - Secret key: `AWS_SECRET_ACCESS_KEY`
-  - Bucket: `S3_BUCKET_NAME`
-  - Storage structure: `contracts/{year}/{envelopeId}.pdf`
-  - Presigned URLs: 7-day expiration
-  - Encryption: AES-256 server-side
+- AWS S3 for signed contract PDFs (`lib/services/document-storage.service.ts`)
+- Bucket structure: `contracts/{year}/{envelopeId}.pdf`
+- Access: Presigned URLs with time-limited access
+- Env Vars: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`
+- Graceful degradation: if S3 not configured, signed documents only have DocuSign URI
 
-**Caching:**
-- Redis - Queue management and job processing
-  - Client: `ioredis` 5.3.2
-  - Connection: `REDIS_URL`
-  - Used by: BullMQ 5.3.0 (`lib/utils/queue.ts`)
+**Caching/Queue Backend:**
+- Redis for BullMQ job queues
+- Connection: `REDIS_URL`
+- Graceful degradation: validates hostname, falls back to localhost if placeholder/invalid
 
 ## Authentication & Identity
 
 **Auth Provider:**
-- NextAuth.js 4.24.5 - Custom credentials provider
-  - Implementation: JWT strategy (`lib/auth.ts`)
-  - Password hashing: bcryptjs 3.0.3
-  - Session max age: 30 days
-  - Secret: `NEXTAUTH_SECRET`
-  - URL: `NEXTAUTH_URL`
-  - Roles: ADMIN, SALES, SDR, FINANCE, SUPPORT, OPERATIONAL, COMMERCIAL
+- NextAuth.js with Credentials provider (`lib/auth.ts`)
+- JWT strategy (no database sessions)
+- Session max age: 30 days
+- Token refresh: every 24 hours
+- Password hashing: bcryptjs (`lib/services/auth.service.ts`)
+- Sign-in page: `/auth/signin`
 
-**Identity Mapping:**
-- Custom Identity Mapper Service (`lib/services/identity-mapper.ts`)
-  - Purpose: Deduplicate customers across external systems
-  - Unique key: Email address
-  - Reconciles IDs from: Pipedrive, QuickBooks, Stripe, DocuSign, Trello, CloudTalk, Google Contacts
+**RBAC (Role-Based Access Control):**
+- 7 roles: ADMIN, SALES, SDR, FINANCE, SUPPORT, OPERATIONAL, COMMERCIAL
+- Middleware enforces route-level access (`middleware.ts`)
+- Route-to-role mapping with first-match-wins logic
+- Matcher: `/dashboard/:path*`, `/api/dashboard/:path*`
+
+**Customer Identity:**
+- Identity Mapper pattern (`lib/services/identity-mapper.ts`)
+- Email is the unique key across all external systems
+- Reconciles IDs from: Pipedrive, QuickBooks, Stripe, DocuSign, Trello, CloudTalk, Google Contacts
+- Prevents duplicate customers across CRM and financial systems
 
 ## Monitoring & Observability
 
 **Error Tracking:**
-- Custom IntegrationLog table (database)
-  - Service: All external API calls logged
-  - Fields: service, action, status, payload, error, errorCode, errorCategory, errorSeverity
-  - Location: `prisma/schema.prisma` (IntegrationLog model)
-  - Logger: `lib/utils/logger.ts`
+- Custom IntegrationLogger (`lib/utils/logger.ts`) writes to `IntegrationLog` database table
+- Structured error data: errorCode, category (transient/permanent/auth/validation), severity, recovery action
+- All external API calls logged with service name, action, status, payload, error, duration
 
 **Circuit Breaker:**
-- Custom circuit breaker implementation (`lib/utils/circuit-breaker.ts`)
-  - State tracking: Database table (CircuitBreakerState)
-  - States: CLOSED, OPEN, HALF_OPEN
-  - Protected services: Pipedrive, QuickBooks, Stripe, OpenAI, WhatsApp, DocuSign, RetellAI, Email
-  - Thresholds: 5 failures to open, 2 successes to close
-  - Timeout: 60 seconds (OPEN → HALF_OPEN)
+- Custom implementation (`lib/utils/circuit-breaker.ts`)
+- Database-persisted state (`CircuitBreakerState` model in Prisma)
+- States: CLOSED -> OPEN (after 5 failures) -> HALF_OPEN (after 60s timeout) -> CLOSED (after 2 successes)
+- Applied to: Pipedrive, QuickBooks, Stripe, DocuSign, WhatsApp/Twilio, OpenAI, Resend
+
+**Webhook Reliability:**
+- Webhook event deduplication (`WebhookEvent` model, `lib/utils/webhook-event-id.ts`)
+- Dead letter queue: `app/api/webhooks/dead-letter/route.ts`
+- Reprocessing: `app/api/webhooks/reprocess/route.ts`
+- Health check: `app/api/webhooks/health/route.ts`
+- Webhook validation: `lib/utils/webhook-validation.ts`
+- HMAC verification: `lib/utils/hmac.ts`
+
+**Queue Monitoring:**
+- Queue monitor: `lib/utils/queue-monitor.ts`
+- Cron: `/api/cron/monitor-queues` - Every 4 hours
+
+**Alerts:**
+- Alert rules engine with `AlertRule` and `Alert` models
+- Cron: `/api/cron/evaluate-alerts` - Hourly
+- Severity levels: LOW, MEDIUM, HIGH, CRITICAL
+- Alert events tracking (`AlertEvent` model)
 
 **Logs:**
-- Console logging with structured error data
-  - Integration logs stored in database
-  - Error categorization: transient, permanent, auth, validation, unknown
-  - Severity levels: info, warning, error, critical
-  - Recovery actions: retry, manual_intervention, contact_support, check_circuit
+- Console logging with `[SERVICE]` prefix pattern (e.g., `[AUTH]`, `[AI]`, `[QUEUE]`)
+- IntegrationLog table for all external API interactions
+- Prisma client logging: errors + warnings in dev, errors only in prod
 
 ## CI/CD & Deployment
 
 **Hosting:**
-- Vercel Serverless Functions
-  - Config: `vercel.json`
-  - Build command: `npm run build` (includes Prisma generation)
-  - Start command: `npm start`
+- Vercel (serverless)
+- Auto-deploys from Git (main branch)
 
 **CI Pipeline:**
-- Not detected - No dedicated CI configuration
+- Build command: `prisma generate && next build`
+- TypeScript errors: NOT ignored (`ignoreBuildErrors: false`)
+- ESLint errors: NOT ignored (`ignoreDuringBuilds: false`)
 
-**Cron Jobs (Vercel):**
-- 11 scheduled jobs via `vercel.json`
-  - QuickBooks token refresh: Daily at 2 AM
-  - QuickBooks sync: Every 6 hours
-  - Queue processing: Every 5 minutes
-  - Queue monitoring: Every 4 hours
-  - Alert evaluation: Every hour
-  - Contract reminders: Daily at 9 AM
-  - Contract expiration check: Daily at 1 AM
-  - Payment reminders: Daily at 10 AM
-  - Overdue invoice check: Daily at 2 AM
-  - Collection calls: Daily at 1 PM
-  - Scheduled invoice sending: Daily at 9 AM
-  - Protected by: `CRON_SECRET`
+**Cron Jobs (via `vercel.json`):**
+| Endpoint | Schedule | Purpose |
+|---|---|---|
+| `/api/cron/evaluate-alerts` | Hourly | Evaluate alert rules |
+| `/api/cron/refresh-quickbooks-token` | Daily 2 AM | Refresh QB OAuth tokens |
+| `/api/cron/quickbooks-sync` | Every 6 hours | Sync with QuickBooks |
+| `/api/cron/process-queue` | Every 5 minutes | Process BullMQ jobs |
+| `/api/cron/monitor-queues` | Every 4 hours | Monitor queue health |
+| `/api/cron/contract-reminders` | Daily 9 AM | Send contract signing reminders |
+| `/api/cron/contract-expiration` | Daily 1 AM | Handle expired contracts |
+| `/api/cron/payment-reminders` | Daily 10 AM | Send payment reminders |
+| `/api/cron/overdue-invoices` | Daily 2 AM | Mark invoices as overdue |
+| `/api/cron/collection-calls` | Daily 1 PM | Initiate AI collection calls |
+| `/api/cron/send-scheduled-invoices` | Daily 9 AM | Send scheduled invoices |
+| `/api/cron/daily-ar-digest` | Daily 9 AM | Send AR digest email |
+| `/api/cron/overdue-invoice-alerts` | Every 6 hours | Alert on overdue invoices |
 
 ## Environment Configuration
 
-**Required env vars:**
-- Database: `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING`
-- Redis: `REDIS_URL`
-- NextAuth: `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
-- Pipedrive: `PIPEDRIVE_API_TOKEN`, `PIPEDRIVE_COMPANY_DOMAIN`, `PIPEDRIVE_WEBHOOK_SECRET`
-- QuickBooks: `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REDIRECT_URI`, `QUICKBOOKS_ENVIRONMENT`
-- Stripe: `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`
-- OpenAI: `OPENAI_API_KEY`, `AI_MODEL`, `AI_TEMPERATURE`
-- Twilio: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`
-- DocuSign: `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_BASE_URL`, `DOCUSIGN_PRIVATE_KEY`
-- AWS S3: `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME`
-- Resend: `RESEND_API_KEY`, `EMAIL_FROM`
-- RetellAI: `RETELL_API_KEY`, `RETELL_AGENT_ID`, `RETELL_WEBHOOK_SECRET`
-- App: `NEXT_PUBLIC_APP_URL`, `CRON_SECRET`
-- SDR: `SDR_QUALIFICATION_THRESHOLD` (default: 70)
+**Required env vars (see `.env.example` for full list):**
+
+| Category | Variables |
+|---|---|
+| Database | `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` |
+| Auth | `NEXTAUTH_SECRET`, `NEXTAUTH_URL` |
+| OpenAI | `OPENAI_API_KEY` |
+| Pipedrive | `PIPEDRIVE_API_TOKEN`, `PIPEDRIVE_COMPANY_DOMAIN` |
+| QuickBooks | `QUICKBOOKS_CLIENT_ID`, `QUICKBOOKS_CLIENT_SECRET`, `QUICKBOOKS_REDIRECT_URI` |
+| Stripe | `STRIPE_SECRET_KEY` |
+| Twilio | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER` |
+| DocuSign | `DOCUSIGN_INTEGRATION_KEY`, `DOCUSIGN_USER_ID`, `DOCUSIGN_ACCOUNT_ID`, `DOCUSIGN_PRIVATE_KEY` |
+| AWS S3 | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_BUCKET_NAME` |
+| Redis | `REDIS_URL` |
+| Resend | `RESEND_API_KEY`, `EMAIL_FROM` |
+| RetellAI | `RETELL_API_KEY`, `RETELL_AGENT_ID` |
+| App | `NEXT_PUBLIC_APP_URL`, `CRON_SECRET` |
 
 **Secrets location:**
-- Environment variables: `.env` files (gitignored)
-- OAuth tokens: Database `SystemConfig` table (QuickBooks tokens auto-refreshed)
-- Webhook secrets: Database `SystemConfig` table + environment variables
+- Environment variables via Vercel dashboard (production)
+- `.env.local` file (development, git-ignored)
+- QuickBooks OAuth tokens: `SystemConfig` table in database (refreshed via cron)
+- Webhook secrets: `SystemConfig` table or env vars
 
 ## Webhooks & Callbacks
 
-**Incoming:**
-- Pipedrive webhooks:
-  - Person created: `/api/webhooks/pipedrive/person`
-  - Lead created: `/api/webhooks/pipedrive/lead`
-  - Deal updated: `/api/webhooks/pipedrive/deal`
-- QuickBooks webhooks:
-  - Entity changes: `/api/webhooks/quickbooks`
-- Stripe webhooks:
-  - Payment events: `/api/webhooks/stripe`
-- DocuSign webhooks:
-  - Envelope events: `/api/webhooks/docusign`
-- Twilio WhatsApp webhooks:
-  - Message status: `/api/webhooks/whatsapp`
-- RetellAI webhooks:
-  - Call events: `/api/webhooks/retell`
-- Webhook reliability:
-  - Dead letter queue: `/api/webhooks/dead-letter`
-  - Reprocessing: `/api/webhooks/reprocess/[id]`
-  - Health check: `/api/webhooks/health`
-  - Event storage: `WebhookEvent` database table (automatic retry with exponential backoff)
+**Incoming Webhooks:**
+| Endpoint | Source | Purpose |
+|---|---|---|
+| `/api/webhooks/pipedrive/lead` | Pipedrive | New person created |
+| `/api/webhooks/pipedrive/deal` | Pipedrive | Deal won/updated |
+| `/api/webhooks/quickbooks` | QuickBooks | Entity change notifications |
+| `/api/webhooks/stripe` | Stripe | Payment events |
+| `/api/webhooks/docusign` | DocuSign | Contract signing events |
+| `/api/webhooks/whatsapp` | Twilio | Inbound WhatsApp messages |
+| `/api/webhooks/retell` | RetellAI | Voice call events |
+| `/api/webhooks/health` | Internal | Webhook health check |
+| `/api/webhooks/dead-letter` | Internal | Failed webhook viewer |
+| `/api/webhooks/reprocess` | Internal | Retry failed webhooks |
 
-**Outgoing:**
-- QuickBooks OAuth callback: `/api/quickbooks/auth/callback`
-- Stripe payment redirect: `STRIPE_PAYMENT_SUCCESS_URL`, `STRIPE_PAYMENT_CANCEL_URL`
+**Outgoing Callbacks:**
+- Stripe payment success/cancel URLs: configurable via `STRIPE_PAYMENT_SUCCESS_URL`, `STRIPE_PAYMENT_CANCEL_URL`
+- DocuSign OAuth redirect: `QUICKBOOKS_REDIRECT_URI` (via `/api/quickbooks/auth/`)
 
-## Queue System (BullMQ)
+## Integration Patterns
 
-**Queues:**
-- `lead-qualification` - AI lead scoring and qualification
-- `whatsapp-messages` - WhatsApp message sending
-- `pipedrive-sync` - Sync from Pipedrive to database
-- `pipedrive-reverse-sync` - Sync from database to Pipedrive
-- `invoice-generation` - Invoice creation workflow
-- `invoice-approval` - Invoice approval workflow (deprecated)
-- `contract-generation` - DocuSign contract generation
-- `quickbooks-sync` - QuickBooks bidirectional sync
-- `bulk-import` - Bulk data import operations
+**All external integrations follow this pattern:**
+1. Service class in `lib/services/` with singleton export
+2. Circuit breaker wrapping all external API calls
+3. IntegrationLog entry for every call (success or failure)
+4. Graceful degradation when credentials are missing (lazy initialization, null client checks)
+5. Queue-based async processing for non-blocking operations
+6. Structured error categorization (transient, permanent, auth, validation)
 
-**Queue Configuration:**
-- Connection: Redis via `REDIS_URL`
-- Worker execution: Vercel cron triggers queue processing (workers don't run continuously)
-- Retry logic: Exponential backoff via BullMQ
-- Processing endpoint: `/api/cron/process-queue` (every 5 minutes)
-- Monitoring endpoint: `/api/cron/monitor-queues` (every 4 hours)
+**Key files for adding new integrations:**
+- Service: `lib/services/{name}.service.ts`
+- Circuit breaker: `lib/utils/circuit-breaker.ts`
+- Logger: `lib/utils/logger.ts`
+- Queue: `lib/utils/queue.ts`
+- Identity mapper: `lib/services/identity-mapper.ts` (if customer-facing)
+- Webhook: `app/api/webhooks/{name}/route.ts`
 
 ---
 
-*Integration audit: 2026-01-27*
+*Integration audit: 2026-02-17*

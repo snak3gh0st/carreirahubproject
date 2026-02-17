@@ -1,218 +1,235 @@
 # Architecture
 
-**Analysis Date:** 2026-01-27
+**Analysis Date:** 2026-02-17
 
 ## Pattern Overview
 
-**Overall:** Event-Driven Middleware with Service Layer Pattern
+**Overall:** Service-Oriented Middleware with Event-Driven Webhook Processing
 
 **Key Characteristics:**
-- Webhook-driven automation replacing No-Code/SaaS tools
-- Identity Mapper pattern for customer deduplication across systems
-- Queue-based async processing with BullMQ (Redis-backed)
-- Serverless-first design (Vercel Functions)
-- Single Source of Truth (SSOT) via PostgreSQL with Prisma ORM
+- Next.js 14 App Router serves both the dashboard UI and the API/webhook layer
+- Stateless service classes (`lib/services/`) encapsulate all business logic
+- Identity Mapper pattern deduplicates customers across 7 external systems using email as the unique key
+- Webhook-driven automation: external events (Pipedrive, QuickBooks, Stripe, DocuSign) trigger async workflows via BullMQ queues
+- Circuit breaker pattern protects external API calls from cascading failures
+- Vercel serverless deployment constrains queue processing to cron-based polling (no persistent workers)
 
 ## Layers
 
-**Presentation Layer:**
-- Purpose: Next.js Server Components and Client Components for dashboard UI
-- Location: `app/dashboard/**/*.tsx`, `components/**/*.tsx`
-- Contains: React pages, forms, tables, KPI cards
-- Depends on: API Routes (internal fetch calls)
-- Used by: Authenticated users via NextAuth session
+**Presentation Layer (Dashboard UI):**
+- Purpose: Server-rendered and client-side React pages for internal operations team
+- Location: `app/dashboard/`
+- Contains: Page components (`page.tsx`), layout wrappers (`layout.tsx`)
+- Depends on: API layer (via `fetch` to `/api/*`), component library (`components/`)
+- Used by: Internal users (ADMIN, SALES, SDR, FINANCE, SUPPORT, OPERATIONAL, COMMERCIAL)
 
-**API Layer:**
-- Purpose: HTTP endpoints for UI and external webhook receivers
-- Location: `app/api/**/route.ts`
-- Contains: Next.js 14 App Router route handlers (GET/POST/PATCH/DELETE)
-- Depends on: Service Layer, Prisma Client
-- Used by: Dashboard UI, External services (Pipedrive, QuickBooks, Stripe, DocuSign, Twilio)
+**API Layer (Route Handlers):**
+- Purpose: RESTful endpoints for CRUD, webhooks, cron jobs, and integrations
+- Location: `app/api/`
+- Contains: Next.js route handlers exporting `GET`, `POST`, `PATCH`, `DELETE` functions
+- Depends on: Service layer, Prisma ORM, auth utilities
+- Used by: Dashboard UI, external webhook sources, Vercel cron scheduler
 
-**Service Layer:**
-- Purpose: Business logic orchestration and external API integrations
-- Location: `lib/services/*.service.ts`
-- Contains: Stateless service classes with singleton exports
-- Depends on: Prisma Client, External SDKs, Utility functions
-- Used by: API Routes, Queue Processors, Other Services
+**Service Layer (Business Logic):**
+- Purpose: Stateless singletons encapsulating domain logic and external API interactions
+- Location: `lib/services/`
+- Contains: Class-based services with singleton exports (e.g., `export const sdrService = new SDRService()`)
+- Depends on: Prisma ORM (`lib/db.ts`), utility functions (`lib/utils/`), AI prompts (`lib/prompts/`)
+- Used by: API layer, queue workers, cron job handlers
 
-**Data Access Layer:**
-- Purpose: Database operations and ORM abstraction
-- Location: `lib/db.ts`, Prisma Client (`@prisma/client`)
-- Contains: Singleton Prisma Client with connection pooling
-- Depends on: PostgreSQL (Neon)
-- Used by: Services, API Routes, Queue Processors
+**Infrastructure Layer (Utilities & Cross-Cutting):**
+- Purpose: Queue management, webhook handling, circuit breakers, logging, validation
+- Location: `lib/utils/`
+- Contains: Queue definitions, webhook handler, circuit breaker, logger, HMAC validation
+- Depends on: BullMQ, Redis, Prisma ORM
+- Used by: Service layer, API layer
 
-**Queue Processing Layer:**
-- Purpose: Asynchronous job processing with retry logic
-- Location: `lib/utils/queue.ts`, `lib/utils/queue-processor.ts`
-- Contains: BullMQ queues, workers, event handlers
-- Depends on: Redis, Service Layer
-- Used by: Webhook handlers, Cron jobs (Vercel)
+**Data Layer (Database & ORM):**
+- Purpose: PostgreSQL schema, Prisma client, and database views
+- Location: `prisma/schema.prisma`, `lib/db.ts`
+- Contains: 22 models, 14 enums, materialized views for BI
+- Depends on: Neon PostgreSQL (pooled via PgBouncer)
+- Used by: All server-side layers
 
-**Utility Layer:**
-- Purpose: Cross-cutting concerns and reusable functions
-- Location: `lib/utils/*.ts`, `lib/middleware/*.ts`
-- Contains: Webhook validation, circuit breakers, retry logic, logging, HMAC signatures
-- Depends on: None (or minimal)
-- Used by: All layers
+**Component Layer (UI Library):**
+- Purpose: Reusable React components for the dashboard
+- Location: `components/`
+- Contains: UI primitives (`components/ui/`), domain components (`components/dashboard/`, `components/invoices/`, `components/analytics/`)
+- Depends on: Tailwind CSS, Lucide icons, Radix UI primitives, Recharts
+- Used by: Presentation layer (`app/dashboard/`)
 
 ## Data Flow
 
-**Webhook Ingestion Flow (Pipedrive Lead Created):**
+**Webhook-to-Automation Flow (Primary):**
 
-1. `POST /api/webhooks/pipedrive/lead` receives webhook
-2. Validate HMAC signature via `lib/utils/webhook-validation.ts`
-3. `acceptWebhook()` from `lib/utils/webhook-handler.ts`:
-   - Extract event ID for deduplication
-   - Check `WebhookEvent` table for duplicates
-   - Store webhook in database (status: pending)
-   - Enqueue to `webhook-queue` (BullMQ)
-4. Return `200 OK` immediately (sub-100ms response)
-5. Queue processor (`lib/utils/queue-processor.ts`) picks up job
-6. Call `identityMapper.reconcileCustomer()` to deduplicate by email
-7. Create `Lead` in database
-8. Enqueue to `leadQualification` queue
-9. SDR Service qualifies lead via AI (`aiService.qualifyLead()`)
-10. If score ≥ 70: send WhatsApp message via `whatsappService`
-11. Log all operations to `IntegrationLog` table
+1. External system (Pipedrive/QuickBooks/Stripe/DocuSign) sends webhook to `app/api/webhooks/{service}/route.ts`
+2. Route validates signature via `lib/utils/webhook-validation.ts`
+3. `acceptWebhook()` in `lib/utils/webhook-handler.ts` checks for duplicates using `WebhookEvent` table
+4. Stores event in `WebhookEvent` table with status `pending`
+5. Enqueues job via `lib/utils/webhook-queue.ts` into appropriate BullMQ queue
+6. Returns HTTP 200 immediately (always, even on errors - prevents external retries)
+7. `app/api/cron/process-queue/route.ts` polls queues every 5 minutes
+8. `lib/utils/queue-processor.ts` processes jobs with 5-second per-job timeout (8-second total)
+9. Service layer performs business logic (e.g., create customer, qualify lead, generate invoice)
+10. All external API calls logged to `IntegrationLog` table
 
-**Deal Won to Invoice Flow:**
+**Customer Creation Flow:**
 
-1. `POST /api/webhooks/pipedrive/deal` receives Deal Won event
-2. Validate signature and accept webhook
-3. Find `Deal` in database by `pipedrive_deal_id`
-4. Trigger `invoiceWorkflowService.processDealWon(dealId)` asynchronously
-5. Workflow orchestration:
-   - Reconcile customer (Identity Mapper)
-   - Create QuickBooks customer (if not exists)
-   - Create QuickBooks invoice via `quickbooksService`
-   - Store invoice in `Invoice` table
-   - Generate DocuSign contract via `docusignService`
-   - Store contract in `Contract` table
-   - Update `WorkflowStatus` table
-6. Send invoice email + contract link to customer
-7. Log each step to `IntegrationLog`
+1. User submits form or webhook delivers person data
+2. `identityMapper.reconcileCustomer()` in `lib/services/identity-mapper.ts` finds-or-creates Customer by email
+3. Customer synced to QuickBooks via `quickbooksService.getOrCreateCustomer()`
+4. Customer synced to Pipedrive via `pipedriveService.createPerson()`
+5. External IDs stored on Customer record (`quickbooks_id`, `pipedrive_id`, etc.)
+6. Each sync logged independently to `IntegrationLog` - failures do not block creation
 
-**State Management:**
-- Server-side state: Prisma Client queries (no caching)
-- Client-side state: React `useState` for form inputs, `useEffect` for API fetches
-- Session state: NextAuth JWT tokens (30-day expiry)
+**Lead Qualification Flow:**
+
+1. Lead enters system (Pipedrive webhook or manual creation)
+2. `sdrService.processNewLead()` in `lib/services/sdr.service.ts` orchestrates qualification
+3. Conversation history fetched from `Conversation` + `Message` tables
+4. `aiService.qualifyLead()` in `lib/services/ai.service.ts` scores lead 0-100 via OpenAI
+5. Score compared to `SDR_QUALIFICATION_THRESHOLD` (default: 70)
+6. Qualified leads get WhatsApp notification via `whatsappService`
+7. Unqualified leads remain in `QUALIFYING` status for human SDR review
+
+**Deal Won Workflow (Invoice + Contract):**
+
+1. Pipedrive deal-won webhook triggers `app/api/webhooks/pipedrive/deal/route.ts`
+2. `invoiceWorkflowService.processDealWon()` in `lib/services/invoice-workflow.service.ts` orchestrates
+3. Customer reconciled via Identity Mapper (ensures QuickBooks + DocuSign IDs exist)
+4. Invoice created in QuickBooks via `quickbooksService`
+5. Contract generated and sent via `docusignService`
+6. Workflow status tracked on `Deal` record (`workflowStatus`, `workflowStartedAt`, `workflowCompletedAt`)
+7. All steps wrapped in `workflowStatusService` for progress tracking
+
+**State Management (Client-Side):**
+- TanStack Query (`@tanstack/react-query`) manages server state with 5-minute stale time
+- NextAuth session via `useSession()` hook for authentication state
+- Custom `ToastContext` (`lib/contexts/toast.context.tsx`) for notifications
+- URL search params for dashboard filters (date range, status, segment)
+- No global client state store (Redux/Zustand) - all state is server-derived
 
 ## Key Abstractions
 
-**Identity Mapper (Customer Deduplication):**
-- Purpose: Enforce email as unique key across all external systems
-- Examples: `lib/services/identity-mapper.ts`
-- Pattern: Reconcile or Create - never duplicate customers
-- Used by: All webhook handlers, workflow services
+**Identity Mapper:**
+- Purpose: Single source of truth for customer identity across 7 external systems
+- Location: `lib/services/identity-mapper.ts`
+- Pattern: Email is the unique key. `reconcileCustomer()` finds existing customer by email, updates external IDs and PII fields, or creates new. Never creates duplicates.
+- Critical rule: Always use `identityMapper.reconcileCustomer()` when customer data arrives from external systems
 
-**Service Classes:**
-- Purpose: Encapsulate business logic and external API operations
-- Examples: `lib/services/quickbooks.service.ts`, `lib/services/sdr.service.ts`, `lib/services/invoice-workflow.service.ts`
-- Pattern: Singleton class exports (`export const sdrService = new SDRService()`)
-- Used by: API routes, queue processors, other services
+**Circuit Breaker:**
+- Purpose: Prevents cascading failures when external APIs (QuickBooks, Pipedrive, etc.) are down
+- Location: `lib/utils/circuit-breaker.ts`
+- Pattern: CLOSED -> OPEN (after N failures) -> HALF_OPEN (after timeout) -> CLOSED (after success). State persisted to `CircuitBreakerState` table.
+- Factory: `getCircuitBreaker(serviceName)` returns singleton per service
 
-**Workflow Orchestrators:**
-- Purpose: Multi-step business processes with error handling and retry
-- Examples: `lib/services/invoice-workflow.service.ts`, `lib/services/contract-workflow.service.ts`, `lib/services/payment-workflow.service.ts`
-- Pattern: Async methods with try-catch, integration logging, queue enqueuing
+**Webhook Handler:**
+- Purpose: Standardized webhook acceptance with idempotency and async processing
+- Location: `lib/utils/webhook-handler.ts`
+- Pattern: Validate -> Deduplicate via `WebhookEvent` table -> Store -> Enqueue -> Return 200 OK immediately
+- Always returns 200 to prevent external retry storms
 
-**Queue Jobs:**
-- Purpose: Async processing with exponential backoff retry
-- Examples: `leadQualification`, `whatsappMessages`, `invoiceGeneration`, `quickbooksSync`
-- Pattern: BullMQ queues with 3-5 retry attempts, logged to `IntegrationLog`
+**Integration Logger:**
+- Purpose: Structured logging of all external API operations for debugging and observability
+- Location: `lib/utils/logger.ts`
+- Pattern: Every external API call (success or failure) creates an `IntegrationLog` record with service, action, status, payload, and error details
+- Used throughout service layer for auditability
 
-**Webhook Event Store:**
-- Purpose: Idempotency and audit trail for all incoming webhooks
-- Examples: `WebhookEvent` model in `prisma/schema.prisma`
-- Pattern: Event sourcing - store raw payload + metadata, process once, mark as success/failure
+**Queue System:**
+- Purpose: Async processing with retry logic and exponential backoff
+- Location: `lib/utils/queue.ts` (definitions), `lib/utils/queue-processor.ts` (processing), `lib/utils/webhook-queue.ts` (webhook helpers)
+- Pattern: Lazy-initialized BullMQ queues via Proxy pattern. Jobs added with configurable retry (3-5 attempts, exponential backoff). Processing via Vercel cron (not persistent workers).
+- Available queues: `leadQualification`, `whatsappMessages`, `pipedriveSync`, `pipedriveReverseSync`, `invoiceGeneration`, `invoiceApproval`, `contractGeneration`, `quickbooksSync`, `bulkImport`
+
+**SystemConfig (OAuth Token Store):**
+- Purpose: Database-persisted configuration for OAuth tokens that need periodic refresh
+- Location: Prisma model `SystemConfig` (singleton, id="system")
+- Pattern: QuickBooks access/refresh tokens stored in DB because they expire and need API-triggered refresh. Other secrets use environment variables.
 
 ## Entry Points
 
-**Root Application Entry:**
+**Root Page (`/`):**
 - Location: `app/page.tsx`
-- Triggers: Browser navigation to `/`
-- Responsibilities: Redirect authenticated users to `/dashboard`, unauthenticated to `/auth/signin`
+- Triggers: Direct navigation
+- Responsibilities: Checks session, redirects to `/dashboard` (authenticated) or `/auth/signin` (unauthenticated)
 
-**Authentication Entry:**
-- Location: `app/api/auth/[...nextauth]/route.ts`
-- Triggers: NextAuth.js OAuth flow
-- Responsibilities: Handle login, JWT token generation, session management
+**Dashboard Layout:**
+- Location: `app/dashboard/layout.tsx`
+- Triggers: Any `/dashboard/*` route
+- Responsibilities: Server-side session check, renders `ProfessionalSidebar` and `SupportChatBubble`, provides layout structure
 
-**Dashboard Entry:**
-- Location: `app/dashboard/page.tsx`
-- Triggers: Authenticated user navigates to `/dashboard`
-- Responsibilities: Fetch and display KPIs (sales, finance, customers), render quick actions
-
-**Webhook Receivers:**
-- Location: `app/api/webhooks/{service}/{event}/route.ts`
-- Triggers: External HTTP POST from Pipedrive, QuickBooks, Stripe, DocuSign, Twilio
-- Responsibilities: Validate signature, accept webhook, enqueue for processing, return 200 OK
+**API Webhooks:**
+- Location: `app/api/webhooks/{pipedrive,quickbooks,stripe,docusign,whatsapp}/route.ts`
+- Triggers: External system HTTP POST callbacks
+- Responsibilities: Signature validation, webhook acceptance, async enqueuing
 
 **Cron Jobs:**
-- Location: `app/api/cron/{job}/route.ts`
-- Triggers: Vercel Cron (configured in `vercel.json`)
-- Responsibilities: Periodic tasks (QuickBooks token refresh, overdue invoice reminders, collection calls)
+- Location: `app/api/cron/*/route.ts`
+- Triggers: Vercel Cron scheduler (configured in `vercel.json`)
+- Responsibilities: Queue processing (every 5 min), QuickBooks sync (every 6 hours), token refresh (daily), alerts evaluation (hourly), payment/contract reminders (daily)
+- Key cron endpoints:
+  - `process-queue` - every 5 minutes, processes BullMQ jobs
+  - `quickbooks-sync` - every 6 hours, bidirectional sync
+  - `refresh-quickbooks-token` - daily at 2 AM
+  - `evaluate-alerts` - hourly
+  - `send-scheduled-invoices` - daily at 9 AM
+  - `payment-reminders` - daily at 10 AM
+  - `overdue-invoices` - daily at 2 AM
+  - `collection-calls` - daily at 1 PM
+  - `contract-reminders` - daily at 9 AM
+  - `daily-ar-digest` - daily at 9 AM
 
-**Queue Workers:**
-- Location: `lib/utils/queue-processor.ts`
-- Triggers: Jobs added to BullMQ queues
-- Responsibilities: Process async jobs (lead qualification, invoice generation, sync operations)
+**Auth Entry:**
+- Location: `app/auth/signin/page.tsx`, `app/api/auth/[...nextauth]/route.ts`
+- Triggers: Unauthenticated access, login form submission
+- Responsibilities: Credential authentication, JWT token creation, session management
+
+**Payment Portal (Public):**
+- Location: `app/payment/[invoiceId]/page.tsx`
+- Triggers: Payment links sent to customers
+- Responsibilities: Public-facing Stripe payment form for invoice payment
 
 ## Error Handling
 
-**Strategy:** Graceful degradation with comprehensive logging
+**Strategy:** Graceful degradation with comprehensive logging. External API failures never block core operations.
 
 **Patterns:**
-- All external API calls wrapped in `try-catch` with fallback responses
-- Integration failures logged to `IntegrationLog` table (service, action, status, error, payload)
-- Webhook signature validation failures still return `200 OK` to prevent external retries (logged as errors)
-- Queue jobs retry 3-5 times with exponential backoff before moving to dead letter queue
-- AI service failures return fallback messages and escalate to human
-- Database errors logged and re-thrown (no silent failures)
-
-**Dead Letter Queue:**
-- Location: `app/api/webhooks/dead-letter/route.ts`
-- Purpose: Manual reprocessing of failed webhooks via UI (`app/dashboard/webhooks/page.tsx`)
+- **Webhook routes** always return HTTP 200, even on errors, to prevent external retry storms. Errors logged to `IntegrationLog`.
+- **Service layer** catches all external API errors, logs them, and continues with degraded functionality (e.g., customer created locally even if QuickBooks sync fails).
+- **Circuit breaker** wraps external API calls. When circuit is OPEN, operations fail fast with `CircuitOpenError` without hitting the external API.
+- **Queue retry** with exponential backoff (3-5 attempts, 2-60 second base delays) handles transient failures.
+- **API routes** use Zod validation for request bodies, return structured error responses with appropriate HTTP status codes.
+- **Error fallback utility** (`lib/utils/error-fallback.ts`) categorizes errors and generates user-friendly fallback responses.
 
 ## Cross-Cutting Concerns
 
-**Logging:** 
-- Approach: Dual logging - `console.log` for runtime + `IntegrationLog` table for audit trail
-- Service: `lib/utils/logger.ts` with `integrationLogger.logSuccess()` and `integrationLogger.logError()`
-- Pattern: All external API calls, webhook events, workflow steps logged
+**Logging:**
+- `IntegrationLogger` (`lib/utils/logger.ts`) writes structured logs to `IntegrationLog` database table
+- Console logging with `[SERVICE_NAME]` prefix convention (e.g., `[AUTH]`, `[SDR]`, `[CUSTOMER_CREATE]`)
+- All external API calls must create IntegrationLog entries (success and failure)
 
-**Validation:** 
-- Approach: Multi-layered - HMAC signatures for webhooks, Prisma schema constraints, TypeScript types
-- Service: `lib/utils/webhook-validation.ts` for signature verification
-- Pattern: Validate at entry points (API routes), rely on TypeScript + Prisma for internal safety
+**Validation:**
+- Zod schemas for API request body validation (e.g., `createCustomerSchema` in `app/api/customers/route.ts`)
+- HMAC signature verification for webhooks (`lib/utils/webhook-validation.ts`, `lib/utils/hmac.ts`)
+- Prisma schema-level constraints (unique, required, defaults)
 
-**Authentication:** 
-- Approach: NextAuth.js with JWT strategy
-- Configuration: `lib/auth.ts` with `authOptions`
-- Pattern: Middleware (`middleware.ts`) protects `/dashboard` routes by role (RBAC)
-- Roles: ADMIN, SALES, SDR, FINANCE, SUPPORT, OPERATIONAL, COMMERCIAL
+**Authentication:**
+- NextAuth.js with Credentials provider and JWT strategy (`lib/auth.ts`)
+- Password hashing via bcrypt (`lib/services/auth.service.ts`)
+- JWT maxAge: 30 days, session refresh: every 24 hours
 
 **Authorization (RBAC):**
-- Approach: Role-based access control via middleware and session checks
-- Pattern: `middleware.ts` checks user role and redirects unauthorized access
-- Example: `/dashboard/invoices` requires ADMIN, FINANCE, or COMMERCIAL role
+- Middleware-level route protection (`middleware.ts`) checks JWT token role against `routeRoleMap`
+- 7 roles: ADMIN, SALES, SDR, FINANCE, SUPPORT, OPERATIONAL, COMMERCIAL
+- Route prefix matching: first match wins in ordered list
+- API routes perform role checks inline using `getServerSession()` + role comparison
+- Dashboard pages render role-specific views (e.g., `app/dashboard/page.tsx` shows different UIs per role)
 
-**Circuit Breaker:**
-- Approach: Prevent cascading failures from external API downtime
-- Service: `lib/utils/circuit-breaker.ts`
-- Pattern: Track failure rate per service, open circuit after threshold, auto-recover after cooldown
-
-**Retry Logic:**
-- Approach: Exponential backoff for transient failures
-- Service: `lib/utils/retry-logic.ts`, BullMQ queue retry configs
-- Pattern: 3-5 attempts with 2s → 4s → 8s delays
-
-**Rate Limiting:**
-- Approach: Respect external API rate limits (QuickBooks, Stripe)
-- Pattern: Batch operations, queue throttling, circuit breaker triggers
+**Internationalization:**
+- UI language: Portuguese (Brazilian) - hardcoded, no i18n framework
+- HTML lang attribute: `pt-BR`
+- Customer `preferredLanguage` field defaults to `pt-BR`
 
 ---
 
-*Architecture analysis: 2026-01-27*
+*Architecture analysis: 2026-02-17*

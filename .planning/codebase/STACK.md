@@ -1,129 +1,145 @@
 # Technology Stack
 
-**Analysis Date:** 2026-01-27
+**Analysis Date:** 2026-02-17
 
 ## Languages
 
 **Primary:**
-- TypeScript 5.5.0 - All application code (strict mode enabled)
-- JavaScript - Configuration files (Next.js, Tailwind, PostCSS)
+- TypeScript 5.5+ (strict mode) - All application code, services, API routes, components
 
 **Secondary:**
-- SQL - PostgreSQL database queries and migrations
+- JavaScript - Config files (`next.config.js`, `postcss.config.js`, seed/clear scripts)
+- SQL - Database views (`prisma/migrations/create_views.sql`)
 
 ## Runtime
 
 **Environment:**
-- Node.js v25.3.0 (ES2020 target)
-- Next.js 14.2.0+ (App Router architecture)
+- Node.js (development machine: v25.6.1)
+- Vercel Serverless Functions (production, 10s timeout)
 
 **Package Manager:**
-- npm (default)
-- Lockfile: package-lock.json (present)
+- npm 11.9.0
+- Lockfile: `package-lock.json` (present)
 
 ## Frameworks
 
 **Core:**
-- Next.js 14.2.0+ - Full-stack React framework with App Router
-- React 18.3.0 - UI library
-- Prisma 5.19.0 - Database ORM and migration tool
+- Next.js ^14.2.0 - Full-stack framework (App Router)
+- React ^18.3.0 - UI rendering
+- Prisma ^5.19.0 - Database ORM and schema management
 
-**Testing:**
-- Not detected - No test framework configured
+**Authentication:**
+- NextAuth.js ^4.24.5 - Credentials provider with JWT strategy (`lib/auth.ts`)
+
+**Queue/Background Processing:**
+- BullMQ ^5.3.0 - Job queue system (`lib/utils/queue.ts`)
+- ioredis ^5.3.2 - Redis client for BullMQ
+
+**UI/Styling:**
+- Tailwind CSS ^3.4.0 - Utility-first CSS (`tailwind.config.ts`)
+- tailwindcss-animate ^1.0.7 - Animation utilities
+- Radix UI - Headless component primitives (checkbox, dialog, dropdown-menu, label, popover, scroll-area, select, slot, switch, tabs, tooltip)
+- Lucide React ^0.378.0 - Icon library
+- class-variance-authority ^0.7.0 - Variant-based component styling
+- clsx ^2.1.1 + tailwind-merge ^2.4.0 - Class name utilities (`lib/utils/cn.ts`)
+- cmdk ^1.1.1 - Command palette component
+- next-themes ^0.4.6 - Dark mode support
+- sonner ^2.0.7 - Toast notifications
+- recharts ^2.15.4 - Charting/data visualization
+
+**Data Management:**
+- @tanstack/react-query ^5.90.17 - Server state management and caching
+- @tanstack/react-table ^8.21.3 - Table/data grid component
+- papaparse ^5.5.3 - CSV parsing for bulk imports
 
 **Build/Dev:**
-- TypeScript 5.5.0 - Type checking and compilation
-- ESLint 8.57.1 - Code linting (eslint-config-next)
-- Tailwind CSS 3.4.0 - Utility-first CSS framework
-- PostCSS 8.4.0 - CSS processing
-- Autoprefixer 10.4.0 - CSS vendor prefixing
+- ESLint ^8.57.1 + eslint-config-next ^14.2.35 - Linting
+- PostCSS ^8.4.0 + Autoprefixer ^10.4.0 - CSS processing
+- tsx (via npx) - TypeScript script execution for dev/test scripts
 
 ## Key Dependencies
 
-**Critical:**
-- `@prisma/client` 5.19.0 - Database client (PostgreSQL via Neon)
-- `next-auth` 4.24.5 - Authentication (JWT strategy, RBAC)
-- `bullmq` 5.3.0 - Queue management for async jobs
-- `ioredis` 5.3.2 - Redis client for BullMQ
+**Critical (core business logic):**
+- `openai` ^4.52.0 - AI chatbot and lead qualification (`lib/services/ai.service.ts`)
+- `stripe` ^14.25.0 - Payment processing (`lib/services/stripe.service.ts`)
+- `@stripe/stripe-js` ^8.6.1 - Stripe client-side SDK
+- `twilio` ^4.23.0 - WhatsApp messaging via Twilio (`lib/services/whatsapp.service.ts`)
+- `pdf-lib` ^1.17.1 - PDF generation for contracts (`lib/services/docusign.service.ts`)
+- `resend` ^6.7.0 - Transactional email sending (`lib/services/notification.service.ts`)
 
 **Infrastructure:**
-- `openai` 4.52.0 - AI chatbot and lead qualification
-- `stripe` 14.25.0 - Payment processing SDK
-- `@stripe/stripe-js` 8.6.1 - Stripe.js for client-side
-- `twilio` 4.23.0 - WhatsApp messaging via Twilio Business API
-- `resend` 6.7.0 - Transactional email service
-- `@aws-sdk/client-s3` 3.974.0 - AWS S3 for document storage
-- `@aws-sdk/s3-request-presigner` 3.974.0 - Presigned URL generation
-- `pdf-lib` 1.17.1 - PDF generation and manipulation
-- `bcryptjs` 3.0.3 - Password hashing
+- `@prisma/client` ^5.19.0 - Database client (singleton in `lib/db.ts`)
+- `@vercel/postgres` ^0.5.0 - Vercel Postgres adapter
+- `bullmq` ^5.3.0 - Async job processing with retry
+- `@aws-sdk/client-s3` ^3.974.0 + `@aws-sdk/s3-request-presigner` ^3.974.0 - S3 document storage (`lib/services/document-storage.service.ts`)
+- `bcryptjs` ^3.0.3 - Password hashing (`lib/services/auth.service.ts`)
+- `zod` ^3.23.0 - Runtime schema validation
+- `p-retry` ^7.1.1 - Retry logic for external API calls
+- `date-fns` ^3.6.0 - Date manipulation utilities
 
-**UI Components:**
-- `@radix-ui/*` - Headless UI components (dialog, dropdown, tabs, etc.)
-- `lucide-react` 0.378.0 - Icon library
-- `recharts` 2.15.4 - Charts and analytics
-- `@tanstack/react-query` 5.90.17 - Server state management
-- `@tanstack/react-table` 8.21.3 - Data table management
-- `next-themes` 0.4.6 - Dark mode support
-- `sonner` 2.0.7 - Toast notifications
-
-**Utilities:**
-- `zod` 3.23.0 - Schema validation
-- `date-fns` 3.6.0 - Date manipulation
-- `papaparse` 5.5.3 - CSV parsing
-- `p-retry` 7.1.1 - Retry logic with exponential backoff
-- `clsx` 2.1.1 - Conditional class names
-- `class-variance-authority` 0.7.0 - Component variants
-- `tailwind-merge` 2.4.0 - Tailwind class merging
+**Email:**
+- `@react-email/components` ^1.0.3 - React-based email templates
+- `resend` ^6.7.0 - Email delivery service
 
 ## Configuration
 
+**TypeScript:**
+- Config: `tsconfig.json`
+- Target: ES2020
+- Strict mode: enabled
+- Module resolution: bundler
+- Path alias: `@/*` maps to project root
+- JSX: preserve (Next.js handles compilation)
+
 **Environment:**
-- Environment variables stored in `.env` files (`.env`, `.env.local`, `.env.example`)
-- 107 environment variables total (see `.env.example`)
-- Secrets managed via environment variables + database (SystemConfig table for OAuth tokens)
+- `.env.local` - Local development secrets (git-ignored)
+- `.env.example` - Template with all required env vars
+- Environment variables loaded via Next.js built-in dotenv
 
 **Build:**
-- `tsconfig.json` - TypeScript configuration (strict mode, path aliases `@/*`)
-- `next.config.js` - Next.js configuration (TypeScript/ESLint errors not ignored)
-- `tailwind.config.ts` - Tailwind CSS configuration (dark mode class strategy)
-- `postcss.config.js` - PostCSS configuration (Tailwind + Autoprefixer)
-- `vercel.json` - Vercel deployment config (11 cron jobs defined)
-- `prisma/schema.prisma` - Database schema (PostgreSQL with Neon pooling)
+- `next.config.js` - Next.js configuration (TypeScript and ESLint errors not ignored)
+- `postcss.config.js` - PostCSS with Tailwind CSS and Autoprefixer plugins
+- `tailwind.config.ts` - Tailwind with custom design system (CSS variable-based colors, Inter/Space Grotesk/JetBrains Mono fonts, 4px spacing scale)
+- Build command: `prisma generate && next build` (generates Prisma client before build)
 
 **Database:**
-- Prisma Client generation: `npm run db:generate`
-- Schema push (dev): `npm run db:push`
-- Migrations (prod): `npm run db:migrate`
-- Prisma Studio: `npm run db:studio`
-- SQL views: `npm run db:views` (creates materialized views for BI)
+- `prisma/schema.prisma` - PostgreSQL with Neon pooled + direct connections
+- Connection pooling: pgbouncer=true, connection_limit=10, pool_timeout=30 (`lib/db.ts`)
+
+**Scheduled Jobs:**
+- `vercel.json` - 13 Vercel Cron Jobs for automated operations (sync, reminders, alerts, queue processing)
+
+## Design System
+
+**Color Tokens:**
+- CSS variable-based color system (primary blue, success, warning, error, info, gray scales)
+- Brand colors: Carreira USA Gold theme (#D4AF37 as primary gold)
+- Sigma Intel brand: #29ABE2
+- Dark theme support via `next-themes` with `class` strategy
+- Design tokens defined in `lib/design-tokens.ts`
+
+**Typography:**
+- Sans: Inter, system-ui fallbacks
+- Display: Space Grotesk
+- Mono: JetBrains Mono
+
+**Spacing:**
+- 4px base unit system via CSS variables
 
 ## Platform Requirements
 
 **Development:**
-- Node.js v25.3.0 or compatible
-- PostgreSQL database (Neon recommended for connection pooling)
-- Redis server (for BullMQ queues)
-- Environment variables configured (see `.env.example`)
+- Node.js 18+ (uses ES2020 features)
+- PostgreSQL database (Neon recommended)
+- Redis instance (optional - gracefully degrades without it)
+- Environment variables per `.env.example`
 
 **Production:**
-- Vercel Serverless Functions (deployment target)
-- Neon PostgreSQL (connection pooling via `POSTGRES_PRISMA_URL`)
-- Redis (Upstash or managed Redis for production)
-- External API keys: OpenAI, Stripe, Twilio, QuickBooks, Pipedrive, DocuSign, AWS S3, Resend, RetellAI
-
-**Cron Jobs (Vercel):**
-- `/api/cron/evaluate-alerts` - Every hour
-- `/api/cron/refresh-quickbooks-token` - Daily at 2 AM
-- `/api/cron/quickbooks-sync` - Every 6 hours
-- `/api/cron/process-queue` - Every 5 minutes
-- `/api/cron/monitor-queues` - Every 4 hours
-- `/api/cron/contract-reminders` - Daily at 9 AM
-- `/api/cron/contract-expiration` - Daily at 1 AM
-- `/api/cron/payment-reminders` - Daily at 10 AM
-- `/api/cron/overdue-invoices` - Daily at 2 AM
-- `/api/cron/collection-calls` - Daily at 1 PM
-- `/api/cron/send-scheduled-invoices` - Daily at 9 AM
+- Vercel (serverless deployment)
+- Neon PostgreSQL (pooled + direct connection strings)
+- Redis (for BullMQ queue processing, optional)
+- Vercel Cron Jobs (13 scheduled endpoints)
 
 ---
 
-*Stack analysis: 2026-01-27*
+*Stack analysis: 2026-02-17*
