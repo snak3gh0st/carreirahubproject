@@ -47,12 +47,17 @@ export class IdentityMapperService {
     });
 
     if (customer) {
-      // Customer existe: atualizar IDs externos faltantes
+      // Customer existe: atualizar IDs externos e fill empty fields.
+      // Name and phone are always updated when provided (allows corrections).
+      // Other PII fields (ssn, passport, etc.) only fill empty to avoid
+      // overwriting manually-entered data.
       const updates: Partial<Customer> = {};
 
-      // Atualizar campos básicos se necessário
-      if (name && !customer.name) updates.name = name;
-      if (phone && !customer.phone) updates.phone = phone;
+      // Always update name and phone when provided (allows fixing incorrect data)
+      if (name && name !== customer.name) updates.name = name;
+      if (phone && phone !== customer.phone) updates.phone = phone;
+
+      // PII and address fields: only fill if currently empty
       if (dateOfBirth && !customer.dateOfBirth) updates.dateOfBirth = dateOfBirth;
       if (ssn && !customer.ssn) updates.ssn = ssn;
       if (passport && !customer.passport) updates.passport = passport;

@@ -245,7 +245,11 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     const remaining = Math.max(0, total - entryAmount);
 
     const schedule = [];
-    const baseDate = form.dueDate ? parseLocalDate(form.dueDate) : new Date();
+    // Use UTC noon for date-only operations to prevent timezone date shifts
+    const now = new Date();
+    const baseDate = form.dueDate
+      ? parseLocalDate(form.dueDate)
+      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0));
 
     // CASE 1: Single payment (a vista) - no entry, no installments
     if (entryAmount === 0 && installments === 0 && total > 0) {

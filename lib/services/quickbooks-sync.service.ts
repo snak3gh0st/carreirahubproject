@@ -266,18 +266,16 @@ export class QuickBooksSyncService {
         });
       }
 
-      const invoiceData = {
-        invoiceNumber: qbInvoice.DocNumber || qbInvoiceId,
-        amount: totalAmt,
-        dueDate,
-        status,
-        quickbooks_invoice_id: qbInvoiceId,
-        dealId: existing?.dealId || deal.id,
-        customerId: customer.id,
-        markedOverdueAt: status === "OVERDUE" ? new Date() : existing?.markedOverdueAt || null,
-        amountPaid: balance === 0 ? totalAmt : balance < totalAmt && balance > 0 ? totalAmt - balance : 0,
-        paidAt: balance < totalAmt && balance >= 0 ? (balance === 0 ? new Date(qbInvoice.TxnDate || new Date()) : new Date()) : null,
-        installments: {
+      let invoice;
+      if (existing) {
+        // IMPORTANT: When updating an existing invoice, preserve locally-originated
+        // fields (invoiceNumber, dueDate, installments, lineItems, dealId, ownerId)
+        // and only update QB-sync fields (status, amountPaid, paidAt, markedOverdueAt).
+        // This prevents the destructive overwrite that previously destroyed installment
+        // series tracking and other local data set during invoice creation.
+        const existingInstallments = (existing.installments as any) || {};
+        const mergedInstallments = {
+          ...existingInstallments,
           quickbooks: {
             syncDate: new Date().toISOString(),
             txnDate: qbInvoice.TxnDate,
@@ -285,16 +283,44 @@ export class QuickBooksSyncService {
             totalAmt,
             emailStatus: qbInvoice.EmailStatus,
           },
-        } as any,
-      };
+        };
 
-      let invoice;
-      if (existing) {
         invoice = await prisma.invoice.update({
           where: { id: existing.id },
-          data: invoiceData,
+          data: {
+            // Only update status-related fields from QB
+            status,
+            amountPaid: balance === 0 ? totalAmt : balance < totalAmt && balance > 0 ? totalAmt - balance : 0,
+            paidAt: balance < totalAmt && balance >= 0 ? (balance === 0 ? new Date(qbInvoice.TxnDate || new Date()) : new Date()) : null,
+            markedOverdueAt: status === "OVERDUE" ? new Date() : existing.markedOverdueAt,
+            // Merge QB sync data into installments without overwriting local data
+            installments: mergedInstallments as any,
+            // Preserve existing: invoiceNumber, amount, dueDate, dealId, customerId, ownerId, lineItems
+          },
         });
       } else {
+        // New invoice from QB sync (not locally created) - set all fields
+        const invoiceData = {
+          invoiceNumber: qbInvoice.DocNumber || qbInvoiceId,
+          amount: totalAmt,
+          dueDate,
+          status,
+          quickbooks_invoice_id: qbInvoiceId,
+          dealId: deal.id,
+          customerId: customer.id,
+          markedOverdueAt: status === "OVERDUE" ? new Date() : null,
+          amountPaid: balance === 0 ? totalAmt : balance < totalAmt && balance > 0 ? totalAmt - balance : 0,
+          paidAt: balance < totalAmt && balance >= 0 ? (balance === 0 ? new Date(qbInvoice.TxnDate || new Date()) : new Date()) : null,
+          installments: {
+            quickbooks: {
+              syncDate: new Date().toISOString(),
+              txnDate: qbInvoice.TxnDate,
+              balance,
+              totalAmt,
+              emailStatus: qbInvoice.EmailStatus,
+            },
+          } as any,
+        };
         invoice = await prisma.invoice.create({
           data: invoiceData,
         });
