@@ -4,15 +4,11 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
-import { format } from "date-fns";
 import { Pagination } from "@/components/ui/pagination";
-import { MobileFilterModal } from "@/components/dashboard/mobile-filter-modal";
-import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
-import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { InvoiceFilters } from "@/components/invoices/invoice-filters";
-import { FileText, TrendingUp, AlertCircle } from "lucide-react";
+import { TrendingUp, AlertCircle } from "lucide-react";
+import { InvoiceGroupedList } from "@/components/invoices/invoice-grouped-list";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -222,17 +218,6 @@ export default async function InvoicesPage({
     if (sortBy !== field) return null;
     return sortOrder === "asc" ? " ↑" : " ↓";
   };
-
-  // Helper function to get status badge variant
-  function getStatusVariant(status: InvoiceStatus): "success" | "warning" | "error" | "info" | "default" {
-    switch (status) {
-      case "PAID": return "success";
-      case "SENT": return "info";
-      case "OVERDUE": return "error";
-      case "PARTIALLY_PAID": return "warning";
-      default: return "default";
-    }
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -494,88 +479,11 @@ export default async function InvoicesPage({
                   </th>
                 </tr>
               </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-0">
-                    <EmptyState
-                      icon={<FileText className="w-16 h-16" />}
-                      title="Nenhuma fatura encontrada"
-                      description="Tente ajustar seus filtros ou crie uma nova fatura para começar."
-                    />
-                  </td>
-                </tr>
-              ) : (
-                invoices.map((invoice) => {
-                  const isOverdue =
-                    invoice.status !== InvoiceStatus.PAID &&
-                    invoice.status !== InvoiceStatus.VOID &&
-                    new Date(invoice.dueDate) < new Date();
-
-                  return (
-                    <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/dashboard/invoices/${invoice.id}`}
-                          className="text-sm font-display font-medium text-gold-600 hover:text-gold-700"
-                        >
-                          {invoice.invoiceNumber || invoice.id.slice(0, 8)}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-display text-gray-900">{invoice.customer.name}</div>
-                        <div className="text-xs text-gray-500">{invoice.customer.email}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-display font-semibold text-gray-900 tabular-nums">
-                        ${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={getStatusVariant(invoice.status)}>
-                          {invoice.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 tabular-nums">
-                        {format(new Date(invoice.dueDate), 'MMM dd, yyyy')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-3">
-                          <Link
-                            href={`/dashboard/invoices/${invoice.id}`}
-                            className="text-gold-600 hover:text-gold-700 font-medium"
-                          >
-                            Ver
-                          </Link>
-                          {(() => {
-                            // Check if user can edit this invoice
-                            const isPaidOrVoid = invoice.status === InvoiceStatus.PAID || invoice.status === InvoiceStatus.VOID;
-                            const canEditInvoice = (
-                              userRole === "ADMIN" || 
-                              userRole === "FINANCE" || 
-                              (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId)
-                            ) && !isPaidOrVoid;
-
-                            return canEditInvoice ? (
-                              <Link
-                                href={`/dashboard/invoices/${invoice.id}/edit`}
-                                className="text-gold-600 hover:text-gold-700 font-medium"
-                              >
-                                Editar
-                              </Link>
-                            ) : null;
-                          })()}
-                          <DeleteInvoiceButton
-                            invoiceId={invoice.id}
-                            invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)}
-                            hasQuickbooksId={!!invoice.quickbooks_invoice_id}
-                            userRole={userRole}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
+            <InvoiceGroupedList
+              invoices={invoices}
+              userRole={userRole}
+              userId={userId}
+            />
             </table>
           </div>
 
