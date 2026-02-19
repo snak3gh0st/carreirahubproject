@@ -455,13 +455,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 043-D1 | Fix QB cron connection pool exhaustion (P2024) | 2026-02-16 | aedbea7 | [qb-cron-connection-pool-exhaustion](.planning/debug/resolved/qb-cron-connection-pool-exhaustion.md) |
 | 043-D2 | Fix pre-existing build errors blocking deployment | 2026-02-16 | 698e4a4 | - |
 | INFRA | Migrate repo from GitHub to GitLab | 2026-02-16 | cb7adae | gitlab.com/sigma-group192807/carreirausahub |
+| 43 | Fix invoice creator showing wrong date (UTC off-by-one) | 2026-02-19 | bc4ba4f | [43-fix-invoice-creator-showing-wrong-date-y](.planning/quick/43-fix-invoice-creator-showing-wrong-date-y/) |
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Fixed QB cron connection pool exhaustion + build errors + migrated to GitLab + deployed
-Resume file: .planning/debug/resolved/qb-cron-connection-pool-exhaustion.md
-Next action: Monitor next QB cron run (every 6h) to confirm stability
+Last session: 2026-02-19
+Stopped at: Completed quick task 43 - Fix invoice creator showing wrong date (UTC timezone off-by-one)
+Resume file: .planning/quick/43-fix-invoice-creator-showing-wrong-date-y/43-SUMMARY.md
+Next action: Monitor invoice creator in production to confirm dates display correctly
 
 ## Sprint 1 Success Criteria
 
