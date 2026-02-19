@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, FileText } from "lucide-react";
 import { format } from "date-fns";
@@ -39,7 +40,6 @@ interface InvoiceGroupedListProps {
   userId: string;
   sortBy?: string;
   sortOrder?: string;
-  buildSortUrl: (field: string) => string;
 }
 
 function getStatusVariant(
@@ -70,8 +70,15 @@ export function InvoiceGroupedList({
   userId,
   sortBy,
   sortOrder,
-  buildSortUrl,
 }: InvoiceGroupedListProps) {
+  const searchParams = useSearchParams();
+
+  const buildSortUrl = (field: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sortBy", field);
+    params.set("sortOrder", sortBy === field && sortOrder === "asc" ? "desc" : "asc");
+    return `/dashboard/invoices?${params.toString()}`;
+  };
   const groups = useMemo<CustomerGroup[]>(() => {
     const map = new Map<string, CustomerGroup>();
 
