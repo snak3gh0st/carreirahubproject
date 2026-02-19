@@ -213,12 +213,6 @@ export default async function InvoicesPage({
     return `/dashboard/invoices?${params.toString()}`;
   };
 
-  // Sort indicator component
-  const SortIndicator = ({ field }: { field: string }) => {
-    if (sortBy !== field) return null;
-    return sortOrder === "asc" ? " ↑" : " ↓";
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 md:px-6 lg:px-8 py-6 md:py-8">
@@ -442,52 +436,14 @@ export default async function InvoicesPage({
 
         {/* Invoice List */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    <Link
-                      href={buildSortUrl("invoiceNumber")}
-                      className="hover:text-gray-900 cursor-pointer"
-                    >
-                      Fatura #<SortIndicator field="invoiceNumber" />
-                    </Link>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    Cliente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    <Link
-                      href={buildSortUrl("amount")}
-                      className="hover:text-gray-900 cursor-pointer"
-                    >
-                      Valor<SortIndicator field="amount" />
-                    </Link>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    <Link
-                      href={buildSortUrl("dueDate")}
-                      className="hover:text-gray-900 cursor-pointer"
-                    >
-                      Data<SortIndicator field="dueDate" />
-                    </Link>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-            <InvoiceGroupedList
-              invoices={invoices}
-              userRole={userRole}
-              userId={userId}
-            />
-            </table>
-          </div>
+          <InvoiceGroupedList
+            invoices={invoices}
+            userRole={userRole}
+            userId={userId}
+            sortBy={actualSortBy}
+            sortOrder={sortOrder}
+            buildSortUrl={buildSortUrl}
+          />
 
           {/* Pagination */}
           <Pagination
