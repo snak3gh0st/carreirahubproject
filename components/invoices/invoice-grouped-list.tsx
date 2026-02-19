@@ -29,6 +29,8 @@ interface CustomerGroup {
   invoices: Invoice[];
   totalAmount: number;
   invoiceCount: number;
+  hasOverdue: boolean;
+  earliestOverdueDate: Date | null;
 }
 
 interface InvoiceGroupedListProps {
@@ -83,12 +85,30 @@ export function InvoiceGroupedList({
           invoices: [],
           totalAmount: 0,
           invoiceCount: 0,
+          hasOverdue: false,
+          earliestOverdueDate: null,
         });
       }
       const group = map.get(key)!;
       group.invoices.push(invoice);
       group.totalAmount += Number(invoice.amount);
       group.invoiceCount += 1;
+
+      const invoiceDue = new Date(invoice.dueDate);
+      const isInvoiceOverdue =
+        invoice.status !== InvoiceStatus.PAID &&
+        invoice.status !== InvoiceStatus.VOID &&
+        invoiceDue < new Date();
+
+      if (isInvoiceOverdue) {
+        group.hasOverdue = true;
+        if (
+          group.earliestOverdueDate === null ||
+          invoiceDue < group.earliestOverdueDate
+        ) {
+          group.earliestOverdueDate = invoiceDue;
+        }
+      }
     }
 
     return Array.from(map.values()).sort((a, b) =>
@@ -228,7 +248,11 @@ export function InvoiceGroupedList({
                   {/* Group header row */}
                   <tr
                     key={`group-${group.customerId}`}
-                    className="bg-gray-100 border-t-2 border-gray-300 cursor-pointer hover:bg-gray-200 transition-colors"
+                    className={`border-t-2 cursor-pointer transition-colors ${
+                      group.hasOverdue
+                        ? "bg-red-50 border-red-200 hover:bg-red-100"
+                        : "bg-gray-100 border-gray-300 hover:bg-gray-200"
+                    }`}
                     onClick={() => toggleGroup(group.customerId)}
                   >
                     <td colSpan={6} className="px-4 py-3">
@@ -255,6 +279,11 @@ export function InvoiceGroupedList({
                           <span className="text-xs text-gray-500">
                             {group.customerEmail}
                           </span>
+                          {group.hasOverdue && group.earliestOverdueDate && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-display font-semibold bg-red-100 text-red-700 border border-red-200">
+                              Vencido {format(group.earliestOverdueDate, "dd/MM/yy")}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-4 text-sm text-gray-600">
                           <span className="font-display">
