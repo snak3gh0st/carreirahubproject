@@ -935,7 +935,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   <div>
                     <p className="font-semibold text-gray-900">Fatura unica</p>
                     <p className="text-sm text-gray-600">
-                      Vencimento: {new Date(installmentSchedule[0].dueDate).toLocaleDateString('pt-BR')}
+                      Vencimento: {parseLocalDate(installmentSchedule[0].dueDate).toLocaleDateString('pt-BR')}
                     </p>
                   </div>
                   <span className="font-mono text-2xl font-bold text-green-600">
@@ -944,7 +944,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-sm text-gray-600">
-                    {new Date(installmentSchedule[0].dueDate).toDateString() === new Date().toDateString()
+                    {installmentSchedule[0].dueDate === new Date().toISOString().split('T')[0]
                       ? 'A fatura sera enviada por email imediatamente apos a criacao.'
                       : 'A fatura sera enviada por email 5 dias antes do vencimento.'}
                   </p>
@@ -958,7 +958,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                     <p className="text-xs text-gray-600 mb-1">Primeiro vencimento</p>
                     <p className="font-semibold text-base">
                       {firstInstallmentDate
-                        ? new Date(firstInstallmentDate).toLocaleDateString('pt-BR')
+                        ? parseLocalDate(firstInstallmentDate).toLocaleDateString('pt-BR')
                         : "-"}
                     </p>
                   </div>
@@ -989,7 +989,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                         ${installment.amount.toFixed(2)}
                       </span>
                       <span className="text-gray-600">
-                        {new Date(installment.dueDate).toLocaleDateString('pt-BR')}
+                        {parseLocalDate(installment.dueDate).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
                   ))}
