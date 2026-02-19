@@ -278,6 +278,8 @@ export default async function InvoicesPage({
           currentStatus={searchParams.status}
           currentSearch={search}
           currentSource={source}
+          currentSortBy={actualSortBy}
+          currentSortOrder={sortOrder}
         />
 
         {/* Advanced Filters - Collapsible */}

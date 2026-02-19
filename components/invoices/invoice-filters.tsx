@@ -7,6 +7,8 @@ interface InvoiceFiltersProps {
   currentStatus?: string;
   currentSearch?: string;
   currentSource?: string;
+  currentSortBy?: string;
+  currentSortOrder?: string;
 }
 
 export function InvoiceFilters({
@@ -14,9 +16,27 @@ export function InvoiceFilters({
   currentStatus,
   currentSearch,
   currentSource,
+  currentSortBy = "createdAt",
+  currentSortOrder = "desc",
 }: InvoiceFiltersProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const handleSortChange = (field: string, order?: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("sortBy", field);
+    params.set("sortOrder", order ?? (params.get("sortOrder") || "desc"));
+    params.delete("page");
+    router.push(`/dashboard/invoices?${params.toString()}`);
+  };
+
+  const toggleSortOrder = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    const current = params.get("sortOrder") || "desc";
+    params.set("sortOrder", current === "asc" ? "desc" : "asc");
+    params.delete("page");
+    router.push(`/dashboard/invoices?${params.toString()}`);
+  };
 
   const handleStatusChange = (status: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -99,6 +119,29 @@ export function InvoiceFilters({
             <option value="week">Due This Week</option>
             <option value="month">Due This Month</option>
           </select>
+        </div>
+
+        {/* Sort controls */}
+        <div className="flex items-center gap-1">
+          <select
+            value={currentSortBy}
+            onChange={(e) => handleSortChange(e.target.value)}
+            className="px-3 py-2 bg-white border border-gray-200 text-sm font-display font-medium text-gray-700 rounded-l-lg hover:bg-gray-50 focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors"
+          >
+            <option value="createdAt">Data Criação</option>
+            <option value="dueDate">Vencimento</option>
+            <option value="amount">Valor</option>
+            <option value="invoiceNumber">Nº Fatura</option>
+            <option value="status">Status</option>
+          </select>
+          <button
+            type="button"
+            onClick={toggleSortOrder}
+            title={currentSortOrder === "asc" ? "Crescente — clique para decrescente" : "Decrescente — clique para crescente"}
+            className="px-3 py-2 bg-white border border-l-0 border-gray-200 text-sm font-medium text-gray-700 rounded-r-lg hover:bg-gray-50 focus:ring-2 focus:ring-gold-500 focus:border-gold-500 transition-colors"
+          >
+            {currentSortOrder === "asc" ? "↑ Asc" : "↓ Desc"}
+          </button>
         </div>
 
         {/* Search */}
