@@ -10,7 +10,7 @@ import { InvoiceFilters } from "@/components/invoices/invoice-filters";
 import { TrendingUp, AlertCircle } from "lucide-react";
 import { InvoiceGroupedList } from "@/components/invoices/invoice-grouped-list";
 
-const ITEMS_PER_PAGE = 25;
+const ITEMS_PER_PAGE = 200;
 
 /**
  * Dashboard de Invoices
