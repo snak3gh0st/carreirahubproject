@@ -457,13 +457,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | INFRA | Migrate repo from GitHub to GitLab | 2026-02-16 | cb7adae | gitlab.com/sigma-group192807/carreirausahub |
 | 43 | Fix invoice creator showing wrong date (UTC off-by-one) | 2026-02-19 | bc4ba4f | [43-fix-invoice-creator-showing-wrong-date-y](.planning/quick/43-fix-invoice-creator-showing-wrong-date-y/) |
 | 44 | Invoices list accordion view grouped by customer | 2026-02-19 | 2b8fa9d | [44-invoices-area-cascading-effect-grouping-](.planning/quick/44-invoices-area-cascading-effect-grouping-/) |
+| 46 | Mark overdue customer groups with red header and Vencido badge | 2026-02-19 | 114f845 | [46-mark-overdue-installments-in-red-with-du](.planning/quick/46-mark-overdue-installments-in-red-with-du/) |
 
 ## Session Continuity
 
 Last session: 2026-02-19
-Stopped at: Completed quick task 44 - Invoices list accordion grouped by customer
-Resume file: .planning/quick/44-invoices-area-cascading-effect-grouping-/44-SUMMARY.md
-Next action: Deploy to production and verify accordion grouping renders correctly in the Finance dashboard
+Stopped at: Completed quick task 46 - Mark overdue customer groups with red header and Vencido badge
+Resume file: .planning/quick/46-mark-overdue-installments-in-red-with-du/46-SUMMARY.md
+Next action: Deploy to production and verify overdue group headers render correctly in the Finance dashboard
 
 ## Sprint 1 Success Criteria
 
