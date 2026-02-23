@@ -78,17 +78,29 @@ export default async function CustomersPage({
   // Build where clause
   const whereClause: any = {};
 
-  // SALES: show only customers where they own an invoice
+  // SALES: show only customers they created OR have an invoice for
   if (userRole === "SALES") {
-    whereClause.invoices = { some: { ownerId: userId } };
+    whereClause.AND = [
+      {
+        OR: [
+          { createdById: userId },
+          { invoices: { some: { ownerId: userId } } },
+        ],
+      },
+    ];
   }
 
   if (search) {
-    whereClause.OR = [
+    const searchOr = [
       { name: { contains: search, mode: "insensitive" } },
       { email: { contains: search, mode: "insensitive" } },
       { phone: { contains: search, mode: "insensitive" } },
     ];
+    if (whereClause.AND) {
+      whereClause.AND.push({ OR: searchOr });
+    } else {
+      whereClause.OR = searchOr;
+    }
   }
 
   if (source === "quickbooks") {
@@ -190,7 +202,9 @@ export default async function CustomersPage({
   );
 
   // Statistics — scoped to role
-  const statsFilter = userRole === "SALES" ? { invoices: { some: { ownerId: userId } } } : {};
+  const statsFilter = userRole === "SALES"
+    ? { OR: [{ createdById: userId }, { invoices: { some: { ownerId: userId } } }] }
+    : {};
 
   const stats = await prisma.customer.aggregate({
     where: statsFilter,

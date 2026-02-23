@@ -25,6 +25,7 @@ model User {
   leadQualifications     LeadQualification[] @relation("LeadQualifications")
   qualifiedLeads         Lead[]              @relation("QualifiedLeads")
   createdLeads           Lead[]              @relation("CreatedLeads")
+  createdCustomers       Customer[]          @relation("CreatedCustomers")
   supportTickets         SupportTicket[]     @relation("UserSupportTickets")
   assignedTickets        SupportTicket[]     @relation("AssignedSupportTickets")
 
@@ -65,6 +66,8 @@ model Customer {
   cpf                  String?
   passport             String?
   dateOfBirth          DateTime?
+  createdById          String?
+  createdBy            User?            @relation("CreatedCustomers", fields: [createdById], references: [id])
   alerts               Alert[]
   collectionCalls      CollectionCall[]
   contracts            Contract[]
@@ -75,6 +78,7 @@ model Customer {
 
   @@index([email])
   @@index([pipedrive_id])
+  @@index([createdById])
   @@map("customers")
 }
 

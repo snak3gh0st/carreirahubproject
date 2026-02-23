@@ -100,8 +100,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createCustomerSchema.parse(body);
 
+    const userId = (session.user as any).id as string;
+
     // Usar Identity Mapper para criar/atualizar customer
-    const customer = await identityMapper.reconcileCustomer({
+    let customer = await identityMapper.reconcileCustomer({
       email: data.email,
       name: data.name,
       phone: data.phone,
@@ -121,6 +123,14 @@ export async function POST(request: NextRequest) {
       },
       metadata: data.metadata,
     });
+
+    // Set createdById if not already set (preserve original creator)
+    if (!customer.createdById && userId) {
+      customer = await prisma.customer.update({
+        where: { id: customer.id },
+        data: { createdById: userId },
+      });
+    }
 
     // Sync to QuickBooks if not already synced
     let qbCustomer = null;
