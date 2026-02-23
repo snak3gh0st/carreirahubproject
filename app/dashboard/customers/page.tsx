@@ -62,6 +62,9 @@ export default async function CustomersPage({
     redirect("/auth/signin");
   }
 
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id as string;
+
   const currentPage = Math.max(1, parseInt(searchParams.page || "1"));
   const search = searchParams.search || "";
   const source = searchParams.source || "";
@@ -74,6 +77,11 @@ export default async function CustomersPage({
 
   // Build where clause
   const whereClause: any = {};
+
+  // SALES: show only customers where they own an invoice
+  if (userRole === "SALES") {
+    whereClause.invoices = { some: { ownerId: userId } };
+  }
 
   if (search) {
     whereClause.OR = [
@@ -181,26 +189,29 @@ export default async function CustomersPage({
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Statistics
+  // Statistics — scoped to role
+  const statsFilter = userRole === "SALES" ? { invoices: { some: { ownerId: userId } } } : {};
+
   const stats = await prisma.customer.aggregate({
+    where: statsFilter,
     _count: { id: true },
   });
 
   const qbCustomers = await prisma.customer.count({
-    where: { quickbooks_id: { not: null } },
+    where: { ...statsFilter, quickbooks_id: { not: null } },
   });
 
   const pipedriveCustomers = await prisma.customer.count({
-    where: { pipedrive_id: { not: null } },
+    where: { ...statsFilter, pipedrive_id: { not: null } },
   });
 
   const customersWithInvoices = await prisma.customer.count({
-    where: { invoices: { some: {} } },
+    where: { ...statsFilter, invoices: { some: {} } },
   });
 
   // Calculate customers with overdue invoices
   const allCustomersWithInvoices = await prisma.customer.findMany({
-    where: { invoices: { some: {} } },
+    where: { ...statsFilter, invoices: { some: {} } },
     include: {
       invoices: {
         select: {
