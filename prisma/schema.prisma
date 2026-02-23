@@ -24,6 +24,7 @@ model User {
   ownedInvoices          Invoice[]           @relation("InvoiceOwner")
   leadQualifications     LeadQualification[] @relation("LeadQualifications")
   qualifiedLeads         Lead[]              @relation("QualifiedLeads")
+  createdLeads           Lead[]              @relation("CreatedLeads")
   supportTickets         SupportTicket[]     @relation("UserSupportTickets")
   assignedTickets        SupportTicket[]     @relation("AssignedSupportTickets")
 
@@ -89,6 +90,7 @@ model Lead {
   qualificationData   Json?
   qualifiedAt         DateTime?
   qualifiedById       String?
+  createdById         String?
   convertedToDealId   String?             @unique
   convertedAt         DateTime?
   metadata            Json?
@@ -98,11 +100,13 @@ model Lead {
   qualifications      LeadQualification[]
   convertedToDeal     Deal?               @relation("ConvertedLead", fields: [convertedToDealId], references: [id])
   qualifiedBy         User?               @relation("QualifiedLeads", fields: [qualifiedById], references: [id])
+  createdBy           User?               @relation("CreatedLeads", fields: [createdById], references: [id])
   messages            Message[]
 
   @@index([email])
   @@index([status])
   @@index([pipedrive_person_id])
+  @@index([createdById])
   @@map("leads")
 }
 

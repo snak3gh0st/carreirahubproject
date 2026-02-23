@@ -9,6 +9,7 @@ export interface CreateLeadData {
   source?: LeadSource;
   pipedrive_person_id?: number;
   metadata?: any;
+  createdById?: string;
 }
 
 export interface UpdateLeadData {
@@ -40,6 +41,7 @@ export class LeadService {
         pipedrive_person_id: data.pipedrive_person_id,
         status: LeadStatus.NEW,
         metadata: data.metadata || {},
+        createdById: data.createdById,
       },
     });
   }
@@ -220,6 +222,7 @@ export class LeadService {
     source?: LeadSource;
     limit?: number;
     offset?: number;
+    createdById?: string;
   }): Promise<Lead[]> {
     const where: Prisma.LeadWhereInput = {};
 
@@ -228,6 +231,9 @@ export class LeadService {
     }
     if (filters?.source) {
       where.source = filters.source;
+    }
+    if (filters?.createdById) {
+      where.createdById = filters.createdById;
     }
 
     return prisma.lead.findMany({
