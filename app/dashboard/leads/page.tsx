@@ -25,15 +25,15 @@ export default async function LeadsPage({
 
   // Verificar permissão
   const userRole = (session.user as any).role;
-  if (userRole !== "ADMIN" && userRole !== "SDR" && userRole !== "SALES") {
+  if (userRole !== "ADMIN" && userRole !== "SDR" && userRole !== "SALES" && userRole !== "COMMERCIAL") {
     redirect("/dashboard");
   }
 
   const userId = (session.user as any).id as string;
 
-  // Leads visíveis ao SALES: criados por ele OU com invoice gerada por ele
+  // Leads visíveis ao SALES/COMMERCIAL: criados por ele OU com invoice gerada por ele
   let whereClause: object = {};
-  if (userRole === "SALES") {
+  if (userRole === "SALES" || userRole === "COMMERCIAL") {
     const invoicesOwned = await prisma.invoice.findMany({
       where: { ownerId: userId, dealId: { not: null } },
       select: { deal: { select: { convertedFromLeadId: true } } },

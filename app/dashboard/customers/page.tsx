@@ -78,8 +78,8 @@ export default async function CustomersPage({
   // Build where clause
   const whereClause: any = {};
 
-  // SALES: show only customers they created OR have an invoice for
-  if (userRole === "SALES") {
+  // SALES/COMMERCIAL: show only customers they created OR have an invoice for
+  if (userRole === "SALES" || userRole === "COMMERCIAL") {
     whereClause.AND = [
       {
         OR: [
@@ -202,7 +202,7 @@ export default async function CustomersPage({
   );
 
   // Statistics — scoped to role
-  const statsFilter = userRole === "SALES"
+  const statsFilter = (userRole === "SALES" || userRole === "COMMERCIAL")
     ? { OR: [{ createdById: userId }, { invoices: { some: { ownerId: userId } } }] }
     : {};
 

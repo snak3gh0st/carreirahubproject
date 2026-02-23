@@ -34,8 +34,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    const isVendedor = (role === "SALES" || role === "COMMERCIAL") && !!userId;
+
     let additionalLeadIds: string[] | undefined;
-    if (role === "SALES" && userId) {
+    if (isVendedor) {
       const invoicesOwned = await prisma.invoice.findMany({
         where: { ownerId: userId, dealId: { not: null } },
         select: { deal: { select: { convertedFromLeadId: true } } },
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
       source: source || undefined,
       limit,
       offset,
-      createdById: role === "SALES" ? userId : undefined,
+      createdById: isVendedor ? userId : undefined,
       additionalLeadIds,
     });
 
