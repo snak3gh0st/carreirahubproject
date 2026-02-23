@@ -458,13 +458,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 43 | Fix invoice creator showing wrong date (UTC off-by-one) | 2026-02-19 | bc4ba4f | [43-fix-invoice-creator-showing-wrong-date-y](.planning/quick/43-fix-invoice-creator-showing-wrong-date-y/) |
 | 44 | Invoices list accordion view grouped by customer | 2026-02-19 | 2b8fa9d | [44-invoices-area-cascading-effect-grouping-](.planning/quick/44-invoices-area-cascading-effect-grouping-/) |
 | 46 | Mark overdue customer groups with red header and Vencido badge | 2026-02-19 | 114f845 | [46-mark-overdue-installments-in-red-with-du](.planning/quick/46-mark-overdue-installments-in-red-with-du/) |
+| 47 | Filter leads by vendor — SALES sees only their own leads | 2026-02-23 | dd18afd | [47-filtrar-leads-por-usuario-vendedor-cada-](.planning/quick/47-filtrar-leads-por-usuario-vendedor-cada-/) |
 
 ## Session Continuity
 
-Last session: 2026-02-19
-Stopped at: Fixed Server Components render error (buildSortUrl function prop crossing server/client boundary)
-Resume file: .planning/quick/46-mark-overdue-installments-in-red-with-du/46-SUMMARY.md
-Next action: Deploy to production and verify invoice area loads correctly with overdue indicators
+Last session: 2026-02-23
+Stopped at: Completed quick task 47 — Lead filtering by SALES role with createdById ownership
+Resume file: .planning/quick/47-filtrar-leads-por-usuario-vendedor-cada-/47-SUMMARY.md
+Next action: Deploy to production and verify SALES users see only their own leads
 
 ## Sprint 1 Success Criteria
 
