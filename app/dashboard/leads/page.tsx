@@ -30,7 +30,27 @@ export default async function LeadsPage({
   }
 
   const userId = (session.user as any).id as string;
-  const whereClause = userRole === "SALES" ? { createdById: userId } : {};
+
+  // Leads visíveis ao SALES: criados por ele OU com invoice gerada por ele
+  let whereClause: object = {};
+  if (userRole === "SALES") {
+    const invoicesOwned = await prisma.invoice.findMany({
+      where: { ownerId: userId, dealId: { not: null } },
+      select: { deal: { select: { convertedFromLeadId: true } } },
+    });
+    const leadIdsFromInvoices = invoicesOwned
+      .map((inv) => inv.deal?.convertedFromLeadId)
+      .filter((id): id is string => !!id);
+
+    whereClause = {
+      OR: [
+        { createdById: userId },
+        ...(leadIdsFromInvoices.length > 0
+          ? [{ id: { in: leadIdsFromInvoices } }]
+          : []),
+      ],
+    };
+  }
 
   const currentPage = Math.max(1, parseInt(searchParams.page || "1"));
   const skip = (currentPage - 1) * ITEMS_PER_PAGE;

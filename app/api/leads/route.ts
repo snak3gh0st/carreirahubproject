@@ -3,6 +3,7 @@ import { leadService } from "@/lib/services/lead.service";
 import { createUserFallbackResponse, categorizeByStatusCode } from "@/lib/utils/error-fallback";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { LeadSource, LeadStatus } from "@prisma/client";
 
@@ -33,12 +34,24 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
+    let additionalLeadIds: string[] | undefined;
+    if (role === "SALES" && userId) {
+      const invoicesOwned = await prisma.invoice.findMany({
+        where: { ownerId: userId, dealId: { not: null } },
+        select: { deal: { select: { convertedFromLeadId: true } } },
+      });
+      additionalLeadIds = invoicesOwned
+        .map((inv) => inv.deal?.convertedFromLeadId)
+        .filter((id): id is string => !!id);
+    }
+
     const leads = await leadService.listLeads({
       status: status || undefined,
       source: source || undefined,
       limit,
       offset,
       createdById: role === "SALES" ? userId : undefined,
+      additionalLeadIds,
     });
 
     return NextResponse.json({

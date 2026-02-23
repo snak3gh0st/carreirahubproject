@@ -223,6 +223,7 @@ export class LeadService {
     limit?: number;
     offset?: number;
     createdById?: string;
+    additionalLeadIds?: string[];
   }): Promise<Lead[]> {
     const where: Prisma.LeadWhereInput = {};
 
@@ -233,7 +234,11 @@ export class LeadService {
       where.source = filters.source;
     }
     if (filters?.createdById) {
-      where.createdById = filters.createdById;
+      const orClauses: Prisma.LeadWhereInput[] = [{ createdById: filters.createdById }];
+      if (filters.additionalLeadIds?.length) {
+        orClauses.push({ id: { in: filters.additionalLeadIds } });
+      }
+      where.OR = orClauses;
     }
 
     return prisma.lead.findMany({
