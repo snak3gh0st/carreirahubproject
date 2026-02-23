@@ -29,6 +29,9 @@ export default async function LeadsPage({
     redirect("/dashboard");
   }
 
+  const userId = (session.user as any).id as string;
+  const whereClause = userRole === "SALES" ? { createdById: userId } : {};
+
   const currentPage = Math.max(1, parseInt(searchParams.page || "1"));
   const skip = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -36,6 +39,7 @@ export default async function LeadsPage({
     // Buscar leads com paginação
     const [leads, totalCount] = await Promise.all([
       prisma.lead.findMany({
+        where: whereClause,
         skip,
         take: ITEMS_PER_PAGE,
         orderBy: { createdAt: "desc" },
@@ -49,7 +53,7 @@ export default async function LeadsPage({
           },
         },
       }),
-      prisma.lead.count(),
+      prisma.lead.count({ where: whereClause }),
     ]);
 
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -57,6 +61,7 @@ export default async function LeadsPage({
     // Pipeline por status
     const pipeline = await prisma.lead.groupBy({
       by: ["status"],
+      where: whereClause,
       _count: {
         id: true,
       },

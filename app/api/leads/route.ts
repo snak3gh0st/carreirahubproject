@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { leadService } from "@/lib/services/lead.service";
 import { createUserFallbackResponse, categorizeByStatusCode } from "@/lib/utils/error-fallback";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { LeadSource, LeadStatus } from "@prisma/client";
 
@@ -21,6 +23,10 @@ const createLeadSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as any)?.role;
+    const userId = (session?.user as any)?.id;
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") as LeadStatus | null;
     const source = searchParams.get("source") as LeadSource | null;
@@ -32,6 +38,7 @@ export async function GET(request: NextRequest) {
       source: source || undefined,
       limit,
       offset,
+      createdById: role === "SALES" ? userId : undefined,
     });
 
     return NextResponse.json({
@@ -57,10 +64,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id;
+
     const body = await request.json();
     const data = createLeadSchema.parse(body);
 
-    const lead = await leadService.createLead(data);
+    const lead = await leadService.createLead({ ...data, createdById: userId });
 
     return NextResponse.json(lead, { status: 201 });
   } catch (error) {
