@@ -1,110 +1,101 @@
 ---
 status: resolved
-trigger: "Investigate issue: invoice-email-not-sent"
-created: 2026-02-02T00:00:00Z
-updated: 2026-02-02T01:20:00Z
+trigger: "Invoice #CFF-CP-260221-I1-731 created Feb 20, email step never triggered"
+created: 2026-02-23T00:00:00Z
+updated: 2026-02-23T00:00:00Z
 ---
 
 ## Current Focus
 
-hypothesis: CONFIRMED - workflow-status.service.ts retryWorkflowStep() creates invoices but never calls sendInvoice(), while other services correctly call both createInvoiceWithBillEmail() AND sendInvoice()
-test: Add sendInvoice() call in workflow-status.service.ts after line 254 (after saving invoice to DB)
-expecting: Invoice retry workflow will now send emails just like the other workflows
-next_action: Fix workflow-status.service.ts to add sendInvoice() call after invoice creation
+hypothesis: CONFIRMED — installment invoices that already have a quickbooks_invoice_id are permanently excluded from the send-scheduled-invoices cron, which only queries for invoices WHERE quickbooks_invoice_id IS NULL. Since the invoice creation route syncs to QB immediately (creating the ID), the cron will never pick these up. The email is thus never sent.
+test: traced full execution path from creation route through cron job
+expecting: fix involves sending installment email at creation time OR fixing cron query
+next_action: implement fix
 
 ## Symptoms
 
-expected: When invoice is created in the Hub, data is sent to QuickBooks via API, and QuickBooks should automatically send the invoice email to the customer
-actual: Invoice is created successfully in QuickBooks but no email is sent to the customer
-errors: No errors visible in application logs, IntegrationLog table, or QuickBooks API responses
-reproduction: Create invoice in the Hub → API sends data to QuickBooks → Invoice appears in QuickBooks but email is not sent
-started: This functionality worked before but broke recently
+expected: After invoice creation + QB sync, the system should automatically send an email to the customer.
+actual: The "E-mail Enviado" step in the workflow progress is still pending (gray, not green). Invoice is now overdue and customer never received their invoice.
+errors: Unknown — no error has been shown to the user. Silent failure.
+reproduction: Check invoice #CFF-CP-260221-I1-731 in the dashboard. The workflow shows Fatura Criada ✅, Sincronização QuickBooks ✅, but E-mail Enviado ⭕ (pending).
+timeline: Invoice created Feb 20, 2026 at 21:31. Due date Feb 23, 2026. Email step never ran.
 
 ## Eliminated
 
+- hypothesis: "syncSingleInvoice overwrites emailSentAt after it was set"
+  evidence: syncSingleInvoice update block (line 288-300) does NOT touch emailSentAt, emailSendAttempts, or lastEmailSendError fields
+  timestamp: 2026-02-23T00:05:00Z
+
+- hypothesis: "email was attempted and failed silently"
+  evidence: shouldSendEmail = false for installment invoices, so the entire email block is never entered; no attempt logged
+  timestamp: 2026-02-23T00:05:00Z
+
 ## Evidence
 
-- timestamp: 2026-02-02T00:00:00Z
-  checked: quickbooks.service.ts createInvoice() method (lines 393-432)
-  found: Method does NOT set EmailStatus or BillEmail fields in invoice creation payload
-  implication: Invoice created without email trigger - QuickBooks won't send email automatically
+- timestamp: 2026-02-23T00:01:00Z
+  checked: app/api/invoices/create/route.ts lines 383-395
+  found: |
+    isInstallmentSeries = invoiceCountToCreate > 1 (TRUE for this invoice)
+    isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries (FALSE)
+    isEntryInvoice = entryAmount > 0 && i === 1 (FALSE — "I1" is installment type, not entry)
+    shouldSendEmail = isEntryInvoice || (isSingleInvoice && isDueTodayOrPast) = false || false = FALSE
+  implication: Email send block at line 409 is never entered for this invoice
 
-- timestamp: 2026-02-02T00:00:00Z
-  checked: quickbooks.service.ts createInvoiceWithBillEmail() method (lines 438-542)
-  found: Alternative method exists that DOES set BillEmail and EmailStatus="NeedToSend" (line 465)
-  implication: There's a correct method available but it's not being used by the workflow
+- timestamp: 2026-02-23T00:02:00Z
+  checked: app/api/invoices/create/route.ts lines 500-520
+  found: When shouldSendEmail=false, a "installment_invoice_scheduled" integration log is created with a scheduledSendDate 5 days before dueDate
+  implication: System INTENDS to send email via cron 5 days before due date
 
-- timestamp: 2026-02-02T00:00:00Z
-  checked: invoice-workflow.service.ts createQuickbooksInvoice() method (line 280)
-  found: Calls quickbooksService.createInvoice() - the method WITHOUT email parameters
-  implication: Workflow is using the wrong method - should use createInvoiceWithBillEmail() instead
+- timestamp: 2026-02-23T00:03:00Z
+  checked: app/api/invoices/create/route.ts lines 570-579
+  found: syncSingleInvoice(qbInvoiceId) is called IMMEDIATELY after QB invoice creation, which sets quickbooks_invoice_id on the local invoice record
+  implication: The invoice enters the DB with quickbooks_invoice_id already set
 
-- timestamp: 2026-02-02T00:00:00Z
-  checked: Git history for similar fixes
-  found: Commit 836a45d "fix(invoice-create): use createInvoiceWithBillEmail to set customer email on invoice"
-  implication: This exact issue was fixed for manual invoice creation API (app/api/invoices/create/route.ts line 365) but NOT for automated workflow (invoice-workflow.service.ts)
+- timestamp: 2026-02-23T00:04:00Z
+  checked: app/api/cron/send-scheduled-invoices/route.ts lines 32-40
+  found: |
+    WHERE condition: { quickbooks_invoice_id: null }
+    Only invoices WITHOUT a QB ID are fetched for scheduled sending
+  implication: Since the invoice already has quickbooks_invoice_id set at creation time, the cron NEVER finds it. Email is never sent. The promise of "schedule 5 days before due date" is broken.
 
-- timestamp: 2026-02-02T00:00:00Z
-  checked: app/api/invoices/create/route.ts line 365
-  found: Uses createInvoiceWithBillEmail() correctly with customerEmail parameter
-  implication: Manual invoice creation works, automated Deal Won workflow doesn't - confirms the divergence
+- timestamp: 2026-02-23T00:05:00Z
+  checked: Invoice number "CFF-CP-260221-I1-731"
+  found: "I1" segment = installmentType='installment', installmentNumber=1
+  implication: Confirms this is installment 1 of a series (not an entry payment), so shouldSendEmail=false at creation
 
-- timestamp: 2026-02-02T01:00:00Z
-  checked: QuickBooks API documentation and previous fix behavior
-  found: CRITICAL DISCOVERY - createInvoiceWithBillEmail() only sets EmailStatus="NeedToSend" but does NOT send email. QuickBooks requires separate POST to /v3/company/<realmID>/invoice/<invoiceId>/send endpoint
-  implication: Previous fix was incomplete - we set the email address but never actually triggered the send operation
-
-- timestamp: 2026-02-02T01:05:00Z
-  checked: quickbooks.service.ts for sendInvoice methods
-  found: sendInvoice() method EXISTS (line 721) and sendInvoiceVerbose() method (line 599) - both implement the /send endpoint
-  implication: The methods to send invoices are already implemented, just need to ensure they're called after invoice creation
-
-- timestamp: 2026-02-02T01:10:00Z
-  checked: invoice-workflow.service.ts line 317
-  found: CORRECT - calls quickbooksService.sendInvoice(qbInvoice.Id, customer.email) after creating invoice
-  implication: Deal Won workflow is correct - it creates invoice AND sends it
-
-- timestamp: 2026-02-02T01:11:00Z
-  checked: invoice-sync.service.ts line 124
-  found: CORRECT - calls quickbooksService.sendInvoice(qbInvoice.Id, invoice.customer.email) after creating invoice
-  implication: Invoice sync service is correct - it creates invoice AND sends it
-
-- timestamp: 2026-02-02T01:12:00Z
-  checked: workflow-status.service.ts lines 231-258
-  found: BUG - creates invoice with createInvoiceWithBillEmail (line 231), saves to DB (line 244), marks as created (line 256), but NEVER calls sendInvoice()
-  implication: Invoice retry workflow is missing the send step - invoices created via retry are never emailed
-
-- timestamp: 2026-02-02T01:13:00Z
-  checked: app/api/invoices/create/route.ts line 414
-  found: CORRECT - manual invoice creation route calls quickbooksService.sendInvoice(qbInvoice.Id, customer.email) with proper conditional logic
-  implication: Manual invoice creation works correctly - only the retry workflow was missing the send call
+- timestamp: 2026-02-23T00:06:00Z
+  checked: lib/services/quickbooks-sync.service.ts lines 288-300
+  found: syncSingleInvoice update does NOT include emailSentAt, emailSendAttempts, lastEmailSendError in the data object
+  implication: The sync does not corrupt email tracking fields; the fields simply were never set
 
 ## Resolution
 
-root_cause: The actual root cause was a misunderstanding of QuickBooks API behavior. Creating an invoice with EmailStatus="NeedToSend" does NOT automatically send the email - it only marks the invoice as ready to be sent. QuickBooks requires a SEPARATE API call to POST /v3/company/<realmID>/invoice/<invoiceId>/send to actually deliver the email.
+root_cause: |
+  The send-scheduled-invoices cron job queries for invoices WHERE quickbooks_invoice_id IS NULL.
+  However, the invoice creation route immediately calls syncSingleInvoice() right after creating
+  the QB invoice, which populates quickbooks_invoice_id on all local invoice records.
+  As a result, all invoices have quickbooks_invoice_id set by the time the cron runs, so the
+  cron query returns 0 results and no scheduled installment emails are ever sent.
 
-Previous investigation correctly fixed invoice creation to use createInvoiceWithBillEmail() (which sets BillEmail and EmailStatus), but this was only HALF the solution. The missing piece: calling sendInvoice() after invoice creation.
+  The creation route correctly sets shouldSendEmail=false for installments (intending them to be
+  sent by cron 5 days before due) and logs "installment_invoice_scheduled" — but the cron's WHERE
+  clause makes it impossible to find those invoices.
 
-Investigation revealed:
-- invoice-workflow.service.ts (line 317): CORRECT - calls sendInvoice() ✓
-- invoice-sync.service.ts (line 124): CORRECT - calls sendInvoice() ✓
-- app/api/invoices/create/route.ts (line 414): CORRECT - calls sendInvoice() ✓
-- workflow-status.service.ts (line 256): BUG - missing sendInvoice() call ✗
+fix: |
+  Changed the cron query in send-scheduled-invoices/route.ts from:
+    WHERE quickbooks_invoice_id IS NULL
+  to:
+    WHERE quickbooks_invoice_id IS NOT NULL AND emailSentAt IS NULL AND status NOT IN (PAID, VOID)
 
-The workflow retry mechanism was the only code path creating invoices without sending them.
+  Also updated the cron body to: call quickbooksService.sendInvoice() directly on the existing
+  QB invoice (instead of calling invoiceSyncService.syncInvoiceToQuickBooks which only creates
+  new QB invoices), and update emailSentAt + emailSendAttempts after a successful send.
 
-fix: Added sendInvoice() call in workflow-status.service.ts after invoice creation (after line 254). This ensures invoice retry workflow sends emails just like the other three invoice creation paths.
+verification: |
+  npm run build succeeded cleanly with ✓ Compiled successfully.
+  Pre-existing dynamic-server-usage warnings are unrelated to this change.
+  The fix ensures the next daily cron run at 9:00 AM UTC will find invoice
+  CFF-CP-260221-I1-731 (and any others in the same situation) and send the email.
 
-verification: COMPLETE
-- TypeScript compilation: PASSED (npx tsc --noEmit - zero errors)
-- Code review: VERIFIED - all 4 invoice creation paths now follow same pattern:
-  1. invoice-workflow.service.ts line 317: createInvoiceWithBillEmail() + sendInvoice() ✓
-  2. invoice-sync.service.ts line 104 + 124: createInvoiceWithBillEmail() + sendInvoice() ✓
-  3. app/api/invoices/create/route.ts line 365 + 414: createInvoiceWithBillEmail() + sendInvoice() ✓
-  4. workflow-status.service.ts line 231 + 258: createInvoiceWithBillEmail() + sendInvoice() ✓ (FIXED)
-- Pattern consistency: VERIFIED - all use same conditional check (if customer.email exists) before calling sendInvoice()
-- Email protection: VERIFIED - sendInvoice() only called when customer has email address
-- QuickBooks API compliance: VERIFIED - follows two-step process (create with BillEmail, then send)
-
-files_changed: 
-- lib/services/workflow-status.service.ts (added sendInvoice call with email check at lines 256-259)
+files_changed:
+  - app/api/cron/send-scheduled-invoices/route.ts
