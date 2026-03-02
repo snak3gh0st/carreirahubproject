@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
+import { normalizeDateOnly, differenceInCalendarDaysUTC } from "@/lib/utils/date";
 
 interface PaymentStatusCardProps {
   invoice: {
@@ -9,7 +10,7 @@ interface PaymentStatusCardProps {
     invoiceNumber: string | null;
     status: InvoiceStatus;
     amount: any;
-    dueDate: Date;
+    dueDate: Date | string;
     paidAt: Date | null;
     amountPaid: any | null;
     paymentMethod: string | null;
@@ -50,9 +51,8 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
     }
   };
 
-  const daysUntilDue = Math.ceil(
-    (new Date(invoice.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  );
+  const dueDateOnly = normalizeDateOnly(invoice.dueDate);
+  const daysUntilDue = differenceInCalendarDaysUTC(dueDateOnly, new Date());
   const isOverdue = daysUntilDue < 0;
   const isPaid = invoice.status === InvoiceStatus.PAID;
   const canSendPaymentLink =
@@ -94,7 +94,7 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
               isOverdue && !isPaid ? "text-red-600" : ""
             }`}
           >
-            {new Date(invoice.dueDate).toLocaleDateString("pt-BR")}
+            {dueDateOnly.toLocaleDateString("pt-BR", { timeZone: "UTC" })}
             {!isPaid && (
               <span className="ml-1">
                 ({isOverdue ? `${Math.abs(daysUntilDue)} days overdue` : `${daysUntilDue} days`})

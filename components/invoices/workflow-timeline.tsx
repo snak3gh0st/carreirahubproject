@@ -12,6 +12,8 @@ interface WorkflowTimelineProps {
 }
 
 export function WorkflowTimeline({ steps }: WorkflowTimelineProps) {
+  const businessTimeZone = "America/Sao_Paulo";
+
   const getStatusColor = (status: WorkflowStep["status"]) => {
     switch (status) {
       case "completed":
@@ -97,6 +99,7 @@ export function WorkflowTimeline({ steps }: WorkflowTimelineProps) {
                         month: "short",
                         hour: "2-digit",
                         minute: "2-digit",
+                        timeZone: businessTimeZone,
                       })}
                     </div>
                   )}

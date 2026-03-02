@@ -43,6 +43,25 @@ interface InvoiceFormProps {
 
 export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const router = useRouter();
+  const businessTimeZone = "America/Sao_Paulo";
+
+  const formatDateInputInTimeZone = (date: Date) => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: businessTimeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+
+    const year = parts.find((part) => part.type === "year")?.value;
+    const month = parts.find((part) => part.type === "month")?.value;
+    const day = parts.find((part) => part.type === "day")?.value;
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayInBusinessTimeZone = formatDateInputInTimeZone(new Date());
+
   const [form, setForm] = useState({
     customerId: "",
     dealId: "",
@@ -907,7 +926,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               value={form.dueDate}
               onChange={(e) => handleChange("dueDate", e.target.value)}
               className="w-full md:w-1/2 border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              min={new Date().toISOString().split("T")[0]}
+              min={todayInBusinessTimeZone}
             />
           </div>
         </div>
@@ -944,7 +963,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 </div>
                 <div className="mt-3 pt-3 border-t border-gray-200">
                   <p className="text-sm text-gray-600">
-                    {installmentSchedule[0].dueDate === new Date().toISOString().split('T')[0]
+                    {installmentSchedule[0].dueDate === todayInBusinessTimeZone
                       ? 'A fatura sera enviada por email imediatamente apos a criacao.'
                       : 'A fatura sera enviada por email 5 dias antes do vencimento.'}
                   </p>

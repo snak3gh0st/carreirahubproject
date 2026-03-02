@@ -4,7 +4,6 @@ import { authOptions } from "@/lib/auth";
 import { redirect, notFound } from "next/navigation";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
 import Link from "next/link";
-import { format } from "date-fns";
 import { WorkflowTimeline } from "@/components/invoices/workflow-timeline";
 import { ContractStatusCard } from "@/components/invoices/contract-status-card";
 import { PaymentStatusCard } from "@/components/invoices/payment-status-card";
@@ -12,6 +11,7 @@ import { CollectionCallButton } from "@/components/invoices/collection-call-butt
 import { CollectionCallHistory } from "@/components/invoices/collection-call-history";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
 import { Badge } from "@/components/ui/badge";
+import { normalizeDateOnly, differenceInCalendarDaysUTC } from "@/lib/utils/date";
 import { Edit, Download, ArrowLeft, FileText, DollarSign, Calendar } from "lucide-react";
 
 function getStatusVariant(status: InvoiceStatus): "success" | "warning" | "error" | "info" | "default" {
@@ -88,10 +88,11 @@ export default async function InvoiceDetailPage({
     }
   }
 
+  const dueDateOnly = normalizeDateOnly(invoice.dueDate);
+  const overdueDays = differenceInCalendarDaysUTC(new Date(), dueDateOnly);
   const isOverdue =
     invoice.status === InvoiceStatus.OVERDUE ||
-    (invoice.status === InvoiceStatus.SENT &&
-      new Date(invoice.dueDate) < new Date());
+    (invoice.status === InvoiceStatus.SENT && overdueDays > 0);
 
   // Check if user can approve
   const canApprove = userRole === "FINANCE" || userRole === "ADMIN";
@@ -102,6 +103,8 @@ export default async function InvoiceDetailPage({
     userRole === "FINANCE" || 
     (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId)
   ) && invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.VOID;
+
+  const businessTimeZone = "America/Sao_Paulo";
 
   // Build workflow steps
   const workflowSteps = [
@@ -304,15 +307,16 @@ export default async function InvoiceDetailPage({
             <p className={`text-3xl font-bold tabular-nums ${
               isOverdue && invoice.status !== InvoiceStatus.PAID ? "text-error-600" : "text-gray-900"
             }`}>
-              {new Date(invoice.dueDate).toLocaleDateString("en-US", {
+              {dueDateOnly.toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
-                year: "numeric"
+                year: "numeric",
+                timeZone: "UTC",
               })}
             </p>
             {isOverdue && invoice.status !== InvoiceStatus.PAID && (
               <p className="text-sm font-semibold text-error-600 mt-2">
-                Vencida há {Math.floor((new Date().getTime() - new Date(invoice.dueDate).getTime()) / (1000 * 60 * 60 * 24))} dias
+                Vencida há {overdueDays} dias
               </p>
             )}
           </div>
@@ -327,7 +331,8 @@ export default async function InvoiceDetailPage({
               {new Date(invoice.createdAt).toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
-                year: "numeric"
+                year: "numeric",
+                timeZone: businessTimeZone,
               })}
             </p>
           </div>
@@ -359,7 +364,8 @@ export default async function InvoiceDetailPage({
                   {new Date(invoice.createdAt).toLocaleDateString("en-US", {
                     month: "short",
                     day: "numeric",
-                    year: "numeric"
+                    year: "numeric",
+                    timeZone: businessTimeZone,
                   })}
                 </p>
               </div>
@@ -379,7 +385,8 @@ export default async function InvoiceDetailPage({
                     {new Date(invoice.paidAt).toLocaleDateString("en-US", {
                       month: "long",
                       day: "numeric",
-                      year: "numeric"
+                      year: "numeric",
+                      timeZone: businessTimeZone,
                     })}
                   </p>
                   {invoice.paymentMethod && (
@@ -541,7 +548,8 @@ export default async function InvoiceDetailPage({
                     Última sincronização: {new Date(invoice.customer.lastQbBalanceSync).toLocaleDateString("pt-BR", {
                       month: "short",
                       day: "numeric",
-                      year: "numeric"
+                      year: "numeric",
+                      timeZone: businessTimeZone,
                     })}
                   </p>
                 )}
@@ -664,7 +672,8 @@ export default async function InvoiceDetailPage({
                       day: "numeric",
                       year: "numeric",
                       hour: "2-digit",
-                      minute: "2-digit"
+                      minute: "2-digit",
+                      timeZone: businessTimeZone,
                     })}
                   </p>
                 </div>
@@ -676,7 +685,8 @@ export default async function InvoiceDetailPage({
                       day: "numeric",
                       year: "numeric",
                       hour: "2-digit",
-                      minute: "2-digit"
+                      minute: "2-digit",
+                      timeZone: businessTimeZone,
                     })}
                   </p>
                 </div>

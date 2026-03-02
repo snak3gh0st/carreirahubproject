@@ -453,6 +453,8 @@ export class QuickbooksService {
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
+      AllowOnlineCreditCardPayment: true,
+      AllowOnlineACHPayment: true,
       Line: data.lineItems.map((item) => ({
         Amount: item.amount,
         DetailType: "SalesItemLineDetail",
@@ -505,6 +507,8 @@ export class QuickbooksService {
         Address: data.customerEmail,  // SET EMAIL ON CREATION
       },
       EmailStatus: "NeedToSend",  // Tell QB this needs to be sent
+      AllowOnlineCreditCardPayment: true,
+      AllowOnlineACHPayment: true,
       TxnDate: new Date().toISOString().split("T")[0],
       DueDate: data.dueDate
         ? data.dueDate.toISOString().split("T")[0]

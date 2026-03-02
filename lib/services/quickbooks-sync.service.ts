@@ -13,6 +13,37 @@
 import { quickbooksService } from "./quickbooks.service";
 import { identityMapper } from "./identity-mapper";
 import { prisma } from "@/lib/db";
+import { parseLocalDate } from "@/lib/utils/date";
+
+const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
+
+function formatDateKeyInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseQuickBooksDueDate(dueDate?: string): Date {
+  if (!dueDate) {
+    return new Date();
+  }
+
+  const dateOnly = dueDate.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+    return parseLocalDate(dateOnly);
+  }
+
+  return new Date(dueDate);
+}
 
 export interface SyncOptions {
   syncCustomers?: boolean;
@@ -225,14 +256,15 @@ export class QuickBooksSyncService {
       let status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "PARTIALLY_PAID" | "VOID" = "SENT";
       const balance = qbInvoice.Balance || 0;
       const totalAmt = qbInvoice.TotalAmt || 0;
-      const dueDate = qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date();
-      const today = new Date();
+      const dueDate = parseQuickBooksDueDate(qbInvoice.DueDate);
+      const dueDateKey = formatDateKeyInTimeZone(dueDate, BUSINESS_TIME_ZONE);
+      const todayKey = formatDateKeyInTimeZone(new Date(), BUSINESS_TIME_ZONE);
 
       if (balance === 0) {
         status = "PAID";
       } else if (balance < totalAmt && balance > 0) {
         status = "PARTIALLY_PAID";
-      } else if (dueDate < today && balance > 0) {
+      } else if (dueDateKey < todayKey && balance > 0) {
         status = "OVERDUE";
       } else if (qbInvoice.EmailStatus === "EmailSent") {
         status = "SENT";
@@ -864,7 +896,7 @@ export class QuickBooksSyncService {
           const invoiceData = {
             invoiceNumber: qbInvoice.DocNumber || undefined,
             amount: totalAmount,
-            dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
+            dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
             status: qbStatus as any,
             quickbooks_invoice_id: qbInvoiceId,
             dealId: latestDeal.id,
@@ -1577,7 +1609,7 @@ export class QuickBooksSyncService {
                 dealId: deal.id,
                 invoiceNumber: qbInvoice.DocNumber || qbInvoice.Id,
                 amount: totalAmount,
-                dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
+                dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
                 status,
                 quickbooks_invoice_id: qbInvoice.Id,
                 amountPaid: amountPaidBulk,
@@ -1586,7 +1618,7 @@ export class QuickBooksSyncService {
               update: {
                 invoiceNumber: qbInvoice.DocNumber || qbInvoice.Id,
                 amount: totalAmount,
-                dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
+                dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
                 status,
                 amountPaid: amountPaidBulk,
                 paidAt: paidAtBulk,
@@ -1639,4 +1671,3 @@ export class QuickBooksSyncService {
 }
 
 export const quickbooksSyncService = new QuickBooksSyncService();
-

@@ -79,3 +79,51 @@ export function addMonths(date: Date, months: number): Date {
 export function formatDateString(date: Date): string {
   return date.toISOString().split('T')[0];
 }
+
+/**
+ * Normalize a date-like value to a date-only UTC noon representation.
+ * This avoids timezone shifts when rendering or comparing calendar days.
+ */
+export function normalizeDateOnly(value: Date | string): Date {
+  if (typeof value === "string") {
+    const dateOnly = value.slice(0, 10);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      return parseLocalDate(dateOnly);
+    }
+    const parsed = new Date(value);
+    return new Date(
+      Date.UTC(
+        parsed.getUTCFullYear(),
+        parsed.getUTCMonth(),
+        parsed.getUTCDate(),
+        12,
+        0,
+        0,
+        0
+      )
+    );
+  }
+
+  return new Date(
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate(),
+      12,
+      0,
+      0,
+      0
+    )
+  );
+}
+
+/**
+ * Difference in calendar days using UTC date parts only.
+ */
+export function differenceInCalendarDaysUTC(later: Date | string, earlier: Date | string): number {
+  const a = normalizeDateOnly(later);
+  const b = normalizeDateOnly(earlier);
+  const aUtc = Date.UTC(a.getUTCFullYear(), a.getUTCMonth(), a.getUTCDate());
+  const bUtc = Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
+  return Math.floor((aUtc - bUtc) / (1000 * 60 * 60 * 24));
+}
