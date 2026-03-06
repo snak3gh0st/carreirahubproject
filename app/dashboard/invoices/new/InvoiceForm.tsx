@@ -353,7 +353,17 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
         throw new Error("Preencha todos os campos obrigatórios (Cliente e Itens)");
       }
 
-      const discountValue = form.discount === "" ? undefined : getNumericValue(form.discount);
+      // Convert discount to dollar amount (handles both "amount" and "percentage" types)
+      const discountRaw = form.discount === "" ? undefined : getNumericValue(form.discount);
+      let discountValue: number | undefined;
+      if (discountRaw !== undefined && discountRaw > 0) {
+        if (form.discountType === "percentage") {
+          const baseAmount = itemsPayload.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+          discountValue = Number((baseAmount * (discountRaw / 100)).toFixed(2));
+        } else {
+          discountValue = discountRaw;
+        }
+      }
       const entryAmountValue = form.entryAmount === "" ? undefined : getNumericValue(form.entryAmount);
       const installmentsValue = form.installments === "" ? undefined : getNumericValue(form.installments);
 

@@ -515,30 +515,32 @@ export class QuickbooksService {
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
-      Line: data.lineItems.map((item) => ({
-        Amount: item.amount,
-        DetailType: "SalesItemLineDetail",
-        SalesItemLineDetail: {
-          ItemRef: {
-            value: item.itemRef || "1",
+      Line: (() => {
+        // If discount exists, distribute it proportionally across line items
+        // This avoids using QB DiscountLineDetail which requires a DiscountAccountRef
+        let lineItems = data.lineItems;
+        if (data.discount && data.discount > 0) {
+          const totalBeforeDiscount = lineItems.reduce((sum, item) => sum + item.amount, 0);
+          if (totalBeforeDiscount > 0) {
+            console.log(`[QuickBooks] Applying $${data.discount} discount by reducing line item amounts proportionally`);
+            lineItems = lineItems.map((item) => ({
+              ...item,
+              amount: Math.max(0.01, Number((item.amount - (item.amount / totalBeforeDiscount) * data.discount!).toFixed(2))),
+            }));
+          }
+        }
+        return lineItems.map((item) => ({
+          Amount: item.amount,
+          DetailType: "SalesItemLineDetail",
+          SalesItemLineDetail: {
+            ItemRef: {
+              value: item.itemRef || "1",
+            },
           },
-        },
-        Description: item.description,
-      })),
+          Description: item.description,
+        }));
+      })(),
     };
-
-    // Add discount line item if discount is provided and > 0
-    if (data.discount && data.discount > 0) {
-      console.log(`[QuickBooks] Adding discount line item: $${data.discount}`);
-      invoiceData.Line.push({
-        Amount: data.discount,
-        DetailType: "DiscountLineDetail",
-        DiscountLineDetail: {
-          PercentBased: false,  // Fixed amount discount
-        },
-        Description: "Discount applied",
-      });
-    }
 
     // Add billing address if provided
     if (data.billingAddress) {
