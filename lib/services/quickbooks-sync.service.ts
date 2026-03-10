@@ -671,7 +671,7 @@ export class QuickBooksSyncService {
 
       console.log("[QuickBooks Sync] Starting customer sync with pagination");
 
-      while (hasMore && allCustomers.length < maxResults) {
+      while (hasMore) {
         const result = await quickbooksService.getAllCustomersPaginated({ startPosition });
         allCustomers = allCustomers.concat(result.customers);
         hasMore = result.hasMore;
@@ -679,12 +679,6 @@ export class QuickBooksSyncService {
         pageCount++;
 
         console.log(`[QuickBooks Sync] Page ${pageCount}: fetched ${result.customers.length} customers, total: ${allCustomers.length}, hasMore: ${hasMore}`);
-
-        // Stop if we've reached maxResults
-        if (allCustomers.length >= maxResults) {
-          allCustomers = allCustomers.slice(0, maxResults);
-          break;
-        }
       }
 
       console.log(`[QuickBooks Sync] Completed fetching customers: ${allCustomers.length} total across ${pageCount} pages`);
@@ -737,9 +731,42 @@ export class QuickBooksSyncService {
             }
           }
 
-          const existing = await prisma.customer.findUnique({
+          const existingByEmail = await prisma.customer.findUnique({
             where: { email },
           });
+
+          // If no match by email, check by quickbooks_id to prevent unique constraint
+          // collision during create (QB customer may have changed email since last sync).
+          if (!existingByEmail) {
+            const existingByQbId = await prisma.customer.findUnique({
+              where: { quickbooks_id: qbCustomer.Id },
+            });
+            if (existingByQbId) {
+              // Customer already exists under a different email - update it in place
+              // to reflect the new email from QB without creating a duplicate.
+              const qbMetadata = {
+                syncDate: new Date().toISOString(),
+                companyName: qbCustomer.CompanyName,
+                balance: qbCustomer.Balance,
+                metaData: qbCustomer.MetaData,
+              };
+              const currentMetadata = (existingByQbId.metadata as any) || {};
+              await prisma.customer.update({
+                where: { id: existingByQbId.id },
+                data: {
+                  email,
+                  name,
+                  ...(phone ? { phone } : {}),
+                  qbBalance: qbCustomer.Balance || 0,
+                  lastQbBalanceSync: new Date(),
+                  lastQuickbooksSyncAt: new Date(),
+                  metadata: { ...currentMetadata, quickbooks: qbMetadata } as any,
+                },
+              });
+              updated.push(existingByQbId.id);
+              return;
+            }
+          }
 
           const customer = await identityMapper.reconcileCustomer({
             email,
@@ -756,7 +783,7 @@ export class QuickBooksSyncService {
             },
           });
 
-          if (existing) {
+          if (existingByEmail) {
             updated.push(customer.id);
           } else {
             synced.push(customer.id);
@@ -797,7 +824,7 @@ export class QuickBooksSyncService {
 
       console.log("[QuickBooks Sync] Starting invoice sync with pagination");
 
-      while (hasMore && allInvoices.length < maxResults) {
+      while (hasMore) {
         const result = await quickbooksService.getAllInvoicesPaginated({ startPosition });
         allInvoices = allInvoices.concat(result.invoices);
         hasMore = result.hasMore;
@@ -805,12 +832,6 @@ export class QuickBooksSyncService {
         pageCount++;
 
         console.log(`[QuickBooks Sync] Page ${pageCount}: fetched ${result.invoices.length} invoices, total: ${allInvoices.length}, hasMore: ${hasMore}`);
-
-        // Stop if we've reached maxResults
-        if (allInvoices.length >= maxResults) {
-          allInvoices = allInvoices.slice(0, maxResults);
-          break;
-        }
       }
 
       console.log(`[QuickBooks Sync] Completed fetching invoices: ${allInvoices.length} total across ${pageCount} pages`);
@@ -914,9 +935,13 @@ export class QuickBooksSyncService {
           };
 
           if (existing) {
+            // Do NOT update invoiceNumber on an existing record - it may belong to a
+            // locally-created invoice with a different number, and updating would hit the
+            // unique constraint if another row already owns that DocNumber.
+            const { invoiceNumber: _ignored, ...invoiceUpdateData } = invoiceData;
             await prisma.invoice.update({
               where: { id: existing.id },
-              data: invoiceData,
+              data: invoiceUpdateData,
             });
             updated.push(existing.id);
           } else {
@@ -960,7 +985,18 @@ export class QuickBooksSyncService {
       for (const qbPayment of qbPayments) {
         try {
           const qbPaymentId = qbPayment.Id;
-          const invoiceRef = qbPayment.Line?.[0]?.LinkedTxn?.[0]?.TxnId;
+
+          // Search all lines for any LinkedTxn of type Invoice (not just Line[0]/LinkedTxn[0])
+          let invoiceRef: string | undefined;
+          for (const line of qbPayment.Line || []) {
+            const invoiceTxn = (line.LinkedTxn || []).find(
+              (txn: any) => txn.TxnType === "Invoice"
+            );
+            if (invoiceTxn?.TxnId) {
+              invoiceRef = invoiceTxn.TxnId;
+              break;
+            }
+          }
 
           if (!invoiceRef) {
             console.warn(`[QB Sync] Payment ${qbPaymentId} has no linked invoice`);
