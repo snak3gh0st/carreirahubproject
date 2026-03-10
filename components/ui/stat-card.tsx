@@ -49,7 +49,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "bg-white border border-gray-200 rounded-xl p-6",
+        "bg-white border border-gray-200 rounded-xl p-6 overflow-hidden",
         "hover:border-gold-200 hover:shadow-lg hover:scale-[1.01] transition-all duration-200",
         className
       )}
@@ -69,8 +69,8 @@ export function StatCard({
       </div>
 
       {/* Main value */}
-      <div className="space-y-2">
-        <p className="text-4xl font-bold text-gray-900 tabular-nums">
+      <div className="min-w-0 space-y-2">
+        <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tabular-nums truncate">
           {value}
         </p>
 
