@@ -460,13 +460,14 @@ All phase goals achieved. Hub workflow complete from lead entry to deal won noti
 | 46 | Mark overdue customer groups with red header and Vencido badge | 2026-02-19 | 114f845 | [46-mark-overdue-installments-in-red-with-du](.planning/quick/46-mark-overdue-installments-in-red-with-du/) |
 | 47 | filtrar leads por usuario vendedor - cada vendedor so ve os leads que ele adicionou | 2026-02-23 | 4fc5642 | [47-filtrar-leads-por-usuario-vendedor-cada-](.planning/quick/47-filtrar-leads-por-usuario-vendedor-cada-/) |
 | 47 | Filter leads by vendor — SALES sees only their own leads | 2026-02-23 | dd18afd | [47-filtrar-leads-por-usuario-vendedor-cada-](.planning/quick/47-filtrar-leads-por-usuario-vendedor-cada-/) |
+| 48 | Fix dashboard card number overflow on all screen sizes | 2026-03-10 | 92d6bc5 | [48-see-the-numbers-in-cards-in-the-dash-can](.planning/quick/48-see-the-numbers-in-cards-in-the-dash-can/) |
 
 ## Session Continuity
 
-Last session: 2026-02-23
-Stopped at: Completed quick task 47 — Lead filtering by SALES role with createdById ownership
-Resume file: .planning/quick/47-filtrar-leads-por-usuario-vendedor-cada-/47-SUMMARY.md
-Next action: Deploy to production and verify SALES users see only their own leads
+Last session: 2026-03-10
+Stopped at: Completed quick task 48 — Dashboard card overflow fix with responsive text sizing
+Resume file: .planning/quick/48-see-the-numbers-in-cards-in-the-dash-can/48-SUMMARY.md
+Next action: Deploy to production and verify card numbers display correctly on all screen sizes
 
 ## Sprint 1 Success Criteria
 
