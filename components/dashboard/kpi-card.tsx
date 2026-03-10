@@ -30,7 +30,7 @@ export function KpiCard({
 }: KpiCardProps) {
   if (isLoading) {
     return (
-      <div className="bg-white">
+      <div className="bg-white overflow-hidden min-w-0">
         <div className="flex items-center justify-between mb-2">
           <div className="h-4 bg-gray-300"></div>
           <div className="h-5 w-5 bg-gray-300"></div>
@@ -42,7 +42,7 @@ export function KpiCard({
   }
 
   return (
-    <div className="bg-white">
+    <div className="bg-white overflow-hidden min-w-0">
       {/* Header with title and icon */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-medium text-gray-600">
@@ -52,8 +52,8 @@ export function KpiCard({
       </div>
 
       {/* Value */}
-      <div className="flex items-baseline gap-2">
-        <p className={`text-2xl font-bold ${valueColor}`}>
+      <div className="flex items-baseline gap-2 min-w-0">
+        <p className={`text-2xl font-bold truncate ${valueColor}`}>
           {value}
         </p>
 

@@ -84,7 +84,7 @@ export function DashboardKPICard({
       <div className="relative">
         {/* Header with icon */}
         <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className={cn("text-sm font-medium", colors.label)}>{title}</p>
           </div>
           <div className={cn("p-2 rounded-lg", colors.bg)}>
@@ -93,8 +93,8 @@ export function DashboardKPICard({
         </div>
 
         {/* Value */}
-        <div className="mb-2">
-          <p className="text-2xl sm:text-3xl font-bold text-gray-900">
+        <div className="mb-2 min-w-0">
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 truncate">
             {value}
           </p>
           {subtitle && (
