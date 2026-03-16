@@ -43,6 +43,7 @@ export class QuickbooksService {
   private companyId: string;
   private baseUrl: string;
   private circuitBreaker: CircuitBreaker;
+  private discountAccountRef: { value: string; name: string } | null = null;
 
   constructor() {
     this.clientId = process.env.QUICKBOOKS_CLIENT_ID || "";
@@ -355,6 +356,13 @@ export class QuickbooksService {
 
   /**
    * Criar ou buscar Customer no Quickbooks
+   *
+   * Lookup strategy (two-phase):
+   * 1. Query by PrimaryEmailAddr
+   * 2. If no email match, query by DisplayName (QB's uniqueness key)
+   * 3. If both miss, create new customer
+   * 4. If create returns 6240 (Duplicate Name Exists), fall back to DisplayName query
+   *    — handles race conditions and customers created externally without an email
    */
   async getOrCreateCustomer(data: {
     email: string;
@@ -369,15 +377,25 @@ export class QuickbooksService {
     zipCode?: string;
     country?: string;
   }): Promise<any> {
-    // Buscar customer existente
-    const query = `SELECT * FROM Customer WHERE PrimaryEmailAddr = '${data.email}'`;
-    const searchResult = await this.request(`/query?query=${encodeURIComponent(query)}`);
+    // Phase 1: search by email
+    const emailQuery = `SELECT * FROM Customer WHERE PrimaryEmailAddr = '${data.email}'`;
+    const emailResult = await this.request(`/query?query=${encodeURIComponent(emailQuery)}`);
 
-    if (searchResult.QueryResponse?.Customer?.length > 0) {
-      return searchResult.QueryResponse.Customer[0];
+    if (emailResult.QueryResponse?.Customer?.length > 0) {
+      return emailResult.QueryResponse.Customer[0];
     }
 
-    // Criar novo customer
+    // Phase 2: search by DisplayName (QB uniqueness key - prevents duplicate-name errors)
+    const escapedName = data.name.replace(/'/g, "\\'");
+    const nameQuery = `SELECT * FROM Customer WHERE DisplayName = '${escapedName}'`;
+    const nameResult = await this.request(`/query?query=${encodeURIComponent(nameQuery)}`);
+
+    if (nameResult.QueryResponse?.Customer?.length > 0) {
+      console.log(`[QuickBooks] getOrCreateCustomer: found existing customer by DisplayName "${data.name}" (email mismatch or missing in QB)`);
+      return nameResult.QueryResponse.Customer[0];
+    }
+
+    // Phase 3: create new customer
     const customerData: any = {
       DisplayName: data.name,
       PrimaryEmailAddr: {
@@ -397,7 +415,7 @@ export class QuickbooksService {
     if (data.ssn) identificationNotes.push(`SSN: ${data.ssn}`);
     if (data.passport) identificationNotes.push(`Passport: ${data.passport}`);
     if (data.cpf) identificationNotes.push(`CPF: ${data.cpf}`);
-    
+
     if (identificationNotes.length > 0) {
       customerData.Notes = identificationNotes.join(' | ');
     }
@@ -421,12 +439,41 @@ export class QuickbooksService {
       };
     }
 
-    const createResult = await this.request("/customer", {
-      method: "POST",
-      body: JSON.stringify(customerData),
-    });
+    try {
+      const createResult = await this.request("/customer", {
+        method: "POST",
+        body: JSON.stringify(customerData),
+      });
 
-    return createResult.Customer;
+      return createResult.Customer;
+    } catch (createError: any) {
+      // Phase 4: handle 6240 "Duplicate Name Exists Error" — race condition or customer
+      // created externally in QB without an email address.
+      // Parse the QB Fault JSON from the error's responseText to detect code 6240.
+      const responseText: string = createError?.responseText || "";
+      let isDuplicateNameError = false;
+      try {
+        const parsed = JSON.parse(responseText);
+        const errors: any[] = parsed?.Fault?.Error || [];
+        isDuplicateNameError = errors.some((e: any) => String(e.code) === "6240");
+      } catch {
+        // responseText is not valid JSON — not a 6240 error, re-throw original
+      }
+
+      if (!isDuplicateNameError) {
+        throw createError;
+      }
+
+      console.warn(`[QuickBooks] getOrCreateCustomer: received 6240 Duplicate Name error for "${data.name}". Falling back to DisplayName lookup.`);
+
+      const fallbackResult = await this.request(`/query?query=${encodeURIComponent(nameQuery)}`);
+      if (fallbackResult.QueryResponse?.Customer?.length > 0) {
+        return fallbackResult.QueryResponse.Customer[0];
+      }
+
+      // If we still can't find them after a 6240, re-throw so the caller gets the original error
+      throw createError;
+    }
   }
 
   /**
@@ -476,6 +523,44 @@ export class QuickbooksService {
   }
 
   /**
+   * Get or create a Discount account in QuickBooks for DiscountLineDetail usage.
+   * Caches the result for the lifetime of this service instance.
+   */
+  async getDiscountAccountRef(): Promise<{ value: string; name: string }> {
+    if (this.discountAccountRef) {
+      return this.discountAccountRef;
+    }
+
+    // Search for existing discount-type accounts (Income type with "discount" in name)
+    const query = `SELECT Id, Name, AccountType, AccountSubType FROM Account WHERE AccountSubType = 'DiscountsRefundsGiven' MAXRESULTS 5`;
+    console.log(`[QuickBooks] Searching for discount account: ${query}`);
+    const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+    const accounts = result.QueryResponse?.Account || [];
+
+    if (accounts.length > 0) {
+      this.discountAccountRef = { value: accounts[0].Id, name: accounts[0].Name };
+      console.log(`[QuickBooks] Found discount account: ${accounts[0].Name} (ID: ${accounts[0].Id})`);
+      return this.discountAccountRef;
+    }
+
+    // No discount account found — create one
+    console.log(`[QuickBooks] No discount account found, creating "Discounts Given"...`);
+    const createResult = await this.request("/account", {
+      method: "POST",
+      body: JSON.stringify({
+        Name: "Discounts Given",
+        AccountType: "Income",
+        AccountSubType: "DiscountsRefundsGiven",
+      }),
+    });
+
+    const newAccount = createResult.Account;
+    this.discountAccountRef = { value: newAccount.Id, name: newAccount.Name };
+    console.log(`[QuickBooks] Created discount account: ${newAccount.Name} (ID: ${newAccount.Id})`);
+    return this.discountAccountRef;
+  }
+
+  /**
    * Create Invoice with BillEmail set during creation
    * Some QB configurations require email on invoice before /send works
    */
@@ -498,6 +583,43 @@ export class QuickbooksService {
       country?: string;
     };
   }): Promise<any> {
+    // Build line items array, adding DiscountLineDetail if discount exists
+    const invoiceLines: any[] = data.lineItems.map((item) => ({
+      Amount: item.amount,
+      DetailType: "SalesItemLineDetail",
+      SalesItemLineDetail: {
+        ItemRef: {
+          value: item.itemRef || "1",
+        },
+      },
+      Description: item.description,
+    }));
+
+    // Add SubTotalLine + DiscountLineDetail so QB shows Subtotal - Discount
+    if (data.discount && data.discount > 0) {
+      const discountAccountRef = await this.getDiscountAccountRef();
+      console.log(`[QuickBooks] Adding DiscountLineDetail: -$${data.discount} (Account: ${discountAccountRef.name})`);
+
+      // QB requires a SubTotalLine before the DiscountLineDetail
+      invoiceLines.push({
+        Amount: data.lineItems.reduce((sum, item) => sum + item.amount, 0),
+        DetailType: "SubTotalLineDetail",
+        SubTotalLineDetail: {},
+      });
+
+      invoiceLines.push({
+        Amount: data.discount,
+        DetailType: "DiscountLineDetail",
+        DiscountLineDetail: {
+          PercentBased: false,
+          DiscountAccountRef: {
+            value: discountAccountRef.value,
+            name: discountAccountRef.name,
+          },
+        },
+      });
+    }
+
     const invoiceData: any = {
       CustomerRef: {
         value: data.customerId,
@@ -515,31 +637,7 @@ export class QuickbooksService {
         : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
-      Line: (() => {
-        // If discount exists, distribute it proportionally across line items
-        // This avoids using QB DiscountLineDetail which requires a DiscountAccountRef
-        let lineItems = data.lineItems;
-        if (data.discount && data.discount > 0) {
-          const totalBeforeDiscount = lineItems.reduce((sum, item) => sum + item.amount, 0);
-          if (totalBeforeDiscount > 0) {
-            console.log(`[QuickBooks] Applying $${data.discount} discount by reducing line item amounts proportionally`);
-            lineItems = lineItems.map((item) => ({
-              ...item,
-              amount: Math.max(0.01, Number((item.amount - (item.amount / totalBeforeDiscount) * data.discount!).toFixed(2))),
-            }));
-          }
-        }
-        return lineItems.map((item) => ({
-          Amount: item.amount,
-          DetailType: "SalesItemLineDetail",
-          SalesItemLineDetail: {
-            ItemRef: {
-              value: item.itemRef || "1",
-            },
-          },
-          Description: item.description,
-        }));
-      })(),
+      Line: invoiceLines,
     };
 
     // Add billing address if provided
