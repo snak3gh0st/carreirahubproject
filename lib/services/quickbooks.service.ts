@@ -377,6 +377,10 @@ export class QuickbooksService {
     zipCode?: string;
     country?: string;
   }): Promise<any> {
+    // Trim whitespace to prevent QB query mismatches (trailing spaces cause lookup failures)
+    data.name = data.name.trim();
+    data.email = data.email.trim();
+
     // Phase 1: search by email
     const emailQuery = `SELECT * FROM Customer WHERE PrimaryEmailAddr = '${data.email}'`;
     const emailResult = await this.request(`/query?query=${encodeURIComponent(emailQuery)}`);
