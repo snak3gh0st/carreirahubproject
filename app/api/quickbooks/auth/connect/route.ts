@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Guardar state em cookie (será validado no callback)
     const response = NextResponse.redirect(
-      `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&response_type=code&scope=com.intuit.quickbooks.accounting&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&realm_id=`
+      `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&response_type=code&scope=com.intuit.quickbooks.accounting%20com.intuit.quickbooks.payment&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&realm_id=`
     );
 
     // Salvar state em cookie seguro
