@@ -4,7 +4,7 @@
 
 **Goal:** Auto-charge invoices on their due date via QuickBooks Payments API when customers have a card or bank account on file, and remove Stripe from the active payment flow.
 
-**Architecture:** Add a QB Payments API layer to the existing `quickbooks.service.ts` (separate base URL, same OAuth tokens). A daily cron job at 01:00 UTC queries invoices due today, checks for payment methods on file via QB Payments API, and charges automatically. Retry logic handles failures (3 attempts over 4 days). Stripe is removed from active flows but files/data are preserved.
+**Architecture:** Add a QB Payments API layer to the existing `quickbooks.service.ts` (separate base URL, same OAuth tokens). A daily cron job at 00:30 UTC queries invoices due today, checks for payment methods on file via QB Payments API, and charges automatically. Retry logic handles failures (3 attempts over 4 days). Stripe is removed from active flows but files/data are preserved.
 
 **Tech Stack:** Next.js 14 App Router, TypeScript, Prisma ORM (PostgreSQL/Neon), QuickBooks Payments API v4, Vercel Cron Jobs.
 
@@ -12,20 +12,37 @@
 
 ---
 
+## Phased Rollout Strategy
+
+This plan is split into 4 phases with validation gates. **Do NOT proceed to the next phase until the current phase is validated.**
+
+| Phase | What | Risk | Gate |
+|-------|------|------|------|
+| 1 | API layer + test endpoint | Low | Manual test confirms API connectivity |
+| 2 | Cron in DRY_RUN mode | Low | Logs show correct invoices would be charged |
+| 3 | Live charging (1 customer, then all) | Medium | First real charge succeeds end-to-end |
+| 4 | Stripe removal | Low | QB Payments working for 1+ week |
+
+---
+
 ## File Map
 
-| Action | File | Responsibility |
-|--------|------|---------------|
-| Modify | `prisma/schema.prisma` | Add `AutoChargeStatus` enum + 6 new fields on Invoice |
-| Modify | `lib/services/quickbooks.service.ts` | Add `paymentsBaseUrl`, `paymentsRequest()`, and 7 new public methods |
-| Modify | `lib/services/quickbooks.service.ts:1274-1309` | Update `createPayment()` to accept `source` parameter |
-| Create | `app/api/cron/auto-charge-invoices/route.ts` | Daily cron: auto-charge invoices due today |
-| Create | `app/api/quickbooks/payments/test/route.ts` | Test endpoint: validate QB Payments API connectivity |
-| Modify | `vercel.json` | Add `auto-charge-invoices` cron entry |
-| Modify | `lib/services/payment-workflow.service.ts:2` | Remove Stripe import |
-| Modify | `lib/services/payment-workflow.service.ts:44-102` | Remove `sendPaymentLinkAfterSignature()` Stripe usage |
-| Modify | `lib/services/payment-workflow.service.ts:458-526` | Update `sendPaymentReminders()` — remove Stripe filter |
-| Modify | `lib/services/payment-workflow.service.ts:584-656` | Remove `resendPaymentLink()` Stripe usage |
+| Action | Phase | File | Responsibility |
+|--------|-------|------|---------------|
+| Modify | 1 | `prisma/schema.prisma` | Add `AutoChargeStatus` enum + 6 new fields on Invoice |
+| Modify | 1 | `lib/services/quickbooks.service.ts` | Add `paymentsBaseUrl`, `paymentsRequest()`, and 7 new public methods |
+| Modify | 1 | `lib/services/quickbooks.service.ts:1274-1309` | Update `createPayment()` to accept `source` parameter |
+| Create | 1 | `app/api/quickbooks/payments/test/route.ts` | Test endpoint: validate QB Payments API connectivity |
+| Create | 2 | `app/api/cron/auto-charge-invoices/route.ts` | Daily cron with DRY_RUN support |
+| Modify | 2 | `vercel.json` | Add `auto-charge-invoices` cron entry |
+| Modify | 4 | `lib/services/payment-workflow.service.ts` | Remove Stripe from active flows |
+| Modify | 4 | `app/api/invoices/[id]/send-payment-link/route.ts` | Deprecate endpoint |
+
+---
+
+# PHASE 1: API Layer + Test Endpoint (Low Risk)
+
+**Goal:** QB Payments API is connected and returning data. No charges, no schema used yet by production code.
 
 ---
 
@@ -68,7 +85,7 @@ npm run db:generate
 npm run db:push
 ```
 
-Expected: Schema pushed successfully, no errors.
+Expected: Schema pushed successfully, no errors. New fields default to null/0 — no impact on existing data.
 
 - [ ] **Step 4: Commit**
 
@@ -453,7 +470,7 @@ export async function GET(request: NextRequest) {
 
     await quickbooksService.initialize();
 
-    // Test 1: Check QB Payments API is reachable by listing cards
+    // Test: Check QB Payments API is reachable by listing payment methods
     let paymentMethods;
     try {
       paymentMethods = await quickbooksService.getCustomerPaymentMethods(customerId);
@@ -493,16 +510,16 @@ export async function GET(request: NextRequest) {
 }
 ```
 
-- [ ] **Step 2: Test manually**
+- [ ] **Step 2: Build and test manually**
 
-Run: `npm run dev`
+Run: `npm run build && npm run dev`
 
-Then in browser or curl:
+Then test:
 ```bash
-curl http://localhost:3000/api/quickbooks/payments/test?customerId=YOUR_QB_CUSTOMER_ID
+curl "http://localhost:3000/api/quickbooks/payments/test?customerId=YOUR_QB_CUSTOMER_ID"
 ```
 
-Expected: JSON response with `connected: true` and payment methods list (or empty arrays if customer has no cards on file).
+Expected: JSON response with `connected: true` and payment methods list.
 
 - [ ] **Step 3: Commit**
 
@@ -513,12 +530,33 @@ git commit -m "feat(qb): add test endpoint for QB Payments API connectivity vali
 
 ---
 
-## Task 5: Auto-charge cron job
+## PHASE 1 VALIDATION GATE
+
+**Before proceeding to Phase 2, confirm ALL of these:**
+
+- [ ] `npm run build` succeeds with no errors
+- [ ] Test endpoint returns `connected: true` for a real QB customer ID
+- [ ] Test endpoint correctly shows cards/bank accounts on file (or empty arrays)
+- [ ] Test endpoint returns `connected: false` with helpful error for invalid customer
+- [ ] No existing functionality is broken (invoice creation, payment reminders still work)
+
+**STOP HERE.** Deploy Phase 1 to production. Test the `/payments/test` endpoint in production with a real customer. Only proceed to Phase 2 when confident the API layer works.
+
+---
+
+# PHASE 2: Cron Job in DRY_RUN Mode (Low Risk)
+
+**Goal:** Cron runs daily, identifies which invoices WOULD be charged, logs everything, but charges nothing.
+
+---
+
+## Task 5: Auto-charge cron job with DRY_RUN mode
 
 **Files:**
 - Create: `app/api/cron/auto-charge-invoices/route.ts`
+- Modify: `vercel.json`
 
-- [ ] **Step 1: Create the cron route**
+- [ ] **Step 1: Create the cron route with DRY_RUN support**
 
 ```typescript
 import { NextRequest, NextResponse } from "next/server";
@@ -531,11 +569,17 @@ export const dynamic = "force-dynamic";
 
 const BATCH_SIZE = 20;
 
+// Set to false to enable real charging (Phase 3)
+const DRY_RUN = process.env.AUTO_CHARGE_DRY_RUN !== "false";
+
 /**
  * GET /api/cron/auto-charge-invoices
  *
  * Daily cron (00:30 UTC) — auto-charges invoices due today if customer
  * has a payment method on file in QuickBooks.
+ *
+ * DRY_RUN mode (default): logs what WOULD happen without charging.
+ * Set AUTO_CHARGE_DRY_RUN=false env var to enable real charging.
  *
  * Runs BEFORE overdue-invoices cron (02:00 UTC) to prevent race conditions.
  */
@@ -548,7 +592,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[CRON] Starting auto-charge-invoices job...");
+    console.log(`[CRON] Starting auto-charge-invoices job... (DRY_RUN: ${DRY_RUN})`);
 
     await quickbooksService.initialize();
 
@@ -560,7 +604,7 @@ export async function GET(request: NextRequest) {
     // Query: invoices due today (first attempt) + retry-pending invoices
     const invoices = await prisma.invoice.findMany({
       where: {
-        amount: { gt: 0 }, // Skip zero/negative amounts
+        amount: { gt: 0 },
         OR: [
           // First attempt: due today, SENT status, never attempted
           {
@@ -569,11 +613,11 @@ export async function GET(request: NextRequest) {
             autoChargeStatus: null,
           },
           // Retries: pending retry, due today or earlier, under 3 attempts
-          {
+          ...(!DRY_RUN ? [{
             autoChargeStatus: AutoChargeStatus.RETRY_PENDING,
             nextAutoChargeRetry: { lte: tomorrow },
             autoChargeAttempts: { lt: 3 },
-          },
+          }] : []),
         ],
       },
       include: { customer: true },
@@ -586,6 +630,7 @@ export async function GET(request: NextRequest) {
     let charged = 0;
     let skipped = 0;
     let failed = 0;
+    const dryRunLog: any[] = [];
 
     for (const invoice of invoices) {
       try {
@@ -594,10 +639,12 @@ export async function GET(request: NextRequest) {
         // Skip if no QB customer ID
         if (!qbCustomerId) {
           console.log(`[CRON] Skipping invoice ${invoice.id} — no QB customer ID`);
-          await prisma.invoice.update({
-            where: { id: invoice.id },
-            data: { autoChargeStatus: AutoChargeStatus.SKIPPED },
-          });
+          if (!DRY_RUN) {
+            await prisma.invoice.update({
+              where: { id: invoice.id },
+              data: { autoChargeStatus: AutoChargeStatus.SKIPPED },
+            });
+          }
           skipped++;
           continue;
         }
@@ -607,10 +654,12 @@ export async function GET(request: NextRequest) {
 
         if (!methods.hasPaymentMethod) {
           console.log(`[CRON] Skipping invoice ${invoice.id} — no payment method on file`);
-          await prisma.invoice.update({
-            where: { id: invoice.id },
-            data: { autoChargeStatus: AutoChargeStatus.SKIPPED },
-          });
+          if (!DRY_RUN) {
+            await prisma.invoice.update({
+              where: { id: invoice.id },
+              data: { autoChargeStatus: AutoChargeStatus.SKIPPED },
+            });
+          }
           skipped++;
           continue;
         }
@@ -620,12 +669,31 @@ export async function GET(request: NextRequest) {
         const requestId = `auto-charge-${invoice.id}-${attemptNumber}`;
         const amount = Number(invoice.amount);
         const description = `Invoice ${invoice.invoiceNumber || invoice.id}`;
+        const paymentType = methods.cards.length > 0 ? "card_on_file" : "ach_on_file";
 
+        // === DRY RUN: log only, don't charge ===
+        if (DRY_RUN) {
+          const entry = {
+            invoiceId: invoice.id,
+            invoiceNumber: invoice.invoiceNumber,
+            customerName: invoice.customer.name,
+            customerEmail: invoice.customer.email,
+            qbCustomerId,
+            amount,
+            paymentType,
+            methodId: methods.cards.length > 0 ? methods.cards[0].id : methods.bankAccounts[0].id,
+            wouldCharge: true,
+          };
+          dryRunLog.push(entry);
+          console.log(`[CRON DRY_RUN] WOULD charge invoice ${invoice.invoiceNumber}: $${amount} via ${paymentType} for ${invoice.customer.name}`);
+          charged++;
+          continue;
+        }
+
+        // === LIVE MODE: actually charge ===
         let chargeResult: any;
-        let paymentType: string;
 
         if (methods.cards.length > 0) {
-          // Charge card (priority)
           const card = methods.cards[0];
           chargeResult = await quickbooksService.chargeCard({
             cardId: card.id,
@@ -633,9 +701,7 @@ export async function GET(request: NextRequest) {
             description,
             requestId,
           });
-          paymentType = "card_on_file";
         } else {
-          // Charge bank account (ACH/eCheck)
           const bankAccount = methods.bankAccounts[0];
           chargeResult = await quickbooksService.chargeBankAccount({
             bankAccountId: bankAccount.id,
@@ -643,7 +709,6 @@ export async function GET(request: NextRequest) {
             description,
             requestId,
           });
-          paymentType = "ach_on_file";
         }
 
         console.log(`[CRON] Charge successful for invoice ${invoice.id}: ${chargeResult?.id}`);
@@ -697,6 +762,11 @@ export async function GET(request: NextRequest) {
       } catch (error: any) {
         console.error(`[CRON] Auto-charge failed for invoice ${invoice.id}:`, error.message);
 
+        if (DRY_RUN) {
+          failed++;
+          continue;
+        }
+
         const attemptNumber = invoice.autoChargeAttempts + 1;
         const isFinalAttempt = attemptNumber >= 3;
 
@@ -705,9 +775,9 @@ export async function GET(request: NextRequest) {
         if (!isFinalAttempt) {
           nextRetry = new Date();
           if (attemptNumber === 1) {
-            nextRetry.setDate(nextRetry.getDate() + 1); // +1 day
+            nextRetry.setDate(nextRetry.getDate() + 1);
           } else {
-            nextRetry.setDate(nextRetry.getDate() + 2); // +2 more days (day 3 total)
+            nextRetry.setDate(nextRetry.getDate() + 2);
           }
         }
 
@@ -746,8 +816,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const summary = { total: invoices.length, charged, skipped, failed };
-    console.log(`[CRON] Auto-charge complete:`, summary);
+    const summary = {
+      dryRun: DRY_RUN,
+      total: invoices.length,
+      charged,
+      skipped,
+      failed,
+      ...(DRY_RUN ? { wouldCharge: dryRunLog } : {}),
+    };
+    console.log(`[CRON] Auto-charge complete:`, JSON.stringify(summary, null, 2));
 
     return NextResponse.json(summary);
   } catch (error: any) {
@@ -759,7 +836,7 @@ export async function GET(request: NextRequest) {
 
 - [ ] **Step 2: Add cron entry to vercel.json**
 
-Add new entry to the `crons` array in `vercel.json` (before the existing entries):
+Add new entry to the `crons` array in `vercel.json`:
 
 ```json
 {
@@ -768,23 +845,101 @@ Add new entry to the `crons` array in `vercel.json` (before the existing entries
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Build and test locally**
+
+```bash
+npm run build
+npm run dev
+curl http://localhost:3000/api/cron/auto-charge-invoices
+```
+
+Expected: JSON response with `{ dryRun: true, total: N, charged: N, skipped: N, failed: 0, wouldCharge: [...] }`
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add app/api/cron/auto-charge-invoices/route.ts vercel.json
-git commit -m "feat(cron): add auto-charge-invoices cron — charges due invoices via QB Payments on file"
+git commit -m "feat(cron): add auto-charge-invoices cron in DRY_RUN mode — logs without charging"
 ```
 
 ---
 
-## Task 6: Remove Stripe from payment-workflow.service.ts
+## PHASE 2 VALIDATION GATE
+
+**Deploy to production with DRY_RUN=true (default). Let it run for 2-3 days. Confirm:**
+
+- [ ] Cron executes daily at 00:30 UTC without errors
+- [ ] `wouldCharge` list shows correct invoices (right customers, right amounts)
+- [ ] Invoices without payment methods on file are correctly skipped
+- [ ] No false positives (invoices that shouldn't be charged)
+- [ ] Check Vercel function logs for any errors
+
+**STOP HERE.** Review the dry run logs with Paulo. Only proceed to Phase 3 when the dry run data looks correct.
+
+---
+
+# PHASE 3: Live Charging (Medium Risk)
+
+**Goal:** Enable real charging. Start with one test customer, then open to all.
+
+---
+
+## Task 6: Enable live charging
+
+- [ ] **Step 1: Set environment variable in Vercel**
+
+In Vercel dashboard → Project Settings → Environment Variables:
+
+```
+AUTO_CHARGE_DRY_RUN = false
+```
+
+This flips the cron from dry-run to live mode. No code change needed.
+
+- [ ] **Step 2: Monitor first live run**
+
+After the next cron execution (00:30 UTC):
+1. Check Vercel function logs — any errors?
+2. Check IntegrationLog in Prisma Studio — charges logged as SUCCESS?
+3. Check QuickBooks — payments created against correct invoices?
+4. Check customer's card/bank — charge appeared?
+
+- [ ] **Step 3: Verify end-to-end for first customer**
+
+Confirm:
+- [ ] Invoice status changed to PAID in local DB
+- [ ] Payment created in QB Accounting with correct note ("QB Payments Auto-Charge: ...")
+- [ ] Customer balance updated in local DB
+- [ ] Amount matches invoice amount exactly
+
+---
+
+## PHASE 3 VALIDATION GATE
+
+- [ ] At least 1 real charge succeeded end-to-end
+- [ ] QB Accounting shows correct payment linked to correct invoice
+- [ ] No double charges
+- [ ] Failed charges (if any) have correct retry scheduling
+- [ ] Run for 1+ week before proceeding to Phase 4
+
+**STOP HERE.** Let auto-charging run for at least 1 week. Monitor IntegrationLog daily.
+
+---
+
+# PHASE 4: Stripe Removal (Low Risk)
+
+**Goal:** Remove Stripe from active payment flows. Only proceed after QB Payments is proven stable.
+
+---
+
+## Task 7: Remove Stripe from payment-workflow.service.ts
 
 **Files:**
 - Modify: `lib/services/payment-workflow.service.ts`
 
-- [ ] **Step 1: Keep Stripe import but mark as legacy**
+- [ ] **Step 1: Mark Stripe import as legacy**
 
-At line 2, the `stripeService` import MUST stay because `handlePaymentSuccess()` (line 112) and `syncPaymentToQuickBooks()` (line 300) still reference it for historical Stripe webhook handling. Add a comment:
+At line 2, add a comment but KEEP the import (still used by `handlePaymentSuccess()` and `syncPaymentToQuickBooks()` for historical webhooks):
 
 ```typescript
 // LEGACY: stripeService still used by handlePaymentSuccess() and syncPaymentToQuickBooks()
@@ -794,7 +949,7 @@ import { stripeService } from './stripe.service';
 
 - [ ] **Step 2: Update `sendPaymentLinkAfterSignature()` (lines 44-102)**
 
-This method creates Stripe payment links. Replace the entire method body to be a no-op that logs the deprecation:
+Replace the entire method body:
 
 ```typescript
 async sendPaymentLinkAfterSignature(
@@ -809,49 +964,49 @@ async sendPaymentLinkAfterSignature(
 
 - [ ] **Step 3: Update `sendPaymentReminders()` (lines 458-526)**
 
-Remove the `stripePaymentLinkId: { not: null }` filter at line 471, and remove the Stripe URL construction. Replace lines 468-510:
+Remove the `stripePaymentLinkId: { not: null }` filter at line 471, and remove the Stripe URL construction. Replace lines 468-516 (the query and loop inside the method, keeping the method signature and surrounding try/catch):
 
 ```typescript
-const invoicesNeedingReminder = await prisma.invoice.findMany({
-  where: {
-    status: InvoiceStatus.SENT,
-    autoChargeStatus: null, // Only remind invoices not being auto-charged
-    OR: [
-      {
-        dueDate: { lte: sevenDaysFromNow, gte: threeDaysFromNow },
-        paymentReminderCount: 0,
-      },
-      {
-        dueDate: { lte: threeDaysFromNow, gte: oneDayFromNow },
-        paymentReminderCount: 1,
-      },
-      {
-        dueDate: { lte: oneDayFromNow, gte: now },
-        paymentReminderCount: 2,
-      },
-    ],
-  },
-  include: {
-    customer: true,
-  },
-});
+      const invoicesNeedingReminder = await prisma.invoice.findMany({
+        where: {
+          status: InvoiceStatus.SENT,
+          autoChargeStatus: null, // Only remind invoices not being auto-charged
+          OR: [
+            {
+              dueDate: { lte: sevenDaysFromNow, gte: threeDaysFromNow },
+              paymentReminderCount: 0,
+            },
+            {
+              dueDate: { lte: threeDaysFromNow, gte: oneDayFromNow },
+              paymentReminderCount: 1,
+            },
+            {
+              dueDate: { lte: oneDayFromNow, gte: now },
+              paymentReminderCount: 2,
+            },
+          ],
+        },
+        include: {
+          customer: true,
+        },
+      });
 
-console.log(`[PAYMENT_WORKFLOW] Found ${invoicesNeedingReminder.length} invoices needing reminders`);
+      console.log(`[PAYMENT_WORKFLOW] Found ${invoicesNeedingReminder.length} invoices needing reminders`);
 
-let sent = 0;
-let errors = 0;
+      let sent = 0;
+      let errors = 0;
 
-for (const invoice of invoicesNeedingReminder) {
-  try {
-    // No payment link — reminder tells customer to check their email for the QB invoice
-    const paymentUrl = ''; // QB invoice email already has the payment link
-    await this.sendReminderForInvoice(invoice, paymentUrl);
-    sent++;
-  } catch (error) {
-    console.error(`[PAYMENT_WORKFLOW] Failed to send reminder for invoice ${invoice.id}:`, error);
-    errors++;
-  }
-}
+      for (const invoice of invoicesNeedingReminder) {
+        try {
+          // No payment link — reminder tells customer to check their email for the QB invoice
+          const paymentUrl = ''; // QB invoice email already has the payment link
+          await this.sendReminderForInvoice(invoice, paymentUrl);
+          sent++;
+        } catch (error) {
+          console.error(`[PAYMENT_WORKFLOW] Failed to send reminder for invoice ${invoice.id}:`, error);
+          errors++;
+        }
+      }
 ```
 
 - [ ] **Step 4: Update `resendPaymentLink()` (lines 584-656)**
@@ -872,7 +1027,7 @@ Run:
 npm run build
 ```
 
-Expected: Build succeeds with no TypeScript errors referencing `stripeService`.
+Expected: Build succeeds with no TypeScript errors.
 
 - [ ] **Step 6: Commit**
 
@@ -883,7 +1038,7 @@ git commit -m "refactor(payments): remove Stripe from active payment flow — QB
 
 ---
 
-## Task 7: Remove Stripe payment link endpoint
+## Task 8: Deprecate Stripe payment link endpoint
 
 **Files:**
 - Modify: `app/api/invoices/[id]/send-payment-link/route.ts`
@@ -924,7 +1079,7 @@ git commit -m "deprecate: mark send-payment-link endpoint as 410 Gone — Stripe
 
 ---
 
-## Task 8: Final build verification
+## Task 9: Final build verification
 
 - [ ] **Step 1: Run full build**
 
@@ -940,7 +1095,7 @@ Expected: Build succeeds, no TypeScript errors.
 curl http://localhost:3000/api/cron/auto-charge-invoices
 ```
 
-Expected: JSON response with `{ total: 0, charged: 0, skipped: 0, failed: 0 }` (no invoices due today in dev).
+Expected: JSON response showing dry run or live results depending on env var.
 
 - [ ] **Step 3: Test QB Payments API connectivity**
 
@@ -953,6 +1108,5 @@ Expected: JSON response with `connected: true` and payment methods list.
 - [ ] **Step 4: Final commit**
 
 ```bash
-git add -A
-git commit -m "feat: QB Payments credit card on file auto-charge — complete implementation"
+git commit --allow-empty -m "feat: QB Payments credit card on file — Phase 4 complete, all phases validated"
 ```
