@@ -71,7 +71,7 @@ private async paymentsRequest(endpoint: string, options: RequestInit = {}): Prom
 
 **New route:** `app/api/cron/auto-charge-invoices/route.ts`
 
-**Schedule:** Daily at 01:00 UTC (9:00 PM EST previous day) — runs BEFORE overdue-invoices cron (02:00 UTC) and QB token refresh (02:00 UTC) to prevent race conditions where invoices get marked OVERDUE before auto-charge attempts.
+**Schedule:** Daily at 00:30 UTC (8:30 PM EST previous day) — runs BEFORE contract-expiration (01:00 UTC), overdue-invoices (02:00 UTC), and QB token refresh (02:00 UTC) to prevent race conditions.
 
 **Batch size:** Process max 20 invoices per cron invocation to stay within Vercel function timeout (60s Pro plan). If more invoices are pending, remaining are picked up on next invocation.
 
@@ -134,6 +134,27 @@ The QB Payments API requires a unique `Request-Id` header on `POST /charges` and
 
 After 3 failed attempts, the invoice stays in its current status (SENT/OVERDUE) for manual collection.
 
+### 4.6 Test / Validation Endpoint
+
+**New route:** `GET /api/quickbooks/payments/test?customerId={qbCustomerId}`
+
+Returns QB Payments API connectivity status and payment methods on file for a given customer. Used to validate the integration before enabling the cron.
+
+Response:
+```json
+{
+  "connected": true,
+  "paymentsApiReachable": true,
+  "customer": { "qbId": "123", "name": "John Doe" },
+  "paymentMethods": {
+    "cards": [{ "id": "card_1", "last4": "4242", "brand": "Visa", "expMonth": "12", "expYear": "2027" }],
+    "bankAccounts": [{ "id": "ba_1", "last4": "6789", "bankName": "Chase" }]
+  }
+}
+```
+
+Admin-only access (same auth pattern as other QB routes).
+
 ## 5. Data Model Changes
 
 ### New Prisma enum:
@@ -189,13 +210,13 @@ Add to `vercel.json`:
 ```json
 {
   "path": "/api/cron/auto-charge-invoices",
-  "schedule": "0 1 * * *"
+  "schedule": "30 0 * * *"
 }
 ```
 (01:00 UTC — runs before overdue-invoices at 02:00 UTC and payment-reminders at 10:00 UTC)
 
 **Cron execution order (relevant):**
-1. `01:00 UTC` — **auto-charge-invoices** (new)
+1. `00:30 UTC` — **auto-charge-invoices** (new)
 2. `02:00 UTC` — overdue-invoices (marks unpaid past-due as OVERDUE)
 3. `02:00 UTC` — refresh-quickbooks-token
 4. `10:00 UTC` — payment-reminders (sends reminders for unpaid invoices)
