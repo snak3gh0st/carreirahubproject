@@ -456,6 +456,143 @@ export class QuickbooksService {
     return this.paymentsRequest(`/echecks/${echeckId}`);
   }
 
+  /**
+   * Tokenize raw card data via QB Payments API.
+   * NOTE: Server-side tokenization — card data must only transit over HTTPS.
+   * For production, replace with QB Payments JS client-side tokenization.
+   * POST /tokens → returns a single-use token string.
+   */
+  async tokenizeCard(cardData: {
+    number: string;
+    expMonth: string;
+    expYear: string;
+    cvc: string;
+    name: string;
+    postalCode?: string;
+  }): Promise<string> {
+    const requestId = `tokenize-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    const payload = {
+      card: {
+        number: cardData.number.replace(/\s/g, ""),
+        expMonth: cardData.expMonth,
+        expYear: cardData.expYear,
+        cvc: cardData.cvc,
+        name: cardData.name,
+        address: {
+          postalCode: cardData.postalCode || "",
+          country: "US",
+        },
+      },
+    };
+    const result = await this.paymentsRequest("/tokens", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }, requestId);
+    return result.value;
+  }
+
+  /**
+   * Save a tokenized card to a QB customer's wallet.
+   * POST /customers/{id}/cards with token in body.
+   * Returns the saved card object (with permanent card id).
+   */
+  async createCardFromToken(qbCustomerId: string, token: string): Promise<any> {
+    const requestId = `sav-${qbCustomerId.slice(0, 10)}-${Date.now()}`;
+    return this.paymentsRequest(`/customers/${qbCustomerId}/cards`, {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }, requestId);
+  }
+
+  /**
+   * Tokenize bank account data via QB Payments API.
+   * POST /tokens → returns a single-use token string.
+   */
+  async tokenizeBankAccount(data: {
+    routingNumber: string;
+    accountNumber: string;
+    name: string;
+    accountType: string;
+    phone?: string;
+  }): Promise<string> {
+    const requestId = `tok-ach-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const payload = {
+      bankAccount: {
+        routingNumber: data.routingNumber,
+        accountNumber: data.accountNumber,
+        name: data.name,
+        accountType: data.accountType,
+        phone: data.phone || "",
+      },
+    };
+    const result = await this.paymentsRequest("/tokens", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }, requestId);
+    return result.value;
+  }
+
+  /**
+   * Save a tokenized bank account to a QB customer.
+   * POST /customers/{id}/bank-accounts
+   */
+  async createBankAccountFromToken(qbCustomerId: string, token: string): Promise<any> {
+    const requestId = `sav-ach-${qbCustomerId.slice(0, 8)}-${Date.now()}`;
+    return this.paymentsRequest(`/customers/${qbCustomerId}/bank-accounts`, {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }, requestId);
+  }
+
+  /**
+   * Charge via eCheck using a single-use token (without saving).
+   * POST /echecks with token — fallback when bank account save fails.
+   */
+  async chargeEcheckWithToken(params: {
+    token: string;
+    amount: number;
+    currency?: string;
+    description?: string;
+    requestId: string;
+  }): Promise<any> {
+    const echeckData = {
+      amount: params.amount.toFixed(2),
+      currency: params.currency || "USD",
+      token: params.token,
+      context: { mobile: "false", isEcommerce: "true" },
+      description: params.description,
+    };
+    return this.paymentsRequest("/echecks", {
+      method: "POST",
+      body: JSON.stringify(echeckData),
+    }, params.requestId);
+  }
+
+  /**
+   * Charge a card using a single-use token (without saving the card).
+   * POST /charges with token — fallback when createFromToken fails.
+   */
+  async chargeWithToken(params: {
+    token: string;
+    amount: number;
+    currency?: string;
+    description?: string;
+    requestId: string;
+  }): Promise<any> {
+    const chargeData = {
+      amount: params.amount.toFixed(2),
+      currency: params.currency || "USD",
+      token: params.token,
+      capture: true,
+      context: { mobile: "false", isEcommerce: "true" },
+      description: params.description,
+    };
+    return this.paymentsRequest("/charges", {
+      method: "POST",
+      body: JSON.stringify(chargeData),
+    }, params.requestId);
+  }
+
   private extractErrorCode(error: any): string {
     const status = error?.status;
     if (status === 401) return "AUTH_FAILED";
@@ -718,6 +855,9 @@ export class QuickbooksService {
             .split("T")[0],
       AllowOnlineCreditCardPayment: true,
       AllowOnlineACHPayment: true,
+      CustomerMemo: {
+        value: "IMPORTANT: When paying, please check 'Save my info for faster checkout' to enable automatic payments for your remaining installments.",
+      },
       Line: data.lineItems.map((item) => ({
         Amount: item.amount,
         DetailType: "SalesItemLineDetail",
@@ -847,6 +987,9 @@ export class QuickbooksService {
       EmailStatus: "NeedToSend",  // Tell QB this needs to be sent
       AllowOnlineCreditCardPayment: true,
       AllowOnlineACHPayment: true,
+      CustomerMemo: {
+        value: "IMPORTANT: When paying, please check 'Save my info for faster checkout' to enable automatic payments for your remaining installments.",
+      },
       TxnDate: new Date().toISOString().split("T")[0],
       DueDate: data.dueDate
         ? data.dueDate.toISOString().split("T")[0]
