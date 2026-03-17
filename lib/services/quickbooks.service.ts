@@ -1476,14 +1476,32 @@ export class QuickbooksService {
     paymentDate?: Date;
     paymentMethod?: string;
     referenceNumber?: string;
+    source?: "auto_charge" | "stripe" | "manual";
   }): Promise<any> {
+    let privateNote: string | undefined;
+    if (data.referenceNumber) {
+      switch (data.source) {
+        case "auto_charge":
+          privateNote = `QB Payments Auto-Charge: ${data.referenceNumber}`;
+          break;
+        case "stripe":
+          privateNote = `Stripe Payment: ${data.referenceNumber}`;
+          break;
+        case "manual":
+          privateNote = `Manual Payment: ${data.referenceNumber}`;
+          break;
+        default:
+          privateNote = `Payment: ${data.referenceNumber}`;
+      }
+    }
+
     const paymentData = {
       CustomerRef: {
         value: data.customerId,
       },
       TotalAmt: data.amount,
       TxnDate: (data.paymentDate || new Date()).toISOString().split("T")[0],
-      PrivateNote: data.referenceNumber ? `Stripe Payment: ${data.referenceNumber}` : undefined,
+      PrivateNote: privateNote,
       Line: [
         {
           Amount: data.amount,
