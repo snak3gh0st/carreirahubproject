@@ -44,6 +44,7 @@ export class QuickbooksService {
   private baseUrl: string;
   private paymentsBaseUrl: string;
   private circuitBreaker: CircuitBreaker;
+  private paymentsCircuitBreaker: CircuitBreaker;
   private discountAccountRef: { value: string; name: string } | null = null;
 
   constructor() {
@@ -54,6 +55,7 @@ export class QuickbooksService {
     this.refreshToken = null;
     this.companyId = "";
     this.circuitBreaker = new CircuitBreaker("quickbooks");
+    this.paymentsCircuitBreaker = new CircuitBreaker("quickbooks_payments");
 
     // Quickbooks Sandbox: https://sandbox-quickbooks.api.intuit.com
     // Quickbooks Production: https://quickbooks.api.intuit.com
@@ -262,7 +264,7 @@ export class QuickbooksService {
     const startTime = Date.now();
 
     try {
-      return await this.circuitBreaker.execute(async () => {
+      return await this.paymentsCircuitBreaker.execute(async () => {
         if (!this.accessToken) {
           const error: any = new Error("Quickbooks access token not configured");
           error.status = 401;
@@ -298,6 +300,13 @@ export class QuickbooksService {
           throw new Error("QuickBooks Payments access token expired.");
         }
 
+        // 404 = no payment methods on file (expected, not an error)
+        if (response.status === 404) {
+          const error: any = new Error(`QuickBooks Payments API error (404): Not Found`);
+          error.status = 404;
+          throw error;
+        }
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`[QuickBooks Payments] API Error ${response.status}: ${errorText}`);
@@ -309,7 +318,12 @@ export class QuickbooksService {
 
         return response.json();
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Don't log 404 as error — it's expected when customer has no payment method
+      if (error?.status === 404) {
+        throw error;
+      }
+
       const durationMs = Date.now() - startTime;
       await integrationLogger.logError(
         "quickbooks_payments",
