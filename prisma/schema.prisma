@@ -225,6 +225,12 @@ model Invoice {
   emailSendAttempts     Int              @default(0)
   emailSentAt           DateTime?
   lastEmailSendError    String?
+  autoChargeAttempts    Int               @default(0)
+  lastAutoChargeAt      DateTime?
+  lastAutoChargeError   String?
+  autoChargeStatus      AutoChargeStatus?
+  nextAutoChargeRetry   DateTime?
+  autoChargePaymentRef  String?
   alerts                Alert[]
   collectionCalls       CollectionCall[]
   contract              Contract?        @relation(fields: [contractId], references: [id])
@@ -596,6 +602,13 @@ enum InvoiceStatus {
   PARTIALLY_PAID
   REFUNDED
   PARTIALLY_REFUNDED
+}
+
+enum AutoChargeStatus {
+  CHARGED
+  RETRY_PENDING
+  FAILED
+  SKIPPED
 }
 
 enum ContractStatus {
