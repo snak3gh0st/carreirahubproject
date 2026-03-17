@@ -42,6 +42,7 @@ export class QuickbooksService {
   private refreshToken: string | null;
   private companyId: string;
   private baseUrl: string;
+  private paymentsBaseUrl: string;
   private circuitBreaker: CircuitBreaker;
   private discountAccountRef: { value: string; name: string } | null = null;
 
@@ -61,6 +62,11 @@ export class QuickbooksService {
     this.baseUrl = isProduction
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
+
+    // QB Payments API uses a different base URL but same OAuth tokens
+    this.paymentsBaseUrl = isProduction
+      ? "https://api.intuit.com/quickbooks/v4/payments"
+      : "https://sandbox.api.intuit.com/quickbooks/v4/payments";
   }
 
   /**
@@ -242,6 +248,198 @@ export class QuickbooksService {
 
       throw error;
     }
+  }
+
+  /**
+   * Make a request to the QB Payments API (separate from Accounting API).
+   * Uses same OAuth tokens but different base URL.
+   */
+  private async paymentsRequest(
+    endpoint: string,
+    options: RequestInit = {},
+    requestId?: string
+  ): Promise<any> {
+    const startTime = Date.now();
+
+    try {
+      return await this.circuitBreaker.execute(async () => {
+        if (!this.accessToken) {
+          const error: any = new Error("Quickbooks access token not configured");
+          error.status = 401;
+          throw error;
+        }
+
+        const url = `${this.paymentsBaseUrl}${endpoint}`;
+
+        console.log(`[QuickBooks Payments] Requesting: ${url}`);
+
+        const headers: Record<string, string> = {
+          "Authorization": `Bearer ${this.accessToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          ...((options.headers as Record<string, string>) || {}),
+        };
+
+        if (requestId) {
+          headers["Request-Id"] = requestId;
+        }
+
+        const response = await fetch(url, {
+          ...options,
+          headers,
+        });
+
+        if (response.status === 401) {
+          if (this.refreshToken) {
+            console.log("[QuickBooks Payments] Attempting to refresh access token...");
+            await this.refreshAccessToken();
+            return this.paymentsRequest(endpoint, options, requestId);
+          }
+          throw new Error("QuickBooks Payments access token expired.");
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[QuickBooks Payments] API Error ${response.status}: ${errorText}`);
+          const error: any = new Error(`QuickBooks Payments API error (${response.status}): ${response.statusText}`);
+          error.status = response.status;
+          error.responseText = errorText;
+          throw error;
+        }
+
+        return response.json();
+      });
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      await integrationLogger.logError(
+        "quickbooks_payments",
+        endpoint,
+        error as any,
+        { errorCode: "PAYMENTS_API_ERROR", category: "transient", severity: "error", recovery: "retry", metadata: { endpoint } },
+        { endpoint, method: options.method || "GET", durationMs }
+      );
+      throw error;
+    }
+  }
+
+  // ─── QB Payments API Methods ───────────────────────────────────────
+
+  /**
+   * List all credit/debit cards on file for a QB customer.
+   * QB Payments API: GET /customers/{id}/cards
+   */
+  async getCustomerCards(qbCustomerId: string): Promise<any[]> {
+    try {
+      const result = await this.paymentsRequest(`/customers/${qbCustomerId}/cards`);
+      return result || [];
+    } catch (error: any) {
+      if (error.status === 404) return [];
+      throw error;
+    }
+  }
+
+  /**
+   * List all bank accounts on file for a QB customer.
+   * QB Payments API: GET /customers/{id}/bank-accounts
+   */
+  async getCustomerBankAccounts(qbCustomerId: string): Promise<any[]> {
+    try {
+      const result = await this.paymentsRequest(`/customers/${qbCustomerId}/bank-accounts`);
+      return result || [];
+    } catch (error: any) {
+      if (error.status === 404) return [];
+      throw error;
+    }
+  }
+
+  /**
+   * Get all payment methods on file for a QB customer (cards + bank accounts).
+   */
+  async getCustomerPaymentMethods(qbCustomerId: string): Promise<{
+    cards: any[];
+    bankAccounts: any[];
+    hasPaymentMethod: boolean;
+  }> {
+    const [cards, bankAccounts] = await Promise.all([
+      this.getCustomerCards(qbCustomerId),
+      this.getCustomerBankAccounts(qbCustomerId),
+    ]);
+    return {
+      cards,
+      bankAccounts,
+      hasPaymentMethod: cards.length > 0 || bankAccounts.length > 0,
+    };
+  }
+
+  /**
+   * Charge a stored credit card via QB Payments API.
+   * POST /charges
+   */
+  async chargeCard(params: {
+    cardId: string;
+    amount: number;
+    currency?: string;
+    description?: string;
+    requestId: string;
+  }): Promise<any> {
+    const chargeData = {
+      amount: params.amount.toFixed(2),
+      currency: params.currency || "USD",
+      card: { id: params.cardId },
+      capture: true,
+      context: {
+        mobile: "false",
+        isEcommerce: "true",
+      },
+      description: params.description,
+    };
+
+    return this.paymentsRequest("/charges", {
+      method: "POST",
+      body: JSON.stringify(chargeData),
+    }, params.requestId);
+  }
+
+  /**
+   * Charge a stored bank account via ACH/eCheck.
+   * QB Payments API: POST /echecks
+   */
+  async chargeBankAccount(params: {
+    bankAccountId: string;
+    amount: number;
+    currency?: string;
+    description?: string;
+    requestId: string;
+  }): Promise<any> {
+    const echeckData = {
+      amount: params.amount.toFixed(2),
+      currency: params.currency || "USD",
+      bankAccount: { id: params.bankAccountId },
+      context: {
+        mobile: "false",
+        isEcommerce: "true",
+      },
+      description: params.description,
+    };
+
+    return this.paymentsRequest("/echecks", {
+      method: "POST",
+      body: JSON.stringify(echeckData),
+    }, params.requestId);
+  }
+
+  /**
+   * Get charge status by ID.
+   */
+  async getCharge(chargeId: string): Promise<any> {
+    return this.paymentsRequest(`/charges/${chargeId}`);
+  }
+
+  /**
+   * Get eCheck status by ID.
+   */
+  async getEcheck(echeckId: string): Promise<any> {
+    return this.paymentsRequest(`/echecks/${echeckId}`);
   }
 
   private extractErrorCode(error: any): string {
