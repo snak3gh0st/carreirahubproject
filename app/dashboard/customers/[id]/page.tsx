@@ -9,7 +9,7 @@ import { DeleteInvoiceButtonCustomer } from "@/components/customers/delete-invoi
 import { DeleteCustomerButton } from "@/components/customers/delete-customer-button";
 import { StatCard } from "@/components/ui/stat-card";
 import { Badge } from "@/components/ui/badge";
-import { User, Mail, Phone, FileText, DollarSign, AlertCircle } from "lucide-react";
+import { User, Mail, Phone, FileText, DollarSign, AlertCircle, BookOpen } from "lucide-react";
 
 type BadgeVariant = "success" | "warning" | "error" | "info" | "default";
 
@@ -60,6 +60,12 @@ export default async function CustomerDetailPage({
   if (!customer) {
     notFound();
   }
+
+  // Fetch latest placement test result
+  const latestTest = await prisma.placementTest.findFirst({
+    where: { customerId: params.id },
+    orderBy: { createdAt: "desc" },
+  });
 
   // Calculate financial statistics from invoices
   const today = new Date();
@@ -194,12 +200,35 @@ export default async function CustomerDetailPage({
                 </div>
                 <div>
                   <h1 className="text-3xl font-display font-semibold text-gray-900">{customer.name}</h1>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 mt-2 flex-wrap">
                     {customer.quickbooks_id && (
                       <Badge variant="success">QuickBooks</Badge>
                     )}
                     {customer.pipedrive_id && (
                       <Badge variant="info">Pipedrive</Badge>
+                    )}
+                    {latestTest ? (
+                      <Badge
+                        variant={
+                          latestTest.displayLevel.toLowerCase().includes("beginner")
+                            ? "error"
+                            : latestTest.displayLevel.toLowerCase().includes("intermediate")
+                            ? "warning"
+                            : latestTest.displayLevel.toLowerCase().includes("advanced")
+                            ? "info"
+                            : latestTest.displayLevel.toLowerCase().includes("fluent")
+                            ? "success"
+                            : "default"
+                        }
+                      >
+                        <BookOpen className="h-3 w-3 mr-1 inline" />
+                        {latestTest.displayLevel} ({latestTest.cefrLevel}) — {latestTest.totalScore}/25
+                      </Badge>
+                    ) : (
+                      <Badge variant="default">
+                        <BookOpen className="h-3 w-3 mr-1 inline" />
+                        English: Not taken
+                      </Badge>
                     )}
                   </div>
                 </div>
