@@ -15,7 +15,7 @@ function getPayload(token: string) {
   }
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: { status: InvoiceStatus }) {
   const map: Record<string, { bg: string; text: string; label: string }> = {
     PAID: { bg: "#ECFDF5", text: "#059669", label: "Paid" },
     SENT: { bg: "#FFF8E7", text: "#B8962E", label: "Pending" },
@@ -26,7 +26,7 @@ function StatusBadge({ status }: { status: string }) {
   const s = map[status] || map.DRAFT!;
   return (
     <span
-      className="px-2 py-0.5 rounded-full text-xs font-medium"
+      className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium"
       style={{ backgroundColor: s.bg, color: s.text }}
     >
       {s.label}
@@ -60,91 +60,174 @@ export default async function HubDashboardPage() {
     },
   });
 
-  const payableStatuses: InvoiceStatus[] = [InvoiceStatus.SENT, InvoiceStatus.OVERDUE, InvoiceStatus.PARTIALLY_PAID];
+  const payableStatuses: InvoiceStatus[] = [
+    InvoiceStatus.SENT,
+    InvoiceStatus.OVERDUE,
+    InvoiceStatus.PARTIALLY_PAID,
+  ];
   const unpaid = invoices.filter((i) => payableStatuses.includes(i.status));
-  const totalDue = unpaid.reduce((sum, i) => sum + Number(i.amount) - Number(i.amountPaid || 0), 0);
-  const totalPaid = invoices
-    .filter((i) => i.status === InvoiceStatus.PAID)
-    .reduce((sum, i) => sum + Number(i.amountPaid || i.amount), 0);
+  const totalDue = unpaid.reduce(
+    (sum, i) => sum + Number(i.amount) - Number(i.amountPaid || 0),
+    0
+  );
+  const paidInvoices = invoices.filter((i) => i.status === InvoiceStatus.PAID);
+  const totalPaid = paidInvoices.reduce(
+    (sum, i) => sum + Number(i.amountPaid || i.amount),
+    0
+  );
   const nextDue = unpaid.length > 0 ? unpaid[0]!.dueDate : null;
   const canPay = (status: InvoiceStatus) => payableStatuses.includes(status);
+  const firstName = customer?.name?.split(" ")[0] || "Client";
 
   return (
     <div>
       {/* Welcome */}
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">
-        Welcome, {customer?.name?.split(" ")[0] || "Client"}
-      </h1>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome, {firstName}
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">
+          Here is an overview of your invoices and payments.
+        </p>
+      </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Due</p>
-          <p className="text-2xl font-bold" style={{ color: totalDue > 0 ? "#DC2626" : "#059669" }}>
-            ${totalDue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-          </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-10">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50">
+              <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Due</p>
+              <p className="text-2xl font-bold mt-0.5" style={{ color: totalDue > 0 ? "#DC2626" : "#059669" }}>
+                ${totalDue.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Paid</p>
-          <p className="text-2xl font-bold text-gray-900">
-            ${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-          </p>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-50">
+              <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Total Paid</p>
+              <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                ${totalPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm p-5">
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Next Due</p>
-          <p className="text-2xl font-bold text-gray-900">
-            {nextDue
-              ? new Date(nextDue).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })
-              : "—"}
-          </p>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
+              <svg className="w-5 h-5" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Next Due</p>
+              <p className="text-2xl font-bold text-gray-900 mt-0.5">
+                {nextDue
+                  ? new Date(nextDue).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : "—"}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Invoice List */}
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoices</h2>
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
+        <span className="text-sm text-gray-400">{invoices.length} total</span>
+      </div>
 
       {invoices.length === 0 ? (
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-gray-500">
-          No invoices yet.
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+          <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
+            <svg className="w-8 h-8" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <p className="text-gray-500">No invoices yet.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="divide-y divide-gray-100">
-            {invoices.map((inv) => (
-              <div key={inv.id} className="px-5 py-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="font-medium text-gray-900 text-sm">
-                      #{inv.invoiceNumber || inv.id.slice(0, 8)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {inv.status === InvoiceStatus.PAID && inv.paidAt
-                        ? `Paid ${new Date(inv.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-                        : `Due ${new Date(inv.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-                    </p>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="divide-y divide-gray-50">
+            {invoices.map((inv) => {
+              const remaining = Number(inv.amount) - Number(inv.amountPaid || 0);
+              return (
+                <div
+                  key={inv.id}
+                  className="px-6 py-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
+                >
+                  <div className="flex items-center gap-4 min-w-0">
+                    {/* Status dot */}
+                    <div
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{
+                        backgroundColor:
+                          inv.status === "PAID"
+                            ? "#059669"
+                            : inv.status === "OVERDUE"
+                            ? "#DC2626"
+                            : inv.status === "SENT"
+                            ? GOLD
+                            : "#9CA3AF",
+                      }}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 text-sm truncate">
+                        #{inv.invoiceNumber || inv.id.slice(0, 8)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {inv.status === InvoiceStatus.PAID && inv.paidAt
+                          ? `Paid ${new Date(inv.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                          : `Due ${new Date(inv.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                      </p>
+                    </div>
                   </div>
-                  <StatusBadge status={inv.status} />
-                </div>
 
-                <div className="flex items-center gap-4">
-                  <p className="font-semibold text-gray-900">
-                    ${Number(inv.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                  </p>
-                  {canPay(inv.status) && (
-                    <Link
-                      href={`/hub/pay/${inv.id}`}
-                      className="px-4 py-2 rounded-lg text-white text-sm font-medium transition"
-                      style={{ backgroundColor: GOLD }}
-                    >
-                      Pay Now
-                    </Link>
-                  )}
+                  <div className="flex items-center gap-5 flex-shrink-0">
+                    <StatusBadge status={inv.status} />
+
+                    <div className="text-right w-24">
+                      <p className="font-semibold text-gray-900 text-sm">
+                        ${Number(inv.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                      </p>
+                      {inv.status === InvoiceStatus.PARTIALLY_PAID && (
+                        <p className="text-xs text-orange-500 mt-0.5">
+                          ${remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })} left
+                        </p>
+                      )}
+                    </div>
+
+                    {canPay(inv.status) ? (
+                      <Link
+                        href={`/hub/pay/${inv.id}`}
+                        className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition hover:opacity-90 whitespace-nowrap"
+                        style={{ backgroundColor: GOLD }}
+                      >
+                        Pay Now
+                      </Link>
+                    ) : (
+                      <div className="w-[76px]" /> /* spacer to align columns */
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
