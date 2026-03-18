@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { InvoiceStatus } from "@prisma/client";
 import PaymentForm from "@/app/payment-v2/[invoiceId]/PaymentForm";
+import { Language } from "@/lib/i18n/hub";
 
 function getPayload(token: string) {
   try {
@@ -53,6 +54,7 @@ export default async function HubPaymentPage({ params }: Props) {
     ? totalAmount - paidAmount
     : totalAmount;
 
+  const lang = (payload?.language || "en") as Language;
   const daysUntilDue = Math.ceil(
     (new Date(invoice.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
@@ -68,6 +70,9 @@ export default async function HubPaymentPage({ params }: Props) {
         dueDate={invoice.dueDate.toISOString()}
         isOverdue={daysUntilDue < 0}
         daysUntilDue={daysUntilDue}
+        language={lang}
+        chargeEndpoint={`/api/hub/pay/${invoice.id}/charge`}
+        onSuccessRedirect="/hub?paid=1"
       />
     </div>
   );

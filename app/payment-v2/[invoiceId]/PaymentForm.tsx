@@ -2,6 +2,7 @@
 
 import { useState, ChangeEvent, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { t, Language } from "@/lib/i18n/hub";
 
 interface Props {
   invoiceId: string;
@@ -12,6 +13,9 @@ interface Props {
   dueDate: string;
   isOverdue: boolean;
   daysUntilDue: number;
+  language?: string;
+  chargeEndpoint?: string;
+  onSuccessRedirect?: string;
 }
 
 type PaymentMethod = "card" | "ach";
@@ -84,7 +88,13 @@ export default function PaymentForm({
   dueDate,
   isOverdue,
   daysUntilDue,
+  language = "en",
+  chargeEndpoint,
+  onSuccessRedirect,
 }: Props) {
+  const lang = language as Language;
+  const endpoint = chargeEndpoint || `/api/payment-v2/${invoiceId}/charge`;
+  const successUrl = onSuccessRedirect || `/payment/success?invoice_id=${invoiceId}`;
   const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [loading, setLoading] = useState(false);
@@ -132,7 +142,7 @@ export default function PaymentForm({
               phone,
             };
 
-      const res = await fetch(`/api/payment-v2/${invoiceId}/charge`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -140,12 +150,12 @@ export default function PaymentForm({
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Falha no pagamento. Tente novamente.");
+        setError(data.error || t(lang, "errors.paymentDeclined"));
         return;
       }
-      router.push(`/payment/success?invoice_id=${invoiceId}`);
+      router.push(successUrl);
     } catch {
-      setError("Erro de conexão. Tente novamente.");
+      setError(t(lang, "errors.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -179,7 +189,7 @@ export default function PaymentForm({
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Carreira U.S.A.</h1>
-          <p className="text-gray-500 text-sm mt-1">Pagamento Seguro</p>
+          <p className="text-gray-500 text-sm mt-1">{t(lang, "payment.securePayment")}</p>
         </div>
 
         {/* Invoice Summary */}
@@ -187,7 +197,7 @@ export default function PaymentForm({
           <div className="p-6" style={{ backgroundColor: GOLD }}>
             <div className="flex justify-between items-center">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: GOLD_LIGHT }}>Fatura</p>
+                <p className="text-xs font-medium uppercase tracking-wide" style={{ color: GOLD_LIGHT }}>{t(lang, "payment.invoice")}</p>
                 <p className="text-xl font-bold text-white mt-0.5">#{invoiceNumber}</p>
               </div>
               <div className="text-right">
@@ -198,7 +208,7 @@ export default function PaymentForm({
           </div>
           <div className="px-6 py-4 space-y-3">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Cliente</span>
+              <span className="text-gray-500">{t(lang, "payment.client")}</span>
               <span className="font-medium text-gray-900">{customerName}</span>
             </div>
             <div className="flex justify-between text-sm">
@@ -206,20 +216,20 @@ export default function PaymentForm({
               <span className="font-medium text-gray-900">{customerEmail}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-gray-500">Vencimento</span>
+              <span className="text-gray-500">{t(lang, "payment.dueDate")}</span>
               <span className={`font-medium ${isOverdue ? "text-red-600" : "text-gray-900"}`}>
                 {formattedDue}
                 {isOverdue
-                  ? ` (${Math.abs(daysUntilDue)}d em atraso)`
+                  ? ` (${Math.abs(daysUntilDue)}d ${t(lang, "payment.overdue")})`
                   : daysUntilDue <= 7
-                  ? ` (${daysUntilDue}d restantes)`
+                  ? ` (${daysUntilDue}d ${t(lang, "payment.remaining")})`
                   : ""}
               </span>
             </div>
           </div>
           {isOverdue && (
             <div className="mx-6 mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-700">
-              Esta fatura está em atraso. Por favor, regularize o pagamento.
+              {t(lang, "payment.overdueWarning")}
             </div>
           )}
         </div>
@@ -241,7 +251,7 @@ export default function PaymentForm({
                     d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"
                   />
                 </svg>
-                Credit / Debit Card
+                {t(lang, "payment.cardTab")}
               </div>
               {method === "card" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: GOLD }} />
@@ -259,7 +269,7 @@ export default function PaymentForm({
                     d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
                   />
                 </svg>
-                Bank Transfer (ACH)
+                {t(lang, "payment.achTab")}
               </div>
               {method === "ach" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: GOLD }} />
@@ -272,7 +282,7 @@ export default function PaymentForm({
             {method === "card" ? (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Número do Cartão</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(lang, "payment.cardNumber")}</label>
                   <div className="relative">
                     <input
                       type="text"
@@ -293,41 +303,41 @@ export default function PaymentForm({
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <InputField label="Validade" value={cardExpiry}
+                  <InputField label={t(lang, "payment.expiry")} value={cardExpiry}
                     onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
                     placeholder="MM/AA" inputMode="numeric" />
                   <InputField label="CVC" value={cardCvc}
                     onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, "").slice(0, 4))}
                     placeholder="•••" inputMode="numeric" />
                 </div>
-                <InputField label="Nome no Cartão" value={cardName}
+                <InputField label={t(lang, "payment.cardName")} value={cardName}
                   onChange={(e) => setCardName(e.target.value)} placeholder="Como aparece no cartão" />
-                <InputField label="ZIP Code" value={cardZip}
+                <InputField label={t(lang, "payment.zip")} value={cardZip}
                   onChange={(e) => setCardZip(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   placeholder="ZIP do endereço de cobrança" inputMode="numeric" />
               </>
             ) : (
               <>
-                <InputField label="Routing Number" value={routingNumber}
+                <InputField label={t(lang, "payment.routingNumber")} value={routingNumber}
                   onChange={(e) => setRoutingNumber(e.target.value.replace(/\D/g, "").slice(0, 9))}
                   placeholder="9 dígitos" inputMode="numeric" />
-                <InputField label="Account Number" value={accountNumber}
+                <InputField label={t(lang, "payment.accountNumber")} value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 17))}
                   placeholder="Número da conta" inputMode="numeric" />
-                <InputField label="Nome do Titular" value={accountName}
+                <InputField label={t(lang, "payment.accountHolder")} value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
                   placeholder="Nome como registrado no banco" />
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Tipo de Conta</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(lang, "payment.accountType")}</label>
                   <select value={accountType} onChange={(e) => setAccountType(e.target.value)}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition bg-white"
                     onFocus={(e) => (e.target.style.borderColor = GOLD)}
                     onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}>
-                    <option value="CHECKING">Checking Account</option>
-                    <option value="SAVINGS">Savings Account</option>
+                    <option value="CHECKING">{t(lang, "payment.checking")}</option>
+                    <option value="SAVINGS">{t(lang, "payment.savings")}</option>
                   </select>
                 </div>
-                <InputField label="Telefone" value={phone}
+                <InputField label={t(lang, "payment.phone")} value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
                   placeholder="(000) 000-0000" inputMode="numeric" />
               </>
@@ -357,7 +367,7 @@ export default function PaymentForm({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
-                  Processando…
+                  {t(lang, "payment.processing")}
                 </span>
               ) : (
                 `Pagar ${formattedAmount}`
@@ -373,12 +383,12 @@ export default function PaymentForm({
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                 />
               </svg>
-              Pagamento seguro · Processado por QuickBooks Payments
+              {t(lang, "payment.securePayment")}
             </div>
             <p className="text-xs text-gray-400 mt-1">
               {method === "card"
-                ? "Seu cartão será salvo para pagamentos futuros das parcelas"
-                : "Sua conta bancária será salva para pagamentos futuros"}
+                ? t(lang, "payment.cardSavedNote")
+                : t(lang, "payment.achSavedNote")}
             </p>
           </div>
         </div>
