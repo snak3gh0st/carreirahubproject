@@ -677,37 +677,41 @@ export async function POST(request: NextRequest) {
     }
 
     // Auto-create ClientUser for hub access
-    try {
-      const { prisma: db } = await import("@/lib/db");
-      const { generateTempPassword, hashPassword } = await import("@/lib/hub-auth");
-      const { notificationService } = await import("@/lib/services/notification.service");
+    // DISABLED: Hub is in testing phase. Enable when ready to go live.
+    // Set HUB_AUTO_CREATE_ENABLED=true in env to activate.
+    if (process.env.HUB_AUTO_CREATE_ENABLED === "true") {
+      try {
+        const { prisma: db } = await import("@/lib/db");
+        const { generateTempPassword, hashPassword } = await import("@/lib/hub-auth");
+        const { notificationService } = await import("@/lib/services/notification.service");
 
-      const existingClientUser = await db.clientUser.findUnique({
-        where: { customerId: customer.id },
-      });
-
-      if (!existingClientUser) {
-        const tempPassword = generateTempPassword();
-        const passwordHash = await hashPassword(tempPassword);
-        await db.clientUser.create({
-          data: {
-            email: customer.email,
-            passwordHash,
-            mustResetPw: true,
-            tempPasswordExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            customerId: customer.id,
-            language: customer.preferredLanguage === "pt-BR" ? "pt-BR" : "en",
-          },
+        const existingClientUser = await db.clientUser.findUnique({
+          where: { customerId: customer.id },
         });
-        await notificationService.sendHubWelcome(customer, tempPassword);
-        console.log(`[INVOICE_CREATE] ClientUser created for ${customer.email}`);
-      } else {
-        // Send "new invoice available" notification
-        await notificationService.sendHubInvoiceAvailable(customer, invoices[0]);
-        console.log(`[INVOICE_CREATE] Hub invoice notification sent to ${customer.email}`);
+
+        if (!existingClientUser) {
+          const tempPassword = generateTempPassword();
+          const passwordHash = await hashPassword(tempPassword);
+          await db.clientUser.create({
+            data: {
+              email: customer.email,
+              passwordHash,
+              mustResetPw: true,
+              tempPasswordExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+              customerId: customer.id,
+              language: customer.preferredLanguage === "pt-BR" ? "pt-BR" : "en",
+            },
+          });
+          await notificationService.sendHubWelcome(customer, tempPassword);
+          console.log(`[INVOICE_CREATE] ClientUser created for ${customer.email}`);
+        } else {
+          // Send "new invoice available" notification
+          await notificationService.sendHubInvoiceAvailable(customer, invoices[0]);
+          console.log(`[INVOICE_CREATE] Hub invoice notification sent to ${customer.email}`);
+        }
+      } catch (hubError: any) {
+        console.error("[INVOICE_CREATE] Hub account setup failed:", hubError.message);
       }
-    } catch (hubError: any) {
-      console.error("[INVOICE_CREATE] Hub account setup failed:", hubError.message);
     }
 
     return NextResponse.json({
