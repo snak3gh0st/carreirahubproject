@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractStatus, InvoiceStatus } from "@prisma/client";
+import Link from "next/link";
 
 const GOLD = "#C9A84C";
 
@@ -141,9 +142,13 @@ export default async function HubDocumentsPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-600">
-                      Paid
-                    </span>
+                    <Link
+                      href={`/hub/documents/receipt/${inv.id}`}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
+                      style={{ backgroundColor: "#FFF8E7", color: GOLD }}
+                    >
+                      View Receipt
+                    </Link>
                   </div>
                 ))}
               </div>
