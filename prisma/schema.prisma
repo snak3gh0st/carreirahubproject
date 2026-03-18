@@ -28,6 +28,7 @@ model User {
   createdCustomers       Customer[]          @relation("CreatedCustomers")
   supportTickets         SupportTicket[]     @relation("UserSupportTickets")
   assignedTickets        SupportTicket[]     @relation("AssignedSupportTickets")
+  formAssignments        FormAssignment[]    @relation("AssignedForms")
 
   @@index([id])
   @@map("users")
@@ -73,9 +74,12 @@ model Customer {
   collectionCalls      CollectionCall[]
   contracts            Contract[]
   deals                Deal[]
+  formAssignments      FormAssignment[]
+  formSubmissions      FormSubmission[]
   invoices             Invoice[]
   notifications        Notification[]
   payments             Payment[]
+  placementTests       PlacementTest[]
 
   @@index([email])
   @@index([pipedrive_id])
@@ -102,6 +106,66 @@ model ClientUser {
   customer              Customer  @relation(fields: [customerId], references: [id])
 
   @@map("client_users")
+}
+
+enum FormAssignmentStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model FormAssignment {
+  id           String               @id @default(cuid())
+  templateId   String
+  status       FormAssignmentStatus @default(PENDING)
+  assignedAt   DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  customerId   String
+  customer     Customer             @relation(fields: [customerId], references: [id])
+  assignedById String
+  assignedBy   User                 @relation("AssignedForms", fields: [assignedById], references: [id])
+  submission   FormSubmission?
+
+  @@index([customerId])
+  @@map("form_assignments")
+}
+
+model FormSubmission {
+  id           String         @id @default(cuid())
+  answers      Json
+  submittedAt  DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  assignmentId String         @unique
+  assignment   FormAssignment @relation(fields: [assignmentId], references: [id])
+  customerId   String
+  customer     Customer       @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@map("form_submissions")
+}
+
+model PlacementTest {
+  id               String   @id @default(cuid())
+  section1Score    Int
+  section2Score    Int
+  section3Score    Int
+  section4Score    Int
+  section5Score    Int
+  totalScore       Int
+  percentage       Float
+  cefrLevel        String
+  displayLevel     String
+  timeSpentSeconds Int?
+  answers          Json
+  createdAt        DateTime @default(now())
+
+  customerId       String
+  customer         Customer @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@map("placement_tests")
 }
 
 model Lead {
