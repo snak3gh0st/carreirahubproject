@@ -223,6 +223,57 @@ export class NotificationService {
   }
 
   /**
+   * Send hub welcome email with temporary password to new client user
+   */
+  async sendHubWelcome(customer: { id: string; email: string; name: string }, tempPassword: string): Promise<void> {
+    const subject = `Welcome to Carreira U.S.A. — Your Account is Ready`;
+    const html = this.generateHubWelcomeEmail(customer, tempPassword);
+
+    await this.sendEmail(
+      customer.email,
+      subject,
+      html,
+      NotificationType.HUB_WELCOME,
+      { customerId: customer.id }
+    );
+  }
+
+  /**
+   * Send notification when a new invoice is available in the hub
+   */
+  async sendHubInvoiceAvailable(
+    customer: { id: string; email: string; name: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any }
+  ): Promise<void> {
+    const subject = `New Invoice Available — Carreira U.S.A.`;
+    const html = this.generateHubInvoiceAvailableEmail(customer, invoice);
+
+    await this.sendEmail(
+      customer.email,
+      subject,
+      html,
+      NotificationType.HUB_INVOICE_AVAILABLE,
+      { customerId: customer.id, invoiceId: invoice.id }
+    );
+  }
+
+  /**
+   * Send password reset email to client user
+   */
+  async sendHubPasswordReset(customer: { id: string; email: string; name: string }, resetUrl: string): Promise<void> {
+    const subject = `Password Reset — Carreira U.S.A.`;
+    const html = this.generateHubPasswordResetEmail(customer, resetUrl);
+
+    await this.sendEmail(
+      customer.email,
+      subject,
+      html,
+      NotificationType.HUB_PASSWORD_RESET,
+      { customerId: customer.id }
+    );
+  }
+
+  /**
    * Internal method to send email via Resend
    */
   private async sendEmail(
@@ -895,6 +946,174 @@ export class NotificationService {
             <div class="footer">
               <p>CarreiraUSA - Professional Services</p>
               <p>Thank you for your business!</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private generateHubWelcomeEmail(customer: { name: string; email: string }, tempPassword: string): string {
+    const portalUrl = `${process.env.NEXTAUTH_URL || APP_URL}/hub/login`;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #C9A84C; color: white; padding: 20px; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .button { display: inline-block; background: #C9A84C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .credentials { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; border: 1px solid #e5e7eb; }
+            .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Welcome to Carreira U.S.A.</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${customer.name},</p>
+              <p>Your client portal is ready. You can now access your invoices, contracts, and account information in one place.</p>
+
+              <div class="credentials">
+                <h3>Your Login Credentials</h3>
+                <p><strong>Portal:</strong> <a href="${portalUrl}">${portalUrl}</a></p>
+                <p><strong>Email:</strong> ${customer.email}</p>
+                <p><strong>Temporary Password:</strong> ${tempPassword}</p>
+              </div>
+
+              <div class="warning">
+                <p><strong>Important:</strong> Please change your password on first login. Your temporary password expires in 24 hours.</p>
+              </div>
+
+              <div style="text-align: center;">
+                <a href="${portalUrl}" class="button">Access Your Portal</a>
+              </div>
+
+              <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
+                If you have any questions, please contact our support team.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Carreira U.S.A. - Professional Services</p>
+              <p>Do not reply to this email</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private generateHubInvoiceAvailableEmail(
+    customer: { name: string; email: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any }
+  ): string {
+    const portalUrl = `${process.env.NEXTAUTH_URL || APP_URL}/hub/login`;
+
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #C9A84C; color: white; padding: 20px; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .button { display: inline-block; background: #C9A84C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .details { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; border: 1px solid #e5e7eb; }
+            .amount { font-size: 28px; color: #C9A84C; font-weight: bold; text-align: center; margin: 15px 0; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>New Invoice Available</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${customer.name},</p>
+              <p>A new invoice has been issued to your account and is available for review in your client portal.</p>
+
+              <div class="details">
+                <h3>Invoice Details</h3>
+                <p><strong>Invoice Number:</strong> ${invoice.invoiceNumber || invoice.id}</p>
+                <div class="amount">$${Number(invoice.amount).toFixed(2)}</div>
+              </div>
+
+              <p>Access your portal to view the full invoice details and make a payment.</p>
+
+              <div style="text-align: center;">
+                <a href="${portalUrl}" class="button">View Invoice in Portal</a>
+              </div>
+
+              <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
+                If you have any questions about this invoice, please contact our support team.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Carreira U.S.A. - Professional Services</p>
+              <p>Do not reply to this email</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private generateHubPasswordResetEmail(customer: { name: string; email: string }, resetUrl: string): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #C9A84C; color: white; padding: 20px; text-align: center; }
+            .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
+            .button { display: inline-block; background: #C9A84C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
+            .security { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 15px 0; }
+            .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>Password Reset</h1>
+            </div>
+            <div class="content">
+              <p>Dear ${customer.name},</p>
+              <p>We received a request to reset the password for your Carreira U.S.A. client portal account.</p>
+              <p>Click the button below to reset your password:</p>
+
+              <div style="text-align: center;">
+                <a href="${resetUrl}" class="button">Reset Password</a>
+              </div>
+
+              <div class="warning">
+                <p><strong>This link expires in 1 hour.</strong> If you did not request a password reset, you can safely ignore this email.</p>
+              </div>
+
+              <div class="security">
+                <h4>Security Notice</h4>
+                <p>For your protection, never share this link with anyone. Carreira U.S.A. will never ask for your password via email or phone.</p>
+              </div>
+
+              <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
+                If you did not request this reset, please contact our support team immediately.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Carreira U.S.A. - Professional Services</p>
+              <p>Do not reply to this email</p>
             </div>
           </div>
         </body>

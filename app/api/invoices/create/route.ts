@@ -327,13 +327,32 @@ export async function POST(request: NextRequest) {
         customerEmail: customer.email, // REQUIRED - set email on invoice itself
         dueDate: invoiceDueDate,
         docNumber: invoiceNumber, // Custom professional invoice number
-        lineItems: lineItems.map((item) => ({
-          description: item.description,
-          amount: Math.max(0.01, Number(item.amount.toFixed(2))), // Ensure positive amount
-          itemRef: item.serviceItemId,
-        })),
-        // Add discount for this specific invoice if it's a single invoice with discount
-        discount: (invoiceCountToCreate === 1 && discount > 0) ? discount : undefined,
+        lineItems: (() => {
+          // For installment invoices with discount: line item amounts are already post-discount.
+          // We need to inflate them back to pre-discount values so QB can show Subtotal - Discount = Total.
+          const needsInflation = invoiceCountToCreate > 1 && discount > 0 && totalAmount > 0;
+          const inflationFactor = needsInflation ? baseAmount / totalAmount : 1;
+
+          return lineItems.map((item) => ({
+            description: item.description,
+            amount: Math.max(0.01, Number((item.amount * inflationFactor).toFixed(2))),
+            itemRef: item.serviceItemId,
+          }));
+        })(),
+        // Calculate proportional discount for this invoice
+        discount: (() => {
+          if (discount <= 0) return undefined;
+          if (invoiceCountToCreate === 1) {
+            // Single invoice gets the full discount
+            return discount;
+          }
+          // For installments: proportional discount based on this invoice's share of the total
+          if (totalAmount > 0) {
+            const proportionalDiscount = Number((discount * (invoiceAmount / totalAmount)).toFixed(2));
+            return proportionalDiscount > 0 ? proportionalDiscount : undefined;
+          }
+          return undefined;
+        })(),
         // Add billing address from customer record
         billingAddress: {
           line1: customer.address || undefined,
@@ -376,30 +395,22 @@ export async function POST(request: NextRequest) {
 
       // Determine if this invoice should be emailed immediately
       // LOGIC:
+      // - Single payment (a vista): ALWAYS send immediately (customer needs to pay, due date is deadline not delivery date)
       // - Entry invoice: Send immediately (customer needs to pay TODAY)
-      // - Single payment (a vista) due TODAY: Send immediately
-      // - Single payment (a vista) due FUTURE: Schedule (DRAFT status, cron sends 5 days before)
-      // - ALL installments (including first): DRAFT (send 5 days before due date)
+      // - Installments (non-entry): Schedule (cron sends 5 days before each installment due date)
       const isInstallmentSeries = invoiceCountToCreate > 1;
       const isEntryInvoice = entryAmount > 0 && i === 1;
       const isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries;
 
-      // Check if due date is today or in the past (needs immediate send)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const dueDay = new Date(invoiceDueDate);
-      dueDay.setHours(0, 0, 0, 0);
-      const isDueTodayOrPast = dueDay <= today;
-
-      // Single payment with future due date should be scheduled, not sent immediately
-      const shouldSendEmail = isEntryInvoice || (isSingleInvoice && isDueTodayOrPast);
+      // Single invoices and entry invoices are always sent immediately.
+      // Only installments (future recurring payments) are scheduled via cron.
+      const shouldSendEmail = isSingleInvoice || isEntryInvoice;
 
       console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
         isInstallmentSeries,
         isSingleInvoice,
         isSinglePayment,
         isEntryInvoice,
-        isDueTodayOrPast,
         shouldSendEmail,
         dueDate: invoiceDueDate.toISOString().split('T')[0],
         description: invoiceDescription,
@@ -498,22 +509,20 @@ export async function POST(request: NextRequest) {
           });
         }
       } else if (customer.email && !shouldSendEmail) {
-        // Single payment with future due date OR installment - schedule for later
+        // Installment invoice - schedule for cron to send 5 days before due date
         const sendDate = new Date(invoiceDueDate.getTime() - 5 * 24 * 60 * 60 * 1000);
-        const invoiceType = isSinglePayment ? 'single payment (a vista)' : 'installment';
-        console.log(`[INVOICE_CREATE] Scheduled ${invoiceType} invoice ${i}/${invoiceCountToCreate} for ${sendDate.toISOString().split('T')[0]} (5 days before due: ${invoiceDueDate.toISOString().split('T')[0]})`);
+        console.log(`[INVOICE_CREATE] Scheduled installment invoice ${i}/${invoiceCountToCreate} for ${sendDate.toISOString().split('T')[0]} (5 days before due: ${invoiceDueDate.toISOString().split('T')[0]})`);
 
         await prisma.integrationLog.create({
           data: {
             service: "quickbooks",
-            action: isSinglePayment ? "single_payment_invoice_scheduled" : "installment_invoice_scheduled",
+            action: "installment_invoice_scheduled",
             status: "SUCCESS",
             payload: {
               qbInvoiceId: qbInvoice.Id,
               recipientEmail: customer.email,
               dueDate: invoiceDueDate.toISOString(),
-              isSinglePayment,
-              installmentNumber: isSinglePayment ? null : i,
+              installmentNumber: i,
               totalInstallments: invoiceCountToCreate,
               scheduledSendDate: sendDate.toISOString(),
             } as any,
@@ -665,6 +674,40 @@ export async function POST(request: NextRequest) {
         // Log but don't fail invoice creation - sync can be retried later
         console.error("[INVOICE_CREATE] ✗ Pipedrive sync failed (non-blocking):", error);
       }
+    }
+
+    // Auto-create ClientUser for hub access
+    try {
+      const { prisma: db } = await import("@/lib/db");
+      const { generateTempPassword, hashPassword } = await import("@/lib/hub-auth");
+      const { notificationService } = await import("@/lib/services/notification.service");
+
+      const existingClientUser = await db.clientUser.findUnique({
+        where: { customerId: customer.id },
+      });
+
+      if (!existingClientUser) {
+        const tempPassword = generateTempPassword();
+        const passwordHash = await hashPassword(tempPassword);
+        await db.clientUser.create({
+          data: {
+            email: customer.email,
+            passwordHash,
+            mustResetPw: true,
+            tempPasswordExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            customerId: customer.id,
+            language: customer.preferredLanguage === "pt-BR" ? "pt-BR" : "en",
+          },
+        });
+        await notificationService.sendHubWelcome(customer, tempPassword);
+        console.log(`[INVOICE_CREATE] ClientUser created for ${customer.email}`);
+      } else {
+        // Send "new invoice available" notification
+        await notificationService.sendHubInvoiceAvailable(customer, invoices[0]);
+        console.log(`[INVOICE_CREATE] Hub invoice notification sent to ${customer.email}`);
+      }
+    } catch (hubError: any) {
+      console.error("[INVOICE_CREATE] Hub account setup failed:", hubError.message);
     }
 
     return NextResponse.json({
