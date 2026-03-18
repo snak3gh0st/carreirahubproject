@@ -8,6 +8,56 @@ Carreira AI Hub is a proprietary middleware system that replaces expensive No-Co
 
 **Core Philosophy**: Replace fragile N8N automations with robust API routes in pure code. Eliminate duplicate customer data across CRM and financial systems through the Identity Mapper pattern.
 
+## Two Portals — CRITICAL SEPARATION
+
+This codebase serves **two completely independent portals**. They share the same database and services but have separate auth, routes, and users. **Never mix them.**
+
+### Portal 1: Admin Dashboard (internal team)
+- **Domain**: `carreirausa.sigmaintel.io`
+- **Routes**: `/dashboard/*`, `/api/dashboard/*`
+- **Auth**: NextAuth (JWT) with role-based access (ADMIN, SALES, SDR, FINANCE, etc.)
+- **Users**: `User` model (internal operators)
+- **Cookie**: `next-auth.session-token`
+- **Purpose**: Lead management, invoicing, CRM, integrations, analytics
+
+### Portal 2: Client Hub (external customers)
+- **Domain**: `clientscarreira.sigmaintel.io`
+- **Routes**: `/hub/*`, `/api/hub/*`
+- **Auth**: Custom JWT (jose) with httpOnly cookie
+- **Users**: `ClientUser` model (customers)
+- **Cookie**: `hub-token`
+- **Purpose**: View invoices, pay (Card/ACH via QB Payments), settings, i18n (EN/PT-BR)
+
+### Rules
+1. **Never import hub-auth in dashboard code or vice versa**
+2. **Never query ClientUser in dashboard routes or User in hub routes**
+3. **Middleware separates them**: `/dashboard/*` → NextAuth, `/hub/*` → custom JWT
+4. **Shared services are OK**: QB Payments, Prisma, Resend — both portals can use them
+5. **Customer model is shared**: both portals read from `Customer`, but only hub has `ClientUser`
+6. **When creating new routes**: check if it belongs to `/dashboard/` or `/hub/` — never put portal-specific logic at the root level
+
+### File Structure
+```
+app/
+  dashboard/          ← Admin portal (internal team)
+  hub/                ← Client portal (customers)
+    login/            ← Public
+    reset-password/   ← Public
+    set-password/     ← Public
+    page.tsx          ← Dashboard (authenticated)
+    pay/[invoiceId]/  ← Payment (authenticated)
+    settings/         ← Settings (authenticated)
+  api/
+    dashboard/        ← Admin APIs
+    hub/              ← Client APIs
+      auth/           ← login, logout, reset-password, set-password
+      invoices/       ← Customer's invoices
+      pay/[id]/charge ← Authenticated payment
+      profile/        ← Customer profile + language
+  payment/            ← Legacy public payment pages (Stripe — being phased out)
+  payment-v2/         ← Draft public payment pages (QB Payments — testing)
+```
+
 ## Technology Stack
 
 - **Framework**: Next.js 14+ (App Router)
