@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
+import LanguageToggle from "./LanguageToggle";
 
 const GOLD = "#C9A84C";
 
@@ -61,26 +62,7 @@ export default async function HubLayout({
 
             <div className="flex items-center gap-5">
               {/* Language Toggle */}
-              <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
-                <button
-                  className="px-3 py-1.5 transition-colors font-medium"
-                  style={{
-                    backgroundColor: isEn ? GOLD : "transparent",
-                    color: isEn ? "#fff" : "#9CA3AF",
-                  }}
-                >
-                  EN
-                </button>
-                <button
-                  className="px-3 py-1.5 transition-colors font-medium"
-                  style={{
-                    backgroundColor: !isEn ? GOLD : "transparent",
-                    color: !isEn ? "#fff" : "#9CA3AF",
-                  }}
-                >
-                  PT
-                </button>
-              </div>
+              <LanguageToggle currentLang={lang} />
 
               {/* Settings */}
               <Link
