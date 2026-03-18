@@ -32,7 +32,15 @@ const routeRoleMap: { prefix: string; roles: UserRole[] }[] = [
 
 // ── Hub public paths (no auth needed) ────────────────────────
 
-const HUB_PUBLIC_PATHS = ["/hub/login", "/hub/reset-password", "/hub/set-password"];
+const HUB_PUBLIC_PATHS = [
+  "/hub/login",
+  "/hub/reset-password",
+  "/hub/set-password",
+  "/api/hub/auth/login",
+  "/api/hub/auth/logout",
+  "/api/hub/auth/reset-password",
+  "/api/hub/auth/set-password",
+];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
