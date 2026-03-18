@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, FileSignature, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileSignature, Loader2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 
 interface Customer {
@@ -21,6 +21,14 @@ interface Customer {
   name: string;
   email: string;
   phone?: string;
+  cpf?: string | null;
+  passport?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  country?: string | null;
+  ssn?: string | null;
 }
 
 interface Invoice {
@@ -73,6 +81,7 @@ export default function CreateContractPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [missingFields, setMissingFields] = useState<{ field: string; label: string }[]>([]);
 
   // Fetch customers and invoices on mount
   useEffect(() => {
@@ -129,23 +138,44 @@ export default function CreateContractPage() {
     fetchTemplates();
   }, []);
 
-  // Auto-populate signer info when customer is selected
+  // Auto-populate signer info and validate customer data when customer is selected
   useEffect(() => {
     if (customerId) {
       const customer = customers.find(c => c.id === customerId);
       if (customer) {
         setSignerName(customer.name);
         setSignerEmail(customer.email);
-        
+
         // Filter invoices for selected customer
-        const customerInvoices = invoices.filter(inv => 
+        const customerInvoices = invoices.filter(inv =>
           inv.customer && inv.customer.name === customer.name
         );
         setFilteredInvoices(customerInvoices);
+
+        // Check required fields for contract
+        const missing: { field: string; label: string }[] = [];
+        if (!customer.address || customer.address.trim() === '') {
+          missing.push({ field: 'address', label: 'Endereço' });
+        }
+        if (!customer.email || customer.email.trim() === '') {
+          missing.push({ field: 'email', label: 'Email' });
+        }
+        // At least one identification document
+        const hasId = (customer.cpf && customer.cpf.trim() !== '') ||
+                      (customer.passport && customer.passport.trim() !== '') ||
+                      (customer.ssn && customer.ssn.trim() !== '');
+        if (!hasId) {
+          missing.push({ field: 'identification', label: 'Documento de identificação (CPF, Passaporte ou SSN)' });
+        }
+        if (!customer.cpf || customer.cpf.trim() === '') {
+          missing.push({ field: 'cpf', label: 'CPF' });
+        }
+        setMissingFields(missing);
       }
     } else {
       setFilteredInvoices([]);
       setInvoiceId('');
+      setMissingFields([]);
     }
   }, [customerId, customers, invoices]);
 
@@ -204,6 +234,10 @@ export default function CreateContractPage() {
       
       if (!response.ok) {
         const data = await response.json();
+        if (response.status === 422 && data.missingFields) {
+          setMissingFields(data.missingFields);
+          throw new Error(data.message || 'Dados do cliente incompletos');
+        }
         throw new Error(data.error || 'Falha ao criar contrato');
       }
       
@@ -286,6 +320,34 @@ export default function CreateContractPage() {
                 Select the customer who will sign the contract
               </p>
             </div>
+
+            {/* Missing Customer Data Warning */}
+            {customerId && missingFields.length > 0 && (
+              <div className="p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                <div className="flex gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800">
+                      Dados do cliente incompletos para gerar contrato
+                    </p>
+                    <p className="text-sm text-amber-700 mt-1">
+                      Preencha os seguintes dados antes de enviar o contrato:
+                    </p>
+                    <ul className="list-disc list-inside mt-2 text-sm text-amber-700">
+                      {missingFields.map(f => (
+                        <li key={f.field}>{f.label}</li>
+                      ))}
+                    </ul>
+                    <Link
+                      href={`/dashboard/customers/${customerId}`}
+                      className="inline-block mt-3 text-sm font-medium text-amber-900 underline hover:text-amber-700"
+                    >
+                      Editar dados do cliente →
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* DocuSign Template Selection */}
             <div className="space-y-2">
@@ -406,7 +468,7 @@ export default function CreateContractPage() {
             <div className="flex gap-3 pt-4 border-t">
               <Button
                 type="submit"
-                disabled={loading || !customerId || !templateId}
+                disabled={loading || !customerId || !templateId || missingFields.some(f => f.field === 'identification')}
                 className="flex-1"
               >
                 {loading ? (

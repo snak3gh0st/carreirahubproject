@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db';
-import { docusignService } from './docusign.service';
+import { docusignService, validateCustomerForContract } from './docusign.service';
 import { notificationService } from './notification.service';
 import { ContractStatus } from '@prisma/client';
 
@@ -17,6 +17,14 @@ interface Invoice {
     name: string;
     email: string;
     phone?: string | null;
+    cpf?: string | null;
+    passport?: string | null;
+    address?: string | null;
+    city?: string | null;
+    state?: string | null;
+    zipCode?: string | null;
+    country?: string | null;
+    ssn?: string | null;
   };
 }
 
@@ -39,6 +47,47 @@ export class ContractWorkflowService {
     try {
       console.log(`[CONTRACT_WORKFLOW] Starting contract workflow for invoice ${invoice.id}`);
 
+      // Validate customer has required fields for contract
+      const missingFields = validateCustomerForContract(invoice.customer as any);
+      if (missingFields.length > 0) {
+        const fieldNames = missingFields.map(f => f.label).join(', ');
+        console.warn(`[CONTRACT_WORKFLOW] Customer ${invoice.customer.id} missing required fields: ${fieldNames}. Contract will be created as DRAFT.`);
+
+        // Create contract in DRAFT status - cannot send without complete data
+        const draftContract = await prisma.contract.create({
+          data: {
+            status: ContractStatus.DRAFT,
+            signerEmail: invoice.customer.email,
+            signerName: invoice.customer.name,
+            dealId: invoice.deal?.id || '',
+            customerId: invoice.customer.id,
+            invoiceId: invoice.id,
+            reminderCount: 0,
+          },
+        });
+
+        console.log(`[CONTRACT_WORKFLOW] Contract ${draftContract.id} saved as DRAFT - waiting for customer data completion`);
+
+        // Log the blocked contract for visibility
+        await prisma.integrationLog.create({
+          data: {
+            service: 'DOCUSIGN',
+            action: 'CONTRACT_BLOCKED_MISSING_DATA',
+            status: 'WARNING',
+            payload: {
+              contractId: draftContract.id,
+              customerId: invoice.customer.id,
+              customerName: invoice.customer.name,
+              invoiceId: invoice.id,
+              missingFields: missingFields.map(f => f.field),
+            },
+            error: `Contrato bloqueado - dados faltando: ${fieldNames}`,
+          },
+        });
+
+        return draftContract;
+      }
+
       // Create contract record in database (status: DRAFT)
       const contract = await prisma.contract.create({
         data: {
@@ -54,7 +103,7 @@ export class ContractWorkflowService {
 
       console.log(`[CONTRACT_WORKFLOW] Contract record created: ${contract.id}`);
 
-      // Generate and send contract via DocuSign (using template if configured)
+      // Generate and send contract via DocuSign (using program-specific template)
       const envelopeId = await docusignService.createEnvelopeFromTemplate(
         {
           id: invoice.id,
@@ -62,12 +111,21 @@ export class ContractWorkflowService {
           amount: invoice.amount,
           dueDate: invoice.dueDate,
           deal: invoice.deal,
+          lineItems: (invoice as any).lineItems || null,
         },
         {
           id: invoice.customer.id,
           name: invoice.customer.name,
           email: invoice.customer.email,
           phone: invoice.customer.phone,
+          cpf: invoice.customer.cpf,
+          passport: invoice.customer.passport,
+          address: invoice.customer.address,
+          city: invoice.customer.city,
+          state: invoice.customer.state,
+          zipCode: invoice.customer.zipCode,
+          country: invoice.customer.country,
+          ssn: invoice.customer.ssn,
         }
       );
 
@@ -577,9 +635,24 @@ export class ContractWorkflowService {
         
         const invoice = await prisma.invoice.findUnique({
           where: { id: invoiceId },
-          include: { 
-            customer: true, 
-            deal: true 
+          include: {
+            customer: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                cpf: true,
+                passport: true,
+                address: true,
+                city: true,
+                state: true,
+                zipCode: true,
+                country: true,
+                ssn: true,
+              },
+            },
+            deal: true
           }
         });
         

@@ -1,6 +1,5 @@
 {
   "mode": "yolo",
-  "depth": "quick",
   "gates": {
     "confirm_project": false,
     "confirm_phases": false,
@@ -14,5 +13,6 @@
   "safety": {
     "always_confirm_destructive": true,
     "always_confirm_external_services": true
-  }
+  },
+  "granularity": "coarse"
 }

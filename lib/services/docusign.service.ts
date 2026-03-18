@@ -12,6 +12,10 @@ interface Invoice {
   deal?: {
     title: string;
   } | null;
+  lineItems?: Array<{
+    serviceItemId?: string;
+    description?: string;
+  }> | null;
 }
 
 interface Customer {
@@ -19,6 +23,192 @@ interface Customer {
   name: string;
   email: string;
   phone?: string | null;
+  cpf?: string | null;
+  passport?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zipCode?: string | null;
+  country?: string | null;
+  ssn?: string | null;
+}
+
+/**
+ * Required customer fields for contract generation.
+ * Contract cannot be sent without these fields populated.
+ */
+export const CONTRACT_REQUIRED_FIELDS = [
+  { field: 'cpf', label: 'CPF' },
+  { field: 'address', label: 'Endereço' },
+  { field: 'email', label: 'Email' },
+] as const;
+
+/**
+ * At least one of these ID fields must be present
+ */
+export const CONTRACT_REQUIRED_ID_FIELDS = [
+  { field: 'cpf', label: 'CPF' },
+  { field: 'passport', label: 'Passaporte' },
+  { field: 'ssn', label: 'SSN (últimos 4 dígitos)' },
+] as const;
+
+/**
+ * Validate that a customer has all required fields for contract generation.
+ * Returns list of missing fields, or empty array if all good.
+ */
+export function validateCustomerForContract(customer: Customer): { field: string; label: string }[] {
+  const missing: { field: string; label: string }[] = [];
+
+  // Check required fields
+  for (const { field, label } of CONTRACT_REQUIRED_FIELDS) {
+    const value = customer[field as keyof Customer];
+    if (!value || (typeof value === 'string' && value.trim() === '')) {
+      missing.push({ field, label });
+    }
+  }
+
+  // Check at least one ID field is present
+  const hasAnyId = CONTRACT_REQUIRED_ID_FIELDS.some(({ field }) => {
+    const value = customer[field as keyof Customer];
+    return value && (typeof value !== 'string' || value.trim() !== '');
+  });
+
+  if (!hasAnyId) {
+    missing.push({
+      field: 'identification',
+      label: 'Documento de identificação (CPF, Passaporte ou SSN)',
+    });
+  }
+
+  return missing;
+}
+
+/**
+ * Program-to-Annex mapping for DocuSign templates.
+ * Each program corresponds to a specific contract annex (A-F).
+ *
+ * Programs are identified by QuickBooks Service Item names (not deal titles).
+ * The serviceItemId in invoice lineItems points to a QB Item whose name
+ * contains the program keyword (e.g., "PASS Advanced", "COMBO").
+ *
+ * Template IDs stored in environment variables:
+ *   DOCUSIGN_TEMPLATE_PASS_ADVANCED=<template-id>   → Anexo A
+ *   DOCUSIGN_TEMPLATE_PASS=<template-id>             → Anexo B
+ *   DOCUSIGN_TEMPLATE_COMBO=<template-id>            → Anexo C
+ *   DOCUSIGN_TEMPLATE_START=<template-id>            → Anexo D
+ *   DOCUSIGN_TEMPLATE_AVULSO=<template-id>           → Anexo E
+ *   DOCUSIGN_TEMPLATE_UPGRADE=<template-id>          → Anexo F
+ *   DOCUSIGN_TEMPLATE_ID=<template-id>               → Fallback (template genérico)
+ *
+ * Alternative: Map specific QB Item IDs directly via:
+ *   DOCUSIGN_TEMPLATE_MAP={"19":"<template-id>","62":"<template-id>",...}
+ */
+export interface ProgramMapping {
+  annex: string;
+  envVar: string;
+  keywords: string[];
+}
+
+export const PROGRAM_TEMPLATE_MAP: ProgramMapping[] = [
+  // Order matters: "pass advanced" must match BEFORE "pass"
+  {
+    annex: 'A',
+    envVar: 'DOCUSIGN_TEMPLATE_PASS_ADVANCED',
+    keywords: ['pass advanced', 'advanced', 'mentoria advanced', 'mentoria completa'],
+  },
+  {
+    annex: 'B',
+    envVar: 'DOCUSIGN_TEMPLATE_PASS',
+    keywords: ['pass', 'mentoria pass'],
+  },
+  {
+    annex: 'C',
+    envVar: 'DOCUSIGN_TEMPLATE_COMBO',
+    keywords: ['combo', 'material + grupo', 'material e grupo'],
+  },
+  {
+    annex: 'D',
+    envVar: 'DOCUSIGN_TEMPLATE_START',
+    keywords: ['start', 'conteúdo gravado', 'conteudo gravado'],
+  },
+  {
+    annex: 'E',
+    envVar: 'DOCUSIGN_TEMPLATE_AVULSO',
+    keywords: ['avulso', 'individual', 'serviço avulso', 'servico avulso'],
+  },
+  {
+    annex: 'F',
+    envVar: 'DOCUSIGN_TEMPLATE_UPGRADE',
+    keywords: ['upgrade', 'downgrade', 'migração', 'migracao'],
+  },
+];
+
+/**
+ * Resolve the correct DocuSign template ID for a contract.
+ *
+ * Resolution order:
+ * 1. Direct QB Item ID mapping (DOCUSIGN_TEMPLATE_MAP env var)
+ * 2. Keyword matching against service item name or deal title
+ * 3. DOCUSIGN_TEMPLATE_ID fallback
+ *
+ * @param serviceItemName - Name of the QuickBooks service item (from invoice lineItems)
+ * @param serviceItemId - QuickBooks Item ID (for direct mapping)
+ * @param dealTitle - Deal title (secondary fallback for keyword matching)
+ */
+export function resolveTemplateForProgram(params: {
+  serviceItemName?: string | null;
+  serviceItemId?: string | null;
+  dealTitle?: string | null;
+}): {
+  templateId: string | null;
+  annex: string | null;
+  program: string | null;
+} {
+  const { serviceItemName, serviceItemId, dealTitle } = params;
+
+  // 1. Try direct QB Item ID → Template ID mapping
+  if (serviceItemId) {
+    const directMap = process.env.DOCUSIGN_TEMPLATE_MAP;
+    if (directMap) {
+      try {
+        const map = JSON.parse(directMap) as Record<string, string>;
+        if (map[serviceItemId]) {
+          console.log(`[DOCUSIGN] Direct map: QB Item ${serviceItemId} → template ${map[serviceItemId]}`);
+          return { templateId: map[serviceItemId], annex: null, program: serviceItemName || null };
+        }
+      } catch {
+        console.warn('[DOCUSIGN] Failed to parse DOCUSIGN_TEMPLATE_MAP env var');
+      }
+    }
+  }
+
+  // 2. Keyword matching against service item name or deal title
+  const textToMatch = serviceItemName || dealTitle || null;
+  if (textToMatch) {
+    const normalized = textToMatch.toLowerCase().trim();
+
+    for (const mapping of PROGRAM_TEMPLATE_MAP) {
+      const matched = mapping.keywords.some(kw => normalized.includes(kw));
+      if (matched) {
+        const templateId = process.env[mapping.envVar] || null;
+        if (templateId) {
+          console.log(`[DOCUSIGN] "${textToMatch}" matched Annex ${mapping.annex} → template ${templateId}`);
+          return { templateId, annex: mapping.annex, program: mapping.keywords[0] };
+        }
+        console.log(`[DOCUSIGN] "${textToMatch}" matched Annex ${mapping.annex} but no template configured (${mapping.envVar})`);
+        break;
+      }
+    }
+  }
+
+  // 3. Fallback to generic template
+  const fallback = process.env.DOCUSIGN_TEMPLATE_ID || null;
+  if (fallback) {
+    console.log(`[DOCUSIGN] Using fallback template for "${textToMatch || 'unknown program'}"`);
+  } else {
+    console.warn(`[DOCUSIGN] No template found for "${textToMatch || 'unknown'}" and no fallback configured`);
+  }
+  return { templateId: fallback, annex: null, program: null };
 }
 
 /**
@@ -638,15 +828,24 @@ export class DocuSignService {
     customer: Customer
   ): Promise<string> {
     try {
-      const templateId = process.env.DOCUSIGN_TEMPLATE_ID;
+      // Resolve template based on QB service item name or deal title
+      const lineItem = Array.isArray(invoice.lineItems) ? invoice.lineItems[0] : null;
+      const resolved = resolveTemplateForProgram({
+        serviceItemName: lineItem?.description || null,
+        serviceItemId: lineItem?.serviceItemId || null,
+        dealTitle: invoice.deal?.title || null,
+      });
+      const templateId = resolved.templateId;
 
       // If no template configured, fall back to inline PDF generation
       if (!templateId) {
-        console.log('[DOCUSIGN] No template ID configured, falling back to inline PDF');
+        console.log('[DOCUSIGN] No template configured for this program, falling back to inline PDF');
         return this.createEnvelopeFromInvoice(invoice, customer);
       }
 
-      console.log(`[DOCUSIGN] Creating envelope from template ${templateId}`);
+      const annexLabel = resolved.annex ? ` (Anexo ${resolved.annex})` : '';
+      const programLabel = resolved.program || lineItem?.description || invoice.deal?.title || 'unknown';
+      console.log(`[DOCUSIGN] Creating envelope from template ${templateId}${annexLabel} for program "${programLabel}"`);
 
       // Build envelope definition using Composite Templates
       const envelopeDefinition = {
@@ -673,16 +872,60 @@ export class DocuSignService {
                       roleName: 'Client', // Must match template role
                       tabs: {
                         textTabs: [
+                          // Client identification fields
                           {
-                            tabLabel: 'customer_name',
+                            tabLabel: 'client_name',
                             value: customer.name,
                             locked: 'true',
                           },
                           {
-                            tabLabel: 'customer_email',
+                            tabLabel: 'client_cpf',
+                            value: customer.cpf || '',
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'client_passport',
+                            value: customer.passport || '',
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'client_address',
+                            value: [
+                              customer.address,
+                              customer.city,
+                              customer.state,
+                              customer.zipCode,
+                              customer.country,
+                            ].filter(Boolean).join(', '),
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'client_email',
                             value: customer.email,
                             locked: 'true',
                           },
+                          {
+                            tabLabel: 'client_ssn_last4',
+                            value: customer.ssn || '',
+                            locked: 'true',
+                          },
+                          // Contract date fields
+                          {
+                            tabLabel: 'contract_date_day',
+                            value: new Date().getDate().toString(),
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'contract_date_month',
+                            value: new Date().toLocaleDateString('pt-BR', { month: 'long' }),
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'contract_date_year',
+                            value: new Date().getFullYear().toString().slice(-2),
+                            locked: 'true',
+                          },
+                          // Invoice/service fields
                           {
                             tabLabel: 'invoice_number',
                             value: invoice.invoiceNumber || invoice.id,
@@ -705,6 +948,17 @@ export class DocuSignService {
                           {
                             tabLabel: 'service_description',
                             value: invoice.deal?.title || 'Professional Services',
+                            locked: 'true',
+                          },
+                          // Legacy aliases (backward compatibility)
+                          {
+                            tabLabel: 'customer_name',
+                            value: customer.name,
+                            locked: 'true',
+                          },
+                          {
+                            tabLabel: 'customer_email',
+                            value: customer.email,
                             locked: 'true',
                           },
                         ],

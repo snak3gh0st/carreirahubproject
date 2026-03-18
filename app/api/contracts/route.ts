@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ContractStatus } from '@prisma/client';
-import { docusignService } from '@/lib/services/docusign.service';
+import { docusignService, validateCustomerForContract } from '@/lib/services/docusign.service';
 
 /**
  * GET /api/contracts
@@ -153,6 +153,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
+    // Validate customer has required fields for contract
+    const missingFields = validateCustomerForContract(customer);
+    if (missingFields.length > 0) {
+      return NextResponse.json({
+        error: 'Dados do cliente incompletos para gerar contrato',
+        missingFields: missingFields.map(f => ({ field: f.field, label: f.label })),
+        message: `Preencha os seguintes dados do cliente antes de enviar o contrato: ${missingFields.map(f => f.label).join(', ')}`,
+        customerId: customer.id,
+        customerName: customer.name,
+      }, { status: 422 });
+    }
+
     // Fetch invoice if provided
     let invoice = null;
     if (invoiceId) {
@@ -228,17 +240,31 @@ export async function POST(request: NextRequest) {
         // Use specific template selected by user
         console.log(`[API_CONTRACTS] Creating envelope from selected template: ${templateId}`);
         
-        // Build custom fields from invoice data if available
+        // Build custom fields from customer and invoice data
         const customFields: Record<string, string> = {};
+        // Client identification fields
+        customFields['client_name'] = customer.name;
+        customFields['client_email'] = customer.email;
+        customFields['client_cpf'] = customer.cpf || '';
+        customFields['client_passport'] = customer.passport || '';
+        customFields['client_ssn_last4'] = customer.ssn || '';
+        customFields['client_address'] = [
+          customer.address, customer.city, customer.state,
+          customer.zipCode, customer.country,
+        ].filter(Boolean).join(', ');
+        // Contract date
+        customFields['contract_date_day'] = new Date().getDate().toString();
+        customFields['contract_date_month'] = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+        customFields['contract_date_year'] = new Date().getFullYear().toString().slice(-2);
+        // Legacy aliases
+        customFields['customer_name'] = customer.name;
+        customFields['customer_email'] = customer.email;
+        // Invoice fields
         if (invoice) {
-          customFields['customer_name'] = customer.name;
-          customFields['customer_email'] = customer.email;
           customFields['invoice_number'] = invoice.invoiceNumber || '';
           customFields['invoice_amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
           customFields['invoice_due_date'] = new Date(invoice.dueDate).toLocaleDateString('en-US');
-        } else {
-          customFields['customer_name'] = customer.name;
-          customFields['customer_email'] = customer.email;
+          customFields['amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
         }
         
         envelopeId = await docusignService.createEnvelopeFromSelectedTemplate(

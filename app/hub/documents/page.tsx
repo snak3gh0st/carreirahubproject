@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractStatus, InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
+import { t, Language } from "@/lib/i18n/hub";
 
 const GOLD = "#C9A84C";
 
@@ -22,6 +23,8 @@ export default async function HubDocumentsPage() {
   const payload = getPayload(token);
   if (!payload?.customerId) redirect("/hub/login");
 
+  const lang = (payload?.language || "en") as Language;
+  const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
   const customerId = payload.customerId;
 
   const [contracts, invoices] = await Promise.all([
@@ -54,8 +57,8 @@ export default async function HubDocumentsPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
-        <p className="text-gray-500 text-sm mt-1">Download your signed contracts and payment receipts.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{t(lang, "documents.title")}</h1>
+        <p className="text-gray-500 text-sm mt-1">{t(lang, "documents.subtitle")}</p>
       </div>
 
       {!hasDocuments ? (
@@ -65,7 +68,7 @@ export default async function HubDocumentsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
           </div>
-          <p className="text-gray-500">No documents available yet.</p>
+          <p className="text-gray-500">{t(lang, "documents.noDocuments")}</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -73,7 +76,7 @@ export default async function HubDocumentsPage() {
           {contracts.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
-                Signed Contracts
+                {t(lang, "documents.signedContracts")}
               </h2>
               <div className="space-y-3">
                 {contracts.map((c) => (
@@ -89,10 +92,10 @@ export default async function HubDocumentsPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 text-sm">
-                          {c.deal?.title || "Contract"}
+                          {c.deal?.title || t(lang, "status.contract")}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          Signed {c.signedAt ? new Date(c.signedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                          {t(lang, "documents.signedOn")} {c.signedAt ? new Date(c.signedAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" }) : ""}
                         </p>
                       </div>
                     </div>
@@ -104,10 +107,10 @@ export default async function HubDocumentsPage() {
                         className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
                         style={{ backgroundColor: "#FFF8E7", color: GOLD }}
                       >
-                        Download PDF
+                        {t(lang, "documents.downloadPdf")}
                       </a>
                     ) : (
-                      <span className="text-xs text-gray-400">Contact support</span>
+                      <span className="text-xs text-gray-400">{t(lang, "documents.contactSupport")}</span>
                     )}
                   </div>
                 ))}
@@ -119,7 +122,7 @@ export default async function HubDocumentsPage() {
           {invoices.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">
-                Payment Receipts
+                {t(lang, "documents.paymentReceipts")}
               </h2>
               <div className="space-y-3">
                 {invoices.map((inv) => (
@@ -135,10 +138,10 @@ export default async function HubDocumentsPage() {
                       </div>
                       <div>
                         <p className="font-medium text-gray-900 text-sm">
-                          Invoice #{inv.invoiceNumber || inv.id.slice(0, 8)}
+                          {t(lang, "documents.invoice")} #{inv.invoiceNumber || inv.id.slice(0, 8)}
                         </p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          ${Number(inv.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })} — Paid {inv.paidAt ? new Date(inv.paidAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : ""}
+                          ${Number(inv.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })} — {t(lang, "documents.paidOn")} {inv.paidAt ? new Date(inv.paidAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" }) : ""}
                         </p>
                       </div>
                     </div>
@@ -147,7 +150,7 @@ export default async function HubDocumentsPage() {
                       className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
                       style={{ backgroundColor: "#FFF8E7", color: GOLD }}
                     >
-                      View Receipt
+                      {t(lang, "dashboard.viewReceipt")}
                     </Link>
                   </div>
                 ))}

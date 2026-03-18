@@ -1,9 +1,19 @@
+/**
+ * PCI COMPLIANCE NOTE:
+ * - Card data (number, CVC, expiry) transits this server over HTTPS only
+ * - Card data is NEVER stored, logged, or persisted
+ * - Card data is immediately sent to QB Payments /tokens endpoint
+ * - Only the resulting token (non-sensitive) is used after tokenization
+ * - For full PCI-DSS compliance, migrate to client-side tokenization when QB offers a JS SDK
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { integrationLogger } from "@/lib/utils/logger";
+import { getPaymentSecurityHeaders } from "@/lib/hub/security-headers";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +22,49 @@ const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.OVERDUE,
   InvoiceStatus.PARTIALLY_PAID,
 ];
+
+/** PCI-safe fields that are allowed in logs (never card/bank details). */
+const SENSITIVE_KEYS = [
+  "cardNumber",
+  "card_number",
+  "cvc",
+  "cvv",
+  "expMonth",
+  "expYear",
+  "exp_month",
+  "exp_year",
+  "accountNumber",
+  "account_number",
+  "routingNumber",
+  "routing_number",
+  "number",
+];
+
+/** Strip sensitive payment fields from an object before logging. */
+function sanitizeForLog(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== "object") return obj;
+  if (obj instanceof Error) {
+    return { message: obj.message, name: obj.name, stack: obj.stack };
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    if (SENSITIVE_KEYS.includes(key)) {
+      result[key] = "[REDACTED]";
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = sanitizeForLog(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/** Create a NextResponse.json with payment security headers. */
+function secureJson(body: unknown, init?: { status?: number }): NextResponse {
+  const headers = getPaymentSecurityHeaders();
+  return NextResponse.json(body, { ...init, headers });
+}
 
 /**
  * POST /api/hub/pay/[id]/charge
@@ -26,12 +79,12 @@ export async function POST(
     // ---- Auth ----
     const auth = await getHubAuth(request);
     if (!auth) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return secureJson({ error: "Unauthorized" }, { status: 401 });
     }
 
     // ---- CSRF ----
     if (!verifyCsrf(request)) {
-      return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+      return secureJson({ error: "Invalid origin" }, { status: 403 });
     }
 
     // ---- Load invoice ----
@@ -41,7 +94,7 @@ export async function POST(
     });
 
     if (!invoice) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Invoice not found" },
         { status: 404 }
       );
@@ -49,7 +102,7 @@ export async function POST(
 
     // ---- Ownership check ----
     if (invoice.customerId !== auth.customerId) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Invoice not found" },
         { status: 404 }
       );
@@ -57,14 +110,14 @@ export async function POST(
 
     // ---- Status check ----
     if (invoice.status === InvoiceStatus.PAID) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Already paid" },
         { status: 409 }
       );
     }
 
     if (!PAYABLE_STATUSES.includes(invoice.status)) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Invoice is not payable in its current status" },
         { status: 400 }
       );
@@ -79,7 +132,7 @@ export async function POST(
     // ---- QB customer ----
     const qbCustomerId = invoice.customer.quickbooks_id;
     if (!qbCustomerId) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Customer is not linked to QuickBooks" },
         { status: 400 }
       );
@@ -130,7 +183,7 @@ export async function POST(
           undefined,
           { invoiceId: invoice.id }
         );
-        return NextResponse.json(
+        return secureJson(
           { error: "Card tokenization failed. Please check card details." },
           { status: 400 }
         );
@@ -177,7 +230,7 @@ export async function POST(
           undefined,
           { invoiceId: invoice.id, amount: chargeAmount }
         );
-        return NextResponse.json(
+        return secureJson(
           { error: "Payment was declined. Please try a different card." },
           { status: 402 }
         );
@@ -208,7 +261,7 @@ export async function POST(
           undefined,
           { invoiceId: invoice.id }
         );
-        return NextResponse.json(
+        return secureJson(
           {
             error:
               "Bank account verification failed. Please check account details.",
@@ -258,13 +311,13 @@ export async function POST(
           undefined,
           { invoiceId: invoice.id, amount: chargeAmount }
         );
-        return NextResponse.json(
+        return secureJson(
           { error: "Bank payment failed. Please try again or use a card." },
           { status: 402 }
         );
       }
     } else {
-      return NextResponse.json(
+      return secureJson(
         { error: 'Invalid paymentMethod. Use "card" or "ach".' },
         { status: 400 }
       );
@@ -335,14 +388,15 @@ export async function POST(
       paymentSaved,
     });
 
-    return NextResponse.json({
+    return secureJson({
       success: true,
       chargeId,
       paymentSaved,
       amount: chargeAmount,
     });
   } catch (error: any) {
-    console.error("[Hub Charge] Unexpected error:", error);
+    // PCI: sanitize before logging to prevent card data leaking into logs
+    console.error("[Hub Charge] Unexpected error:", sanitizeForLog(error));
     await integrationLogger.logError(
       "hub-payment",
       "charge_unexpected_error",
@@ -350,7 +404,7 @@ export async function POST(
       undefined,
       { invoiceId: params.id }
     );
-    return NextResponse.json(
+    return secureJson(
       { error: "An unexpected error occurred. Please try again." },
       { status: 500 }
     );

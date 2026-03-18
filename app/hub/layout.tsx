@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { t, Language } from "@/lib/i18n/hub";
 
 const GOLD = "#C9A84C";
 
@@ -32,7 +33,7 @@ export default async function HubLayout({
     }
   }
 
-  const lang = payload.language || "en";
+  const lang = (payload.language || "en") as Language;
   const isEn = lang === "en";
 
   return (
@@ -85,7 +86,7 @@ export default async function HubLayout({
               <Link
                 href="/hub/settings"
                 className="text-gray-400 hover:text-gray-600 transition-colors"
-                title={isEn ? "Settings" : "Configurações"}
+                title={t(lang, "header.settings")}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -109,7 +110,7 @@ export default async function HubLayout({
                   type="submit"
                   className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  {isEn ? "Logout" : "Sair"}
+                  {t(lang, "header.logout")}
                 </button>
               </form>
             </div>

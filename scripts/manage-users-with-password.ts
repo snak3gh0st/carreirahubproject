@@ -19,6 +19,9 @@
  *   npm run user:list
  */
 
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+
 import { PrismaClient, UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
 

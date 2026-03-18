@@ -1,10 +1,63 @@
+/**
+ * PCI COMPLIANCE NOTE:
+ * - Card data (number, CVC, expiry) transits this server over HTTPS only
+ * - Card data is NEVER stored, logged, or persisted
+ * - Card data is immediately sent to QB Payments /tokens endpoint
+ * - Only the resulting token (non-sensitive) is used after tokenization
+ * - For full PCI-DSS compliance, migrate to client-side tokenization when QB offers a JS SDK
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { InvoiceStatus } from "@prisma/client";
 import { integrationLogger } from "@/lib/utils/logger";
+import { getPaymentSecurityHeaders } from "@/lib/hub/security-headers";
 
 export const dynamic = "force-dynamic";
+
+/** PCI-safe fields that are allowed in logs (never card/bank details). */
+const SENSITIVE_KEYS = [
+  "cardNumber",
+  "card_number",
+  "cvc",
+  "cvv",
+  "expMonth",
+  "expYear",
+  "exp_month",
+  "exp_year",
+  "accountNumber",
+  "account_number",
+  "routingNumber",
+  "routing_number",
+  "number",
+];
+
+/** Strip sensitive payment fields from an object before logging. */
+function sanitizeForLog(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== "object") return obj;
+  if (obj instanceof Error) {
+    return { message: obj.message, name: obj.name, stack: obj.stack };
+  }
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    if (SENSITIVE_KEYS.includes(key)) {
+      result[key] = "[REDACTED]";
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = sanitizeForLog(value);
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
+/** Create a NextResponse.json with payment security headers. */
+function secureJson(body: unknown, init?: { status?: number }): NextResponse {
+  const headers = getPaymentSecurityHeaders();
+  return NextResponse.json(body, { ...init, headers });
+}
 
 /**
  * POST /api/payment-v2/[invoiceId]/charge
@@ -32,13 +85,13 @@ export async function POST(
     });
 
     if (!invoice) {
-      return NextResponse.json({ error: "Fatura não encontrada." }, { status: 404 });
+      return secureJson({ error: "Fatura não encontrada." }, { status: 404 });
     }
     if (invoice.status === InvoiceStatus.PAID) {
-      return NextResponse.json({ error: "Esta fatura já foi paga." }, { status: 409 });
+      return secureJson({ error: "Esta fatura já foi paga." }, { status: 409 });
     }
     if (invoice.status !== InvoiceStatus.SENT) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Esta fatura não está disponível para pagamento." },
         { status: 400 }
       );
@@ -46,7 +99,7 @@ export async function POST(
 
     const qbCustomerId = invoice.customer.quickbooks_id;
     if (!qbCustomerId) {
-      return NextResponse.json(
+      return secureJson(
         { error: "Cliente não encontrado no QuickBooks." },
         { status: 400 }
       );
@@ -130,7 +183,7 @@ export async function POST(
       { invoiceId, chargeId: chargeResult?.id, amount, paymentType, paymentSaved }
     );
 
-    return NextResponse.json({
+    return secureJson({
       success: true,
       chargeId: chargeResult?.id,
       paymentSaved,
@@ -138,8 +191,9 @@ export async function POST(
       amount,
     });
   } catch (error: any) {
-    console.error("[PAYMENT_V2] Unexpected error:", error);
-    return NextResponse.json({ error: "Erro interno. Tente novamente." }, { status: 500 });
+    // PCI: sanitize before logging to prevent card data leaking into logs
+    console.error("[PAYMENT_V2] Unexpected error:", sanitizeForLog(error));
+    return secureJson({ error: "Erro interno. Tente novamente." }, { status: 500 });
   }
 }
 
@@ -151,14 +205,14 @@ async function processCardPayment(
   amount: number,
   description: string,
   requestId: string
-): Promise<{ chargeResult?: any; paymentSaved: boolean; error?: ReturnType<typeof NextResponse.json> }> {
+): Promise<{ chargeResult?: any; paymentSaved: boolean; error?: NextResponse }> {
   const { cardNumber, expMonth, expYear, cvc, cardholderName, postalCode } = body;
 
   if (!cardNumber || !expMonth || !expYear || !cvc || !cardholderName) {
-    return { paymentSaved: false, error: NextResponse.json({ error: "Dados do cartão incompletos." }, { status: 400 }) };
+    return { paymentSaved: false, error: secureJson({ error: "Dados do cartão incompletos." }, { status: 400 }) };
   }
 
-  // Tokenize
+  // Tokenize — card data is sent directly to QB and never stored/logged
   let token: string;
   try {
     token = await quickbooksService.tokenizeCard({
@@ -173,7 +227,7 @@ async function processCardPayment(
     console.error("[PAYMENT_V2] Card tokenization failed:", err.message);
     return {
       paymentSaved: false,
-      error: NextResponse.json({ error: "Cartão inválido ou recusado. Verifique os dados." }, { status: 400 }),
+      error: secureJson({ error: "Cartão inválido ou recusado. Verifique os dados." }, { status: 400 }),
     };
   }
 
@@ -199,7 +253,7 @@ async function processCardPayment(
     console.error("[PAYMENT_V2] Card charge failed:", err.message);
     return {
       paymentSaved: false,
-      error: NextResponse.json({ error: "Pagamento recusado. Verifique o cartão ou tente outro método." }, { status: 402 }),
+      error: secureJson({ error: "Pagamento recusado. Verifique o cartão ou tente outro método." }, { status: 402 }),
     };
   }
 }
@@ -212,17 +266,17 @@ async function processAchPayment(
   amount: number,
   description: string,
   requestId: string
-): Promise<{ chargeResult?: any; paymentSaved: boolean; error?: ReturnType<typeof NextResponse.json> }> {
+): Promise<{ chargeResult?: any; paymentSaved: boolean; error?: NextResponse }> {
   const { routingNumber, accountNumber, accountName, accountType, phone } = body;
 
   if (!routingNumber || !accountNumber || !accountName) {
     return {
       paymentSaved: false,
-      error: NextResponse.json({ error: "Dados bancários incompletos." }, { status: 400 }),
+      error: secureJson({ error: "Dados bancários incompletos." }, { status: 400 }),
     };
   }
 
-  // Tokenize bank account
+  // Tokenize bank account — account data is sent directly to QB and never stored/logged
   let token: string;
   try {
     token = await quickbooksService.tokenizeBankAccount({
@@ -236,7 +290,7 @@ async function processAchPayment(
     console.error("[PAYMENT_V2] ACH tokenization failed:", err.message);
     return {
       paymentSaved: false,
-      error: NextResponse.json({ error: "Dados bancários inválidos. Verifique e tente novamente." }, { status: 400 }),
+      error: secureJson({ error: "Dados bancários inválidos. Verifique e tente novamente." }, { status: 400 }),
     };
   }
 
@@ -268,7 +322,7 @@ async function processAchPayment(
     console.error("[PAYMENT_V2] ACH charge failed:", err.message);
     return {
       paymentSaved: false,
-      error: NextResponse.json({ error: "Transferência recusada. Verifique os dados bancários." }, { status: 402 }),
+      error: secureJson({ error: "Transferência recusada. Verifique os dados bancários." }, { status: 402 }),
     };
   }
 }

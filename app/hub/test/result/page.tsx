@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { t, Language } from "@/lib/i18n/hub";
 
 const GOLD = "#C9A84C";
 
@@ -28,6 +29,9 @@ export default async function HubTestResultPage() {
   const payload = getPayload(token);
   if (!payload?.customerId) redirect("/hub/login");
 
+  const lang = (payload?.language || "en") as Language;
+  const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
+
   const result = await prisma.placementTest.findFirst({
     where: { customerId: payload.customerId },
     orderBy: { createdAt: "desc" },
@@ -49,10 +53,10 @@ export default async function HubTestResultPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Your English Level</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">{t(lang, "testResult.yourLevel")}</h1>
         <p className="text-gray-500 text-sm">
-          Taken {new Date(result.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-          {minutes && ` · ${minutes} min`}
+          {t(lang, "testResult.taken")} {new Date(result.createdAt).toLocaleDateString(dateLocale, { month: "long", day: "numeric", year: "numeric" })}
+          {minutes && ` \u00b7 ${minutes} ${t(lang, "testResult.min")}`}
         </p>
       </div>
 
@@ -65,22 +69,22 @@ export default async function HubTestResultPage() {
           {result.displayLevel}
         </div>
         <p className="text-gray-500 text-sm mt-2">
-          CEFR Level: <span className="font-semibold text-gray-900">{result.cefrLevel}</span>
+          {t(lang, "testResult.cefrLevel")}: <span className="font-semibold text-gray-900">{result.cefrLevel}</span>
         </p>
         <p className="text-gray-400 text-sm mt-1">
-          Score: {result.totalScore}/25 ({Math.round(result.percentage)}%)
+          {t(lang, "testResult.score")}: {result.totalScore}/25 ({Math.round(result.percentage)}%)
         </p>
       </div>
 
       {/* Section Breakdown */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Section Breakdown</h2>
+        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">{t(lang, "testResult.sectionBreakdown")}</h2>
         <div className="space-y-4">
           {sectionScores.map((score, i) => (
             <div key={i}>
               <div className="flex items-center justify-between text-sm mb-1.5">
                 <span className="text-gray-600">
-                  Section {i + 1} <span className="text-gray-400">({sectionLabels[i]})</span>
+                  {t(lang, "testResult.section")} {i + 1} <span className="text-gray-400">({sectionLabels[i]})</span>
                 </span>
                 <span className={`font-semibold ${score >= 3 ? "text-green-600" : "text-red-500"}`}>
                   {score}/5
@@ -106,14 +110,14 @@ export default async function HubTestResultPage() {
           href="/hub"
           className="flex-1 py-3 text-center rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition"
         >
-          ← Back to Dashboard
+          &larr; {t(lang, "testResult.backToDashboard")}
         </Link>
         <Link
           href="/hub/test"
           className="flex-1 py-3 text-center rounded-xl text-white font-medium text-sm transition hover:opacity-90"
           style={{ backgroundColor: GOLD }}
         >
-          Retake Test
+          {t(lang, "testResult.retakeTest")}
         </Link>
       </div>
     </div>

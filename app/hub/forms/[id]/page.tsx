@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { t, Language } from "@/lib/i18n/hub";
 
 const GOLD = "#C9A84C";
 
@@ -14,11 +15,25 @@ interface FormField {
   options?: { value: string; label: string; labelPt: string }[];
 }
 
+function getLangFromCookie(): Language {
+  try {
+    const match = document.cookie.match(/(?:^|;\s*)hub-token=([^;]*)/);
+    if (!match?.[1]) return "en";
+    const [, b64] = match[1].split(".");
+    if (!b64) return "en";
+    const payload = JSON.parse(atob(b64.replace(/-/g, "+").replace(/_/g, "/")));
+    return (payload?.language || "en") as Language;
+  } catch {
+    return "en";
+  }
+}
+
 export default function HubFormFillPage() {
   const router = useRouter();
   const params = useParams();
   const assignmentId = params.id as string;
 
+  const [lang, setLang] = useState<Language>("en");
   const [template, setTemplate] = useState<any>(null);
   const [assignment, setAssignment] = useState<any>(null);
   const [submission, setSubmission] = useState<any>(null);
@@ -27,6 +42,10 @@ export default function HubFormFillPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLang(getLangFromCookie());
+  }, []);
 
   useEffect(() => {
     fetch(`/api/hub/forms/${assignmentId}`)
@@ -39,11 +58,12 @@ export default function HubFormFillPage() {
           setAnswers(data.submission.answers as Record<string, any>);
         }
       })
-      .catch(() => setError("Failed to load form."))
+      .catch(() => setError(t(lang, "forms.failedToLoad")))
       .finally(() => setLoading(false));
-  }, [assignmentId]);
+  }, [assignmentId, lang]);
 
   const isReadOnly = assignment?.status === "COMPLETED";
+  const isPt = lang === "pt-BR";
 
   async function handleFileUpload(fieldId: string, file: File) {
     setUploading((prev) => ({ ...prev, [fieldId]: true }));
@@ -60,10 +80,10 @@ export default function HubFormFillPage() {
       if (res.ok) {
         setAnswers((prev) => ({ ...prev, [fieldId]: data.key }));
       } else {
-        setError(data.error || "Upload failed.");
+        setError(data.error || t(lang, "forms.uploadFailed"));
       }
     } catch {
-      setError("Upload failed.");
+      setError(t(lang, "forms.uploadFailed"));
     } finally {
       setUploading((prev) => ({ ...prev, [fieldId]: false }));
     }
@@ -82,12 +102,12 @@ export default function HubFormFillPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || "Failed to submit.");
+        setError(data.error || t(lang, "errors.connectionError"));
         return;
       }
       router.push("/hub/forms");
     } catch {
-      setError("Connection error.");
+      setError(t(lang, "errors.connectionError"));
     } finally {
       setSubmitting(false);
     }
@@ -102,7 +122,7 @@ export default function HubFormFillPage() {
   }
 
   if (!template) {
-    return <div className="text-center py-20 text-gray-500">Form not found.</div>;
+    return <div className="text-center py-20 text-gray-500">{t(lang, "forms.formNotFound")}</div>;
   }
 
   return (
@@ -117,7 +137,7 @@ export default function HubFormFillPage() {
           {(template.fields as FormField[]).map((field) => (
             <div key={field.id}>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                {field.label}
+                {isPt && field.labelPt ? field.labelPt : field.label}
                 {field.required && <span className="text-red-400 ml-1">*</span>}
               </label>
 
@@ -183,9 +203,11 @@ export default function HubFormFillPage() {
                   onFocus={(e) => (e.target.style.borderColor = GOLD)}
                   onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
                 >
-                  <option value="">Select...</option>
+                  <option value="">{t(lang, "forms.select")}</option>
                   {field.options?.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    <option key={opt.value} value={opt.value}>
+                      {isPt && opt.labelPt ? opt.labelPt : opt.label}
+                    </option>
                   ))}
                 </select>
               )}
@@ -199,7 +221,9 @@ export default function HubFormFillPage() {
                     disabled={isReadOnly}
                     className="w-5 h-5 rounded"
                   />
-                  <span className="text-sm text-gray-600">{field.label}</span>
+                  <span className="text-sm text-gray-600">
+                    {isPt && field.labelPt ? field.labelPt : field.label}
+                  </span>
                 </label>
               )}
 
@@ -210,7 +234,7 @@ export default function HubFormFillPage() {
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      File uploaded
+                      {t(lang, "forms.fileUploaded")}
                     </div>
                   ) : (
                     <input
@@ -225,7 +249,7 @@ export default function HubFormFillPage() {
                     />
                   )}
                   {uploading[field.id] && (
-                    <p className="text-xs text-gray-400 mt-1">Uploading...</p>
+                    <p className="text-xs text-gray-400 mt-1">{t(lang, "forms.uploading")}</p>
                   )}
                 </div>
               )}
@@ -245,13 +269,13 @@ export default function HubFormFillPage() {
               className="w-full py-4 rounded-xl text-white font-semibold text-base transition disabled:opacity-60"
               style={{ backgroundColor: GOLD }}
             >
-              {submitting ? "Submitting..." : "Submit Form"}
+              {submitting ? t(lang, "forms.submitting") : t(lang, "forms.submitForm")}
             </button>
           )}
 
           {isReadOnly && (
             <div className="text-center py-2 text-sm text-green-600 font-medium">
-              This form has been submitted.
+              {t(lang, "forms.formSubmitted")}
             </div>
           )}
         </form>
