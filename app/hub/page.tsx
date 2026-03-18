@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { InvoiceStatus } from "@prisma/client";
+import { InvoiceStatus, FormAssignmentStatus } from "@prisma/client";
 
 const GOLD = "#C9A84C";
 
@@ -147,6 +147,9 @@ export default async function HubDashboardPage() {
         </div>
       </div>
 
+      {/* Forms + English Level Cards */}
+      <FormsAndTestCards customerId={payload.customerId} />
+
       {/* Invoice List */}
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">Invoices</h2>
@@ -231,6 +234,81 @@ export default async function HubDashboardPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Forms + English Level Cards ─────────────────────────────
+
+async function FormsAndTestCards({ customerId }: { customerId: string }) {
+  const [pendingForms, latestTest] = await Promise.all([
+    prisma.formAssignment.count({
+      where: { customerId, status: FormAssignmentStatus.PENDING },
+    }),
+    prisma.placementTest.findFirst({
+      where: { customerId },
+      orderBy: { createdAt: "desc" },
+    }),
+  ]);
+
+  const totalForms = await prisma.formAssignment.count({ where: { customerId } });
+  if (totalForms === 0 && !latestTest) return null; // nothing to show
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
+      {/* Forms Card */}
+      {totalForms > 0 && (
+        <Link
+          href="/hub/forms"
+          className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:border-gray-200 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-50">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Forms</p>
+              {pendingForms > 0 ? (
+                <p className="text-sm font-semibold" style={{ color: GOLD }}>{pendingForms} pending</p>
+              ) : (
+                <p className="text-sm font-semibold text-green-600">All completed</p>
+              )}
+            </div>
+          </div>
+          <p className="text-xs mt-3" style={{ color: GOLD }}>
+            {pendingForms > 0 ? "Fill Now →" : "View →"}
+          </p>
+        </Link>
+      )}
+
+      {/* English Level Card */}
+      <Link
+        href={latestTest ? "/hub/test/result" : "/hub/test"}
+        className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:border-gray-200 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
+            <svg className="w-5 h-5" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">English Level</p>
+            {latestTest ? (
+              <p className="text-sm font-semibold text-gray-900">
+                {latestTest.displayLevel} <span className="text-gray-400 font-normal">· {latestTest.cefrLevel} · {latestTest.totalScore}/25</span>
+              </p>
+            ) : (
+              <p className="text-sm font-semibold text-gray-400">Not taken yet</p>
+            )}
+          </div>
+        </div>
+        <p className="text-xs mt-3" style={{ color: GOLD }}>
+          {latestTest ? "Retake →" : "Take Test →"}
+        </p>
+      </Link>
     </div>
   );
 }
