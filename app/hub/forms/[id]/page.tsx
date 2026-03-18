@@ -12,7 +12,16 @@ interface FormField {
   label: string;
   labelPt: string;
   required: boolean;
+  hint?: string;
+  hintPt?: string;
   options?: { value: string; label: string; labelPt: string }[];
+  accept?: string;
+  scaleMin?: number;
+  scaleMax?: number;
+  scaleMinLabel?: string;
+  scaleMinLabelPt?: string;
+  scaleMaxLabel?: string;
+  scaleMaxLabelPt?: string;
 }
 
 function getLangFromCookie(): Language {
@@ -136,10 +145,15 @@ export default function HubFormFillPage() {
         <form onSubmit={handleSubmit} className="space-y-5">
           {(template.fields as FormField[]).map((field) => (
             <div key={field.id}>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 {isPt && field.labelPt ? field.labelPt : field.label}
                 {field.required && <span className="text-red-400 ml-1">*</span>}
               </label>
+              {(field.hint || field.hintPt) && (
+                <p className="text-xs text-gray-400 mb-1.5">
+                  {isPt && field.hintPt ? field.hintPt : field.hint}
+                </p>
+              )}
 
               {field.type === "text" && (
                 <input
@@ -212,6 +226,64 @@ export default function HubFormFillPage() {
                 </select>
               )}
 
+              {field.type === "radio" && (
+                <div className="space-y-2">
+                  {field.options?.map((opt) => (
+                    <label key={opt.value} className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl cursor-pointer transition hover:border-gray-300"
+                      style={answers[field.id] === opt.value ? { borderColor: GOLD, backgroundColor: "#FDFBF5" } : {}}
+                    >
+                      <input
+                        type="radio"
+                        name={field.id}
+                        value={opt.value}
+                        checked={answers[field.id] === opt.value}
+                        onChange={() => setAnswers((p) => ({ ...p, [field.id]: opt.value }))}
+                        disabled={isReadOnly}
+                        className="w-4 h-4 accent-[#C9A84C]"
+                      />
+                      <span className="text-sm text-gray-700">
+                        {isPt && opt.labelPt ? opt.labelPt : opt.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {field.type === "scale" && (() => {
+                const min = field.scaleMin ?? 1;
+                const max = field.scaleMax ?? 10;
+                const values = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+                const minLabel = isPt ? field.scaleMinLabelPt : field.scaleMinLabel;
+                const maxLabel = isPt ? field.scaleMaxLabelPt : field.scaleMaxLabel;
+                return (
+                  <div>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      {values.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => !isReadOnly && setAnswers((p) => ({ ...p, [field.id]: v }))}
+                          className="w-10 h-10 rounded-lg border text-sm font-medium transition"
+                          style={
+                            answers[field.id] === v
+                              ? { backgroundColor: GOLD, borderColor: GOLD, color: "#fff" }
+                              : { borderColor: "#E5E7EB", color: "#374151" }
+                          }
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                    {(minLabel || maxLabel) && (
+                      <div className="flex justify-between text-xs text-gray-400 mt-1.5 px-1">
+                        <span>{minLabel}</span>
+                        <span>{maxLabel}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               {field.type === "checkbox" && (
                 <label className="flex items-center gap-2">
                   <input
@@ -239,7 +311,7 @@ export default function HubFormFillPage() {
                   ) : (
                     <input
                       type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                      accept={field.accept || ".pdf,.jpg,.jpeg,.png,.doc,.docx"}
                       disabled={isReadOnly || uploading[field.id]}
                       onChange={(e) => {
                         const file = e.target.files?.[0];

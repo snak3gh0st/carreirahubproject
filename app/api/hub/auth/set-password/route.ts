@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { hashPassword } from "@/lib/hub-auth";
+import { hashPassword, signHubToken, setHubCookie, HubJwtPayload } from "@/lib/hub-auth";
 import { clearRateLimit } from "@/lib/hub-rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     const passwordHash = await hashPassword(password);
 
     // ── 5. Update ClientUser ───────────────────────────────────
-    await prisma.clientUser.update({
+    const updatedUser = await prisma.clientUser.update({
       where: { id: clientUser.id },
       data: {
         passwordHash,
@@ -77,13 +77,26 @@ export async function POST(request: NextRequest) {
         tempPasswordExpiresAt: null,
         failedLoginCount: 0,
         lockedUntil: null,
+        lastLoginAt: new Date(),
       },
     });
 
     // ── 6. Clear rate limit ────────────────────────────────────
     await clearRateLimit(clientUser.email);
 
-    return NextResponse.json({ success: true });
+    // ── 7. Auto-login: sign JWT and set cookie ─────────────────
+    const jwtPayload: HubJwtPayload = {
+      clientUserId: updatedUser.id,
+      customerId: updatedUser.customerId,
+      email: updatedUser.email,
+      language: updatedUser.language,
+    };
+
+    const jwtToken = await signHubToken(jwtPayload);
+    const response = NextResponse.json({ success: true });
+    setHubCookie(response, jwtToken);
+
+    return response;
   } catch (error) {
     console.error("[HUB_SET_PASSWORD] Error:", error);
     return NextResponse.json(

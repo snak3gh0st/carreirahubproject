@@ -43,7 +43,8 @@ export default function HubSetPasswordPage() {
         return;
       }
 
-      router.push("/hub/login?passwordSet=1");
+      // Auto-login: the API sets the cookie, go straight to dashboard
+      window.location.href = "/hub";
     } catch {
       setError("Connection error. Please try again.");
     } finally {

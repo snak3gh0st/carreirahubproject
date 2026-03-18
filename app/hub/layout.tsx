@@ -101,7 +101,7 @@ export default async function HubLayout({
       )}
 
       {/* Main content */}
-      <main className={isAuthenticated ? "max-w-4xl mx-auto px-6 py-8" : ""}>
+      <main className={isAuthenticated ? "max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8" : "px-4"}>
         {children}
       </main>
     </div>
