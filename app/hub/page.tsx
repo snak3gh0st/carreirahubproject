@@ -252,7 +252,7 @@ async function FormsAndTestCards({ customerId }: { customerId: string }) {
   ]);
 
   const totalForms = await prisma.formAssignment.count({ where: { customerId } });
-  if (totalForms === 0 && !latestTest) return null; // nothing to show
+  // Always show — at minimum the English Test card should be visible
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
