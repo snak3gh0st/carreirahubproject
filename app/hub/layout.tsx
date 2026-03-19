@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
+import { APP_VERSION } from "@/lib/changelog";
 import LanguageToggle from "./LanguageToggle";
+import { NewsNotification } from "./NewsNotification";
 
 const GOLD = "#C9A84C";
 
@@ -64,6 +66,9 @@ export default async function HubLayout({
               {/* Language Toggle */}
               <LanguageToggle currentLang={lang} />
 
+              {/* News Notification */}
+              <NewsNotification lang={lang} />
+
               {/* Settings */}
               <Link
                 href="/hub/settings"
@@ -104,6 +109,19 @@ export default async function HubLayout({
       <main className={isAuthenticated ? "max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8" : "px-4"}>
         {children}
       </main>
+
+      {/* Footer */}
+      {isAuthenticated && (
+        <footer className="border-t border-gray-200 bg-white/60 mt-auto">
+          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <p className="text-[10px] text-gray-400">
+              Powered by{" "}
+              <span className="font-semibold text-gray-500">SIGMA INTEL</span>
+            </p>
+            <p className="text-[10px] text-gray-400">v{APP_VERSION}</p>
+          </div>
+        </footer>
+      )}
     </div>
   );
 }

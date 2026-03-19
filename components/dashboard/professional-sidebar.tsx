@@ -15,6 +15,8 @@ import {
   HeadphonesIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { APP_VERSION } from "@/lib/changelog";
+import { NewsNotification } from "./news-notification";
 
 /**
  * Professional Sidebar matching Pencil Design
@@ -189,14 +191,22 @@ export function ProfessionalSidebar({
           </button>
         </div>
 
-        {/* Powered by SIGMA INTEL Footer */}
-        <div className="text-center space-y-2 pt-4 border-t border-secondary-gray">
-          <p className="text-[10px] text-gray-500">
-            Powered by
-          </p>
-          <p className="text-xs font-display font-bold text-sigma-blue">
-            SIGMA INTEL
-          </p>
+        {/* Footer: News + Powered by SIGMA INTEL + Version */}
+        <div className="pt-4 border-t border-secondary-gray">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <NewsNotification />
+          </div>
+          <div className="text-center space-y-1">
+            <p className="text-[10px] text-gray-500">
+              Powered by
+            </p>
+            <p className="text-xs font-display font-bold text-sigma-blue">
+              SIGMA INTEL
+            </p>
+            <p className="text-[9px] text-gray-600">
+              v{APP_VERSION}
+            </p>
+          </div>
         </div>
       </div>
     </aside>
