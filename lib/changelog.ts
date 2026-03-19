@@ -3,7 +3,7 @@
  * Add new entries at the TOP of the array (newest first).
  */
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "2.1";
 
 export type ChangelogEntry = {
   version: string;
