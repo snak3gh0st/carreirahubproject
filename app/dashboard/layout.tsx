@@ -47,7 +47,7 @@ export default async function DashboardLayout({
   console.log("[DashboardLayout] User role:", userRole);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div data-portal="dashboard" className="min-h-screen bg-gray-50">
       {/* Professional Sidebar - Matches Pencil Design */}
       <ProfessionalSidebar 
         userRole={userRole}

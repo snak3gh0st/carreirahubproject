@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { APP_VERSION } from "@/lib/changelog";
 import { NewsNotification } from "./news-notification";
+import { Logo } from "@/components/brand/Logo";
 
 /**
  * Professional Sidebar matching Pencil Design
@@ -114,14 +115,12 @@ export function ProfessionalSidebar({
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-secondary-dark border-r border-secondary-gray flex flex-col">
+    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-brand-verde border-r border-brand-verde-700 flex flex-col">
       {/* Logo Section */}
       <div className="px-8 py-10">
         <Link href="/dashboard" className="flex items-center gap-3">
-          {/* Logo Icon - Gold Square */}
-          <div className="w-7 h-7 bg-gold-500 rounded flex items-center justify-center">
-            <span className="text-white text-sm font-bold">C</span>
-          </div>
+          {/* Logo Icon - Brand Symbol */}
+          <Logo mono className="w-7 h-7 text-brand-creme" />
           {/* Logo Text */}
           <span className="text-lg font-display font-semibold text-white">
             Carreira
@@ -142,8 +141,8 @@ export function ProfessionalSidebar({
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
                 active
-                  ? "bg-gold-600 text-white font-semibold shadow-lg shadow-gold-900/20"
-                  : "text-gray-300 font-normal hover:bg-secondary-gray hover:text-white"
+                  ? "bg-brand-tangerina text-brand-creme font-semibold shadow-lg shadow-brand-tangerina/20"
+                  : "text-brand-creme/70 font-normal hover:bg-brand-verde-700 hover:text-brand-creme"
               )}
             >
               <Icon className={cn(
@@ -160,11 +159,11 @@ export function ProfessionalSidebar({
       </nav>
 
       {/* Bottom Section - User Profile + Sigma Footer */}
-      <div className="px-8 py-6 border-t border-secondary-gray space-y-6">
+      <div className="px-8 py-6 border-t border-brand-verde-700 space-y-6">
         {/* User Profile */}
         <div className="flex items-center gap-3">
           {/* Avatar */}
-          <div className="w-9 h-9 bg-gold-500 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="w-9 h-9 bg-brand-tangerina rounded-full flex items-center justify-center flex-shrink-0">
             <span className="text-xs text-white font-display font-medium">
               {getInitials(userName)}
             </span>
@@ -183,7 +182,7 @@ export function ProfessionalSidebar({
           {/* Logout Button */}
           <button
             onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-            className="p-2 text-white hover:text-gold-500 hover:bg-secondary-gray rounded-lg transition-colors"
+            className="p-2 text-white hover:text-brand-tangerina hover:bg-brand-verde-700 rounded-lg transition-colors"
             title="Logout"
             aria-label="Logout"
           >
@@ -192,7 +191,7 @@ export function ProfessionalSidebar({
         </div>
 
         {/* Footer: News + Powered by SIGMA INTEL + Version */}
-        <div className="pt-4 border-t border-secondary-gray">
+        <div className="pt-4 border-t border-brand-verde-700">
           <div className="flex items-center justify-center gap-2 mb-3">
             <NewsNotification />
           </div>
