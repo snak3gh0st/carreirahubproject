@@ -3,7 +3,7 @@
  * Add new entries at the TOP of the array (newest first).
  */
 
-export const APP_VERSION = "2.1";
+export const APP_VERSION = "2.2";
 
 export type ChangelogEntry = {
   version: string;
@@ -14,6 +14,17 @@ export type ChangelogEntry = {
 };
 
 export const changelog: ChangelogEntry[] = [
+  {
+    version: "2.2.0",
+    date: "2026-03-25",
+    title: "Carreira U.S.A. Brand Reskin",
+    titlePt: "Nova Identidade Visual Carreira U.S.A.",
+    items: [
+      { text: "New Carreira U.S.A. brand identity across all portals", textPt: "Nova identidade visual Carreira U.S.A. em todos os portais", type: "feature" },
+      { text: "Redesigned login page with Verde + Creme theme", textPt: "Página de login redesenhada com tema Verde + Creme", type: "improvement" },
+      { text: "Brand logo and favicon updated", textPt: "Logo e favicon da marca atualizados", type: "improvement" },
+    ],
+  },
   {
     version: "1.0.0",
     date: "2026-03-18",

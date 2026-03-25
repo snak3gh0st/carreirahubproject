@@ -42,21 +42,19 @@ export default async function HubLayout({
     <div data-portal="hub" className="min-h-screen bg-brand-creme">
       {/* Header — only for authenticated users */}
       {isAuthenticated && (
-        <header className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
-          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <header className="bg-brand-verde sticky top-0 z-10 shadow-md">
+          <div className="max-w-4xl mx-auto px-6 py-3.5 flex items-center justify-between">
             <Link href="/hub" className="flex items-center gap-3">
-              <Logo variant="symbol" className="w-9 h-9" />
+              <Logo className="w-8 h-8" />
               <div>
-                <span className="font-semibold text-brand-verde text-sm block leading-tight">
-                  Carreira U.S.A.
-                </span>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider">
-                  Client Portal
+                <span className="font-display font-bold text-white text-sm">
+                  Carreira{" "}
+                  <span className="text-brand-tangerina">U.S.A.</span>
                 </span>
               </div>
             </Link>
 
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-4">
               {/* Language Toggle */}
               <LanguageToggle currentLang={lang} />
 
@@ -66,7 +64,7 @@ export default async function HubLayout({
               {/* Settings */}
               <Link
                 href="/hub/settings"
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-white/60 hover:text-white transition-colors"
                 title={t(lang, "header.settings")}
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,7 +87,7 @@ export default async function HubLayout({
               <form action="/api/hub/auth/logout" method="POST">
                 <button
                   type="submit"
-                  className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-xs font-medium text-white/60 hover:text-white transition-colors"
                 >
                   {t(lang, "header.logout")}
                 </button>
@@ -106,13 +104,13 @@ export default async function HubLayout({
 
       {/* Footer */}
       {isAuthenticated && (
-        <footer className="border-t border-gray-200 bg-white/60 mt-auto">
+        <footer className="border-t border-brand-verde/10 bg-brand-verde/5 mt-auto">
           <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-            <p className="text-[10px] text-gray-400">
+            <p className="text-[10px] text-brand-verde/40">
               Powered by{" "}
-              <span className="font-semibold text-gray-500">SIGMA INTEL</span>
+              <span className="font-bold text-sigma-blue">SIGMA INTEL</span>
             </p>
-            <p className="text-[10px] text-gray-400">v{APP_VERSION}</p>
+            <p className="text-[10px] text-brand-verde/30">v{APP_VERSION}</p>
           </div>
         </footer>
       )}

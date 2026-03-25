@@ -19,16 +19,6 @@ import { APP_VERSION } from "@/lib/changelog";
 import { NewsNotification } from "./news-notification";
 import { Logo } from "@/components/brand/Logo";
 
-/**
- * Professional Sidebar matching Pencil Design
- * 
- * Structure:
- * - Logo (Carreira)
- * - Navigation (6 main items)
- * - User Profile
- * - Powered by SIGMA INTEL footer
- */
-
 interface NavItem {
   href: string;
   label: string;
@@ -87,10 +77,10 @@ interface ProfessionalSidebarProps {
   userEmail?: string;
 }
 
-export function ProfessionalSidebar({ 
-  userRole, 
+export function ProfessionalSidebar({
+  userRole,
   userName = "User",
-  userEmail = "" 
+  userEmail = ""
 }: ProfessionalSidebarProps) {
   const pathname = usePathname();
 
@@ -101,11 +91,10 @@ export function ProfessionalSidebar({
     return pathname.startsWith(href);
   };
 
-  const visibleNavItems = mainNavItems.filter((item) => 
+  const visibleNavItems = mainNavItems.filter((item) =>
     item.roles.includes(userRole)
   );
 
-  // Get user initials for avatar
   const getInitials = (name: string) => {
     const parts = name.split(" ");
     if (parts.length >= 2) {
@@ -115,21 +104,20 @@ export function ProfessionalSidebar({
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-brand-verde border-r border-brand-verde-700 flex flex-col">
-      {/* Logo Section */}
-      <div className="px-8 py-10">
+    <aside className="fixed left-0 top-0 bottom-0 w-60 bg-brand-verde flex flex-col">
+      {/* Logo */}
+      <div className="px-6 pt-8 pb-6">
         <Link href="/dashboard" className="flex items-center gap-3">
-          {/* Logo Icon - Brand Symbol */}
-          <Logo mono className="w-7 h-7 text-brand-creme" />
-          {/* Logo Text */}
-          <span className="text-lg font-display font-semibold text-white">
-            Carreira
-          </span>
+          <Logo className="w-9 h-9 flex-shrink-0" />
+          <div>
+            <span className="text-base font-display font-bold text-white">Carreira </span>
+            <span className="text-base font-display font-bold text-brand-tangerina">U.S.A.</span>
+          </div>
         </Link>
       </div>
 
-      {/* Navigation Section */}
-      <nav className="flex-1 px-4 space-y-2">
+      {/* Navigation */}
+      <nav className="flex-1 px-4 space-y-1">
         {visibleNavItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
@@ -141,68 +129,60 @@ export function ProfessionalSidebar({
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
                 active
-                  ? "bg-brand-tangerina text-brand-creme font-semibold shadow-lg shadow-brand-tangerina/20"
-                  : "text-brand-creme/70 font-normal hover:bg-brand-verde-700 hover:text-brand-creme"
+                  ? "bg-brand-tangerina text-white font-semibold shadow-lg"
+                  : "text-white font-normal hover:bg-white/10"
               )}
             >
               <Icon className={cn(
                 "h-5 w-5 transition-colors",
-                active ? "text-white" : "text-gray-400 group-hover:text-white"
+                active ? "text-white" : "text-white/70 group-hover:text-white"
               )} />
-              
-              <span>
-                {item.label}
-              </span>
+              <span>{item.label}</span>
             </Link>
           );
         })}
       </nav>
 
-      {/* Bottom Section - User Profile + Sigma Footer */}
-      <div className="px-8 py-6 border-t border-brand-verde-700 space-y-6">
+      {/* Bottom Section */}
+      <div className="px-4 py-5 border-t border-white/10 space-y-5">
         {/* User Profile */}
-        <div className="flex items-center gap-3">
-          {/* Avatar */}
+        <div className="flex items-center gap-3 px-2">
           <div className="w-9 h-9 bg-brand-tangerina rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-xs text-white font-display font-medium">
+            <span className="text-xs text-white font-display font-bold">
               {getInitials(userName)}
             </span>
           </div>
-          
-          {/* User Info */}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-display font-medium text-white truncate">
               {userName}
             </p>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-xs text-white/50 truncate">
               {userRole}
             </p>
           </div>
-
-          {/* Logout Button */}
           <button
             onClick={() => signOut({ callbackUrl: "/auth/signin" })}
-            className="p-2 text-white hover:text-brand-tangerina hover:bg-brand-verde-700 rounded-lg transition-colors"
+            className="p-2 text-white/50 hover:text-brand-tangerina hover:bg-white/10 rounded-lg transition-colors"
             title="Logout"
             aria-label="Logout"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-4 w-4" />
           </button>
         </div>
 
         {/* Footer: News + Powered by SIGMA INTEL + Version */}
-        <div className="pt-4 border-t border-brand-verde-700">
+        <div className="border-t border-white/10 pt-4">
           <div className="flex items-center justify-center gap-2 mb-3">
             <NewsNotification />
           </div>
           <div className="text-center space-y-1">
-            <p className="text-[10px] text-gray-500">
+            <p className="text-[10px] text-white/40">
               Powered by
             </p>
             <p className="text-xs font-display font-bold text-sigma-blue">
               SIGMA INTEL
             </p>
-            <p className="text-[9px] text-gray-600">
+            <p className="text-[10px] text-white/30">
               v{APP_VERSION}
             </p>
           </div>

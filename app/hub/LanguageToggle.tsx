@@ -18,7 +18,6 @@ export default function LanguageToggle({ currentLang }: { currentLang: string })
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ language: lang }),
       });
-      // Refresh page to apply new language from updated JWT
       window.location.reload();
     } catch {
       setLoading(false);
@@ -26,14 +25,14 @@ export default function LanguageToggle({ currentLang }: { currentLang: string })
   }
 
   return (
-    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden text-xs">
+    <div className="flex items-center border border-white/20 rounded-lg overflow-hidden text-xs">
       <button
         onClick={() => switchLang("en")}
         disabled={loading}
         className="px-3 py-1.5 transition-colors font-medium"
         style={{
           backgroundColor: isEn ? BRAND_COLORS.TANGERINA : "transparent",
-          color: isEn ? "#fff" : "#9CA3AF",
+          color: isEn ? "#fff" : "rgba(255,255,255,0.6)",
         }}
       >
         EN
@@ -44,7 +43,7 @@ export default function LanguageToggle({ currentLang }: { currentLang: string })
         className="px-3 py-1.5 transition-colors font-medium"
         style={{
           backgroundColor: !isEn ? BRAND_COLORS.TANGERINA : "transparent",
-          color: !isEn ? "#fff" : "#9CA3AF",
+          color: !isEn ? "#fff" : "rgba(255,255,255,0.6)",
         }}
       >
         PT

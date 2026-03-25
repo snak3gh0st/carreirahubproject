@@ -3,11 +3,11 @@
 import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, Suspense } from "react";
+import { Logo } from "@/components/brand/Logo";
 
 function SignInForm() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -23,14 +23,15 @@ function SignInForm() {
         email,
         password,
         redirect: false,
+        callbackUrl: "/dashboard",
       });
 
       if (result?.error) {
-        setError("Credenciais inválidas. Tente novamente.");
+        setError("Credenciais invalidas. Tente novamente.");
         setLoading(false);
       } else if (result?.ok) {
-        // Usar window.location para evitar problemas de cache/refresh
-        window.location.href = callbackUrl;
+        const target = result.url || "/dashboard";
+        window.location.href = target;
       }
     } catch (err) {
       setError("Erro ao fazer login. Tente novamente.");
@@ -39,79 +40,70 @@ function SignInForm() {
   };
 
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="container mx-auto px-4 sm:px-6 py-8">
-        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
-          <div className="max-w-md w-full bg-white rounded-xl border border-gray-200 shadow-sm p-8">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
+      <div className="max-w-sm w-full">
+        {/* Brand Header */}
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Carreira AI Hub
+          <Logo className="w-16 h-16 mx-auto mb-5" />
+          <h1 className="font-display text-3xl font-bold text-white">
+            Carreira <span className="text-brand-tangerina">U.S.A.</span>
           </h1>
-          <p className="text-gray-600">Faça login para continuar</p>
+          <p className="text-white/60 text-sm mt-2">Admin Dashboard</p>
         </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-error-50 border border-error-200 rounded-md">
-            <p className="text-sm text-error-600">{error}</p>
-          </div>
-        )}
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-xl p-7">
+          {error && (
+            <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-1"
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-brand-verde mb-1.5">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
+                placeholder="seu@email.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-brand-verde mb-1.5">
+                Senha
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
+                placeholder="********"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 rounded-xl text-white font-semibold text-base transition disabled:opacity-60 bg-brand-tangerina hover:opacity-90"
             >
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="seu@email.com"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-1"
-            >
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-          >
-            {loading ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center space-y-2">
-          <p className="text-xs text-gray-500">
-            Em desenvolvimento: Login funciona sem verificação de senha
-          </p>
-          <p className="text-xs text-primary-600 font-medium">
-            💡 Usuário de teste: admin@carreirausa.com
-          </p>
+              {loading ? "Entrando..." : "Entrar"}
+            </button>
+          </form>
         </div>
-          </div>
-        </div>
+
+        <p className="text-center text-xs text-white/40 mt-6">
+          Powered by SIGMA INTEL
+        </p>
       </div>
     </div>
   );
@@ -120,8 +112,8 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <Suspense fallback={
-      <div className="bg-gray-50 min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Carregando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-brand-verde">
+        <div className="text-white/60">Carregando...</div>
       </div>
     }>
       <SignInForm />

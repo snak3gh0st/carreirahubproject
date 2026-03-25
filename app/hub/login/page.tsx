@@ -78,9 +78,11 @@ export default function HubLoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
-          <Logo mono className="w-16 h-16 text-brand-creme mx-auto mb-4" />
-          <h1 className="font-display text-3xl font-bold text-brand-creme">{t(lang, "login.loginTitle")}</h1>
-          <p className="text-brand-cafe text-sm mt-1">{t(lang, "login.loginSubtitle")}</p>
+          <Logo className="w-16 h-16 mx-auto mb-5" />
+          <h1 className="font-display text-3xl font-bold text-white">
+            Carreira <span className="text-brand-tangerina">U.S.A.</span>
+          </h1>
+          <p className="text-white/60 text-sm mt-2">{t(lang, "login.loginSubtitle")}</p>
         </div>
 
         <div className="bg-brand-creme rounded-2xl shadow-sm p-6">

@@ -52,7 +52,7 @@ export function NewsNotification({ lang }: { lang: Lang }) {
     <div ref={ref} className="relative">
       <button
         onClick={handleOpen}
-        className="relative text-gray-400 hover:text-gray-600 transition-colors"
+        className="relative text-white/60 hover:text-white transition-colors"
         title={lang.startsWith("pt") ? "Novidades" : "What's New"}
         aria-label={lang.startsWith("pt") ? "Novidades" : "What's New"}
       >
