@@ -65,7 +65,7 @@ export default function HubResetPasswordPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
+                className="w-full py-3.5 rounded-xl text-center text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
               >
                 {loading ? "Sending..." : "Send Reset Link"}
               </button>

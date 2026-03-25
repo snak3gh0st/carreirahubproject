@@ -120,7 +120,7 @@ export default function HubTestPage() {
         </p>
         <button
           onClick={handleStart}
-          className="px-8 py-4 rounded-xl text-white font-semibold text-lg transition hover:opacity-90"
+          className="px-8 py-4 rounded-xl text-center text-white font-semibold text-lg transition hover:opacity-90"
           style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
         >
           {t(lang, "test.startTest")}
@@ -229,7 +229,7 @@ export default function HubTestPage() {
           <button
             onClick={handleNext}
             disabled={!allAnswered}
-            className="px-6 py-3 rounded-xl text-white font-medium text-sm transition disabled:opacity-40"
+            className="px-6 py-3 rounded-xl text-center text-white font-medium text-sm transition disabled:opacity-40"
             style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
           >
             {t(lang, "test.nextSection")} &rarr;
@@ -238,7 +238,7 @@ export default function HubTestPage() {
           <button
             onClick={handleSubmit}
             disabled={!allAnswered || submitting}
-            className="px-8 py-3 rounded-xl text-white font-semibold text-sm transition disabled:opacity-40"
+            className="px-8 py-3 rounded-xl text-center text-white font-semibold text-sm transition disabled:opacity-40"
             style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
           >
             {submitting ? t(lang, "test.submitting") : t(lang, "test.submitTest")}

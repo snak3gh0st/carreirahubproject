@@ -328,7 +328,7 @@ export default function HubFormFillPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-4 rounded-xl text-white font-semibold text-base transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
+              className="w-full py-4 rounded-xl text-center text-white font-semibold text-base transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
             >
               {submitting ? t(lang, "forms.submitting") : t(lang, "forms.submitForm")}
             </button>

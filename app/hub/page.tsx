@@ -250,7 +250,7 @@ export default async function HubDashboardPage() {
                     {canPay(inv.status) ? (
                       <Link
                         href={`/hub/pay/${inv.id}`}
-                        className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition hover:opacity-90 whitespace-nowrap bg-brand-tangerina"
+                        className="px-4 py-2 rounded-lg text-center text-white text-xs font-semibold transition hover:opacity-90 whitespace-nowrap bg-brand-tangerina"
                       >
                         {t(lang, "dashboard.payNow")}
                       </Link>
