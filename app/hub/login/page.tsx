@@ -4,8 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { Logo } from "@/components/brand/Logo";
 
 function getLangFromCookie(): Language {
   try {
@@ -76,45 +75,36 @@ export default function HubLoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#FBF8F0" }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4"
-            style={{ backgroundColor: GOLD }}
-          >
-            <span className="text-white text-2xl font-bold">C</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{t(lang, "login.loginTitle")}</h1>
-          <p className="text-gray-500 text-sm mt-1">{t(lang, "login.loginSubtitle")}</p>
+          <Logo mono className="w-16 h-16 text-brand-creme mx-auto mb-4" />
+          <h1 className="font-display text-3xl font-bold text-brand-creme">{t(lang, "login.loginTitle")}</h1>
+          <p className="text-brand-cafe text-sm mt-1">{t(lang, "login.loginSubtitle")}</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-brand-creme rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(lang, "login.email")}</label>
+              <label className="block text-sm font-medium text-brand-verde mb-1.5">{t(lang, "login.email")}</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">{t(lang, "login.password")}</label>
+              <label className="block text-sm font-medium text-brand-verde mb-1.5">{t(lang, "login.password")}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
               />
             </div>
 
@@ -127,21 +117,20 @@ export default function HubLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-xl text-white font-semibold text-base transition disabled:opacity-60"
-              style={{ backgroundColor: GOLD }}
+              className="w-full py-3.5 rounded-xl text-white font-semibold text-base transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
             >
               {loading ? t(lang, "login.signingIn") : t(lang, "login.signIn")}
             </button>
           </form>
 
           <div className="mt-4 text-center">
-            <Link href="/hub/reset-password" className="text-sm hover:underline" style={{ color: GOLD }}>
+            <Link href="/hub/reset-password" className="text-sm hover:underline text-brand-verde hover:text-brand-verde/80">
               {t(lang, "login.forgotPassword")}
             </Link>
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-brand-creme/60 mt-6">
           {t(lang, "login.securePortal")}
         </p>
       </div>
