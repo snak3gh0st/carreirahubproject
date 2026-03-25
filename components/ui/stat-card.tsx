@@ -55,12 +55,12 @@ export function StatCard({
       )}
     >
       {/* Header with label and optional icon */}
-      <div className="flex items-start justify-between mb-3">
-        <p className="text-xs text-gray-600 font-semibold uppercase tracking-wide">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">
           {label}
         </p>
         {icon && (
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-creme">
+          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-creme">
             <div className="text-brand-verde">
               {icon}
             </div>
@@ -69,16 +69,16 @@ export function StatCard({
       </div>
 
       {/* Main value */}
-      <div className="min-w-0 space-y-2">
-        <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tabular-nums truncate">
+      <div className="min-w-0 space-y-1.5">
+        <p className="text-3xl font-bold text-gray-900 tabular-nums leading-none">
           {value}
         </p>
 
         {/* Trend and change */}
         {(change || description) && (
-          <div className="flex items-center gap-2 text-sm text-gray-700">
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
             {TrendIcon && (
-              <TrendIcon className={cn("h-4 w-4", trendClassName)} />
+              <TrendIcon className={cn("h-3.5 w-3.5", trendClassName)} />
             )}
             {change && (
               <span className={cn("font-medium", trendClassName)}>
@@ -86,9 +86,7 @@ export function StatCard({
               </span>
             )}
             {description && (
-              <span className="text-gray-500">
-                {description}
-              </span>
+              <span>{description}</span>
             )}
           </div>
         )}
