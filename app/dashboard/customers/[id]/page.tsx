@@ -61,9 +61,9 @@ export default async function CustomerDetailPage({
     notFound();
   }
 
-  // Fetch latest placement test result
+  // Fetch latest completed placement test result (exclude pending tests)
   const latestTest = await prisma.placementTest.findFirst({
-    where: { customerId: params.id },
+    where: { customerId: params.id, totalScore: { not: -1 } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -222,7 +222,7 @@ export default async function CustomerDetailPage({
                         }
                       >
                         <BookOpen className="h-3 w-3 mr-1 inline" />
-                        {latestTest.displayLevel} ({latestTest.cefrLevel}) — {latestTest.totalScore}/25
+                        {latestTest.displayLevel} ({latestTest.cefrLevel}) — {latestTest.totalScore}/{latestTest.questionCount || 25}
                       </Badge>
                     ) : (
                       <Badge variant="default">

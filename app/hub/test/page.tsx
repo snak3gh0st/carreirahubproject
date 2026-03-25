@@ -43,6 +43,7 @@ export default function HubTestPage() {
   const [startTime, setStartTime] = useState<number>(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,7 +53,10 @@ export default function HubTestPage() {
   useEffect(() => {
     fetch("/api/hub/test")
       .then((r) => r.json())
-      .then((data) => setQuestions(data.questions || []))
+      .then((data) => {
+        setQuestions(data.questions || []);
+        setTestId(data.testId || null);
+      })
       .catch(() => setError(t(lang, "test.failedToLoad")))
       .finally(() => setLoading(false));
   }, [lang]);
@@ -81,7 +85,7 @@ export default function HubTestPage() {
       const res = await fetch("/api/hub/test/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers, timeSpentSeconds }),
+        body: JSON.stringify({ answers, timeSpentSeconds, testId }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -159,7 +163,9 @@ export default function HubTestPage() {
 
       {/* Questions */}
       <div className="space-y-6">
-        {sectionQuestions.map((q, qi) => (
+        {(() => {
+          const previousQuestionCount = questions.filter(q => q.section < currentSection).length;
+          return sectionQuestions.map((q, qi) => (
           <div key={q.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             {q.passage && (
               <div className="mb-4 p-4 bg-gray-50 rounded-xl text-sm text-gray-700 italic border-l-4" style={{ borderColor: BRAND_COLORS.TANGERINA }}>
@@ -167,7 +173,7 @@ export default function HubTestPage() {
               </div>
             )}
             <p className="font-medium text-gray-900 mb-4">
-              <span className="text-gray-400 mr-2">{(currentSection - 1) * 5 + qi + 1}.</span>
+              <span className="text-gray-400 mr-2">{previousQuestionCount + qi + 1}.</span>
               {q.question}
             </p>
             <div className="space-y-2">
@@ -203,7 +209,8 @@ export default function HubTestPage() {
               ))}
             </div>
           </div>
-        ))}
+        ));
+        })()}
       </div>
 
       {error && (

@@ -35,7 +35,7 @@ function StatusBadge({ status, lang }: { status: InvoiceStatus; lang: Language }
 }
 
 export default async function HubDashboardPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("hub-token")?.value;
   if (!token) redirect("/hub/login");
 
@@ -276,7 +276,7 @@ async function FormsAndTestCards({ customerId, lang }: { customerId: string; lan
       where: { customerId, status: FormAssignmentStatus.PENDING },
     }),
     prisma.placementTest.findFirst({
-      where: { customerId },
+      where: { customerId, totalScore: { not: -1 } },
       orderBy: { createdAt: "desc" },
     }),
   ]);
@@ -328,7 +328,7 @@ async function FormsAndTestCards({ customerId, lang }: { customerId: string; lan
             <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">{t(lang, "dashboard.englishLevel")}</p>
             {latestTest ? (
               <p className="text-sm font-semibold text-gray-900">
-                {latestTest.displayLevel} <span className="text-gray-400 font-normal">&middot; {latestTest.cefrLevel} &middot; {latestTest.totalScore}/25</span>
+                {latestTest.displayLevel} <span className="text-gray-400 font-normal">&middot; {latestTest.cefrLevel} &middot; {latestTest.totalScore}/{latestTest.questionCount || 25}</span>
               </p>
             ) : (
               <p className="text-sm font-semibold text-gray-400">{t(lang, "dashboard.notTakenYet")}</p>

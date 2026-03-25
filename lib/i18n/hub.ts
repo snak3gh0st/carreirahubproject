@@ -169,7 +169,7 @@ const translations = {
 
     // Test page
     "test.title": "English Assessment",
-    "test.questionsInfo": "25 questions · ~10-15 minutes",
+    "test.questionsInfo": "25 questions · ~15 minutes · Randomized",
     "test.description": "This test evaluates your English proficiency level. Answer each question to the best of your ability. Your level will be determined based on your results.",
     "test.startTest": "Start Test",
     "test.sectionOf": "of",
@@ -387,7 +387,7 @@ const translations = {
 
     // Test page
     "test.title": "Avaliação de Inglês",
-    "test.questionsInfo": "25 perguntas · ~10-15 minutos",
+    "test.questionsInfo": "25 perguntas · ~15 minutos · Aleatório",
     "test.description": "Este teste avalia seu nível de proficiência em inglês. Responda cada questão da melhor forma possível. Seu nível será determinado com base nos resultados.",
     "test.startTest": "Iniciar Teste",
     "test.sectionOf": "de",

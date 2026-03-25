@@ -22,7 +22,7 @@ function getPayload(token: string) {
 }
 
 export default async function HubTestResultPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("hub-token")?.value;
   if (!token) redirect("/hub/login");
   const payload = getPayload(token);
@@ -32,7 +32,7 @@ export default async function HubTestResultPage() {
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
 
   const result = await prisma.placementTest.findFirst({
-    where: { customerId: payload.customerId },
+    where: { customerId: payload.customerId, totalScore: { not: -1 } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -71,7 +71,7 @@ export default async function HubTestResultPage() {
           {t(lang, "testResult.cefrLevel")}: <span className="font-semibold text-gray-900">{result.cefrLevel}</span>
         </p>
         <p className="text-gray-400 text-sm mt-1">
-          {t(lang, "testResult.score")}: {result.totalScore}/25 ({Math.round(result.percentage)}%)
+          {t(lang, "testResult.score")}: {result.totalScore}/{result.questionCount || 25} ({Math.round(result.percentage)}%)
         </p>
       </div>
 

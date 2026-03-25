@@ -46,7 +46,8 @@ export default async function TestsPage({
 
   const search = searchParams.search || "";
 
-  const whereClause: any = {};
+  // Exclude pending tests (totalScore: -1 sentinel) — only show completed results
+  const whereClause: any = { totalScore: { not: -1 } };
   if (search) {
     whereClause.customer = {
       OR: [
@@ -79,7 +80,12 @@ export default async function TestsPage({
       ? Math.round(tests.reduce((sum, t) => sum + t.totalScore, 0) / totalTests)
       : 0;
 
-  const maxPossibleScore = totalTests > 0 ? 25 : 0; // 5 sections * 5 max per section
+  const maxPossibleScore =
+    totalTests > 0
+      ? Math.round(
+          tests.reduce((sum, t) => sum + (t.questionCount || 25), 0) / totalTests
+        )
+      : 0;
 
   const avgTimeSpent =
     totalTests > 0
@@ -261,7 +267,7 @@ export default async function TestsPage({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <span className="text-sm font-display font-semibold text-gray-900 tabular-nums">
-                          {test.totalScore}/25
+                          {test.totalScore}/{test.questionCount || 25}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
