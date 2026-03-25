@@ -4,8 +4,7 @@ import { t, Language } from "@/lib/i18n/hub";
 import { APP_VERSION } from "@/lib/changelog";
 import LanguageToggle from "./LanguageToggle";
 import { NewsNotification } from "./NewsNotification";
-
-const GOLD = "#C9A84C";
+import { Logo } from "@/components/brand/Logo";
 
 export const metadata = {
   title: "Carreira U.S.A. — Client Portal",
@@ -40,20 +39,15 @@ export default async function HubLayout({
   const isEn = lang === "en";
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "#FBF8F0" }}>
+    <div data-portal="hub" className="min-h-screen bg-brand-creme">
       {/* Header — only for authenticated users */}
       {isAuthenticated && (
         <header className="bg-white border-b border-gray-100 sticky top-0 z-10 shadow-sm">
           <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
             <Link href="/hub" className="flex items-center gap-3">
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: GOLD }}
-              >
-                <span className="text-white text-sm font-bold">C</span>
-              </div>
+              <Logo variant="symbol" className="w-9 h-9" />
               <div>
-                <span className="font-semibold text-gray-900 text-sm block leading-tight">
+                <span className="font-semibold text-brand-verde text-sm block leading-tight">
                   Carreira U.S.A.
                 </span>
                 <span className="text-[10px] text-gray-400 uppercase tracking-wider">
