@@ -8,64 +8,55 @@ Carreira AI Hub is a proprietary middleware system that replaces expensive No-Co
 
 Complete Finance workflow automation — seamless integration between QuickBooks and DocuSign to handle invoicing and contracts without manual data entry or lost transactions.
 
+## Current Milestone: v1.1 Brand Identity Reskin
+
+**Goal:** Apply the new Carreira USA visual identity across both Admin Dashboard and Client Hub portals — colors, typography, logos, and visual tokens — while preserving all existing layouts and functionality.
+
+**Target features:**
+- Design system foundation with new brand tokens (colors, typography, spacing)
+- Admin Dashboard reskin (sidebar, header, cards, tables, forms, charts)
+- Client Hub reskin (login, dashboard, payment, settings, forms)
+- Shared component updates (buttons, badges, inputs, modals)
+- Logo and favicon replacement across both portals
+
 ## Requirements
 
 ### Validated
 
-<!-- Existing Finance capabilities -->
+<!-- Sprint 1 capabilities — all working in production -->
 
-- ✓ QuickBooks OAuth integration — working (Phase 1.1 complete)
-- ✓ QuickBooks invoice sync (up to 5000 invoices) — working
-- ✓ QuickBooks customer sync — working
-- ✓ Authentication system with password hashing (bcryptjs) — working
-- ✓ Logout functionality in dashboard — working
-- ✓ Service layer architecture with finance services — existing
-- ✓ BullMQ queue system for async processing — existing
-- ✓ Integration logging system (IntegrationLog table) — existing
-- ✓ NextAuth.js authentication with RBAC (FINANCE role) — existing
-- ✓ API-first design with REST endpoints — existing
-- ✓ Webhook signature validation for security — existing
+- ✓ QuickBooks OAuth integration — v1.0 Phase 1
+- ✓ QuickBooks invoice/customer/payment sync — v1.0 Phase 1
+- ✓ Authentication system (bcryptjs) with RBAC — v1.0 Phase 1
+- ✓ DocuSign integration (webhooks, templates, S3 storage) — v1.0 Phase 2
+- ✓ Finance workflow automation (Deal → Invoice → Contract) — v1.0 Phase 3
+- ✓ BI & Analytics dashboard with charts and exports — v1.0 Phase 4
+- ✓ DocuSign production JWT auth — v1.0 Phase 5
+- ✓ Pipedrive CRM integration — v1.0 Phase 6
+- ✓ Professional UI/UX with WCAG AA compliance — v1.0 Phase 9
+- ✓ Client Hub with custom JWT auth and bilingual i18n — post-Sprint 1
+- ✓ Payment system (QuickBooks Payments card/ACH) — post-Sprint 1
+- ✓ PCI compliance hardening — post-Sprint 1
+- ✓ Changelog/notification system — post-Sprint 1
 
 ### Active
 
-<!-- Sprint 1: Finance Integration Foundation -->
+<!-- v1.1: Brand Identity Reskin -->
 
-- [x] QuickBooks Integration (Phase 1 - Complete)
-  - QuickBooks OAuth flow working
-  - Invoice sync with pagination (5000 invoices)
-  - Customer sync working
-  - Payment sync capability
-  - Authentication system with bcryptjs
-  - Admin dashboard with logout
+- [ ] Design system with new Carreira USA brand tokens
+- [ ] Admin Dashboard reskin to new identity
+- [ ] Client Hub reskin to new identity
+- [ ] Shared components updated with brand tokens
+- [ ] Logo/favicon replacement across both portals
 
-- [ ] DocuSign Integration (Phase 2)
-  - DocuSign API authentication (JWT/OAuth)
-  - Contract template setup and management
-  - Contract generation from deal data
-  - Signature workflow automation
-  - Document storage and retrieval
-  - Webhook handling for signature events
-  - Contract signed → QuickBooks update
+### Out of Scope
 
-- [ ] Finance Workflow Automation (Phase 3)
-  - End-to-end Deal → Invoice → Contract flow
-  - Customer data consistency across QuickBooks and DocuSign
-  - Automated invoice generation when deal is won
-  - Contract generation when invoice is paid
-  - Payment tracking and QuickBooks sync
-  - Finance department dashboard for monitoring
-  - Error handling and manual intervention UI
-
-### Out of Scope (Sprint 1)
-
-- Pipedrive CRM integration — deferred to Sprint 2
-- Twilio WhatsApp integration — deferred to Sprint 2
-- OpenAI chatbot and lead qualification — deferred to Sprint 2
-- Sales and SDR workflows — Sprint 1 is Finance-only
-- Major UI/dashboard overhaul — minimal Finance dashboard is acceptable
-- Migration away from Vercel (must work within serverless constraints) — constraint
-- Real-time features or WebSocket implementation — not critical for Finance workflows
-- Multi-tenant architecture — single tenant system for Carreira U.S.A.
+- New features or functionality — v1.1 is purely visual
+- Layout restructuring — existing page layouts are preserved
+- New pages or routes — no additions
+- Migration away from Vercel — constraint
+- Real-time features or WebSocket implementation
+- Multi-tenant architecture
 
 ## Context
 
@@ -125,7 +116,27 @@ Complete Finance workflow automation — seamless integration between QuickBooks
 | End-to-end workflow last (Phase 3) | Integrate QuickBooks and DocuSign after each works individually | — Pending |
 | Use bcryptjs instead of bcrypt | Vercel serverless compatibility (no native modules) | ✅ Implemented Phase 1.1 |
 | Work within Vercel serverless constraints | Existing hosting platform, no migration budget | ✅ Ongoing |
-| Customer deduplication via email across systems | Email is universal identifier for Finance workflows | — Pending |
+| Customer deduplication via email across systems | Email is universal identifier for Finance workflows | ✅ Working |
+| Brand reskin over full redesign (v1.1) | Preserve working layouts, minimize risk, faster delivery | — v1.1 |
+| Blaak (serif display) + Neue Montreal (sans body) | Match official brand identity guidelines | — v1.1 |
+| Self-host brand fonts via next/font | OTF files bundled in project, no external font CDN | — v1.1 |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd:transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd:complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
 
 ---
-*Last updated: 2026-01-14 — Sprint 1 scope defined (Finance focus)*
+*Last updated: 2026-03-25 — Milestone v1.1 started (Brand Identity Reskin)*
