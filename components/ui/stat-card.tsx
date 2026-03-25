@@ -50,7 +50,7 @@ export function StatCard({
     <div
       className={cn(
         "bg-white border border-gray-200 rounded-xl p-6 overflow-hidden",
-        "hover:border-gold-200 hover:shadow-lg hover:scale-[1.01] transition-all duration-200",
+        "hover:border-brand-caramelo hover:shadow-lg hover:scale-[1.01] transition-all duration-200",
         className
       )}
     >
@@ -60,8 +60,8 @@ export function StatCard({
           {label}
         </p>
         {icon && (
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gold-50">
-            <div className="text-gold-600">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-creme">
+            <div className="text-brand-verde">
               {icon}
             </div>
           </div>
