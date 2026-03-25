@@ -159,6 +159,8 @@ model PlacementTest {
   displayLevel     String
   timeSpentSeconds Int?
   answers          Json
+  questionIds      String[] @default([])
+  questionCount    Int      @default(25)
   createdAt        DateTime @default(now())
 
   customerId       String
