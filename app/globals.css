@@ -1,5 +1,8 @@
-/* Google Fonts - Space Grotesk (Display), Inter (Body), and JetBrains Mono (Code) */
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+/* Brand Token System — Carreira USA v1.1 */
+@import '../styles/tokens/brand.css';
+@import '../styles/tokens/semantic.css';
+@import '../styles/tokens/portal-dashboard.css';
+@import '../styles/tokens/portal-hub.css';
 
 @tailwind base;
 @tailwind components;
