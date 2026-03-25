@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { InvoiceStatus, FormAssignmentStatus } from "@prisma/client";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 function getPayload(token: string) {
   try {
@@ -19,7 +18,7 @@ function getPayload(token: string) {
 function StatusBadge({ status, lang }: { status: InvoiceStatus; lang: Language }) {
   const map: Record<string, { bg: string; text: string; labelKey: "dashboard.paid" | "dashboard.pending" | "dashboard.overdue" | "dashboard.partial" | "dashboard.upcoming" }> = {
     PAID: { bg: "#ECFDF5", text: "#059669", labelKey: "dashboard.paid" },
-    SENT: { bg: "#FFF8E7", text: "#B8962E", labelKey: "dashboard.pending" },
+    SENT: { bg: BRAND_COLORS.CREME, text: BRAND_COLORS.VERDE, labelKey: "dashboard.pending" },
     OVERDUE: { bg: "#FEF2F2", text: "#DC2626", labelKey: "dashboard.overdue" },
     PARTIALLY_PAID: { bg: "#FFF7ED", text: "#EA580C", labelKey: "dashboard.partial" },
     DRAFT: { bg: "#F3F4F6", text: "#6B7280", labelKey: "dashboard.upcoming" },
@@ -131,8 +130,8 @@ export default async function HubDashboardPage() {
 
         <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
-              <svg className="w-5 h-5" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-brand-creme">
+              <svg className="w-5 h-5 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
@@ -154,25 +153,25 @@ export default async function HubDashboardPage() {
       {/* Quick Links */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
         <Link href="/hub/status" className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100 hover:border-gray-200 transition-colors text-center">
-          <svg className="w-6 h-6 mx-auto mb-2" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 mx-auto mb-2 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
           <p className="text-xs font-medium text-gray-600">{t(lang, "dashboard.myProgress")}</p>
         </Link>
         <Link href="/hub/documents" className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100 hover:border-gray-200 transition-colors text-center">
-          <svg className="w-6 h-6 mx-auto mb-2" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 mx-auto mb-2 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
           </svg>
           <p className="text-xs font-medium text-gray-600">{t(lang, "dashboard.documents")}</p>
         </Link>
         <Link href="/hub/forms" className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100 hover:border-gray-200 transition-colors text-center">
-          <svg className="w-6 h-6 mx-auto mb-2" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 mx-auto mb-2 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
           <p className="text-xs font-medium text-gray-600">{t(lang, "dashboard.forms")}</p>
         </Link>
         <Link href="/hub/test" className="bg-white rounded-2xl shadow-sm p-4 border border-gray-100 hover:border-gray-200 transition-colors text-center">
-          <svg className="w-6 h-6 mx-auto mb-2" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-6 h-6 mx-auto mb-2 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
           <p className="text-xs font-medium text-gray-600">{t(lang, "dashboard.englishTest")}</p>
@@ -190,8 +189,8 @@ export default async function HubDashboardPage() {
 
       {invoices.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
-            <svg className="w-8 h-8" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center bg-brand-creme">
+            <svg className="w-8 h-8 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
           </div>
@@ -218,7 +217,7 @@ export default async function HubDashboardPage() {
                             : inv.status === "OVERDUE"
                             ? "#DC2626"
                             : inv.status === "SENT"
-                            ? GOLD
+                            ? BRAND_COLORS.TANGERINA
                             : "#9CA3AF",
                       }}
                     />
@@ -251,8 +250,7 @@ export default async function HubDashboardPage() {
                     {canPay(inv.status) ? (
                       <Link
                         href={`/hub/pay/${inv.id}`}
-                        className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition hover:opacity-90 whitespace-nowrap"
-                        style={{ backgroundColor: GOLD }}
+                        className="px-4 py-2 rounded-lg text-white text-xs font-semibold transition hover:opacity-90 whitespace-nowrap bg-brand-tangerina"
                       >
                         {t(lang, "dashboard.payNow")}
                       </Link>
@@ -303,13 +301,13 @@ async function FormsAndTestCards({ customerId, lang }: { customerId: string; lan
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">{t(lang, "dashboard.forms")}</p>
               {pendingForms > 0 ? (
-                <p className="text-sm font-semibold" style={{ color: GOLD }}>{pendingForms} {t(lang, "dashboard.pending")}</p>
+                <p className="text-sm font-semibold text-brand-verde">{pendingForms} {t(lang, "dashboard.pending")}</p>
               ) : (
                 <p className="text-sm font-semibold text-green-600">{t(lang, "dashboard.allCompleted")}</p>
               )}
             </div>
           </div>
-          <p className="text-xs mt-3" style={{ color: GOLD }}>
+          <p className="text-xs mt-3 text-brand-verde">
             {pendingForms > 0 ? `${t(lang, "dashboard.fillNow")} \u2192` : `${t(lang, "dashboard.view")} \u2192`}
           </p>
         </Link>
@@ -321,8 +319,8 @@ async function FormsAndTestCards({ customerId, lang }: { customerId: string; lan
         className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 hover:border-gray-200 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
-            <svg className="w-5 h-5" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-brand-creme">
+            <svg className="w-5 h-5 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
             </svg>
           </div>
@@ -337,7 +335,7 @@ async function FormsAndTestCards({ customerId, lang }: { customerId: string; lan
             )}
           </div>
         </div>
-        <p className="text-xs mt-3" style={{ color: GOLD }}>
+        <p className="text-xs mt-3 text-brand-verde">
           {latestTest ? `${t(lang, "dashboard.retake")} \u2192` : `${t(lang, "dashboard.takeTest")} \u2192`}
         </p>
       </Link>

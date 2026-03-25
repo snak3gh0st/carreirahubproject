@@ -2,8 +2,7 @@
 
 import { useState, FormEvent, useEffect } from "react";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 function getLangFromCookie(): Language {
   try {
@@ -139,9 +138,9 @@ export default function HubSettingsPage() {
             onClick={() => handleLanguageChange("en")}
             className="flex-1 py-3 rounded-xl font-medium text-sm transition border"
             style={{
-              backgroundColor: language === "en" ? GOLD : "transparent",
+              backgroundColor: language === "en" ? BRAND_COLORS.TANGERINA : "transparent",
               color: language === "en" ? "#fff" : "#6B7280",
-              borderColor: language === "en" ? GOLD : "#E5E7EB",
+              borderColor: language === "en" ? BRAND_COLORS.TANGERINA : "#E5E7EB",
             }}
           >
             English
@@ -150,9 +149,9 @@ export default function HubSettingsPage() {
             onClick={() => handleLanguageChange("pt-BR")}
             className="flex-1 py-3 rounded-xl font-medium text-sm transition border"
             style={{
-              backgroundColor: language === "pt-BR" ? GOLD : "transparent",
+              backgroundColor: language === "pt-BR" ? BRAND_COLORS.TANGERINA : "transparent",
               color: language === "pt-BR" ? "#fff" : "#6B7280",
-              borderColor: language === "pt-BR" ? GOLD : "#E5E7EB",
+              borderColor: language === "pt-BR" ? BRAND_COLORS.TANGERINA : "#E5E7EB",
             }}
           >
             Portugu&ecirc;s
@@ -173,9 +172,7 @@ export default function HubSettingsPage() {
               value={currentPassword}
               onChange={(e) => setCurrentPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-              onFocus={(e) => (e.target.style.borderColor = GOLD)}
-              onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
             />
           </div>
           <div>
@@ -186,9 +183,7 @@ export default function HubSettingsPage() {
               onChange={(e) => setNewPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-              onFocus={(e) => (e.target.style.borderColor = GOLD)}
-              onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
             />
           </div>
           <div>
@@ -198,16 +193,13 @@ export default function HubSettingsPage() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-              onFocus={(e) => (e.target.style.borderColor = GOLD)}
-              onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60"
-            style={{ backgroundColor: GOLD }}
+            className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
           >
             {loading ? t(lang, "settings.updating") : t(lang, "settings.updatePassword")}
           </button>
