@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 interface Question {
   id: string;
@@ -100,7 +99,7 @@ export default function HubTestPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin w-8 h-8 border-4 border-gray-200 rounded-full" style={{ borderTopColor: GOLD }} />
+        <div className="animate-spin w-8 h-8 border-4 border-gray-200 rounded-full" style={{ borderTopColor: BRAND_COLORS.TANGERINA }} />
       </div>
     );
   }
@@ -109,8 +108,8 @@ export default function HubTestPage() {
   if (currentSection === 0) {
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
-        <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
-          <svg className="w-10 h-10" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: BRAND_COLORS.CREME }}>
+          <svg className="w-10 h-10" style={{ color: BRAND_COLORS.TANGERINA }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
           </svg>
         </div>
@@ -122,7 +121,7 @@ export default function HubTestPage() {
         <button
           onClick={handleStart}
           className="px-8 py-4 rounded-xl text-white font-semibold text-lg transition hover:opacity-90"
-          style={{ backgroundColor: GOLD }}
+          style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
         >
           {t(lang, "test.startTest")}
         </button>
@@ -146,7 +145,7 @@ export default function HubTestPage() {
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{ backgroundColor: GOLD, width: `${(currentSection / 5) * 100}%` }}
+            style={{ backgroundColor: BRAND_COLORS.TANGERINA, width: `${(currentSection / 5) * 100}%` }}
           />
         </div>
       </div>
@@ -163,7 +162,7 @@ export default function HubTestPage() {
         {sectionQuestions.map((q, qi) => (
           <div key={q.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             {q.passage && (
-              <div className="mb-4 p-4 bg-gray-50 rounded-xl text-sm text-gray-700 italic border-l-4" style={{ borderColor: GOLD }}>
+              <div className="mb-4 p-4 bg-gray-50 rounded-xl text-sm text-gray-700 italic border-l-4" style={{ borderColor: BRAND_COLORS.TANGERINA }}>
                 {q.passage}
               </div>
             )}
@@ -180,7 +179,7 @@ export default function HubTestPage() {
                       ? "border-2"
                       : "border-gray-100 hover:border-gray-200"
                   }`}
-                  style={answers[q.id] === oi ? { borderColor: GOLD, backgroundColor: "#FFF8E7" } : {}}
+                  style={answers[q.id] === oi ? { borderColor: BRAND_COLORS.TANGERINA, backgroundColor: BRAND_COLORS.CREME } : {}}
                 >
                   <input
                     type="radio"
@@ -192,11 +191,11 @@ export default function HubTestPage() {
                   <div
                     className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
                     style={{
-                      borderColor: answers[q.id] === oi ? GOLD : "#D1D5DB",
+                      borderColor: answers[q.id] === oi ? BRAND_COLORS.TANGERINA : "#D1D5DB",
                     }}
                   >
                     {answers[q.id] === oi && (
-                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: GOLD }} />
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: BRAND_COLORS.TANGERINA }} />
                     )}
                   </div>
                   <span className="text-sm text-gray-700">{opt}</span>
@@ -231,7 +230,7 @@ export default function HubTestPage() {
             onClick={handleNext}
             disabled={!allAnswered}
             className="px-6 py-3 rounded-xl text-white font-medium text-sm transition disabled:opacity-40"
-            style={{ backgroundColor: GOLD }}
+            style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
           >
             {t(lang, "test.nextSection")} &rarr;
           </button>
@@ -240,7 +239,7 @@ export default function HubTestPage() {
             onClick={handleSubmit}
             disabled={!allAnswered || submitting}
             className="px-8 py-3 rounded-xl text-white font-semibold text-sm transition disabled:opacity-40"
-            style={{ backgroundColor: GOLD }}
+            style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
           >
             {submitting ? t(lang, "test.submitting") : t(lang, "test.submitTest")}
           </button>

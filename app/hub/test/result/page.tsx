@@ -3,12 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
   Beginner: { bg: "#FEF2F2", text: "#DC2626" },
-  Intermediate: { bg: "#FFF8E7", text: "#B8962E" },
+  Intermediate: { bg: BRAND_COLORS.CREME, text: BRAND_COLORS.VERDE },
   Advanced: { bg: "#EFF6FF", text: "#2563EB" },
   Fluent: { bg: "#ECFDF5", text: "#059669" },
 };
@@ -114,8 +113,7 @@ export default async function HubTestResultPage() {
         </Link>
         <Link
           href="/hub/test"
-          className="flex-1 py-3 text-center rounded-xl text-white font-medium text-sm transition hover:opacity-90"
-          style={{ backgroundColor: GOLD }}
+          className="flex-1 py-3 text-center rounded-xl text-white font-medium text-sm transition hover:opacity-90 bg-brand-tangerina"
         >
           {t(lang, "testResult.retakeTest")}
         </Link>

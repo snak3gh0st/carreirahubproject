@@ -3,8 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { ContractStatus, InvoiceStatus, FormAssignmentStatus } from "@prisma/client";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 function getPayload(token: string) {
   try {
@@ -111,12 +110,12 @@ export default async function HubStatusPage() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-8">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-gray-700">{t(lang, "status.overallProgress")}</span>
-          <span className="text-sm font-bold" style={{ color: GOLD }}>{progress}%</span>
+          <span className="text-sm font-bold" style={{ color: BRAND_COLORS.TANGERINA }}>{progress}%</span>
         </div>
         <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-700"
-            style={{ backgroundColor: GOLD, width: `${progress}%` }}
+            style={{ backgroundColor: BRAND_COLORS.TANGERINA, width: `${progress}%` }}
           />
         </div>
       </div>
@@ -133,7 +132,7 @@ export default async function HubStatusPage() {
               className={`bg-white rounded-2xl shadow-sm border p-6 transition-colors ${
                 isCurrent ? "border-2" : "border-gray-100"
               }`}
-              style={isCurrent ? { borderColor: GOLD } : {}}
+              style={isCurrent ? { borderColor: BRAND_COLORS.TANGERINA } : {}}
             >
               <div className="flex items-start gap-4">
                 {/* Step icon */}
@@ -150,7 +149,7 @@ export default async function HubStatusPage() {
                   ) : (
                     <svg
                       className="w-6 h-6"
-                      style={{ color: isCurrent ? GOLD : "#9CA3AF" }}
+                      style={{ color: isCurrent ? BRAND_COLORS.TANGERINA : "#9CA3AF" }}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -167,7 +166,7 @@ export default async function HubStatusPage() {
                       {step.label}
                     </h3>
                     {isCurrent && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: GOLD }}>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: BRAND_COLORS.TANGERINA }}>
                         {t(lang, "status.current")}
                       </span>
                     )}
