@@ -3,8 +3,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 interface FormField {
   id: string;
@@ -125,7 +124,7 @@ export default function HubFormFillPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin w-8 h-8 border-4 border-gray-200 rounded-full" style={{ borderTopColor: GOLD }} />
+        <div className="animate-spin w-8 h-8 border-4 border-gray-200 rounded-full border-t-brand-tangerina" />
       </div>
     );
   }
@@ -162,9 +161,7 @@ export default function HubFormFillPage() {
                   onChange={(e) => setAnswers((p) => ({ ...p, [field.id]: e.target.value }))}
                   required={field.required}
                   readOnly={isReadOnly}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                  onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
                 />
               )}
 
@@ -175,9 +172,7 @@ export default function HubFormFillPage() {
                   required={field.required}
                   readOnly={isReadOnly}
                   rows={4}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition resize-none"
-                  onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition resize-none"
                 />
               )}
 
@@ -188,9 +183,7 @@ export default function HubFormFillPage() {
                   onChange={(e) => setAnswers((p) => ({ ...p, [field.id]: e.target.value }))}
                   required={field.required}
                   readOnly={isReadOnly}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                  onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
                 />
               )}
 
@@ -201,9 +194,7 @@ export default function HubFormFillPage() {
                   onChange={(e) => setAnswers((p) => ({ ...p, [field.id]: e.target.value }))}
                   required={field.required}
                   readOnly={isReadOnly}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                  onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
                 />
               )}
 
@@ -213,9 +204,7 @@ export default function HubFormFillPage() {
                   onChange={(e) => setAnswers((p) => ({ ...p, [field.id]: e.target.value }))}
                   required={field.required}
                   disabled={isReadOnly}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition bg-white"
-                  onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition bg-white"
                 >
                   <option value="">{t(lang, "forms.select")}</option>
                   {field.options?.map((opt) => (
@@ -230,7 +219,7 @@ export default function HubFormFillPage() {
                 <div className="space-y-2">
                   {field.options?.map((opt) => (
                     <label key={opt.value} className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl cursor-pointer transition hover:border-gray-300"
-                      style={answers[field.id] === opt.value ? { borderColor: GOLD, backgroundColor: "#FDFBF5" } : {}}
+                      style={answers[field.id] === opt.value ? { borderColor: BRAND_COLORS.TANGERINA, backgroundColor: BRAND_COLORS.CREME } : {}}
                     >
                       <input
                         type="radio"
@@ -239,7 +228,8 @@ export default function HubFormFillPage() {
                         checked={answers[field.id] === opt.value}
                         onChange={() => setAnswers((p) => ({ ...p, [field.id]: opt.value }))}
                         disabled={isReadOnly}
-                        className="w-4 h-4 accent-[#C9A84C]"
+                        className="w-4 h-4"
+                        style={{ accentColor: BRAND_COLORS.TANGERINA }}
                       />
                       <span className="text-sm text-gray-700">
                         {isPt && opt.labelPt ? opt.labelPt : opt.label}
@@ -266,7 +256,7 @@ export default function HubFormFillPage() {
                           className="w-10 h-10 rounded-lg border text-sm font-medium transition"
                           style={
                             answers[field.id] === v
-                              ? { backgroundColor: GOLD, borderColor: GOLD, color: "#fff" }
+                              ? { backgroundColor: BRAND_COLORS.TANGERINA, borderColor: BRAND_COLORS.TANGERINA, color: "#fff" }
                               : { borderColor: "#E5E7EB", color: "#374151" }
                           }
                         >
@@ -338,8 +328,7 @@ export default function HubFormFillPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-4 rounded-xl text-white font-semibold text-base transition disabled:opacity-60"
-              style={{ backgroundColor: GOLD }}
+              className="w-full py-4 rounded-xl text-white font-semibold text-base transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
             >
               {submitting ? t(lang, "forms.submitting") : t(lang, "forms.submitForm")}
             </button>

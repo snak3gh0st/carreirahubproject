@@ -4,8 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { FORM_TEMPLATES } from "@/lib/hub/form-templates";
 import { t, Language } from "@/lib/i18n/hub";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 function getPayload(token: string) {
   try {
@@ -18,7 +17,7 @@ function getPayload(token: string) {
 
 function StatusBadge({ status, lang }: { status: string; lang: Language }) {
   const map: Record<string, { bg: string; text: string; labelKey: "forms.statusPending" | "forms.statusInProgress" | "forms.statusCompleted" }> = {
-    PENDING: { bg: "#FFF8E7", text: "#B8962E", labelKey: "forms.statusPending" },
+    PENDING: { bg: BRAND_COLORS.CREME, text: BRAND_COLORS.VERDE, labelKey: "forms.statusPending" },
     IN_PROGRESS: { bg: "#EFF6FF", text: "#2563EB", labelKey: "forms.statusInProgress" },
     COMPLETED: { bg: "#ECFDF5", text: "#059669", labelKey: "forms.statusCompleted" },
   };
@@ -78,7 +77,7 @@ export default async function HubFormsPage() {
                   <div className="flex items-center gap-3">
                     <StatusBadge status={a.status} lang={lang} />
                     {a.status !== "COMPLETED" && (
-                      <span className="text-sm font-medium" style={{ color: GOLD }}>{t(lang, "forms.fillNow")} &rarr;</span>
+                      <span className="text-sm font-medium text-brand-verde">{t(lang, "forms.fillNow")} &rarr;</span>
                     )}
                   </div>
                 </div>

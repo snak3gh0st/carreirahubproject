@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const GOLD = "#C9A84C";
+import { BRAND_COLORS } from "@/lib/constants/brand";
 
 export default function LanguageToggle({ currentLang }: { currentLang: string }) {
   const router = useRouter();
@@ -33,7 +32,7 @@ export default function LanguageToggle({ currentLang }: { currentLang: string })
         disabled={loading}
         className="px-3 py-1.5 transition-colors font-medium"
         style={{
-          backgroundColor: isEn ? GOLD : "transparent",
+          backgroundColor: isEn ? BRAND_COLORS.TANGERINA : "transparent",
           color: isEn ? "#fff" : "#9CA3AF",
         }}
       >
@@ -44,7 +43,7 @@ export default function LanguageToggle({ currentLang }: { currentLang: string })
         disabled={loading}
         className="px-3 py-1.5 transition-colors font-medium"
         style={{
-          backgroundColor: !isEn ? GOLD : "transparent",
+          backgroundColor: !isEn ? BRAND_COLORS.TANGERINA : "transparent",
           color: !isEn ? "#fff" : "#9CA3AF",
         }}
       >
