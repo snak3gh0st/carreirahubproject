@@ -154,7 +154,7 @@ Plans:
 
 **Milestone Goal:** Apply the new Carreira USA visual identity across both portals — colors, typography, logos, and visual tokens — while preserving all existing layouts and functionality.
 
-- [ ] **Phase 10: Token & Font Foundation** - Design system with Carreira USA brand tokens, Blaak/Neue Montreal fonts, and CSS custom property architecture
+- [x] **Phase 10: Token & Font Foundation** - Design system with Carreira USA brand tokens, Blaak/Neue Montreal fonts, and CSS custom property architecture (completed 2026-03-25)
 - [ ] **Phase 11: Portal Shell Reskin** - Admin Dashboard sidebar/components and Client Hub layout/pages migrated to brand tokens, with logo replacement
 - [ ] **Phase 12: Chart Rebrand & Brand Polish** - All Recharts charts updated to brand palette, focus rings/badges updated, WCAG AA validated
 
@@ -175,7 +175,7 @@ Plans:
 
 Plans:
 - [x] 10-01-PLAN.md — Create foundation files: font binaries, font definitions, brand constants, CSS token hierarchy
-- [ ] 10-02-PLAN.md — Wire infrastructure into codebase: update globals.css, layout.tsx, tailwind.config.ts
+- [x] 10-02-PLAN.md — Wire infrastructure into codebase: update globals.css, layout.tsx, tailwind.config.ts
 
 ### Phase 11: Portal Shell Reskin
 **Goal**: Both portals look and feel like Carreira USA — Admin Dashboard sidebar, shared components, Hub layout, Hub login, and logos are all on-brand
@@ -222,6 +222,6 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 5. DocuSign Production Setup | v1.0 | 2/2 | Complete | 2026-01-29 |
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
-| 10. Token & Font Foundation | v1.1 | 1/2 | In Progress|  |
+| 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
 | 11. Portal Shell Reskin | v1.1 | 0/TBD | Not started | - |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
