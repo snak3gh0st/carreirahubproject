@@ -1,0 +1,34 @@
+/* styles/tokens/brand.css — Layer 1: Brand Primitives
+   Source: Carreira USA official color guide (Paleta de Cores Carreira USA.pdf)
+   These are the canonical CSS source for brand colors.
+   Mirrors lib/constants/brand.ts for non-CSS consumers. */
+
+:root {
+  /* === Brand Palette === */
+  --brand-creme:        #FFF8E8;
+  --brand-verde:        #2F443F;
+  --brand-tangerina:    #FF8142;
+  --brand-cafe:         #E1C19B;
+  --brand-caramelo:     #BD925F;
+
+  /* === Verde scale (approximate — verify via tints.dev before Phase 11) === */
+  --brand-verde-50:     #EDF2F1;
+  --brand-verde-100:    #CCDAD7;
+  --brand-verde-200:    #AABFBA;
+  --brand-verde-300:    #7FA09A;
+  --brand-verde-400:    #587A73;
+  --brand-verde-500:    #2F443F;
+  --brand-verde-600:    #273A36;
+  --brand-verde-700:    #1F302C;
+  --brand-verde-800:    #1A2724;
+  --brand-verde-900:    #131D1B;
+
+  /* === Tangerina scale (approximate — verify via tints.dev before Phase 11) === */
+  --brand-tangerina-50:  #FFF0E8;
+  --brand-tangerina-100: #FFD5BC;
+  --brand-tangerina-200: #FFBA90;
+  --brand-tangerina-300: #FF9E64;
+  --brand-tangerina-400: #FF8142;
+  --brand-tangerina-500: #E66E34;
+  --brand-tangerina-600: #CC5C28;
+}

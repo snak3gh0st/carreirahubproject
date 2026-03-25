@@ -1,0 +1,9 @@
+/* styles/tokens/portal-dashboard.css — Layer 3: Dashboard Portal Overrides
+   Applied via [data-portal="dashboard"] on the dashboard layout wrapper.
+   Dashboard keeps gray-50 page background (not Creme). */
+
+[data-portal="dashboard"] {
+  --color-surface-page:     #F9FAFB;  /* gray-50 — dashboard stays neutral */
+  --color-sidebar-bg:       var(--brand-verde);
+  --color-sidebar-active:   var(--brand-tangerina);
+}

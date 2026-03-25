@@ -1,0 +1,27 @@
+/* styles/tokens/semantic.css — Layer 2: Semantic Role Aliases
+   Maps brand primitives to functional roles.
+   Components should reference these, not brand.css primitives. */
+
+:root {
+  /* === Color roles === */
+  --color-primary:          var(--brand-verde);
+  --color-accent:           var(--brand-tangerina);
+  --color-surface-base:     var(--brand-creme);
+  --color-surface-warm:     var(--brand-cafe);
+  --color-surface-mid:      var(--brand-caramelo);
+
+  /* === Text roles === */
+  --color-text-primary:     var(--brand-verde);
+  --color-text-on-dark:     var(--brand-creme);
+  --color-text-accent:      var(--brand-tangerina);  /* ONLY on dark backgrounds */
+
+  /* === Interactive roles === */
+  --color-interactive:      var(--brand-verde);
+  --color-interactive-hover: var(--brand-verde-700);
+  --color-accent-hover:     var(--brand-tangerina-500);
+
+  /* === Surface roles === */
+  --color-surface-page:     var(--brand-creme);       /* Default — portals override */
+  --color-sidebar-bg:       var(--brand-verde);
+  --color-sidebar-active:   var(--brand-tangerina);
+}
