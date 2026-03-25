@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/hub/test/result
- * Get the latest placement test result for the authenticated client.
+ * Get the latest completed placement test result for the authenticated client.
+ * Excludes pending tests (totalScore: -1).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     const test = await prisma.placementTest.findFirst({
-      where: { customerId: auth.customerId },
+      where: { customerId: auth.customerId, totalScore: { not: -1 } },
       orderBy: { createdAt: "desc" },
     });
 
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
         section4Score: test.section4Score,
         section5Score: test.section5Score,
         totalScore: test.totalScore,
+        questionCount: test.questionCount,
         percentage: test.percentage,
         cefrLevel: test.cefrLevel,
         displayLevel: test.displayLevel,

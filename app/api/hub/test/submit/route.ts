@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
-import { calculateScore } from "@/lib/hub/english-test";
+import { scoreAnswers } from "@/lib/hub/question-bank";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/hub/test/submit
- * Submit test answers, calculate score, persist result.
+ * Submit test answers, score against the specific questions served, persist result.
+ * Requires a valid testId matching a pending PlacementTest record.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -22,9 +23,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { answers, timeSpentSeconds } = body as {
+    const { answers, timeSpentSeconds, testId } = body as {
       answers: Record<string, number>;
       timeSpentSeconds?: number;
+      testId?: string;
     };
 
     if (!answers || typeof answers !== "object") {
@@ -34,22 +36,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate score using the contiguous algorithm
-    const score = calculateScore(answers);
+    if (!testId) {
+      return NextResponse.json(
+        { error: "Missing testId" },
+        { status: 400 }
+      );
+    }
 
-    // Persist placement test result
-    await prisma.placementTest.create({
+    // Find the pending test for this student
+    const pendingTest = await prisma.placementTest.findFirst({
+      where: { id: testId, customerId: auth.customerId, totalScore: -1 },
+    });
+
+    if (!pendingTest) {
+      return NextResponse.json(
+        { error: "No pending test found or already submitted" },
+        { status: 400 }
+      );
+    }
+
+    // Score using the specific questions that were served
+    const result = scoreAnswers(answers, pendingTest.questionIds);
+
+    // Update the pending record (not create a new one)
+    await prisma.placementTest.update({
+      where: { id: pendingTest.id },
       data: {
-        customerId: auth.customerId,
-        section1Score: score.sectionScores[0],
-        section2Score: score.sectionScores[1],
-        section3Score: score.sectionScores[2],
-        section4Score: score.sectionScores[3],
-        section5Score: score.sectionScores[4],
-        totalScore: score.totalScore,
-        percentage: score.percentage,
-        cefrLevel: score.cefrLevel,
-        displayLevel: score.displayLevel,
+        section1Score: result.sectionScores[0],
+        section2Score: result.sectionScores[1],
+        section3Score: result.sectionScores[2],
+        section4Score: result.sectionScores[3],
+        section5Score: result.sectionScores[4],
+        totalScore: result.totalScore,
+        percentage: result.percentage,
+        cefrLevel: result.cefrLevel,
+        displayLevel: result.displayLevel,
         timeSpentSeconds: timeSpentSeconds ?? null,
         answers,
       },
@@ -62,12 +83,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       result: {
-        sectionScores: score.sectionScores,
-        totalScore: score.totalScore,
-        percentage: score.percentage,
-        cefrLevel: score.cefrLevel,
-        displayLevel: score.displayLevel,
-        displayLevelPt: score.displayLevelPt,
+        sectionScores: result.sectionScores,
+        sectionMaxes: result.sectionMaxes,
+        totalScore: result.totalScore,
+        questionCount: pendingTest.questionCount,
+        percentage: result.percentage,
+        cefrLevel: result.cefrLevel,
+        displayLevel: result.displayLevel,
+        displayLevelPt: result.displayLevelPt,
       },
     });
   } catch (error) {
