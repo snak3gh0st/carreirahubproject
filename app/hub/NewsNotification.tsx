@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { changelog, APP_VERSION, type ChangelogEntry } from "@/lib/changelog";
+import { hubChangelog as changelog, APP_VERSION, type ChangelogEntry } from "@/lib/changelog";
 
 type Lang = "en" | "pt" | "pt-BR";
 
