@@ -16,19 +16,19 @@ Requirements for brand identity reskin. Each maps to roadmap phases.
 
 ### Admin Dashboard
 
-- [ ] **DASH-01**: Sidebar uses Verde (#2F443F) background with Tangerina active states and new brand logo
+- [x] **DASH-01**: Sidebar uses Verde (#2F443F) background with Tangerina active states and new brand logo
 - [ ] **DASH-02**: Shared components (Button, Card, StatCard, Badge, Input) consume new brand tokens via CSS variables
 - [ ] **DASH-03**: All Recharts chart components use brand palette colors (Verde, Tangerina, Cafe com Leite, Caramelo)
 
 ### Client Hub
 
 - [ ] **HUB-01**: All hardcoded hex literals and GOLD constants across hub files replaced with token classes
-- [ ] **HUB-02**: Hub layout uses Creme surface backgrounds, Verde text, Tangerina accents, brand logo in header
+- [x] **HUB-02**: Hub layout uses Creme surface backgrounds, Verde text, Tangerina accents, brand logo in header
 - [ ] **HUB-03**: Login page features Verde + Creme hero treatment with Blaak headline and Tangerina CTA
 
 ### Brand Assets & Polish
 
-- [ ] **BRD-01**: Favicon and logo assets replaced across both portals with new Carreira USA brand mark
+- [x] **BRD-01**: Favicon and logo assets replaced across both portals with new Carreira USA brand mark
 - [ ] **BRD-02**: Focus rings, status badges, and interactive states updated to brand colors with WCAG AA contrast
 
 ## Future Requirements
@@ -71,12 +71,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TKN-02 | Phase 10 | Complete |
 | TKN-03 | Phase 10 | Complete |
 | TKN-04 | Phase 10 | Complete |
-| DASH-01 | Phase 11 | Pending |
+| DASH-01 | Phase 11 | Complete |
 | DASH-02 | Phase 11 | Pending |
 | HUB-01 | Phase 11 | Pending |
-| HUB-02 | Phase 11 | Pending |
+| HUB-02 | Phase 11 | Complete |
 | HUB-03 | Phase 11 | Pending |
-| BRD-01 | Phase 11 | Pending |
+| BRD-01 | Phase 11 | Complete |
 | DASH-03 | Phase 12 | Pending |
 | BRD-02 | Phase 12 | Pending |
 
