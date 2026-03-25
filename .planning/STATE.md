@@ -80,6 +80,10 @@ Recent decisions affecting current work:
 - [Phase 10-token-font-foundation]: Brand token Tailwind utilities are additive — all Phase 9 colors preserved intact
 - [Phase 11]: Two-tone Logo by default with mono prop for monochrome contexts — Preserves brand fidelity while supporting dark backgrounds (sidebar) and light backgrounds (hub header)
 
+### Roadmap Evolution
+
+- Phase 13 added: CEFR English Proficiency Test Engine — scientifically validated placement test with randomized question bank (100-200+ questions, A1-C2), adaptive scoring, no-repeat guarantee
+
 ### Blockers/Concerns
 
 - **Logo assets**: Logo integration (Phase 11) requires compass/arrow SVG files from brand team. If unavailable before Phase 11, implement Logo.tsx with placeholder and merge paths as follow-up commit

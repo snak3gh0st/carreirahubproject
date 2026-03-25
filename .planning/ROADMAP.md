@@ -210,6 +210,16 @@ Plans:
 **Plans**: TBD
 **UI hint**: yes
 
+### Phase 13: CEFR English Proficiency Test Engine
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 13 to break down)
+
 ---
 
 ## Progress
