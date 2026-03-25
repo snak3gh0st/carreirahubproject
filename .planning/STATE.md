@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
-status: Ready to execute
-stopped_at: Completed 13-02-PLAN.md
-last_updated: "2026-03-25T22:53:14.686Z"
+status: Milestone complete
+stopped_at: Completed 13-cefr-english-proficiency-test-engine-03-PLAN.md
+last_updated: "2026-03-25T23:06:57.646Z"
 progress:
   total_phases: 4
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
+  completed_plans: 10
 ---
 
 # Project State
@@ -24,8 +24,8 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 
 ## Current Position
 
-Phase: 13 (cefr-english-proficiency-test-engine) — EXECUTING
-Plan: 3 of 3
+Phase: 13
+Plan: Not started
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Plan: 3 of 3
 | Phase 11 P05 | 5 min | 2 tasks | 6 files |
 | Phase 13-cefr-english-proficiency-test-engine P01 | 4 | 2 tasks | 10 files |
 | Phase 13-cefr-english-proficiency-test-engine P02 | 4 | 2 tasks | 4 files |
+| Phase 13-cefr-english-proficiency-test-engine P03 | 4 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,9 @@ Recent decisions affecting current work:
 - [Phase 13-cefr-english-proficiency-test-engine]: Backward-compatible schema defaults: questionIds String[] @default([]), questionCount Int @default(25)
 - [Phase 13-cefr-english-proficiency-test-engine]: Reading comprehension passages paired as two questions per passage — enables single passage load with two test items for B1/B2 sections
 - [Phase 13-cefr-english-proficiency-test-engine]: C2 targets near-native subtleties: academic hedging, moot/begging-the-question vocab, rhetorical device identification, dangling/misplaced modifiers
+- [Phase 13-cefr-english-proficiency-test-engine]: totalScore=-1 as pending sentinel — avoids nullable field, reuses existing Int column
+- [Phase 13-cefr-english-proficiency-test-engine]: Update-not-create on submit — preserves pending record with questionIds for exact scoring
+- [Phase 13-cefr-english-proficiency-test-engine]: questionCount||25 fallback — backward compatible with pre-Plan 01 test records
 
 ### Roadmap Evolution
 
@@ -99,7 +103,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-25T22:53:14.683Z
-Stopped at: Completed 13-02-PLAN.md
+Last session: 2026-03-25T23:01:22.266Z
+Stopped at: Completed 13-cefr-english-proficiency-test-engine-03-PLAN.md
 Resume file: None
 Next action: `/gsd:plan-phase 10` to plan Token & Font Foundation

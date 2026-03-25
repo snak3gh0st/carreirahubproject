@@ -250,4 +250,4 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
 | 11. Portal Shell Reskin | v1.1 | 5/5 | Complete    | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
-| 13. CEFR English Proficiency Test Engine | - | 2/3 | In Progress|  |
+| 13. CEFR English Proficiency Test Engine | - | 2/3 | Complete    | 2026-03-25 |
