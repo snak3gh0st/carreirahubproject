@@ -224,8 +224,8 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Question bank types, infrastructure (randomizer + scoring), schema migration, A1/A2 questions
-- [ ] 13-02-PLAN.md — Question bank content: B1, B2, C1, C2 questions (88+ questions completing the 130+ bank)
+- [x] 13-01-PLAN.md — Question bank types, infrastructure (randomizer + scoring), schema migration, A1/A2 questions
+- [x] 13-02-PLAN.md — Question bank content: B1, B2, C1, C2 questions (88+ questions completing the 130+ bank)
 - [ ] 13-03-PLAN.md — API route rewrites, test UI integration, admin display updates, i18n
 
 ---
@@ -250,4 +250,4 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
 | 11. Portal Shell Reskin | v1.1 | 5/5 | Complete    | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
-| 13. CEFR English Proficiency Test Engine | - | 0/3 | Planned    |  |
+| 13. CEFR English Proficiency Test Engine | - | 2/3 | In Progress|  |

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
-status: Ready to plan
-stopped_at: Completed 11-portal-shell-reskin-05-PLAN.md
-last_updated: "2026-03-25T20:50:14.961Z"
+status: Ready to execute
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-03-25T22:53:14.686Z"
 progress:
-  total_phases: 3
+  total_phases: 4
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 9
 ---
 
 # Project State
@@ -20,12 +20,12 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Complete Finance workflow automation — seamless integration between QuickBooks and DocuSign to handle invoicing and contracts without manual data entry or lost transactions.
 
-**Current focus:** Phase 11 — portal-shell-reskin
+**Current focus:** Phase 13 — cefr-english-proficiency-test-engine
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
+Phase: 13 (cefr-english-proficiency-test-engine) — EXECUTING
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -57,6 +57,8 @@ Plan: Not started
 | Phase 11 P03 | 2 min | 2 tasks | 3 files |
 | Phase 11 P04 | 5 min | 2 tasks | 5 files |
 | Phase 11 P05 | 5 min | 2 tasks | 6 files |
+| Phase 13-cefr-english-proficiency-test-engine P01 | 4 | 2 tasks | 10 files |
+| Phase 13-cefr-english-proficiency-test-engine P02 | 4 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -79,6 +81,11 @@ Recent decisions affecting current work:
 - [Phase 10-token-font-foundation]: body uses font-sans antialiased class (Tailwind) rather than inter.className — cleaner separation between font variable injection (html) and usage (body)
 - [Phase 10-token-font-foundation]: Brand token Tailwind utilities are additive — all Phase 9 colors preserved intact
 - [Phase 11]: Two-tone Logo by default with mono prop for monochrome contexts — Preserves brand fidelity while supporting dark backgrounds (sidebar) and light backgrounds (hub header)
+- [Phase 13-cefr-english-proficiency-test-engine]: Question bank stored as TypeScript constant arrays (not DB) — developer-authored content, version-controlled, type-safe, zero DB overhead
+- [Phase 13-cefr-english-proficiency-test-engine]: 60% pass threshold (Math.ceil(count * 0.6)) replaces hardcoded 3/5 — supports variable question counts per section
+- [Phase 13-cefr-english-proficiency-test-engine]: Backward-compatible schema defaults: questionIds String[] @default([]), questionCount Int @default(25)
+- [Phase 13-cefr-english-proficiency-test-engine]: Reading comprehension passages paired as two questions per passage — enables single passage load with two test items for B1/B2 sections
+- [Phase 13-cefr-english-proficiency-test-engine]: C2 targets near-native subtleties: academic hedging, moot/begging-the-question vocab, rhetorical device identification, dangling/misplaced modifiers
 
 ### Roadmap Evolution
 
@@ -92,7 +99,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-03-25T20:37:04.665Z
-Stopped at: Completed 11-portal-shell-reskin-05-PLAN.md
+Last session: 2026-03-25T22:53:14.683Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
 Next action: `/gsd:plan-phase 10` to plan Token & Font Foundation
