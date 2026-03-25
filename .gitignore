@@ -40,3 +40,5 @@ next-env.d.ts
 
 # prisma
 /prisma/migrations
+.claude/worktrees/
+.claude/settings.json
