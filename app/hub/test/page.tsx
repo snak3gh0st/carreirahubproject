@@ -88,7 +88,7 @@ export default function HubTestPage() {
         setError(data.error || t(lang, "test.failedToSubmit"));
         return;
       }
-      router.push("/hub/test/result");
+      window.location.href = "/hub/test/result";
     } catch {
       setError(t(lang, "errors.connectionError"));
     } finally {

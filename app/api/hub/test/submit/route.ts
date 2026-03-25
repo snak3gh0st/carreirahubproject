@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
 import { calculateScore } from "@/lib/hub/english-test";
@@ -53,6 +54,11 @@ export async function POST(request: NextRequest) {
         answers,
       },
     });
+
+    // Invalidate cached pages so dashboard shows updated test result
+    revalidatePath("/hub");
+    revalidatePath("/hub/status");
+    revalidatePath("/hub/test/result");
 
     return NextResponse.json({
       result: {
