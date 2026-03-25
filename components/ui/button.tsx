@@ -22,9 +22,9 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: "bg-gold-600 text-white hover:bg-gold-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-gold-500 shadow-sm",
-  secondary: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-gold-500",
-  outline: "bg-transparent border border-gold-600 text-gold-600 hover:bg-gold-50 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-gold-500",
+  primary: "bg-brand-tangerina text-white hover:bg-brand-tangerina/90 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-brand-tangerina shadow-sm",
+  secondary: "bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-brand-verde",
+  outline: "bg-transparent border border-brand-tangerina text-brand-tangerina hover:bg-brand-creme hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-brand-tangerina",
   ghost: "bg-transparent text-gray-600 hover:bg-gray-100 disabled:opacity-50 focus:ring-gray-400",
   destructive: "bg-error-600 text-white hover:bg-error-700 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0 active:shadow-sm disabled:opacity-50 focus:ring-error-500 shadow-sm",
   // Legacy aliases for backward compatibility

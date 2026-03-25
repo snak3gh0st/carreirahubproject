@@ -28,7 +28,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   success: "bg-success-100 text-success-700",      // Paid status
   error: "bg-error-100 text-error-700",            // Overdue status
   warning: "bg-warning-100 text-warning-700",      // Pending status
-  info: "bg-gold-100 text-gold-700",               // Info status - GOLD THEME
+  info: "bg-brand-creme text-brand-verde",           // Info status - Brand theme
   pending: "bg-warning-100 text-warning-700",      // Alias for warning
 };
 
@@ -37,7 +37,7 @@ const dotStyles: Record<BadgeVariant, string> = {
   success: "bg-success-700",
   error: "bg-error-700",
   warning: "bg-warning-700",
-  info: "bg-gold-700",                             // Info dot - GOLD THEME
+  info: "bg-brand-verde",                            // Info dot - Brand theme
   pending: "bg-warning-700",
 };
 
