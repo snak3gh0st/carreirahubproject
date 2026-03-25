@@ -66,7 +66,7 @@ export default function HubLoginPage() {
         return;
       }
 
-      router.push("/hub");
+      window.location.href = "/hub";
     } catch {
       setError(t(lang, "errors.connectionError"));
     } finally {
