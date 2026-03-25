@@ -15,18 +15,18 @@
    ======================================== */
 
 export const colors = {
-  // Primary Gold - Success, Excellence, Premium (Carreira USA Brand)
+  // Primary Tangerina - Carreira USA Brand
   primary: {
-    50: '#FFFBEB',   // Lightest cream
-    100: '#FEF3C7',  // Light gold cream
-    200: '#FDE68A',  // Soft gold
-    300: '#FCD34D',  // Medium gold
-    400: '#FBBF24',  // Vibrant gold
-    500: '#D4AF37',  // Main brand color - Classic Gold
-    600: '#B8941F',  // Deep gold
-    700: '#9C7A19',  // Rich gold
-    800: '#806114',  // Dark gold
-    900: '#64470F',  // Darkest gold
+    50: '#FFF4ED',   // Lightest tangerina
+    100: '#FFE4D4',  // Light tangerina
+    200: '#FFC5A8',  // Soft tangerina
+    300: '#FFA070',  // Medium tangerina
+    400: '#FF8142',  // Vibrant tangerina (brand)
+    500: '#FF8142',  // Main brand color - Tangerina
+    600: '#E0713A',  // Deep tangerina
+    700: '#C06030',  // Darker tangerina
+    800: '#A05028',  // Rich tangerina
+    900: '#804020',  // Deepest tangerina
   },
   
   // Success Green - Payments, Growth, Positive
@@ -56,12 +56,12 @@ export const colors = {
     700: '#991B1B',
   },
   
-  // Info Gold - Neutral information (aligned with primary gold)
+  // Info - Neutral information (aligned with brand)
   info: {
-    50: '#FFFBEB',   // Light cream
-    100: '#FEF3C7',  // Light gold cream
-    500: '#D4AF37',  // Classic gold
-    600: '#B8941F',  // Deep gold
+    50: '#FFF8E8',   // Brand creme
+    100: '#FFE4D4',  // Light tangerina
+    500: '#FF8142',  // Tangerina
+    600: '#E0713A',  // Deep tangerina
   },
   
   // Neutral Grays - Optimized for readability

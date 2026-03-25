@@ -964,9 +964,9 @@ export class NotificationService {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #C9A84C; color: white; padding: 20px; text-align: center; }
+            .header { background: #FF8142; color: white; padding: 20px; text-align: center; }
             .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
-            .button { display: inline-block; background: #C9A84C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .button { display: inline-block; background: #FF8142; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
             .credentials { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; border: 1px solid #e5e7eb; }
             .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
             .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
@@ -1024,11 +1024,11 @@ export class NotificationService {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #C9A84C; color: white; padding: 20px; text-align: center; }
+            .header { background: #FF8142; color: white; padding: 20px; text-align: center; }
             .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
-            .button { display: inline-block; background: #C9A84C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .button { display: inline-block; background: #FF8142; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
             .details { background: white; padding: 15px; border-radius: 6px; margin: 15px 0; border: 1px solid #e5e7eb; }
-            .amount { font-size: 28px; color: #C9A84C; font-weight: bold; text-align: center; margin: 15px 0; }
+            .amount { font-size: 28px; color: #FF8142; font-weight: bold; text-align: center; margin: 15px 0; }
             .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
           </style>
         </head>
@@ -1076,9 +1076,9 @@ export class NotificationService {
           <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #C9A84C; color: white; padding: 20px; text-align: center; }
+            .header { background: #FF8142; color: white; padding: 20px; text-align: center; }
             .content { background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; }
-            .button { display: inline-block; background: #C9A84C; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
+            .button { display: inline-block; background: #FF8142; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: bold; }
             .warning { background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 15px 0; }
             .security { background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 15px 0; }
             .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }

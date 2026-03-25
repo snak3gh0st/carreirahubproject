@@ -355,7 +355,7 @@ export default function PaymentForm({
               type="submit"
               disabled={loading}
               className="w-full py-4 rounded-xl text-white font-semibold text-base transition disabled:opacity-60 disabled:cursor-not-allowed mt-2"
-              style={{ backgroundColor: loading ? "#D4B96A" : GOLD }}
+              style={{ backgroundColor: loading ? "#E0713A" : GOLD }}
               onMouseEnter={(e) => {
                 if (!loading) (e.target as HTMLButtonElement).style.backgroundColor = GOLD_HOVER;
               }}
