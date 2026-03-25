@@ -29,9 +29,9 @@ export default async function PaymentSuccessPage({
         {/* Success Icon */}
         <div
           className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ backgroundColor: "#F0E6C8" }}
+          style={{ backgroundColor: "#FFF8E8" }}
         >
-          <svg className="w-8 h-8" fill="none" stroke="#C9A84C" viewBox="0 0 24 24">
+          <svg className="w-8 h-8" fill="none" stroke="#FF8142" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
           </svg>
         </div>
@@ -45,7 +45,7 @@ export default async function PaymentSuccessPage({
         </p>
 
         {invoice && (
-          <div className="rounded-xl p-5 mb-6 text-left" style={{ backgroundColor: "#FDFAF2" }}>
+          <div className="rounded-xl p-5 mb-6 text-left" style={{ backgroundColor: "#FFF8E8" }}>
             <h2 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide">
               Payment Details
             </h2>
@@ -58,7 +58,7 @@ export default async function PaymentSuccessPage({
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Amount</span>
-                <span className="font-semibold" style={{ color: "#C9A84C" }}>
+                <span className="font-semibold" style={{ color: "#2F443F" }}>
                   ${Number(invoice.amount).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
                   })}

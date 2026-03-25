@@ -52,7 +52,7 @@ export function NewsNotification() {
       >
         <Bell className="h-5 w-5" />
         {hasUnread && (
-          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-gold-500 rounded-full border-2 border-secondary-dark" />
+          <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-brand-tangerina rounded-full border-2 border-brand-verde" />
         )}
       </button>
 

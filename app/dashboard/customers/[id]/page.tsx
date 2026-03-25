@@ -195,7 +195,7 @@ export default async function CustomerDetailPage({
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gold-100 text-gold-600">
+                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-brand-creme text-brand-verde">
                   <User className="h-6 w-6" />
                 </div>
                 <div>

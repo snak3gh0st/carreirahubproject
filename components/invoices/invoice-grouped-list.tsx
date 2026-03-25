@@ -268,7 +268,7 @@ export function InvoiceGroupedList({
                           <button
                             type="button"
                             aria-label={isExpanded ? "Recolher grupo" : "Expandir grupo"}
-                            className="p-0.5 rounded text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-gold-500"
+                            className="p-0.5 rounded text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-verde"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleGroup(group.customerId);
@@ -336,7 +336,7 @@ export function InvoiceGroupedList({
                           <td className="pl-10 pr-6 py-4 whitespace-nowrap">
                             <Link
                               href={`/dashboard/invoices/${invoice.id}`}
-                              className="text-sm font-display font-medium text-gold-600 hover:text-gold-700"
+                              className="text-sm font-display font-medium text-brand-verde hover:text-brand-verde/80"
                             >
                               {invoice.invoiceNumber || invoice.id.slice(0, 8)}
                             </Link>
@@ -373,14 +373,14 @@ export function InvoiceGroupedList({
                             <div className="flex items-center gap-3">
                               <Link
                                 href={`/dashboard/invoices/${invoice.id}`}
-                                className="text-gold-600 hover:text-gold-700 font-medium"
+                                className="text-brand-verde hover:text-brand-verde/80 font-medium"
                               >
                                 Ver
                               </Link>
                               {canEditInvoice && (
                                 <Link
                                   href={`/dashboard/invoices/${invoice.id}/edit`}
-                                  className="text-gold-600 hover:text-gold-700 font-medium"
+                                  className="text-brand-verde hover:text-brand-verde/80 font-medium"
                                 >
                                   Editar
                                 </Link>

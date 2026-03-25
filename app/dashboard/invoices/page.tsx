@@ -213,7 +213,7 @@ export default async function InvoicesPage({
             </h1>
             <Link
               href="/dashboard/invoices/new"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gold-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-gold-700 transition-colors shadow-sm hover:shadow-md"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-brand-tangerina text-white text-sm font-display font-semibold rounded-lg hover:bg-brand-tangerina/90 transition-colors shadow-sm hover:shadow-md"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -270,7 +270,7 @@ export default async function InvoicesPage({
           <summary className="cursor-pointer text-sm font-display font-medium text-gray-700 hover:text-gray-900 flex items-center gap-2">
             <span>Mais Filtros</span>
             {activeFilterCount > 0 && (
-              <span className="px-2 py-0.5 bg-gold-600 text-white text-xs font-semibold rounded-full">
+              <span className="px-2 py-0.5 bg-brand-tangerina text-white text-xs font-semibold rounded-full">
                 {activeFilterCount}
               </span>
             )}
@@ -299,7 +299,7 @@ export default async function InvoicesPage({
                         href={isHighValueActive ? "/dashboard/invoices" : `/dashboard/invoices?minAmount=10000${search ? `&search=${search}` : ""}${searchParams.status ? `&status=${searchParams.status}` : ""}`}
                         className={`px-3 py-1.5 rounded-full text-xs font-display font-medium transition whitespace-nowrap ${
                           isHighValueActive
-                            ? "bg-gold-600 text-white shadow-sm"
+                            ? "bg-brand-tangerina text-white shadow-sm"
                             : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                       >
@@ -341,7 +341,7 @@ export default async function InvoicesPage({
                     type="date"
                     name="dueDateFrom"
                     defaultValue={searchParams.dueDateFrom}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-verde focus:border-brand-verde"
                   />
                 </div>
                 <div>
@@ -352,7 +352,7 @@ export default async function InvoicesPage({
                     type="date"
                     name="dueDateTo"
                     defaultValue={searchParams.dueDateTo}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-verde focus:border-brand-verde"
                   />
                 </div>
 
@@ -364,7 +364,7 @@ export default async function InvoicesPage({
                   <select
                     name="paymentMethod"
                     defaultValue={searchParams.paymentMethod || ""}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-verde focus:border-brand-verde"
                   >
                     <option value="">Todos</option>
                     <option value="CARD">Cartão</option>
@@ -385,7 +385,7 @@ export default async function InvoicesPage({
                     defaultValue={searchParams.minAmount}
                     placeholder="0.00"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-verde focus:border-brand-verde"
                   />
                 </div>
                 <div>
@@ -398,7 +398,7 @@ export default async function InvoicesPage({
                     defaultValue={searchParams.maxAmount}
                     placeholder="Ilimitado"
                     step="0.01"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-gold-500 focus:border-gold-500"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-verde focus:border-brand-verde"
                   />
                 </div>
               </div>
@@ -407,7 +407,7 @@ export default async function InvoicesPage({
               <div className="flex items-center gap-3 mt-4">
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-gold-600 text-white text-sm font-display font-semibold rounded-lg hover:bg-gold-700 transition-colors shadow-sm hover:shadow-md"
+                  className="px-5 py-2 bg-brand-tangerina text-white text-sm font-display font-semibold rounded-lg hover:bg-brand-tangerina/90 transition-colors shadow-sm hover:shadow-md"
                 >
                   Aplicar Filtros
                 </button>

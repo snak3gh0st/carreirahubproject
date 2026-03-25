@@ -131,7 +131,7 @@ export function TicketChatView({ ticketId }: { ticketId: string }) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
-        <div className="animate-spin h-8 w-8 border-2 border-gold-600 border-t-transparent rounded-full" />
+        <div className="animate-spin h-8 w-8 border-2 border-brand-tangerina border-t-transparent rounded-full" />
       </div>
     );
   }
@@ -205,7 +205,7 @@ export function TicketChatView({ ticketId }: { ticketId: string }) {
                 <div
                   className={`px-4 py-2.5 rounded-lg text-sm leading-relaxed ${
                     msg.role === "USER"
-                      ? "bg-gold-50 text-gray-800 border border-gold-200 rounded-br-none"
+                      ? "bg-brand-creme text-gray-800 border border-brand-caramelo rounded-br-none"
                       : msg.role === "AGENT"
                       ? "bg-success-50 text-gray-800 border border-success-200 rounded-bl-none"
                       : "bg-gray-100 text-gray-800 rounded-bl-none"
@@ -234,13 +234,13 @@ export function TicketChatView({ ticketId }: { ticketId: string }) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendReply()}
               placeholder="Escrever resposta..."
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 focus:border-gold-500"
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-verde focus:border-brand-verde"
               disabled={sending}
             />
             <button
               onClick={sendReply}
               disabled={!input.trim() || sending}
-              className="bg-gold-600 hover:bg-gold-700 disabled:opacity-50 text-white p-2.5 rounded-lg transition-colors"
+              className="bg-brand-tangerina hover:bg-brand-tangerina/90 disabled:opacity-50 text-white p-2.5 rounded-lg transition-colors"
               aria-label="Enviar resposta"
             >
               <Send className="h-4 w-4" />

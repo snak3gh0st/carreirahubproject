@@ -8,8 +8,8 @@ export default function SupportPage() {
     <div className="p-8">
       {/* Page header */}
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-10 h-10 bg-gold-100 rounded-lg flex items-center justify-center">
-          <HeadphonesIcon className="h-5 w-5 text-gold-700" />
+        <div className="w-10 h-10 bg-brand-creme rounded-lg flex items-center justify-center">
+          <HeadphonesIcon className="h-5 w-5 text-brand-verde" />
         </div>
         <div>
           <h1 className="text-2xl font-display font-bold text-gray-900">

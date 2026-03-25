@@ -26,7 +26,7 @@ export function SupportChatBubble({ userId, userName }: SupportChatBubbleProps) 
       {/* Floating Bubble */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-gold-600 hover:bg-gold-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-brand-tangerina hover:bg-brand-tangerina/90 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
         aria-label="Abrir suporte"
       >
         {isOpen ? (

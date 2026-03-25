@@ -40,9 +40,11 @@ function getCardBrand(number: string): string {
   return "";
 }
 
-const GOLD = "#C9A84C";
-const GOLD_HOVER = "#B8962E";
-const GOLD_LIGHT = "#FFF8E7";
+import { BRAND_COLORS } from "@/lib/constants/brand";
+
+const GOLD = BRAND_COLORS.TANGERINA;
+const GOLD_HOVER = "#E0713A";
+const GOLD_LIGHT = BRAND_COLORS.CREME;
 
 function InputField({
   label,

@@ -75,7 +75,7 @@ export function TicketList() {
             onClick={() => setActiveFilter(tab.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeFilter === tab.key
-                ? "bg-gold-600 text-white"
+                ? "bg-brand-tangerina text-white"
                 : "bg-white text-gray-600 hover:bg-gray-100 border border-gray-200"
             }`}
           >
@@ -87,7 +87,7 @@ export function TicketList() {
       {/* Ticket list */}
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin h-8 w-8 border-2 border-gold-600 border-t-transparent rounded-full" />
+          <div className="animate-spin h-8 w-8 border-2 border-brand-tangerina border-t-transparent rounded-full" />
         </div>
       ) : tickets.length === 0 ? (
         <Card className="text-center py-12">

@@ -307,7 +307,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
               <ArrowLeft className="h-4 w-4" />
             </button>
           )}
-          <HeadphonesIcon className="h-5 w-5 text-gold-500" />
+          <HeadphonesIcon className="h-5 w-5 text-brand-tangerina" />
           <span className="text-white font-semibold text-sm">
             {view === "tickets" ? "Meus Tickets" : "Suporte"}
           </span>
@@ -351,12 +351,12 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
       {/* Body */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="animate-spin h-6 w-6 border-2 border-gold-600 border-t-transparent rounded-full" />
+          <div className="animate-spin h-6 w-6 border-2 border-brand-tangerina border-t-transparent rounded-full" />
         </div>
       ) : view === "welcome" ? (
         /* Welcome screen */
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <HeadphonesIcon className="h-12 w-12 text-gold-500 mb-4" />
+          <HeadphonesIcon className="h-12 w-12 text-brand-tangerina mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-2">
             Como podemos ajudar?
           </h3>
@@ -366,7 +366,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
           <div className="flex flex-col gap-2 w-full max-w-[200px]">
             <button
               onClick={startNewConversation}
-              className="bg-gold-600 hover:bg-gold-700 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors"
+              className="bg-brand-tangerina hover:bg-brand-tangerina/90 text-white px-6 py-2.5 rounded-lg font-medium text-sm transition-colors"
             >
               Iniciar Conversa
             </button>
@@ -425,7 +425,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
                 <div
                   className={`px-3 py-2 rounded-lg text-sm leading-relaxed ${
                     msg.role === "USER"
-                      ? "bg-gold-600 text-white rounded-br-none"
+                      ? "bg-brand-tangerina text-white rounded-br-none"
                       : msg.role === "AGENT"
                       ? "bg-success-50 text-gray-800 border border-success-200 rounded-bl-none"
                       : "bg-gray-100 text-gray-800 rounded-bl-none"
@@ -467,7 +467,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
           {status === "AI_HANDLING" && ticketId && !showEscalationInput && (
             <button
               onClick={() => setShowEscalationInput(true)}
-              className="text-[11px] text-gray-400 hover:text-gold-600 mb-2 flex items-center gap-1 transition-colors"
+              className="text-[11px] text-gray-400 hover:text-brand-verde mb-2 flex items-center gap-1 transition-colors"
             >
               <UserCircle className="h-3 w-3" />
               Falar com um Humano
@@ -479,14 +479,14 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
                 value={escalationMessage}
                 onChange={(e) => setEscalationMessage(e.target.value)}
                 placeholder="Descreva o que precisa..."
-                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 focus:border-gold-500 resize-none"
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-verde focus:border-brand-verde resize-none"
                 rows={2}
                 autoFocus
               />
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleEscalate}
-                  className="bg-gold-600 hover:bg-gold-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  className="bg-brand-tangerina hover:bg-brand-tangerina/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                 >
                   Enviar para equipe
                 </button>
@@ -506,13 +506,13 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               placeholder="Digite sua mensagem..."
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-gold-500 focus:border-gold-500"
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brand-verde focus:border-brand-verde"
               disabled={sending}
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || sending}
-              className="bg-gold-600 hover:bg-gold-700 disabled:opacity-50 text-white p-2 rounded-lg transition-colors"
+              className="bg-brand-tangerina hover:bg-brand-tangerina/90 disabled:opacity-50 text-white p-2 rounded-lg transition-colors"
               aria-label="Enviar"
             >
               <Send className="h-4 w-4" />
@@ -537,7 +537,7 @@ export function SupportChatWidget({ userId, userName, onClose }: SupportChatWidg
             </button>
             <button
               onClick={startNewConversation}
-              className="bg-gold-600 hover:bg-gold-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
+              className="bg-brand-tangerina hover:bg-brand-tangerina/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5"
             >
               <Plus className="h-3.5 w-3.5" />
               Nova Conversa
