@@ -31,6 +31,34 @@ Requirements for brand identity reskin. Each maps to roadmap phases.
 - [x] **BRD-01**: Favicon and logo assets replaced across both portals with new Carreira USA brand mark
 - [ ] **BRD-02**: Focus rings, status badges, and interactive states updated to brand colors with WCAG AA contrast
 
+## CEFR English Proficiency Test Engine Requirements
+
+Requirements for the randomized English placement test system. Maps to Phase 13.
+
+### Question Bank
+
+- [ ] **CEFR-01**: Question bank of 130+ questions organized by CEFR level (A1-C2) with unique IDs, skill type tags, and career/immigration context for Brazilian immigrants
+
+### Randomization & No-Repeat
+
+- [ ] **CEFR-02**: Fisher-Yates randomized question selection with per-student no-repeat guarantee across retakes (pool reset on exhaustion)
+
+### Scoring
+
+- [ ] **CEFR-03**: Percentage-based adaptive scoring algorithm using contiguous pass method (60% threshold per section, variable question counts)
+
+### Database
+
+- [ ] **CEFR-04**: PlacementTest schema updated with questionIds (String[]) and questionCount (Int) for question tracking and auditing
+
+### API Integration
+
+- [ ] **CEFR-05**: API routes generate unique randomized question sets per student with pending test tracking, and score against the specific served questions
+
+### UI Adaptation
+
+- [ ] **CEFR-06**: All UI and admin displays show dynamic score/questionCount (no hardcoded /25), test UI sends testId for stateless scoring
+
 ## Future Requirements
 
 Deferred to v2+. Tracked but not in current roadmap.
@@ -58,7 +86,6 @@ Deferred to v2+. Tracked but not in current roadmap.
 | New pages or routes | No functionality additions in this milestone |
 | Dark mode | Requires full two-theme token system — separate milestone |
 | Tailwind v4 migration | Incompatible with existing config; separate project |
-| New features or functionality | Purely visual milestone |
 | Mobile app | Web-only |
 
 ## Traceability
@@ -79,12 +106,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BRD-01 | Phase 11 | Complete |
 | DASH-03 | Phase 12 | Pending |
 | BRD-02 | Phase 12 | Pending |
+| CEFR-01 | Phase 13 | Pending |
+| CEFR-02 | Phase 13 | Pending |
+| CEFR-03 | Phase 13 | Pending |
+| CEFR-04 | Phase 13 | Pending |
+| CEFR-05 | Phase 13 | Pending |
+| CEFR-06 | Phase 13 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 12 total
 - Mapped to phases: 12
 - Unmapped: 0
+- CEFR requirements: 6 total
+- Mapped to Phase 13: 6
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 — traceability mapped to Phases 10-12*
+*Last updated: 2026-03-25 — CEFR requirements added for Phase 13*

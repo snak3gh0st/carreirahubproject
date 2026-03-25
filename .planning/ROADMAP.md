@@ -211,14 +211,22 @@ Plans:
 **UI hint**: yes
 
 ### Phase 13: CEFR English Proficiency Test Engine
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 12
-**Plans:** 0 plans
+**Goal**: Scientifically validated English placement test with randomized question bank (130+ questions across A1-C2 levels), adaptive percentage-based scoring, and no-repeat guarantee per student
+**Depends on**: Phase 12
+**Requirements**: CEFR-01, CEFR-02, CEFR-03, CEFR-04, CEFR-05, CEFR-06
+**Success Criteria** (what must be TRUE):
+  1. A question bank of 130+ questions exists across 6 CEFR levels (A1-C2), stored as typed TypeScript constants with unique IDs and skill type tags
+  2. Each test generates a unique 25-question subset via Fisher-Yates randomization, and students never see repeated questions across retakes until the bank is exhausted
+  3. Scoring uses a percentage-based contiguous pass algorithm (60% threshold per section) that adapts to variable question counts
+  4. PlacementTest schema tracks which specific questions were served (questionIds) and total count (questionCount) for auditing and no-repeat tracking
+  5. All UI pages and admin displays show dynamic score/questionCount (no hardcoded /25)
+  6. No correctIndex or answer key data is ever sent to the client
+**Plans**: 3 plans
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 13 to break down)
+- [ ] 13-01-PLAN.md — Question bank types, infrastructure (randomizer + scoring), schema migration, A1/A2 questions
+- [ ] 13-02-PLAN.md — Question bank content: B1, B2, C1, C2 questions (88+ questions completing the 130+ bank)
+- [ ] 13-03-PLAN.md — API route rewrites, test UI integration, admin display updates, i18n
 
 ---
 
@@ -242,3 +250,4 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
 | 11. Portal Shell Reskin | v1.1 | 5/5 | Complete    | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
+| 13. CEFR English Proficiency Test Engine | - | 0/3 | Not started | - |
