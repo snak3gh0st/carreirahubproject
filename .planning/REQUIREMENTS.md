@@ -17,7 +17,7 @@ Requirements for brand identity reskin. Each maps to roadmap phases.
 ### Admin Dashboard
 
 - [x] **DASH-01**: Sidebar uses Verde (#2F443F) background with Tangerina active states and new brand logo
-- [ ] **DASH-02**: Shared components (Button, Card, StatCard, Badge, Input) consume new brand tokens via CSS variables
+- [x] **DASH-02**: Shared components (Button, Card, StatCard, Badge, Input) consume new brand tokens via CSS variables
 - [ ] **DASH-03**: All Recharts chart components use brand palette colors (Verde, Tangerina, Cafe com Leite, Caramelo)
 
 ### Client Hub
@@ -72,7 +72,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TKN-03 | Phase 10 | Complete |
 | TKN-04 | Phase 10 | Complete |
 | DASH-01 | Phase 11 | Complete |
-| DASH-02 | Phase 11 | Pending |
+| DASH-02 | Phase 11 | Complete |
 | HUB-01 | Phase 11 | Pending |
 | HUB-02 | Phase 11 | Complete |
 | HUB-03 | Phase 11 | Pending |

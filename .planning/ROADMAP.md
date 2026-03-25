@@ -193,7 +193,7 @@ Plans:
 
 Plans:
 - [x] 11-01-PLAN.md — Logo component, favicon, data-portal wiring, dashboard sidebar rebrand, hub layout rebrand
-- [ ] 11-02-PLAN.md — Shared UI components (Button, Badge, StatCard, Input) gold-* to brand token migration
+- [x] 11-02-PLAN.md — Shared UI components (Button, Badge, StatCard, Input) gold-* to brand token migration
 - [ ] 11-03-PLAN.md — Hub login, reset-password, set-password pages: Verde hero treatment
 - [ ] 11-04-PLAN.md — Hub GOLD elimination batch 1: dashboard, settings, LanguageToggle, forms pages
 - [ ] 11-05-PLAN.md — Hub GOLD elimination batch 2: status, test, documents pages (completes HUB-01)
@@ -230,5 +230,5 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
-| 11. Portal Shell Reskin | v1.1 | 1/5 | In Progress|  |
+| 11. Portal Shell Reskin | v1.1 | 2/5 | In Progress|  |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
