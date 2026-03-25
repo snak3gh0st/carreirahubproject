@@ -24,7 +24,7 @@ Requirements for brand identity reskin. Each maps to roadmap phases.
 
 - [ ] **HUB-01**: All hardcoded hex literals and GOLD constants across hub files replaced with token classes
 - [x] **HUB-02**: Hub layout uses Creme surface backgrounds, Verde text, Tangerina accents, brand logo in header
-- [ ] **HUB-03**: Login page features Verde + Creme hero treatment with Blaak headline and Tangerina CTA
+- [x] **HUB-03**: Login page features Verde + Creme hero treatment with Blaak headline and Tangerina CTA
 
 ### Brand Assets & Polish
 
@@ -75,7 +75,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-02 | Phase 11 | Complete |
 | HUB-01 | Phase 11 | Pending |
 | HUB-02 | Phase 11 | Complete |
-| HUB-03 | Phase 11 | Pending |
+| HUB-03 | Phase 11 | Complete |
 | BRD-01 | Phase 11 | Complete |
 | DASH-03 | Phase 12 | Pending |
 | BRD-02 | Phase 12 | Pending |
