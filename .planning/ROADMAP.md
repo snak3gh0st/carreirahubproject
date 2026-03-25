@@ -150,7 +150,7 @@ Plans:
 
 ---
 
-### 🚧 v1.1 Brand Identity Reskin (In Progress)
+### v1.1 Brand Identity Reskin (In Progress)
 
 **Milestone Goal:** Apply the new Carreira USA visual identity across both portals — colors, typography, logos, and visual tokens — while preserving all existing layouts and functionality.
 
@@ -188,8 +188,15 @@ Plans:
   4. The Hub layout uses Creme surface backgrounds, Verde text, Tangerina accents, and shows the brand logo in the header
   5. The Hub login page shows a Verde + Creme hero treatment with a Blaak headline and a Tangerina call-to-action button
   6. Favicon and logo assets are replaced with the new Carreira USA brand mark in both portals
-**Plans**: TBD
+**Plans**: 5 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 11-01-PLAN.md — Logo component, favicon, data-portal wiring, dashboard sidebar rebrand, hub layout rebrand
+- [ ] 11-02-PLAN.md — Shared UI components (Button, Badge, StatCard, Input) gold-* to brand token migration
+- [ ] 11-03-PLAN.md — Hub login, reset-password, set-password pages: Verde hero treatment
+- [ ] 11-04-PLAN.md — Hub GOLD elimination batch 1: dashboard, settings, LanguageToggle, forms pages
+- [ ] 11-05-PLAN.md — Hub GOLD elimination batch 2: status, test, documents pages (completes HUB-01)
 
 ### Phase 12: Chart Rebrand & Brand Polish
 **Goal**: All data visualizations use the Carreira USA palette and every interactive state (focus rings, status badges) meets WCAG AA contrast on brand surfaces
@@ -223,5 +230,5 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
-| 11. Portal Shell Reskin | v1.1 | 0/TBD | Not started | - |
+| 11. Portal Shell Reskin | v1.1 | 0/5 | Not started | - |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
