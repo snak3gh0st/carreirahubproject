@@ -230,5 +230,5 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
-| 11. Portal Shell Reskin | v1.1 | 5/5 | Complete   | 2026-03-25 |
+| 11. Portal Shell Reskin | v1.1 | 5/5 | Complete    | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
