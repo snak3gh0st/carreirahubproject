@@ -167,11 +167,15 @@ Plans:
 **Success Criteria** (what must be TRUE):
   1. The five brand colors (Verde, Tangerina, Creme, Caramelo, Cafe com Leite) are available as Tailwind utility classes and CSS custom properties on both portals
   2. Blaak and Neue Montreal fonts load via next/font/local with no Google Fonts network request and no FOUT
-  3. Display headings (h1–h3) render in Blaak; body and UI text renders in Neue Montreal across both portals
+  3. Display headings (h1-h3) render in Blaak; body and UI text renders in Neue Montreal across both portals
   4. Tangerina used on a white or Creme background anywhere in the app produces a lint/audit warning — contrast rules are codified before any component work begins
   5. A JS constant file exports all brand hex values so Recharts and other non-CSS consumers can use them without hardcoding
-**Plans**: TBD
+**Plans**: 2 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 10-01-PLAN.md — Create foundation files: font binaries, font definitions, brand constants, CSS token hierarchy
+- [ ] 10-02-PLAN.md — Wire infrastructure into codebase: update globals.css, layout.tsx, tailwind.config.ts
 
 ### Phase 11: Portal Shell Reskin
 **Goal**: Both portals look and feel like Carreira USA — Admin Dashboard sidebar, shared components, Hub layout, Hub login, and logos are all on-brand
@@ -218,6 +222,6 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 5. DocuSign Production Setup | v1.0 | 2/2 | Complete | 2026-01-29 |
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
-| 10. Token & Font Foundation | v1.1 | 0/TBD | Not started | - |
+| 10. Token & Font Foundation | v1.1 | 0/2 | Not started | - |
 | 11. Portal Shell Reskin | v1.1 | 0/TBD | Not started | - |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
