@@ -155,7 +155,7 @@ Plans:
 **Milestone Goal:** Apply the new Carreira USA visual identity across both portals — colors, typography, logos, and visual tokens — while preserving all existing layouts and functionality.
 
 - [x] **Phase 10: Token & Font Foundation** - Design system with Carreira USA brand tokens, Blaak/Neue Montreal fonts, and CSS custom property architecture (completed 2026-03-25)
-- [ ] **Phase 11: Portal Shell Reskin** - Admin Dashboard sidebar/components and Client Hub layout/pages migrated to brand tokens, with logo replacement
+- [x] **Phase 11: Portal Shell Reskin** - Admin Dashboard sidebar/components and Client Hub layout/pages migrated to brand tokens, with logo replacement (completed 2026-03-25)
 - [ ] **Phase 12: Chart Rebrand & Brand Polish** - All Recharts charts updated to brand palette, focus rings/badges updated, WCAG AA validated
 
 ## Phase Details
@@ -196,7 +196,7 @@ Plans:
 - [x] 11-02-PLAN.md — Shared UI components (Button, Badge, StatCard, Input) gold-* to brand token migration
 - [x] 11-03-PLAN.md — Hub login, reset-password, set-password pages: Verde hero treatment
 - [x] 11-04-PLAN.md — Hub GOLD elimination batch 1: dashboard, settings, LanguageToggle, forms pages
-- [ ] 11-05-PLAN.md — Hub GOLD elimination batch 2: status, test, documents pages (completes HUB-01)
+- [x] 11-05-PLAN.md — Hub GOLD elimination batch 2: status, test, documents pages (completes HUB-01)
 
 ### Phase 12: Chart Rebrand & Brand Polish
 **Goal**: All data visualizations use the Carreira USA palette and every interactive state (focus rings, status badges) meets WCAG AA contrast on brand surfaces
@@ -230,5 +230,5 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
-| 11. Portal Shell Reskin | v1.1 | 4/5 | In Progress|  |
+| 11. Portal Shell Reskin | v1.1 | 5/5 | Complete   | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
