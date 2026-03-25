@@ -67,24 +67,24 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TKN-01 | — | Pending |
-| TKN-02 | — | Pending |
-| TKN-03 | — | Pending |
-| TKN-04 | — | Pending |
-| DASH-01 | — | Pending |
-| DASH-02 | — | Pending |
-| DASH-03 | — | Pending |
-| HUB-01 | — | Pending |
-| HUB-02 | — | Pending |
-| HUB-03 | — | Pending |
-| BRD-01 | — | Pending |
-| BRD-02 | — | Pending |
+| TKN-01 | Phase 10 | Pending |
+| TKN-02 | Phase 10 | Pending |
+| TKN-03 | Phase 10 | Pending |
+| TKN-04 | Phase 10 | Pending |
+| DASH-01 | Phase 11 | Pending |
+| DASH-02 | Phase 11 | Pending |
+| HUB-01 | Phase 11 | Pending |
+| HUB-02 | Phase 11 | Pending |
+| HUB-03 | Phase 11 | Pending |
+| BRD-01 | Phase 11 | Pending |
+| DASH-03 | Phase 12 | Pending |
+| BRD-02 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 12 total
-- Mapped to phases: 0
-- Unmapped: 12 (pending roadmap creation)
+- Mapped to phases: 12
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 after initial definition*
+*Last updated: 2026-03-25 — traceability mapped to Phases 10-12*
