@@ -3,8 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-
-const GOLD = "#C9A84C";
+import { Logo } from "@/components/brand/Logo";
 
 export default function HubSetPasswordPage() {
   const router = useRouter();
@@ -54,10 +53,10 @@ export default function HubSetPasswordPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#FBF8F0" }}>
-        <div className="bg-white rounded-2xl shadow-sm p-8 text-center max-w-sm">
-          <p className="text-gray-700 mb-4">Invalid or missing token.</p>
-          <Link href="/hub/login" className="text-sm hover:underline" style={{ color: GOLD }}>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
+        <div className="bg-brand-creme rounded-2xl shadow-sm p-8 text-center max-w-sm">
+          <p className="text-brand-verde mb-4">Invalid or missing token.</p>
+          <Link href="/hub/login" className="text-sm hover:underline text-brand-verde hover:text-brand-verde/80">
             Back to login
           </Link>
         </div>
@@ -66,17 +65,18 @@ export default function HubSetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#FBF8F0" }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Set Your Password</h1>
-          <p className="text-gray-500 text-sm mt-1">Choose a secure password for your account</p>
+          <Logo mono className="w-16 h-16 text-brand-creme mx-auto mb-4" />
+          <h1 className="font-display text-3xl font-bold text-brand-creme">Set Your Password</h1>
+          <p className="text-brand-cafe text-sm mt-1">Choose a secure password for your account</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-brand-creme rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
+              <label className="block text-sm font-medium text-brand-verde mb-1.5">New Password</label>
               <input
                 type="password"
                 value={password}
@@ -84,22 +84,18 @@ export default function HubSetPasswordPage() {
                 required
                 minLength={8}
                 autoFocus
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+              <label className="block text-sm font-medium text-brand-verde mb-1.5">Confirm Password</label>
               <input
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
                 required
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
               />
             </div>
 
@@ -112,8 +108,7 @@ export default function HubSetPasswordPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60"
-              style={{ backgroundColor: GOLD }}
+              className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
             >
               {loading ? "Saving..." : "Set Password"}
             </button>

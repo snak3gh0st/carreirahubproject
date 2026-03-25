@@ -2,8 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import Link from "next/link";
-
-const GOLD = "#C9A84C";
+import { Logo } from "@/components/brand/Logo";
 
 export default function HubResetPasswordPage() {
   const [email, setEmail] = useState("");
@@ -28,47 +27,45 @@ export default function HubResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "#FBF8F0" }}>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Reset Password</h1>
-          <p className="text-gray-500 text-sm mt-1">Enter your email to receive a reset link</p>
+          <Logo mono className="w-16 h-16 text-brand-creme mx-auto mb-4" />
+          <h1 className="font-display text-3xl font-bold text-brand-creme">Reset Password</h1>
+          <p className="text-brand-cafe text-sm mt-1">Enter your email to receive a reset link</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-brand-creme rounded-2xl shadow-sm p-6">
           {sent ? (
             <div className="text-center py-4">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: "#F0E6C8" }}>
-                <svg className="w-6 h-6" fill="none" stroke={GOLD} viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 bg-brand-verde/10">
+                <svg className="w-6 h-6 text-brand-tangerina" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
               <p className="text-gray-700 font-medium mb-2">Check your email</p>
               <p className="text-gray-500 text-sm">If an account exists, a reset link has been sent.</p>
-              <Link href="/hub/login" className="inline-block mt-4 text-sm hover:underline" style={{ color: GOLD }}>
+              <Link href="/hub/login" className="inline-block mt-4 text-sm hover:underline text-brand-verde hover:text-brand-verde/80">
                 Back to login
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-brand-verde mb-1.5">Email</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   autoFocus
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base focus:outline-none transition"
-                  onFocus={(e) => (e.target.style.borderColor = GOLD)}
-                  onBlur={(e) => (e.target.style.borderColor = "#E5E7EB")}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-base text-brand-verde focus:outline-none focus:border-brand-verde focus:ring-1 focus:ring-brand-verde transition"
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60"
-                style={{ backgroundColor: GOLD }}
+                className="w-full py-3.5 rounded-xl text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
               >
                 {loading ? "Sending..." : "Send Reset Link"}
               </button>
