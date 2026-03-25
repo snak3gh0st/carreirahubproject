@@ -174,7 +174,7 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 10-01-PLAN.md — Create foundation files: font binaries, font definitions, brand constants, CSS token hierarchy
+- [x] 10-01-PLAN.md — Create foundation files: font binaries, font definitions, brand constants, CSS token hierarchy
 - [ ] 10-02-PLAN.md — Wire infrastructure into codebase: update globals.css, layout.tsx, tailwind.config.ts
 
 ### Phase 11: Portal Shell Reskin
@@ -222,6 +222,6 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 5. DocuSign Production Setup | v1.0 | 2/2 | Complete | 2026-01-29 |
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
-| 10. Token & Font Foundation | v1.1 | 0/2 | Not started | - |
+| 10. Token & Font Foundation | v1.1 | 1/2 | In Progress|  |
 | 11. Portal Shell Reskin | v1.1 | 0/TBD | Not started | - |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |

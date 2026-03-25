@@ -9,10 +9,10 @@ Requirements for brand identity reskin. Each maps to roadmap phases.
 
 ### Token & Font Foundation
 
-- [ ] **TKN-01**: Design system uses a three-layer CSS custom property architecture (brand primitives, semantic aliases, portal overrides) as single source of truth
-- [ ] **TKN-02**: Blaak and Neue Montreal fonts loaded via next/font/local with CSS variable injection, Google Fonts @import removed
+- [x] **TKN-01**: Design system uses a three-layer CSS custom property architecture (brand primitives, semantic aliases, portal overrides) as single source of truth
+- [x] **TKN-02**: Blaak and Neue Montreal fonts loaded via next/font/local with CSS variable injection, Google Fonts @import removed
 - [ ] **TKN-03**: Typography hierarchy defined — Blaak for h1-h3 display headings, Neue Montreal for body/UI text
-- [ ] **TKN-04**: Color role rules enforced — Verde as primary text color, Tangerina only on dark surfaces or as non-text accent, contrast ratios verified
+- [x] **TKN-04**: Color role rules enforced — Verde as primary text color, Tangerina only on dark surfaces or as non-text accent, contrast ratios verified
 
 ### Admin Dashboard
 
@@ -67,10 +67,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TKN-01 | Phase 10 | Pending |
-| TKN-02 | Phase 10 | Pending |
+| TKN-01 | Phase 10 | Complete |
+| TKN-02 | Phase 10 | Complete |
 | TKN-03 | Phase 10 | Pending |
-| TKN-04 | Phase 10 | Pending |
+| TKN-04 | Phase 10 | Complete |
 | DASH-01 | Phase 11 | Pending |
 | DASH-02 | Phase 11 | Pending |
 | HUB-01 | Phase 11 | Pending |
