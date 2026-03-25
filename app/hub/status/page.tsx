@@ -139,7 +139,7 @@ export default async function HubStatusPage() {
                 <div
                   className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{
-                    backgroundColor: isCompleted ? "#ECFDF5" : isCurrent ? "#FFF8E7" : "#F3F4F6",
+                    backgroundColor: isCompleted ? "#ECFDF5" : isCurrent ? BRAND_COLORS.CREME : "#F3F4F6",
                   }}
                 >
                   {isCompleted ? (

@@ -94,7 +94,7 @@ export default async function HubTestResultPage() {
                   className="h-full rounded-full transition-all"
                   style={{
                     width: `${(score / 5) * 100}%`,
-                    backgroundColor: score >= 3 ? "#059669" : "#DC2626",
+                    backgroundColor: score >= 3 ? "var(--success-600, #059669)" : "var(--error-600, #DC2626)",
                   }}
                 />
               </div>
