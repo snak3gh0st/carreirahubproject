@@ -5,8 +5,6 @@ import { ContractStatus, InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
 
-const GOLD = "#C9A84C";
-
 function getPayload(token: string) {
   try {
     const [, b64] = token.split(".");
@@ -63,8 +61,8 @@ export default async function HubDocumentsPage() {
 
       {!hasDocuments ? (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-          <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
-            <svg className="w-8 h-8" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" className="bg-brand-creme">
+            <svg className="w-8 h-8 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
           </div>
@@ -104,8 +102,7 @@ export default async function HubDocumentsPage() {
                         href={c.signedS3Url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-                        style={{ backgroundColor: "#FFF8E7", color: GOLD }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 bg-brand-creme text-brand-verde"
                       >
                         {t(lang, "documents.downloadPdf")}
                       </a>
@@ -131,8 +128,8 @@ export default async function HubDocumentsPage() {
                     className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: "#FFF8E7" }}>
-                        <svg className="w-5 h-5" style={{ color: GOLD }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" className="bg-brand-creme">
+                        <svg className="w-5 h-5 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                       </div>
@@ -148,7 +145,8 @@ export default async function HubDocumentsPage() {
                     <Link
                       href={`/hub/documents/receipt/${inv.id}`}
                       className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90"
-                      style={{ backgroundColor: "#FFF8E7", color: GOLD }}
+                      className="px-4 py-2 rounded-lg text-sm font-medium transition hover:opacity-90 bg-brand-creme text-brand-verde"
+                        style={{}}
                     >
                       {t(lang, "dashboard.viewReceipt")}
                     </Link>

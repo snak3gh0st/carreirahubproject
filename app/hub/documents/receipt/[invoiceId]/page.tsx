@@ -5,8 +5,6 @@ import { InvoiceStatus } from "@prisma/client";
 import PrintButton from "../PrintButton";
 import { t, Language } from "@/lib/i18n/hub";
 
-const GOLD = "#C9A84C";
-
 function getPayload(token: string) {
   try {
     const [, b64] = token.split(".");
@@ -137,7 +135,7 @@ export default async function ReceiptPage({ params }: Props) {
             </div>
             <div className="flex justify-between py-3 border-t-2 border-gray-900">
               <span className="font-bold text-gray-900">{t(lang, "receipt.amountPaid")}</span>
-              <span className="font-bold text-lg" style={{ color: GOLD }}>
+              <span className="font-bold text-lg text-brand-verde">
                 ${amountPaid.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </span>
             </div>
