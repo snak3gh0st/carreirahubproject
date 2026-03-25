@@ -1,14 +1,12 @@
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
 
 import { QueryProvider } from "@/components/providers/query-provider"
 import { SessionProvider } from "@/components/providers/session-provider"
 import { ToastProvider } from "@/lib/contexts/toast.context"
 import { ToastContainer } from "@/components/ui/toast"
+import { blaak, neueMontreal } from "@/lib/fonts"
 import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Carreira AI Hub",
@@ -21,8 +19,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="pt-BR" className={`${blaak.variable} ${neueMontreal.variable}`} suppressHydrationWarning>
+      <body className="font-sans antialiased">
         {/* Skip to main content for keyboard users */}
         <a
           href="#main-content"

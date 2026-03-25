@@ -97,7 +97,14 @@ const config = {
         // Secondary Dark Colors (NEW - For sidebar & dark sections)
         'secondary-dark': '#1A1A1A',   // Rich black
         'secondary-gray': '#2D2D2D',   // Dark gray
-        
+
+        // Carreira USA v1.1 Brand Palette (references styles/tokens/brand.css)
+        'brand-creme':     'var(--brand-creme)',
+        'brand-verde':     'var(--brand-verde)',
+        'brand-tangerina': 'var(--brand-tangerina)',
+        'brand-cafe':      'var(--brand-cafe)',
+        'brand-caramelo':  'var(--brand-caramelo)',
+
         // Neutral Grays
         gray: {
           50: 'var(--gray-50)',
@@ -148,8 +155,8 @@ const config = {
          TYPOGRAPHY
          ======================================== */
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
-        display: ['Space Grotesk', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-neue-montreal)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['var(--font-blaak)', 'Georgia', 'Times New Roman', 'serif'],
         mono: ['JetBrains Mono', 'Courier New', 'monospace'],
       },
       
