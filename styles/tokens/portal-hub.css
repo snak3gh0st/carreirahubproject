@@ -1,0 +1,8 @@
+/* styles/tokens/portal-hub.css — Layer 3: Hub Portal Overrides
+   Applied via [data-portal="hub"] on the hub layout wrapper.
+   Hub uses Creme as page background, Verde as primary text. */
+
+[data-portal="hub"] {
+  --color-surface-page:     var(--brand-creme);
+  --color-text-primary:     var(--brand-verde);
+}
