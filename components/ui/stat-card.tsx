@@ -55,12 +55,12 @@ export function StatCard({
       )}
     >
       {/* Header with label and optional icon */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between h-9 mb-4">
         <p className="text-[11px] text-gray-500 font-semibold uppercase tracking-wider">
           {label}
         </p>
         {icon && (
-          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-creme">
+          <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-creme flex-shrink-0">
             <div className="text-brand-verde">
               {icon}
             </div>
@@ -69,14 +69,14 @@ export function StatCard({
       </div>
 
       {/* Main value */}
-      <div className="min-w-0 space-y-1.5">
-        <p className="text-3xl font-bold text-gray-900 tabular-nums leading-none">
-          {value}
-        </p>
+      <p className="text-3xl font-bold text-gray-900 tabular-nums leading-none mb-1.5">
+        {value}
+      </p>
 
-        {/* Trend and change */}
-        {(change || description) && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+      {/* Trend and change — fixed height so cards align even without content */}
+      <div className="h-5 flex items-center gap-1.5 text-xs text-gray-500">
+        {(change || description) ? (
+          <>
             {TrendIcon && (
               <TrendIcon className={cn("h-3.5 w-3.5", trendClassName)} />
             )}
@@ -88,8 +88,8 @@ export function StatCard({
             {description && (
               <span>{description}</span>
             )}
-          </div>
-        )}
+          </>
+        ) : null}
       </div>
     </div>
   );
