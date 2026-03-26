@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { paymentWorkflowService } from "@/lib/services/payment-workflow.service";
-import { ContractStatus, InvoiceStatus } from "@prisma/client";
+import { quickbooksService } from "@/lib/services/quickbooks.service";
+import { InvoiceStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/invoices/[id]/send-payment-link
- * Send or resend payment link to customer
+ * Re-send QB invoice email to customer (includes card + PayPal payment options)
  */
 export async function POST(
   request: NextRequest,
@@ -29,10 +29,7 @@ export async function POST(
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
-      include: {
-        contract: true,
-        customer: true,
-      },
+      include: { customer: true },
     });
 
     if (!invoice) {
@@ -53,62 +50,46 @@ export async function POST(
       );
     }
 
-    if (!invoice.contract || invoice.contract.status !== ContractStatus.SIGNED) {
+    if (!invoice.quickbooks_invoice_id) {
       return NextResponse.json(
-        { error: "Contract must be signed before sending payment link" },
+        { error: "Invoice is not synced to QuickBooks" },
         { status: 400 }
       );
     }
 
-    // Send payment link
-    await paymentWorkflowService.sendPaymentLinkAfterSignature(
-      {
-        id: invoice.id,
-        invoiceNumber: invoice.invoiceNumber,
-        amount: invoice.amount,
-        dueDate: invoice.dueDate,
-        status: invoice.status,
-        stripePaymentLinkId: invoice.stripePaymentLinkId,
-        paymentReminderCount: invoice.paymentReminderCount,
-        customer: {
-          id: invoice.customer.id,
-          name: invoice.customer.name,
-          email: invoice.customer.email,
-          stripe_id: invoice.customer.stripe_id,
-          quickbooks_id: invoice.customer.quickbooks_id,
-        },
-      },
-      {
-        id: invoice.contract!.id,
-        status: invoice.contract!.status,
-      }
+    // Initialize QB and re-send invoice email
+    await quickbooksService.initialize();
+    await quickbooksService.sendInvoice(
+      invoice.quickbooks_invoice_id,
+      invoice.customer.email
     );
 
     // Log the action
     await prisma.integrationLog.create({
       data: {
-        service: "PAYMENT_WORKFLOW",
-        action: "MANUAL_PAYMENT_LINK_SENT",
+        service: "QUICKBOOKS",
+        action: "INVOICE_EMAIL_RESENT",
         status: "SUCCESS",
         payload: {
           invoiceId: params.id,
+          qbInvoiceId: invoice.quickbooks_invoice_id,
           sentBy: (session.user as any).id,
+          recipientEmail: invoice.customer.email,
         } as any,
       },
     });
 
     return NextResponse.json({
       success: true,
-      message: "Payment link sent successfully",
+      message: "Invoice email sent successfully via QuickBooks",
     });
   } catch (error) {
-    console.error("[SEND_PAYMENT_LINK_ERROR]", error);
+    console.error("[SEND_INVOICE_EMAIL_ERROR]", error);
 
-    // Log the error
     await prisma.integrationLog.create({
       data: {
-        service: "PAYMENT_WORKFLOW",
-        action: "MANUAL_PAYMENT_LINK_FAILED",
+        service: "QUICKBOOKS",
+        action: "INVOICE_EMAIL_RESEND_FAILED",
         status: "ERROR",
         error: error instanceof Error ? error.message : "Unknown error",
         payload: { invoiceId: params.id } as any,
@@ -116,7 +97,7 @@ export async function POST(
     });
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to send payment link" },
+      { error: error instanceof Error ? error.message : "Failed to send invoice email" },
       { status: 500 }
     );
   }
