@@ -41,7 +41,6 @@ model Customer {
   phone                String?
   pipedrive_id         Int?             @unique
   quickbooks_id        String?          @unique
-  stripe_id            String?          @unique
   trello_id            String?          @unique
   cloudtalk_id         String?
   google_contact_id    String?
@@ -288,7 +287,6 @@ model Invoice {
   dueDate               DateTime
   status                InvoiceStatus    @default(DRAFT)
   quickbooks_invoice_id String?          @unique
-  stripe_invoice_id     String?          @unique
   dealId                String?
   customerId            String
   pdfUrl                String?
@@ -301,12 +299,9 @@ model Invoice {
   paidAt                DateTime?
   paymentMethod         String?
   paymentReminderCount  Int              @default(0)
-  stripePaymentIntentId String?          @unique
-  stripePaymentLinkId   String?          @unique
   collectionCallCount   Int              @default(0)
   lastCollectionCallAt  DateTime?
   markedOverdueAt       DateTime?
-  stripePaymentLinkUrl  String?
   amountRefunded        Decimal?         @default(0) @db.Decimal(10, 2)
   lineItems             Json?
   ownerId               String?
@@ -339,7 +334,6 @@ model Payment {
   paymentMethod         String?
   referenceNumber       String?
   quickbooks_payment_id String?   @unique
-  stripe_payment_id     String?   @unique
   invoiceId             String
   customerId            String
   syncedFromQb          Boolean   @default(false)
