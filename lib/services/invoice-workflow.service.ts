@@ -14,7 +14,7 @@ import { pipedriveService } from "./pipedrive.service";
  * Responsabilidade: Orquestrar workflow completo de fechamento de deal
  * Deal Won → Create Invoice (QuickBooks) → Generate Contract (DocuSign)
  *
- * Sprint 1 Focus: QuickBooks + DocuSign only (no Stripe)
+ * Sprint 1 Focus: QuickBooks + DocuSign
  */
 export class InvoiceWorkflowService {
   /**
@@ -240,7 +240,7 @@ export class InvoiceWorkflowService {
 
   /**
    * Create invoice in QuickBooks
-   * Sprint 1: QuickBooks only (Stripe removed from scope)
+   * QuickBooks only
    */
   private async createQuickbooksInvoice(
     dealId: string,
