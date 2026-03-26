@@ -15,7 +15,6 @@ const updateCustomerSchema = z.object({
   zipCode: z.string().optional(),
   country: z.string().optional(),
   pipedrive_id: z.number().optional(),
-  stripe_id: z.string().optional(),
   quickbooks_id: z.string().optional(),
   metadata: z.any().optional(),
 });

@@ -7,7 +7,7 @@ import Link from "next/link";
 /**
  * Integration Hub Dashboard
  *
- * Central view of all integrations (QuickBooks, Pipedrive, Stripe)
+ * Central view of all integrations (QuickBooks, Pipedrive)
  * Shows connection status, sync statistics, and recent activity
  */
 export default async function IntegrationHubPage() {
@@ -33,22 +33,18 @@ export default async function IntegrationHubPage() {
     totalCustomers,
     qbCustomers,
     pipedriveCustomers,
-    stripeCustomers,
     totalInvoices,
     qbInvoices,
     totalPayments,
     qbPayments,
-    stripePayments,
   ] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.count({ where: { quickbooks_id: { not: null } } }),
     prisma.customer.count({ where: { pipedrive_id: { not: null } } }),
-    prisma.customer.count({ where: { stripe_id: { not: null } } }),
     prisma.invoice.count(),
     prisma.invoice.count({ where: { quickbooks_invoice_id: { not: null } } }),
     prisma.payment.count(),
     prisma.payment.count({ where: { quickbooks_payment_id: { not: null } } }),
-    prisma.payment.count({ where: { stripe_payment_id: { not: null } } }),
   ]);
 
   // Get recent activity (last 15 integration events)
@@ -93,9 +89,6 @@ export default async function IntegrationHubPage() {
   // Pipedrive status
   const pipedriveConfigured = !!process.env.PIPEDRIVE_API_TOKEN;
 
-  // Stripe status
-  const stripeConfigured = !!process.env.STRIPE_SECRET_KEY;
-
   return (
     <div className="container mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
@@ -114,7 +107,7 @@ export default async function IntegrationHubPage() {
       </div>
 
       {/* Connection Status Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* QuickBooks */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
@@ -233,41 +226,6 @@ export default async function IntegrationHubPage() {
           </div>
         </div>
 
-        {/* Stripe */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Stripe</h3>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                stripeConfigured
-                  ? "bg-green-100 text-green-800"
-                  : "bg-red-100 text-red-800"
-              }`}
-            >
-              {stripeConfigured ? "Configurado" : "Não Configurado"}
-            </span>
-          </div>
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Chave API:</span>
-              <span className="font-medium">
-                {stripeConfigured ? "Configurado" : "Ausente"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Segredo do Webhook:</span>
-              <span className="font-medium">
-                {process.env.STRIPE_WEBHOOK_SECRET ? "Configurado" : "Ausente"}
-              </span>
-            </div>
-            {errorsByService.STRIPE && (
-              <div className="flex justify-between text-red-600">
-                <span>Erros (24h):</span>
-                <span className="font-medium">{errorsByService.STRIPE}</span>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* Sync Statistics */}
@@ -291,10 +249,6 @@ export default async function IntegrationHubPage() {
               <div className="flex justify-between text-blue-600">
                 <span>Pipedrive:</span>
                 <span className="font-medium">{pipedriveCustomers}</span>
-              </div>
-              <div className="flex justify-between text-purple-600">
-                <span>Stripe:</span>
-                <span className="font-medium">{stripeCustomers}</span>
               </div>
             </div>
           </div>
@@ -325,10 +279,6 @@ export default async function IntegrationHubPage() {
               <div className="flex justify-between text-green-600">
                 <span>QuickBooks:</span>
                 <span className="font-medium">{qbPayments}</span>
-              </div>
-              <div className="flex justify-between text-purple-600">
-                <span>Stripe:</span>
-                <span className="font-medium">{stripePayments}</span>
               </div>
             </div>
           </div>
@@ -381,9 +331,7 @@ export default async function IntegrationHubPage() {
                             ? "bg-green-100 text-green-800"
                             : log.service === "PIPEDRIVE"
                               ? "bg-blue-100 text-blue-800"
-                              : log.service === "STRIPE"
-                                ? "bg-purple-100 text-purple-800"
-                                : "bg-gray-100 text-gray-800"
+                              : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {log.service}

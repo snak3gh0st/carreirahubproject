@@ -131,7 +131,6 @@ function getServiceDisplayName(serviceName: string): string {
   const displayNames: Record<string, string> = {
     pipedrive: "Pipedrive",
     quickbooks: "QuickBooks",
-    stripe: "Stripe",
     docusign: "DocuSign",
     whatsapp: "WhatsApp",
     retell: "RetellAI",

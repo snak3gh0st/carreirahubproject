@@ -66,12 +66,6 @@ export async function GET() {
       lastSync: systemConfig?.last_pipedrive_sync || null,
     };
 
-    // Stripe Status
-    const stripeStatus: any = {
-      configured: !!process.env.STRIPE_SECRET_KEY,
-      webhookConfigured: !!process.env.STRIPE_WEBHOOK_SECRET,
-    };
-
     // Get last webhook received for each service
     const lastWebhooks = await prisma.integrationLog.findMany({
       where: {
@@ -84,33 +78,27 @@ export async function GET() {
 
     const lastQbWebhook = lastWebhooks.find((w) => w.service === "QUICKBOOKS");
     const lastPdWebhook = lastWebhooks.find((w) => w.service === "PIPEDRIVE");
-    const lastStripeWebhook = lastWebhooks.find((w) => w.service === "STRIPE");
 
     quickbooksStatus.lastWebhook = lastQbWebhook?.createdAt || null;
     pipedriveStatus.lastWebhook = lastPdWebhook?.createdAt || null;
-    stripeStatus.lastWebhook = lastStripeWebhook?.createdAt || null;
 
     // Sync Statistics
     const [
       totalCustomers,
       qbCustomers,
       pipedriveCustomers,
-      stripeCustomers,
       totalInvoices,
       qbInvoices,
       totalPayments,
       qbPayments,
-      stripePayments,
     ] = await Promise.all([
       prisma.customer.count(),
       prisma.customer.count({ where: { quickbooks_id: { not: null } } }),
       prisma.customer.count({ where: { pipedrive_id: { not: null } } }),
-      prisma.customer.count({ where: { stripe_id: { not: null } } }),
       prisma.invoice.count(),
       prisma.invoice.count({ where: { quickbooks_invoice_id: { not: null } } }),
       prisma.payment.count(),
       prisma.payment.count({ where: { quickbooks_payment_id: { not: null } } }),
-      prisma.payment.count({ where: { stripe_payment_id: { not: null } } }),
     ]);
 
     const syncStats = {
@@ -118,7 +106,6 @@ export async function GET() {
         total: totalCustomers,
         quickbooks: qbCustomers,
         pipedrive: pipedriveCustomers,
-        stripe: stripeCustomers,
       },
       invoices: {
         total: totalInvoices,
@@ -127,7 +114,6 @@ export async function GET() {
       payments: {
         total: totalPayments,
         quickbooks: qbPayments,
-        stripe: stripePayments,
       },
     };
 
@@ -167,7 +153,6 @@ export async function GET() {
     return NextResponse.json({
       quickbooks: quickbooksStatus,
       pipedrive: pipedriveStatus,
-      stripe: stripeStatus,
       syncStats,
       recentActivity,
       errorStats: {

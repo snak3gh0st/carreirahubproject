@@ -69,32 +69,6 @@ export async function enqueueQuickBooksWebhook(data: WebhookQueueJob): Promise<v
 }
 
 /**
- * Enqueue Stripe webhook for async processing
- */
-export async function enqueueStripeWebhook(data: WebhookQueueJob): Promise<void> {
-  // Use whatsappMessages queue as general-purpose queue for now
-  // Can create dedicated stripe queue later if needed
-  await queues.whatsappMessages.add(
-    "process-stripe-webhook",
-    data,
-    {
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 60000,
-      },
-      removeOnComplete: {
-        age: 24 * 3600,
-        count: 1000,
-      },
-      removeOnFail: {
-        age: 7 * 24 * 3600,
-      },
-    }
-  );
-}
-
-/**
  * Enqueue DocuSign webhook for async processing
  */
 export async function enqueueDocuSignWebhook(data: WebhookQueueJob): Promise<void> {

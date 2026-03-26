@@ -6,14 +6,13 @@ import { createHash } from "crypto";
  * Each webhook provider has different event ID formats:
  * - Pipedrive: V2 webhooks use meta.v or data.id, V1 webhooks use current.id
  * - QuickBooks: Combination of realmId + entity ID for uniqueness
- * - Stripe: Top-level id field
  * - DocuSign: eventId or envelopeId as fallback
  * - Twilio: MessageSid for WhatsApp messages
  * - RetellAI: call_id
  *
  * If no event ID is available, generates a deterministic SHA-256 hash of the payload.
  *
- * @param service Service name (e.g., "pipedrive", "quickbooks", "stripe")
+ * @param service Service name (e.g., "pipedrive", "quickbooks", "docusign")
  * @param payload Raw webhook payload
  * @returns Event ID string or null if extraction fails
  */
@@ -47,11 +46,6 @@ export function extractEventId(service: string, payload: any): string | null {
       const legacyEntityId =
         payload?.eventNotifications?.[0]?.dataChangeEvent?.entities?.[0]?.id;
       return legacyRealmId && legacyEntityId ? `${legacyRealmId}-${legacyEntityId}` : null;
-
-    case "stripe":
-      // Stripe events have top-level id field
-      // Example: { id: "evt_1234567890", ... }
-      return payload?.id || null;
 
     case "docusign":
       // Use eventId or envelopeId as fallback

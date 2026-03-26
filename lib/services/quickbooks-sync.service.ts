@@ -1121,7 +1121,7 @@ export class QuickBooksSyncService {
             invoiceId: invoice.quickbooks_invoice_id!,
             amount: Number(invoice.amountPaid),
             paymentDate: invoice.paidAt!,
-            paymentMethod: invoice.paymentMethod || 'Stripe',
+            paymentMethod: invoice.paymentMethod || 'QuickBooks',
           });
 
           // Record the payment sync in our database
@@ -1130,7 +1130,7 @@ export class QuickBooksSyncService {
               amount: invoice.amountPaid!,
               currency: 'USD',
               paymentDate: invoice.paidAt!,
-              paymentMethod: invoice.paymentMethod || 'Stripe',
+              paymentMethod: invoice.paymentMethod || 'QuickBooks',
               referenceNumber: qbPayment.Id,
               quickbooks_payment_id: qbPayment.Id,
               invoiceId: invoice.id,

@@ -4,7 +4,6 @@ import { extractEventId } from "./webhook-event-id";
 import {
   enqueuePipedriveWebhook,
   enqueueQuickBooksWebhook,
-  enqueueStripeWebhook,
   enqueueDocuSignWebhook,
   enqueueTwilioWebhook,
   WebhookQueueJob,
@@ -33,7 +32,6 @@ export interface WebhookAcceptResult {
 const enqueueMap = {
   PIPEDRIVE: enqueuePipedriveWebhook,
   QUICKBOOKS: enqueueQuickBooksWebhook,
-  STRIPE: enqueueStripeWebhook,
   DOCUSIGN: enqueueDocuSignWebhook,
   TWILIO: enqueueTwilioWebhook,
 } as const;

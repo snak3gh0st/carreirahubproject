@@ -20,7 +20,6 @@ export interface HealthCheckResponse {
   services: {
     pipedrive: ServiceHealthStatus;
     quickbooks: ServiceHealthStatus;
-    stripe: ServiceHealthStatus;
     docusign: ServiceHealthStatus;
     twilio: ServiceHealthStatus;
     retell: ServiceHealthStatus;
@@ -83,7 +82,6 @@ export async function calculateWebhookHealth(): Promise<HealthCheckResponse> {
   const services = [
     "pipedrive",
     "quickbooks",
-    "stripe",
     "docusign",
     "twilio",
     "retell",
@@ -164,7 +162,6 @@ export async function calculateWebhookHealth(): Promise<HealthCheckResponse> {
     services: {
       pipedrive: serviceHealth.pipedrive,
       quickbooks: serviceHealth.quickbooks,
-      stripe: serviceHealth.stripe,
       docusign: serviceHealth.docusign,
       twilio: serviceHealth.twilio,
       retell: serviceHealth.retell,

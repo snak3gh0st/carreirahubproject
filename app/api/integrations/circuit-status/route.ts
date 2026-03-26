@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     const circuitStates = await prisma.circuitBreakerState.findMany();
 
     // Define all expected services
-    const allServices = ["pipedrive", "quickbooks", "stripe", "docusign", "whatsapp", "retell", "openai", "email"];
+    const allServices = ["pipedrive", "quickbooks", "docusign", "whatsapp", "retell", "openai", "email"];
 
     // Build response
     const circuits: Record<string, any> = {};

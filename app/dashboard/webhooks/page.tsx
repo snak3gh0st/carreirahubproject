@@ -19,7 +19,6 @@ interface HealthCheckResponse {
   services: {
     pipedrive: ServiceHealthStatus;
     quickbooks: ServiceHealthStatus;
-    stripe: ServiceHealthStatus;
     docusign: ServiceHealthStatus;
     twilio: ServiceHealthStatus;
     retell: ServiceHealthStatus;
