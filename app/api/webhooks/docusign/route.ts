@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { contractWorkflowService } from '@/lib/services/contract-workflow.service';
-import { paymentWorkflowService } from '@/lib/services/payment-workflow.service';
 import { pipedriveService } from '@/lib/services/pipedrive.service';
 import { notificationService } from '@/lib/services/notification.service';
 import { ContractStatus } from '@prisma/client';
@@ -200,39 +199,10 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        // Trigger payment workflow
+        // Payment: QB invoice email already sent at creation time
+        // (invoice-workflow.service.ts → quickbooksService.sendInvoice)
         if (contract.invoice) {
-          try {
-            await paymentWorkflowService.sendPaymentLinkAfterSignature(
-              {
-                id: contract.invoice.id,
-                invoiceNumber: contract.invoice.invoiceNumber,
-                amount: contract.invoice.amount,
-                dueDate: contract.invoice.dueDate,
-                status: contract.invoice.status,
-                stripePaymentLinkId: contract.invoice.stripePaymentLinkId,
-                paymentReminderCount: contract.invoice.paymentReminderCount,
-                customer: contract.invoice.customer,
-              },
-              {
-                id: contract.id,
-                status: ContractStatus.SIGNED,
-              }
-            );
-            console.log(`[DOCUSIGN_WEBHOOK] Payment workflow initiated for invoice ${contract.invoice.id}`);
-          } catch (error) {
-            console.error('[DOCUSIGN_WEBHOOK] Failed to initiate payment workflow:', error);
-            // Don't fail the webhook - log and continue
-            await prisma.integrationLog.create({
-              data: {
-                service: 'PAYMENT_WORKFLOW',
-                action: 'SEND_PAYMENT_LINK_FAILED',
-                status: 'ERROR',
-                error: error instanceof Error ? error.message : 'Unknown error',
-                payload: { contractId: contract.id, invoiceId: contract.invoice.id } as any,
-              },
-            });
-          }
+          console.log(`[DOCUSIGN_WEBHOOK] Contract signed for invoice ${contract.invoice.id} — QB invoice email already sent`);
         }
 
         // NEW: Mark Pipedrive deal as WON and notify commercial user
