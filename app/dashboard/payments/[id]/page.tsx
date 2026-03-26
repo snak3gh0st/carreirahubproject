@@ -87,8 +87,7 @@ export default async function PaymentDetailPage({
 
   // Determine source
   const isQBSynced = !!payment.quickbooks_payment_id;
-  const isStripeSynced = !!payment.stripe_payment_id;
-  const isManual = !isQBSynced && !isStripeSynced;
+  const isManual = !isQBSynced;
 
   // Calculate invoice balance before/after payment
   const invoiceTotal = Number(payment.invoice.amount);
@@ -134,11 +133,6 @@ export default async function PaymentDetailPage({
                 {isQBSynced && (
                   <span className="px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs">
                     QuickBooks
-                  </span>
-                )}
-                {isStripeSynced && (
-                  <span className="px-2 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">
-                    Stripe
                   </span>
                 )}
                 {isManual && (
@@ -192,14 +186,6 @@ export default async function PaymentDetailPage({
                   <p className="text-sm text-gray-500">QuickBooks ID</p>
                   <p className="text-sm font-mono font-medium mt-1">
                     {payment.quickbooks_payment_id}
-                  </p>
-                </div>
-              )}
-              {isStripeSynced && (
-                <div>
-                  <p className="text-sm text-gray-500">Stripe Payment ID</p>
-                  <p className="text-sm font-mono font-medium mt-1">
-                    {payment.stripe_payment_id}
                   </p>
                 </div>
               )}

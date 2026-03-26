@@ -20,7 +20,6 @@ interface CustomerEditFormProps {
     country: string | null;
     quickbooks_id: string | null;
     pipedrive_id: number | null;
-    stripe_id: string | null;
   };
 }
 
@@ -187,7 +186,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
         </div>
 
         {/* External IDs - Read Only */}
-        {(customer.quickbooks_id || customer.pipedrive_id || customer.stripe_id) && (
+        {(customer.quickbooks_id || customer.pipedrive_id) && (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h3 className="text-gray-700 font-semibold mb-2 text-sm">
               Integrações Externas (Somente leitura)
@@ -201,11 +200,6 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
               {customer.pipedrive_id && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
                   Pipedrive: {customer.pipedrive_id}
-                </span>
-              )}
-              {customer.stripe_id && (
-                <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded text-xs font-medium">
-                  Stripe: {customer.stripe_id}
                 </span>
               )}
             </div>

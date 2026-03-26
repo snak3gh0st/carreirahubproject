@@ -29,7 +29,6 @@ const METHOD_COLORS: Record<string, string> = {
   cash: "#f59e0b",
   manual: "#6b7280",
   quickbooks: "#0F52BA",
-  stripe: "#8b5cf6",
   other: "#9ca3af",
 };
 

@@ -86,7 +86,6 @@ export default async function PaymentsPage({
     whereClause.quickbooks_payment_id = { not: null };
   } else if (source === "manual") {
     whereClause.quickbooks_payment_id = null;
-    whereClause.stripe_payment_id = null;
   }
 
   // Advanced filters
@@ -179,7 +178,6 @@ export default async function PaymentsPage({
   const manualPayments = await prisma.payment.count({
     where: {
       quickbooks_payment_id: null,
-      stripe_payment_id: null,
     },
   });
 
@@ -441,7 +439,6 @@ export default async function PaymentsPage({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Todos</option>
-                  <option value="stripe">Stripe</option>
                   <option value="quickbooks">QuickBooks</option>
                   <option value="manual">Manual</option>
                   <option value="bank_transfer">Transferência Bancária</option>
@@ -684,12 +681,11 @@ export default async function PaymentsPage({
               ) : (
                 payments.map((payment) => {
                   const isQBSynced = !!payment.quickbooks_payment_id;
-                  const isStripeSynced = !!payment.stripe_payment_id;
-                  const isManual = !isQBSynced && !isStripeSynced;
+                  const isManual = !isQBSynced;
 
                   // Payment method badge variant
-                  const methodVariant = payment.paymentMethod?.toLowerCase().includes("card") || payment.paymentMethod === "stripe" 
-                    ? "info" 
+                  const methodVariant = payment.paymentMethod?.toLowerCase().includes("card")
+                    ? "info"
                     : payment.paymentMethod?.toLowerCase().includes("bank") || payment.paymentMethod?.toLowerCase().includes("transfer")
                     ? "success"
                     : payment.paymentMethod?.toLowerCase().includes("cash")
@@ -745,7 +741,6 @@ export default async function PaymentsPage({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {isQBSynced && <Badge variant="success">QuickBooks</Badge>}
-                        {isStripeSynced && <Badge variant="info">Stripe</Badge>}
                         {isManual && <Badge variant="default">Manual</Badge>}
                       </td>
                     </tr>

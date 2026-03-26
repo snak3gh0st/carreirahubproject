@@ -827,7 +827,7 @@ export class NotificationService {
               </div>
 
               <div style="text-align: center;">
-                <a href="${paymentUrl}" class="button">Pay Now with Stripe</a>
+                <a href="${paymentUrl}" class="button">Pay Now</a>
               </div>
 
               <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
@@ -841,7 +841,7 @@ export class NotificationService {
             </div>
             <div class="footer">
               <p>CarreiraUSA - Professional Services</p>
-              <p>Secure payments powered by Stripe</p>
+              <p>Secure payments powered by QuickBooks</p>
             </div>
           </div>
         </body>

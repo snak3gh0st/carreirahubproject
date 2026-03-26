@@ -172,33 +172,33 @@ export default async function InvoiceDetailPage({
           : "Aguardando assinatura do contrato",
     },
     {
-      title: "Link de Pagamento Enviado",
+      title: "Invoice Enviado",
       status:
-        invoice.stripePaymentLinkId
+        invoice.emailSentAt
           ? ("completed" as const)
           : invoice.contract?.status === ContractStatus.SIGNED
           ? ("current" as const)
           : ("pending" as const),
-      date: invoice.stripePaymentLinkId ? invoice.updatedAt : null,
-      description: invoice.stripePaymentLinkId
-        ? "Link de pagamento enviado ao cliente"
+      date: invoice.emailSentAt || null,
+      description: invoice.emailSentAt
+        ? "Invoice enviado ao cliente via QuickBooks"
         : invoice.contract?.status === ContractStatus.SIGNED
-        ? "Gerando link de pagamento..."
-        : "O link de pagamento será enviado após a assinatura do contrato",
+        ? "Aguardando envio do invoice..."
+        : "Contrato precisa ser assinado primeiro",
     },
     {
-      title: "Pagamento Recebido",
+      title: "Pagamento",
       status:
         invoice.status === InvoiceStatus.PAID
           ? ("completed" as const)
-          : invoice.stripePaymentLinkId
+          : invoice.emailSentAt
           ? ("current" as const)
           : ("pending" as const),
       date: invoice.paidAt,
       description:
         invoice.status === InvoiceStatus.PAID
-          ? `Pago via ${invoice.paymentMethod || "Stripe"}`
-          : invoice.stripePaymentLinkId
+          ? `Pago via ${invoice.paymentMethod || "QuickBooks"}`
+          : invoice.emailSentAt
           ? `Aguardando pagamento (${invoice.paymentReminderCount || 0} lembretes enviados)`
           : "Aguardando pagamento",
     },
@@ -410,25 +410,7 @@ export default async function InvoiceDetailPage({
                     </p>
                   </div>
                 )}
-                {invoice.stripe_invoice_id && (
-                  <div className="flex items-start gap-2">
-                    <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">Stripe</span>
-                    <p className="text-sm text-gray-700 font-mono flex-1">
-                      {invoice.stripe_invoice_id}
-                    </p>
-                  </div>
-                )}
-                {invoice.stripePaymentIntentId && (
-                  <div className="flex items-start gap-2">
-                    <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">Payment</span>
-                    <p className="text-sm text-gray-700 font-mono flex-1">
-                      {invoice.stripePaymentIntentId}
-                    </p>
-                  </div>
-                )}
-                {!invoice.quickbooks_invoice_id &&
-                  !invoice.stripe_invoice_id &&
-                  !invoice.stripePaymentIntentId && (
+                {!invoice.quickbooks_invoice_id && (
                     <p className="text-gray-400 text-sm">Nenhum ID externo sincronizado ainda</p>
                   )}
               </div>
@@ -627,8 +609,6 @@ export default async function InvoiceDetailPage({
               paidAt: invoice.paidAt,
               amountPaid: invoice.amountPaid,
               paymentMethod: invoice.paymentMethod,
-              stripePaymentLinkId: invoice.stripePaymentLinkId,
-              stripePaymentIntentId: invoice.stripePaymentIntentId,
               lastPaymentReminderAt: invoice.lastPaymentReminderAt,
               paymentReminderCount: invoice.paymentReminderCount,
             }}

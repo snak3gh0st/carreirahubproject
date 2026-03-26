@@ -25,7 +25,6 @@ const createCustomerSchema = z.object({
   zipCode: z.string().optional(),
   country: z.string().optional(),
   pipedrive_id: z.number().optional(),
-  stripe_id: z.string().optional(),
   quickbooks_id: z.string().optional(),
   metadata: z.any().optional(),
 });
@@ -118,7 +117,6 @@ export async function POST(request: NextRequest) {
       country: data.country,
       externalIds: {
         pipedrive_id: data.pipedrive_id,
-        stripe_id: data.stripe_id,
         quickbooks_id: data.quickbooks_id,
       },
       metadata: data.metadata,

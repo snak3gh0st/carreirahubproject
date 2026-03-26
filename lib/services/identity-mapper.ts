@@ -4,7 +4,6 @@ import { Customer } from "@prisma/client";
 export interface ExternalIds {
   pipedrive_id?: number;
   quickbooks_id?: string;
-  stripe_id?: string;
   docusign_id?: string;
   trello_id?: string;
   cloudtalk_id?: string;
@@ -75,9 +74,6 @@ export class IdentityMapperService {
       if (externalIds.quickbooks_id && !customer.quickbooks_id) {
         updates.quickbooks_id = externalIds.quickbooks_id;
       }
-      if (externalIds.stripe_id && !customer.stripe_id) {
-        updates.stripe_id = externalIds.stripe_id;
-      }
       if (externalIds.docusign_id && !customer.docusign_id) {
         updates.docusign_id = externalIds.docusign_id;
       }
@@ -122,7 +118,6 @@ export class IdentityMapperService {
           country,
           pipedrive_id: externalIds.pipedrive_id,
           quickbooks_id: externalIds.quickbooks_id,
-          stripe_id: externalIds.stripe_id,
           docusign_id: externalIds.docusign_id,
           trello_id: externalIds.trello_id,
           cloudtalk_id: externalIds.cloudtalk_id,
@@ -139,7 +134,7 @@ export class IdentityMapperService {
    * Buscar Customer por ID externo
    */
   async findByExternalId(
-    service: "pipedrive" | "quickbooks" | "stripe" | "docusign" | "trello" | "cloudtalk" | "google_contact",
+    service: "pipedrive" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer | null> {
     const where: any = {};
@@ -150,9 +145,6 @@ export class IdentityMapperService {
         break;
       case "quickbooks":
         where.quickbooks_id = String(externalId);
-        break;
-      case "stripe":
-        where.stripe_id = String(externalId);
         break;
       case "docusign":
         where.docusign_id = String(externalId);
@@ -176,7 +168,7 @@ export class IdentityMapperService {
    */
   async addExternalId(
     customerId: string,
-    service: "pipedrive" | "quickbooks" | "stripe" | "docusign" | "trello" | "cloudtalk" | "google_contact",
+    service: "pipedrive" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer> {
     const updates: any = {};
@@ -187,9 +179,6 @@ export class IdentityMapperService {
         break;
       case "quickbooks":
         updates.quickbooks_id = String(externalId);
-        break;
-      case "stripe":
-        updates.stripe_id = String(externalId);
         break;
       case "docusign":
         updates.docusign_id = String(externalId);

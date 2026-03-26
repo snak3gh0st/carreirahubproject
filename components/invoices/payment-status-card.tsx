@@ -14,8 +14,6 @@ interface PaymentStatusCardProps {
     paidAt: Date | null;
     amountPaid: any | null;
     paymentMethod: string | null;
-    stripePaymentLinkId: string | null;
-    stripePaymentIntentId: string | null;
     lastPaymentReminderAt: Date | null;
     paymentReminderCount: number;
   };
@@ -130,27 +128,10 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
           </>
         )}
 
-        {!isPaid && invoice.stripePaymentLinkId && (
-          <>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Payment Link</span>
-              <span className="font-medium text-green-600">Sent</span>
-            </div>
-            {invoice.paymentReminderCount > 0 && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reminders Sent</span>
-                <span className="font-medium">{invoice.paymentReminderCount}</span>
-              </div>
-            )}
-          </>
-        )}
-
-        {invoice.stripePaymentIntentId && (
+        {!isPaid && invoice.paymentReminderCount > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">Stripe ID</span>
-            <span className="font-mono text-xs truncate max-w-[150px]">
-              {invoice.stripePaymentIntentId}
-            </span>
+            <span className="text-gray-600">Reminders Sent</span>
+            <span className="font-medium">{invoice.paymentReminderCount}</span>
           </div>
         )}
       </div>
@@ -163,11 +144,7 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
             disabled={isSending}
             className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition disabled:opacity-50"
           >
-            {isSending
-              ? "Sending..."
-              : invoice.stripePaymentLinkId
-              ? "Resend Payment Link"
-              : "Send Payment Link"}
+            {isSending ? "Sending..." : "Send Payment Link"}
           </button>
         )}
 
