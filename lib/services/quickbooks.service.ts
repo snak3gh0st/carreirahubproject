@@ -855,6 +855,7 @@ export class QuickbooksService {
             .split("T")[0],
       AllowOnlineCreditCardPayment: true,
       AllowOnlineACHPayment: true,
+      AllowOnlinePayPalPayment: true,
       CustomerMemo: {
         value: "IMPORTANT: When paying, please check 'Save my info for faster checkout' to enable automatic payments for your remaining installments.",
       },
@@ -987,6 +988,7 @@ export class QuickbooksService {
       EmailStatus: "NeedToSend",  // Tell QB this needs to be sent
       AllowOnlineCreditCardPayment: true,
       AllowOnlineACHPayment: true,
+      AllowOnlinePayPalPayment: true,
       CustomerMemo: {
         value: "IMPORTANT: When paying, please check 'Save my info for faster checkout' to enable automatic payments for your remaining installments.",
       },
