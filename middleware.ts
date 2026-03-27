@@ -44,6 +44,9 @@ const HUB_PUBLIC_PATHS = [
   "/api/hub/auth/set-password",
 ];
 
+// ── Ops public paths (no auth needed) ───────────────────────
+const OPS_PUBLIC_PATHS = ["/ops/login"];
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -67,6 +70,28 @@ export async function middleware(request: NextRequest) {
           break;
         }
       }
+    }
+
+    return NextResponse.next();
+  }
+
+  // ── Ops public routes: no auth needed ──────────────────────
+  if (OPS_PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
+
+  // ── Ops portal: NextAuth with OPERATIONAL/ADMIN role ───────
+  if (pathname.startsWith("/ops") || pathname.startsWith("/api/ops")) {
+    const token = await getToken({ req: request });
+
+    if (!token) {
+      return NextResponse.redirect(new URL("/ops/login", request.url));
+    }
+
+    const userRole = token.role as UserRole;
+    if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+      console.log(`[MIDDLEWARE] Ops access denied: ${userRole} -> ${pathname}`);
+      return NextResponse.redirect(new URL("/?error=access_denied", request.url));
     }
 
     return NextResponse.next();
@@ -111,5 +136,7 @@ export const config = {
     "/api/dashboard/:path*",
     "/hub/:path*",
     "/api/hub/:path*",
+    "/ops/:path*",
+    "/api/ops/:path*",
   ],
 };
