@@ -61,9 +61,15 @@ export class ContractWorkflowService {
             signerName: invoice.customer.name,
             dealId: invoice.deal?.id || '',
             customerId: invoice.customer.id,
-            invoiceId: invoice.id,
             reminderCount: 0,
           },
+        });
+
+        // Link all invoices in the series to this contract
+        const seriesInvoiceIds = await this.getSeriesInvoiceIds(invoice.id);
+        await prisma.invoice.updateMany({
+          where: { id: { in: seriesInvoiceIds } },
+          data: { contractId: draftContract.id },
         });
 
         console.log(`[CONTRACT_WORKFLOW] Contract ${draftContract.id} saved as DRAFT - waiting for customer data completion`);
@@ -96,9 +102,15 @@ export class ContractWorkflowService {
           signerName: invoice.customer.name,
           dealId: invoice.deal?.id || '',
           customerId: invoice.customer.id,
-          invoiceId: invoice.id,
           reminderCount: 0,
         },
+      });
+
+      // Link all invoices in the series to this contract
+      const seriesInvoiceIds = await this.getSeriesInvoiceIds(invoice.id);
+      await prisma.invoice.updateMany({
+        where: { id: { in: seriesInvoiceIds } },
+        data: { contractId: contract.id },
       });
 
       console.log(`[CONTRACT_WORKFLOW] Contract record created: ${contract.id}`);
@@ -186,7 +198,7 @@ export class ContractWorkflowService {
         where: { id: contractId },
         include: {
           customer: true,
-          invoice: true,
+          invoices: true,
         },
       });
 
@@ -263,7 +275,7 @@ export class ContractWorkflowService {
         where: { id: contractId },
         include: {
           customer: true,
-          invoice: true,
+          invoices: true,
         },
       });
 
@@ -282,15 +294,13 @@ export class ContractWorkflowService {
 
       console.log(`[CONTRACT_WORKFLOW] Contract ${contractId} marked as DECLINED`);
 
-      // Update invoice status to VOID
-      if (contract.invoiceId) {
-        await prisma.invoice.update({
-          where: { id: contract.invoiceId },
-          data: {
-            status: 'VOID',
-          },
+      // Void ALL linked invoices
+      if (contract.invoices && contract.invoices.length > 0) {
+        await prisma.invoice.updateMany({
+          where: { contractId: contractId },
+          data: { status: 'VOID' },
         });
-        console.log(`[CONTRACT_WORKFLOW] Invoice ${contract.invoiceId} marked as VOID`);
+        console.log(`[CONTRACT_WORKFLOW] ${contract.invoices.length} invoice(s) marked as VOID`);
       }
 
       // Notification will be sent by webhook handler or manually
@@ -313,7 +323,7 @@ export class ContractWorkflowService {
         where: { id: contractId },
         include: {
           customer: true,
-          invoice: true,
+          invoices: true,
         },
       });
 
@@ -343,15 +353,13 @@ export class ContractWorkflowService {
         }
       }
 
-      // Update invoice status to VOID
-      if (contract.invoiceId) {
-        await prisma.invoice.update({
-          where: { id: contract.invoiceId },
-          data: {
-            status: 'VOID',
-          },
+      // Void ALL linked invoices
+      if (contract.invoices && contract.invoices.length > 0) {
+        await prisma.invoice.updateMany({
+          where: { contractId: contractId },
+          data: { status: 'VOID' },
         });
-        console.log(`[CONTRACT_WORKFLOW] Invoice ${contract.invoiceId} marked as VOID`);
+        console.log(`[CONTRACT_WORKFLOW] ${contract.invoices.length} invoice(s) marked as VOID`);
       }
 
       // Send expiration notification to finance team
@@ -399,7 +407,7 @@ export class ContractWorkflowService {
           signerName: contract.signerName,
         },
         contract.customer,
-        contract.invoice?.invoiceNumber || contract.invoiceId
+        contract.invoices?.[0]?.invoiceNumber || contract.id
       );
 
       // Update reminder count and timestamp
@@ -450,7 +458,7 @@ export class ContractWorkflowService {
         },
         include: {
           customer: true,
-          invoice: true,
+          invoices: true,
         },
       });
 
@@ -497,7 +505,7 @@ export class ContractWorkflowService {
         },
         include: {
           customer: true,
-          invoice: true,
+          invoices: true,
         },
       });
 
@@ -578,8 +586,10 @@ export class ContractWorkflowService {
     const existingContract = await prisma.contract.findFirst({
       where: {
         customerId: invoice.customerId,
-        invoiceId: {
-          in: invoicesInSeries.map(i => i.id)
+        invoices: {
+          some: {
+            id: { in: invoicesInSeries.map(i => i.id) }
+          }
         }
       }
     });
@@ -589,6 +599,34 @@ export class ContractWorkflowService {
     }
     
     return { isFirst: true, seriesPrefix, existingContract };
+  }
+
+  /**
+   * Get all invoice IDs in the same series as the given invoice.
+   * If the invoice has a seriesId, returns all invoices in that series.
+   * Otherwise returns just the single invoice ID.
+   */
+  async getSeriesInvoiceIds(invoiceId: string): Promise<string[]> {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { id: true, installments: true, customerId: true },
+    });
+
+    if (!invoice) return [invoiceId];
+
+    const installmentData = invoice.installments as any;
+    if (installmentData?.seriesId) {
+      const seriesInvoices = await prisma.invoice.findMany({
+        where: {
+          customerId: invoice.customerId,
+          installments: { path: ['seriesId'], equals: installmentData.seriesId },
+        },
+        select: { id: true },
+      });
+      return seriesInvoices.map(i => i.id);
+    }
+
+    return [invoiceId];
   }
 
   /**
@@ -696,7 +734,7 @@ export class ContractWorkflowService {
       where: { id: contractId },
       include: {
         customer: true,
-        invoice: true,
+        invoices: true,
       },
     });
 

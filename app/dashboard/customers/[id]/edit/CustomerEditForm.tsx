@@ -251,15 +251,18 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              SSN <span className="text-gray-400 text-xs">(Opcional)</span>
+              SSN (últimos 4 dígitos) <span className="text-gray-400 text-xs">(Opcional)</span>
             </label>
             <input
               type="text"
               value={form.ssn}
-              onChange={(e) => handleChange("ssn", e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                handleChange("ssn", val);
+              }}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="xxx-xx-xxxx"
-              maxLength={11}
+              placeholder="1234"
+              maxLength={4}
             />
           </div>
           <div>

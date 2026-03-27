@@ -38,7 +38,6 @@ interface Customer {
  * Contract cannot be sent without these fields populated.
  */
 export const CONTRACT_REQUIRED_FIELDS = [
-  { field: 'cpf', label: 'CPF' },
   { field: 'address', label: 'Endereço' },
   { field: 'email', label: 'Email' },
 ] as const;
@@ -98,6 +97,8 @@ export function validateCustomerForContract(customer: Customer): { field: string
  *   DOCUSIGN_TEMPLATE_START=<template-id>            → Anexo D
  *   DOCUSIGN_TEMPLATE_AVULSO=<template-id>           → Anexo E
  *   DOCUSIGN_TEMPLATE_UPGRADE=<template-id>          → Anexo F
+ *   DOCUSIGN_TEMPLATE_NEW_PASS=<template-id>         → Anexo G
+ *   DOCUSIGN_TEMPLATE_TREINAMENTO=<template-id>      → Anexo H
  *   DOCUSIGN_TEMPLATE_ID=<template-id>               → Fallback (template genérico)
  *
  * Alternative: Map specific QB Item IDs directly via:
@@ -110,11 +111,16 @@ export interface ProgramMapping {
 }
 
 export const PROGRAM_TEMPLATE_MAP: ProgramMapping[] = [
-  // Order matters: "pass advanced" must match BEFORE "pass"
+  // Order matters: "pass advanced" and "new pass" must match BEFORE "pass"
   {
     annex: 'A',
     envVar: 'DOCUSIGN_TEMPLATE_PASS_ADVANCED',
     keywords: ['pass advanced', 'advanced', 'mentoria advanced', 'mentoria completa'],
+  },
+  {
+    annex: 'G',
+    envVar: 'DOCUSIGN_TEMPLATE_NEW_PASS',
+    keywords: ['new pass'],
   },
   {
     annex: 'B',
@@ -124,7 +130,7 @@ export const PROGRAM_TEMPLATE_MAP: ProgramMapping[] = [
   {
     annex: 'C',
     envVar: 'DOCUSIGN_TEMPLATE_COMBO',
-    keywords: ['combo', 'material + grupo', 'material e grupo'],
+    keywords: ['combo', 'combo pass', 'material + grupo', 'material e grupo'],
   },
   {
     annex: 'D',
@@ -140,6 +146,11 @@ export const PROGRAM_TEMPLATE_MAP: ProgramMapping[] = [
     annex: 'F',
     envVar: 'DOCUSIGN_TEMPLATE_UPGRADE',
     keywords: ['upgrade', 'downgrade', 'migração', 'migracao'],
+  },
+  {
+    annex: 'H',
+    envVar: 'DOCUSIGN_TEMPLATE_TREINAMENTO',
+    keywords: ['treinamento', 'training'],
   },
 ];
 
@@ -232,7 +243,7 @@ export class DocuSignService {
     this.userId = process.env.DOCUSIGN_USER_ID || "";
     this.accountId = process.env.DOCUSIGN_ACCOUNT_ID || "";
     this.baseUrl = process.env.DOCUSIGN_BASE_URL || "https://demo.docusign.net";
-    this.privateKey = process.env.DOCUSIGN_PRIVATE_KEY || "";
+    this.privateKey = (process.env.DOCUSIGN_PRIVATE_KEY || "").replace(/\\n/g, '\n');
     this.circuitBreaker = new CircuitBreaker("docusign");
   }
 
@@ -1204,8 +1215,10 @@ export class DocuSignService {
   }
 
   /**
-   * Create envelope from a specific template ID
-   * Allows commercial users to select which template to use
+   * Create envelope from a DocuSign template.
+   *
+   * Each template already contains the main contract + annex as two documents.
+   * Text tabs are populated with customer/invoice data at runtime.
    */
   async createEnvelopeFromSelectedTemplate(
     templateId: string,
@@ -1215,18 +1228,17 @@ export class DocuSignService {
   ): Promise<string> {
     try {
       const token = await this.getAccessToken();
-      console.log(`[DOCUSIGN] Creating envelope from selected template ${templateId}`);
+      console.log(`[DOCUSIGN] Creating envelope from template ${templateId}`);
 
-      // Build envelope definition using the selected template
       const envelopeDefinition: any = {
         status: 'sent',
+        emailSubject: 'CarreiraUSA - Contrato para Assinatura',
+        emailBlurb: 'Por favor, revise e assine o contrato de prestação de serviços anexo.',
         compositeTemplates: [
           {
+            compositeTemplateId: '1',
             serverTemplates: [
-              {
-                sequence: '1',
-                templateId: templateId,
-              },
+              { sequence: '1', templateId },
             ],
             inlineTemplates: [
               {
@@ -1237,7 +1249,7 @@ export class DocuSignService {
                       email: signerEmail,
                       name: signerName,
                       recipientId: '1',
-                      roleName: 'Client', // Must match template role name
+                      roleName: 'Client',
                       tabs: customFields ? {
                         textTabs: Object.entries(customFields).map(([label, value]) => ({
                           tabLabel: label,
@@ -1252,6 +1264,19 @@ export class DocuSignService {
             ],
           },
         ],
+        notification: {
+          useAccountDefaults: 'false',
+          reminders: {
+            reminderEnabled: 'true',
+            reminderDelay: '3',
+            reminderFrequency: '4',
+          },
+          expirations: {
+            expireEnabled: 'true',
+            expireAfter: '30',
+            expireWarn: '3',
+          },
+        },
       };
 
       const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}/envelopes`;
@@ -1266,17 +1291,17 @@ export class DocuSignService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[DOCUSIGN] Failed to create envelope from selected template:', response.status, errorText);
+        console.error('[DOCUSIGN] Failed to create envelope:', response.status, errorText);
         throw new Error(`Failed to create envelope: ${response.statusText}`);
       }
 
       const result = await response.json();
-      console.log(`[DOCUSIGN] Envelope created from selected template: ${result.envelopeId}`);
-      
+      console.log(`[DOCUSIGN] Envelope created: ${result.envelopeId}`);
+
       return result.envelopeId;
 
     } catch (error) {
-      console.error('[DOCUSIGN] Error creating envelope from selected template:', error);
+      console.error('[DOCUSIGN] Error creating envelope from template:', error);
       throw error;
     }
   }

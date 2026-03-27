@@ -25,11 +25,11 @@ interface Contract {
     name: string;
     email: string;
   };
-  invoice: {
+  invoices: {
     id: string;
     invoiceNumber: string | null;
     amount: string;
-  } | null;
+  }[];
   deal: {
     id: string;
     title: string;
@@ -280,16 +280,23 @@ export default function ContractsPage() {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              {contract.invoice ? (
+                              {contract.invoices && contract.invoices.length > 0 ? (
                                 <div>
                                   <Link
-                                    href={`/dashboard/invoices/${contract.invoice.id}`}
+                                    href={`/dashboard/invoices/${contract.invoices[0].id}`}
                                     className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
                                   >
-                                    {contract.invoice.invoiceNumber || contract.invoice.id.slice(0, 8)}
+                                    {contract.invoices[0].invoiceNumber || contract.invoices[0].id.slice(0, 8)}
                                   </Link>
+                                  {contract.invoices.length > 1 && (
+                                    <span className="ml-1 text-xs text-gray-500">
+                                      +{contract.invoices.length - 1} parcela(s)
+                                    </span>
+                                  )}
                                   <div className="text-xs text-gray-500 tabular-nums font-display font-semibold">
-                                    {formatCurrency(contract.invoice.amount)}
+                                    {formatCurrency(
+                                      contract.invoices.reduce((sum, inv) => sum + parseFloat(inv.amount), 0).toString()
+                                    )}
                                   </div>
                                 </div>
                               ) : (

@@ -78,6 +78,12 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   ]);
   const [filteredDeals, setFilteredDeals] = useState<Deal[]>(deals);
   const [submitting, setSubmitting] = useState(false);
+  const [createdInvoiceData, setCreatedInvoiceData] = useState<{
+    customerId: string;
+    customerName: string;
+    invoiceCount: number;
+    firstInvoiceId: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState(true);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -393,11 +399,17 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
       // API returns { invoices: [...], message, seriesId }
       if (data.invoices && data.invoices.length > 0) {
-        // Redirect to first invoice (if multiple installments, user can see series from there)
         const firstInvoice = data.invoices[0];
-        router.push(`/dashboard/invoices/${firstInvoice.id}`);
+        const customer = customers.find(c => c.id === form.customerId);
+
+        // Show contract creation prompt instead of immediate redirect
+        setCreatedInvoiceData({
+          customerId: form.customerId,
+          customerName: customer?.name || '',
+          invoiceCount: data.invoices.length,
+          firstInvoiceId: firstInvoice.id,
+        });
       } else {
-        // Fallback to invoices list
         router.push("/dashboard/invoices");
       }
     } catch (err: any) {
@@ -422,6 +434,52 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const perInstallment = installmentsValue > 0 ? remaining / installmentsValue : 0;
   const installmentSchedule = generateInstallmentSchedule();
   const firstInstallmentDate = installmentSchedule[0]?.dueDate;
+
+  // Show contract creation prompt after successful invoice creation
+  if (createdInvoiceData) {
+    return (
+      <div className="container mx-auto p-6 max-w-xl">
+        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {createdInvoiceData.invoiceCount === 1 ? 'Fatura criada!' : `${createdInvoiceData.invoiceCount} faturas criadas!`}
+          </h2>
+          <p className="text-gray-600 mb-6">
+            {createdInvoiceData.invoiceCount > 1
+              ? `Pacote com ${createdInvoiceData.invoiceCount} parcelas criado para ${createdInvoiceData.customerName}.`
+              : `Fatura criada para ${createdInvoiceData.customerName}.`
+            }
+          </p>
+
+          <p className="text-sm text-gray-500 mb-6">Deseja enviar o contrato para assinatura?</p>
+
+          <div className="flex gap-3 justify-center">
+            <button
+              onClick={() => router.push(
+                `/dashboard/contracts/new?customerId=${createdInvoiceData.customerId}`
+              )}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Criar Contrato
+            </button>
+            <button
+              onClick={() => router.push(`/dashboard/invoices/${createdInvoiceData.firstInvoiceId}`)}
+              className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+            >
+              Ver Fatura
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto p-6">

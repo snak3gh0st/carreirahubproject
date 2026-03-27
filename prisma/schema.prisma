@@ -294,7 +294,7 @@ model Invoice {
   createdAt             DateTime         @default(now())
   updatedAt             DateTime         @updatedAt
   amountPaid            Decimal?         @db.Decimal(10, 2)
-  contractId            String?          @unique
+  contractId            String?
   lastPaymentReminderAt DateTime?
   paidAt                DateTime?
   paymentMethod         String?
@@ -365,7 +365,6 @@ model Contract {
   updatedAt            DateTime       @updatedAt
   declinedAt           DateTime?
   expiresAt            DateTime?
-  invoiceId            String?        @unique
   lastReminderAt       DateTime?
   reminderCount        Int            @default(0)
   signerEmail          String
@@ -376,7 +375,7 @@ model Contract {
   signedS3UrlExpiresAt DateTime?
   customer             Customer       @relation(fields: [customerId], references: [id])
   deal                 Deal           @relation(fields: [dealId], references: [id])
-  invoice              Invoice?
+  invoices             Invoice[]
   notifications        Notification[]
 
   @@map("contracts")

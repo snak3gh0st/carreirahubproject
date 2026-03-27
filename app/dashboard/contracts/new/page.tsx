@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, FileSignature, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, FileSignature, Loader2, AlertTriangle, Search, X } from 'lucide-react';
 import Link from 'next/link';
 
 interface Customer {
@@ -36,6 +36,14 @@ interface Invoice {
   invoiceNumber: string | null;
   amount: string;
   status: string;
+  description?: string | null;
+  lineItems?: { description: string; quantity: number; unitPrice: number; amount: number }[] | null;
+  installments?: {
+    seriesId?: string;
+    current?: number;
+    total?: number;
+    isFirstInstallment?: boolean;
+  } | null;
   customer: {
     name: string;
   };
@@ -50,6 +58,18 @@ interface DocuSignTemplate {
   shared: boolean;
 }
 
+/** Program/Annex options for the contract template selector */
+const PROGRAM_OPTIONS = [
+  { value: 'pass_advanced', label: 'PASS Advanced', annex: 'A', description: 'Mentoria Advanced / Mentoria Completa' },
+  { value: 'pass', label: 'PASS', annex: 'B', description: 'Mentoria Pass' },
+  { value: 'combo', label: 'COMBO', annex: 'C', description: 'Combo Pass / Material + Grupo' },
+  { value: 'start', label: 'START', annex: 'D', description: 'Conteúdo Gravado' },
+  { value: 'avulso', label: 'Avulso', annex: 'E', description: 'Serviço Individual / Avulso' },
+  { value: 'upgrade', label: 'Upgrade', annex: 'F', description: 'Upgrade / Downgrade / Migração' },
+  { value: 'new_pass', label: 'New Pass', annex: 'G', description: 'New Pass' },
+  { value: 'treinamento', label: 'Treinamento', annex: 'H', description: 'Treinamento' },
+] as const;
+
 export default function CreateContractPage() {
   const router = useRouter();
   
@@ -57,6 +77,7 @@ export default function CreateContractPage() {
   const [customerId, setCustomerId] = useState('');
   const [invoiceId, setInvoiceId] = useState('');
   const [templateId, setTemplateId] = useState('');
+  const [program, setProgram] = useState('');
   const [signerName, setSignerName] = useState('');
   const [signerEmail, setSignerEmail] = useState('');
   const [expiresInDays, setExpiresInDays] = useState('30');
@@ -69,7 +90,7 @@ export default function CreateContractPage() {
       setCustomerId(customerIdParam);
     }
   }, []);
-  
+
   // Data state
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -82,6 +103,39 @@ export default function CreateContractPage() {
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<{ field: string; label: string }[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  // Filter customers based on search
+  const filteredCustomers = customers.filter(c =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    c.email.toLowerCase().includes(customerSearch.toLowerCase())
+  );
+
+  // Set search text when customerId is set (from URL param or other source)
+  useEffect(() => {
+    if (customerId && customers.length > 0 && !customerSearch) {
+      const customer = customers.find(c => c.id === customerId);
+      if (customer) {
+        setCustomerSearch(customer.name);
+      }
+    }
+  }, [customerId, customers]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.customer-search-container')) {
+        setShowCustomerDropdown(false);
+      }
+    };
+
+    if (showCustomerDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showCustomerDropdown]);
 
   // Fetch customers and invoices on mount
   useEffect(() => {
@@ -90,7 +144,7 @@ export default function CreateContractPage() {
         setLoadingData(true);
         
         // Fetch customers
-        const customersRes = await fetch('/api/customers');
+        const customersRes = await fetch('/api/customers?limit=10000');
         if (!customersRes.ok) throw new Error('Falha ao buscar clientes');
         const customersData = await customersRes.json();
         setCustomers(customersData.customers || []);
@@ -112,31 +166,36 @@ export default function CreateContractPage() {
     fetchData();
   }, []);
 
-  // Fetch DocuSign templates
+  // Fetch DocuSign templates (used for "Other template" option)
   useEffect(() => {
     async function fetchTemplates() {
       try {
         setLoadingTemplates(true);
-        
+
         const templatesRes = await fetch('/api/docusign/templates');
         if (!templatesRes.ok) {
           console.warn('Failed to fetch DocuSign templates:', await templatesRes.text());
-          // Don't throw - templates are optional, default template will be used
           return;
         }
         const templatesData = await templatesRes.json();
         setTemplates(templatesData.templates || []);
-        
+
       } catch (err) {
         console.error('Error fetching templates:', err);
-        // Don't set error - templates are optional
       } finally {
         setLoadingTemplates(false);
       }
     }
-    
+
     fetchTemplates();
   }, []);
+
+  // When program changes, clear manual template selection
+  useEffect(() => {
+    if (program && program !== 'other') {
+      setTemplateId('');
+    }
+  }, [program]);
 
   // Auto-populate signer info and validate customer data when customer is selected
   useEffect(() => {
@@ -160,15 +219,12 @@ export default function CreateContractPage() {
         if (!customer.email || customer.email.trim() === '') {
           missing.push({ field: 'email', label: 'Email' });
         }
-        // At least one identification document
+        // At least one identification document (CPF, Passaporte ou SSN)
         const hasId = (customer.cpf && customer.cpf.trim() !== '') ||
                       (customer.passport && customer.passport.trim() !== '') ||
                       (customer.ssn && customer.ssn.trim() !== '');
         if (!hasId) {
           missing.push({ field: 'identification', label: 'Documento de identificação (CPF, Passaporte ou SSN)' });
-        }
-        if (!customer.cpf || customer.cpf.trim() === '') {
-          missing.push({ field: 'cpf', label: 'CPF' });
         }
         setMissingFields(missing);
       }
@@ -203,7 +259,12 @@ export default function CreateContractPage() {
       return;
     }
     
-    if (!templateId) {
+    if (!program) {
+      setError('Por favor, selecione um programa/anexo');
+      return;
+    }
+
+    if (program === 'other' && !templateId) {
       setError('Por favor, selecione um modelo de contrato');
       return;
     }
@@ -225,7 +286,8 @@ export default function CreateContractPage() {
         body: JSON.stringify({
           customerId,
           invoiceId: invoiceId && invoiceId !== 'none' ? invoiceId : undefined,
-          templateId: templateId || undefined,
+          program: program !== 'other' ? program : undefined,
+          templateId: program === 'other' ? templateId : undefined,
           signerName,
           signerEmail,
           expiresInDays: parseInt(expiresInDays),
@@ -301,23 +363,79 @@ export default function CreateContractPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Customer Selection */}
+            {/* Customer Selection (searchable) */}
             <div className="space-y-2">
-              <Label htmlFor="customer">Customer *</Label>
-              <Select value={customerId} onValueChange={setCustomerId}>
-                <SelectTrigger id="customer">
-                  <SelectValue placeholder="Select a customer" />
-                </SelectTrigger>
-                <SelectContent>
-                  {customers.map(customer => (
-                    <SelectItem key={customer.id} value={customer.id}>
-                      {customer.name} ({customer.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Cliente *</Label>
+              <div className="relative customer-search-container">
+                <div className="relative">
+                  <Input
+                    type="text"
+                    value={customerSearch}
+                    onChange={(e) => {
+                      setCustomerSearch(e.target.value);
+                      setShowCustomerDropdown(true);
+                      if (!e.target.value) {
+                        setCustomerId('');
+                        setSignerName('');
+                        setSignerEmail('');
+                      }
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    placeholder="Buscar por nome ou email..."
+                    className="pl-9"
+                  />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  {customerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomerId('');
+                        setCustomerSearch('');
+                        setSignerName('');
+                        setSignerEmail('');
+                        setShowCustomerDropdown(false);
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                {showCustomerDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredCustomers.length === 0 ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Nenhum cliente encontrado
+                      </div>
+                    ) : (
+                      filteredCustomers.map((customer) => (
+                        <button
+                          key={customer.id}
+                          type="button"
+                          onClick={() => {
+                            setCustomerId(customer.id);
+                            setCustomerSearch(customer.name);
+                            setShowCustomerDropdown(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors ${
+                            customerId === customer.id ? 'bg-blue-100' : ''
+                          }`}
+                        >
+                          <div className="text-sm font-medium text-gray-900">
+                            {customer.name}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {customer.email}
+                          </div>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-gray-500">
-                Select the customer who will sign the contract
+                Busque e selecione o cliente que irá assinar o contrato
               </p>
             </div>
 
@@ -349,71 +467,149 @@ export default function CreateContractPage() {
               </div>
             )}
 
-            {/* DocuSign Template Selection */}
+            {/* Program / Annex Selection */}
             <div className="space-y-2">
-              <Label htmlFor="template">Contract Template *</Label>
-              <Select 
-                value={templateId} 
-                onValueChange={setTemplateId}
-                disabled={loadingTemplates}
-              >
-                <SelectTrigger id="template">
-                  <SelectValue placeholder={loadingTemplates ? "Loading templates..." : "Select a template"} />
+              <Label htmlFor="program">Programa / Anexo *</Label>
+              <Select value={program} onValueChange={setProgram}>
+                <SelectTrigger id="program">
+                  <SelectValue placeholder="Selecione o programa" />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.length === 0 && !loadingTemplates ? (
-                    <SelectItem value="no-templates" disabled>
-                      No templates available
+                  {PROGRAM_OPTIONS.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <span className="font-medium">Anexo {opt.annex}</span>
+                      <span className="mx-1.5">—</span>
+                      <span>{opt.label}</span>
                     </SelectItem>
-                  ) : (
-                    templates.map(template => (
-                      <SelectItem key={template.templateId} value={template.templateId}>
-                        {template.name}
-                      </SelectItem>
-                    ))
-                  )}
+                  ))}
+                  <SelectItem value="other">
+                    Outro template (selecionar manualmente)
+                  </SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-gray-500">
-                Select the DocuSign template to use for this contract
-              </p>
-              {templates.length > 0 && templateId && (
+              {program && program !== 'other' && (
                 <div className="mt-2 p-3 bg-gray-50 rounded-md">
                   <p className="text-xs text-gray-600">
-                    <span className="font-medium">Template:</span>{' '}
-                    {templates.find(t => t.templateId === templateId)?.name}
+                    <span className="font-medium">
+                      Anexo {PROGRAM_OPTIONS.find(o => o.value === program)?.annex}:
+                    </span>{' '}
+                    {PROGRAM_OPTIONS.find(o => o.value === program)?.description}
                   </p>
-                  {templates.find(t => t.templateId === templateId)?.description && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      {templates.find(t => t.templateId === templateId)?.description}
-                    </p>
-                  )}
                 </div>
               )}
             </div>
 
-            {/* Invoice Selection (Optional) */}
+            {/* Manual Template Selection (only when "Other" is selected) */}
+            {program === 'other' && (
+              <div className="space-y-2">
+                <Label htmlFor="template">DocuSign Template *</Label>
+                <Select
+                  value={templateId}
+                  onValueChange={setTemplateId}
+                  disabled={loadingTemplates}
+                >
+                  <SelectTrigger id="template">
+                    <SelectValue placeholder={loadingTemplates ? "Carregando templates..." : "Selecione um template"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.length === 0 && !loadingTemplates ? (
+                      <SelectItem value="no-templates" disabled>
+                        Nenhum template disponível
+                      </SelectItem>
+                    ) : (
+                      templates.map(template => (
+                        <SelectItem key={template.templateId} value={template.templateId}>
+                          {template.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">
+                  Selecione um template diretamente do DocuSign
+                </p>
+              </div>
+            )}
+
+            {/* Service / Purchase Selection (links all invoices in the series) */}
             <div className="space-y-2">
-              <Label htmlFor="invoice">Link to Invoice (Optional)</Label>
-              <Select 
-                value={invoiceId} 
+              <Label htmlFor="invoice">Serviço Comprado (Opcional)</Label>
+              <Select
+                value={invoiceId}
                 onValueChange={setInvoiceId}
                 disabled={!customerId}
               >
                 <SelectTrigger id="invoice">
-                  <SelectValue placeholder={customerId ? "Select an invoice" : "Select customer first"} />
+                  <SelectValue placeholder={customerId ? "Selecione o serviço comprado" : "Selecione o cliente primeiro"} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">No invoice</SelectItem>
-                  {filteredInvoices.map(invoice => (
-                    <SelectItem key={invoice.id} value={invoice.id}>
-                      {invoice.invoiceNumber || invoice.id} - ${invoice.amount} ({invoice.status})
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="none">Nenhum serviço</SelectItem>
+                  {(() => {
+                    // Group invoices by series to show services, not individual invoices
+                    const seriesMap = new Map<string, Invoice[]>();
+                    const standalone: Invoice[] = [];
+                    filteredInvoices.forEach(inv => {
+                      const seriesId = inv.installments?.seriesId;
+                      if (seriesId) {
+                        if (!seriesMap.has(seriesId)) seriesMap.set(seriesId, []);
+                        seriesMap.get(seriesId)!.push(inv);
+                      } else {
+                        standalone.push(inv);
+                      }
+                    });
+
+                    const items: React.ReactNode[] = [];
+
+                    // Extract base service name (remove " - Entry Payment", " - Installment X of Y")
+                    const getServiceName = (inv: Invoice): string => {
+                      const desc = inv.description || inv.lineItems?.[0]?.description || '';
+                      return desc
+                        .replace(/\s*-\s*(Entry Payment|Installment \d+ of \d+)$/i, '')
+                        .trim() || 'Serviço';
+                    };
+
+                    // Render series as services
+                    seriesMap.forEach((seriesInvoices, seriesId) => {
+                      const total = seriesInvoices.reduce((s, i) => s + parseFloat(i.amount), 0);
+                      const firstInv = seriesInvoices[0];
+                      const serviceName = getServiceName(firstInv);
+                      const hasEntry = seriesInvoices.some(i => i.installments?.isFirstInstallment);
+                      const installmentCount = hasEntry ? seriesInvoices.length - 1 : seriesInvoices.length;
+
+                      let paymentInfo: string;
+                      if (hasEntry && installmentCount > 0) {
+                        const entryInv = seriesInvoices.find(i => i.installments?.isFirstInstallment);
+                        paymentInfo = `Entrada + ${installmentCount}x parcelas`;
+                        if (entryInv) paymentInfo = `Entrada $${parseFloat(entryInv.amount).toFixed(0)} + ${installmentCount}x`;
+                      } else if (installmentCount > 1) {
+                        paymentInfo = `${installmentCount}x parcelas`;
+                      } else {
+                        paymentInfo = 'Pagamento único';
+                      }
+
+                      items.push(
+                        <SelectItem key={seriesId} value={firstInv.id}>
+                          {serviceName} — ${total.toFixed(2)} ({paymentInfo})
+                        </SelectItem>
+                      );
+                    });
+
+                    // Render standalone invoices as single services
+                    standalone.forEach(inv => {
+                      const serviceName = getServiceName(inv);
+                      items.push(
+                        <SelectItem key={inv.id} value={inv.id}>
+                          {serviceName} — ${parseFloat(inv.amount).toFixed(2)}
+                        </SelectItem>
+                      );
+                    });
+
+                    return items;
+                  })()}
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
-                Optionally link this contract to an existing invoice
+                Selecione o serviço comprado para vincular todas as faturas ao contrato
               </p>
             </div>
 
@@ -468,7 +664,7 @@ export default function CreateContractPage() {
             <div className="flex gap-3 pt-4 border-t">
               <Button
                 type="submit"
-                disabled={loading || !customerId || !templateId || missingFields.some(f => f.field === 'identification')}
+                disabled={loading || !customerId || !program || (program === 'other' && !templateId) || missingFields.some(f => f.field === 'identification')}
                 className="flex-1"
               >
                 {loading ? (

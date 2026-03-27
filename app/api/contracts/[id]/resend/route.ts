@@ -22,7 +22,7 @@ export async function POST(
       where: { id: params.id },
       include: {
         customer: true,
-        invoice: true,
+        invoices: true,
       },
     });
 

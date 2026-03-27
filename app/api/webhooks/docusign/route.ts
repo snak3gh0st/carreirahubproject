@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
       where: { docusign_env_id: envelopeId },
       include: {
         customer: true,
-        invoice: {
+        invoices: {
           include: {
             customer: true,
           },
@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
               {
                 contractId: contract.id,
                 customerId: contract.customerId,
-                invoiceId: contract.invoiceId || undefined,
+                invoiceId: contract.invoices?.[0]?.id || undefined,
               }
             );
 
@@ -201,8 +201,8 @@ export async function POST(request: NextRequest) {
 
         // Payment: QB invoice email already sent at creation time
         // (invoice-workflow.service.ts → quickbooksService.sendInvoice)
-        if (contract.invoice) {
-          console.log(`[DOCUSIGN_WEBHOOK] Contract signed for invoice ${contract.invoice.id} — QB invoice email already sent`);
+        if (contract.invoices && contract.invoices.length > 0) {
+          console.log(`[DOCUSIGN_WEBHOOK] Contract signed for ${contract.invoices.length} invoice(s) — QB invoice email already sent`);
         }
 
         // NEW: Mark Pipedrive deal as WON and notify commercial user

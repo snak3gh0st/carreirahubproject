@@ -27,12 +27,12 @@ interface Contract {
     email: string;
     phone: string | null;
   };
-  invoice: {
+  invoices: {
     id: string;
     invoiceNumber: string | null;
     amount: string;
     status: string;
-  } | null;
+  }[];
   deal: {
     id: string;
     title: string;
@@ -316,30 +316,42 @@ export default function ContractDetailPage() {
           </Link>
         </div>
 
-        {/* Invoice Info */}
-        {contract.invoice && (
+        {/* Invoices Info */}
+        {contract.invoices && contract.invoices.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">Fatura Relacionada</h2>
-            <dl className="space-y-3">
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Número da Fatura</dt>
-                <dd className="text-gray-900">{contract.invoice.invoiceNumber || '-'}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Valor</dt>
-                <dd className="text-gray-900 font-semibold">{formatCurrency(contract.invoice.amount)}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-gray-500">Status</dt>
-                <dd className="text-gray-900">{contract.invoice.status}</dd>
-              </div>
-            </dl>
-            <Link
-              href={`/dashboard/invoices/${contract.invoice.id}`}
-              className="mt-4 inline-block text-blue-600 hover:text-blue-800 text-sm"
-            >
-              Ver Fatura &rarr;
-            </Link>
+            <h2 className="text-lg font-semibold mb-4">
+              {contract.invoices.length === 1 ? 'Fatura Relacionada' : `Faturas Relacionadas (${contract.invoices.length})`}
+            </h2>
+            <div className="space-y-4">
+              {contract.invoices.map((inv) => (
+                <div key={inv.id} className="flex items-center justify-between border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                  <div>
+                    <Link
+                      href={`/dashboard/invoices/${inv.id}`}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                    >
+                      {inv.invoiceNumber || inv.id.slice(0, 8)}
+                    </Link>
+                    <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${
+                      inv.status === 'PAID' ? 'bg-green-100 text-green-700' :
+                      inv.status === 'VOID' ? 'bg-gray-100 text-gray-500' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {inv.status}
+                    </span>
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900">{formatCurrency(inv.amount)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 pt-3 border-t border-gray-200 flex justify-between">
+              <span className="text-sm font-medium text-gray-500">Total</span>
+              <span className="text-sm font-bold text-gray-900">
+                {formatCurrency(
+                  contract.invoices.reduce((sum, inv) => sum + parseFloat(inv.amount), 0).toString()
+                )}
+              </span>
+            </div>
           </div>
         )}
 

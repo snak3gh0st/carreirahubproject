@@ -86,6 +86,11 @@ export async function POST(request: NextRequest) {
     const remaining = Math.max(0, totalAmount - entryAmount);
     const isSinglePayment = entryAmount === 0 && installmentCount === 0;
 
+    // Derive service name: use description field, or first item name, or fallback
+    const serviceName = data.description
+      || data.items[0]?.description
+      || 'Serviço';
+
     // Generate series ID for linking installments
     const seriesId = `SERIES-${Date.now()}`;
     const invoices: any[] = [];
@@ -134,14 +139,14 @@ export async function POST(request: NextRequest) {
       if (entryAmount > 0 && i === 1) {
         // ENTRY INVOICE: Separate entry payment due TODAY
         invoiceAmount = entryAmount;
-        invoiceDescription = `${data.description || 'Service'} - Entry Payment`;
+        invoiceDescription = `${serviceName} - Entry Payment`;
         invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
       } else if (entryAmount > 0 && i > 1) {
         // INSTALLMENT INVOICE (when entry exists): i=2 → Installment 1, i=3 → Installment 2
         const installmentAmount = remaining / installmentCount;
         const installmentNumber = i - 1; // i=2 is "Installment 1"
         invoiceAmount = Number(installmentAmount.toFixed(2));
-        invoiceDescription = `${data.description || 'Service'} - Installment ${installmentNumber} of ${installmentCount}`;
+        invoiceDescription = `${serviceName} - Installment ${installmentNumber} of ${installmentCount}`;
 
         // Calculate due date: i=2 → +1 month, i=3 → +2 months
         const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
@@ -151,7 +156,7 @@ export async function POST(request: NextRequest) {
         // INSTALLMENT INVOICE (no entry): i=1 → Installment 1, i=2 → Installment 2
         const installmentAmount = totalAmount / installmentCount;
         invoiceAmount = Number(installmentAmount.toFixed(2));
-        invoiceDescription = `${data.description || 'Service'} - Installment ${i} of ${installmentCount}`;
+        invoiceDescription = `${serviceName} - Installment ${i} of ${installmentCount}`;
 
         // Calculate due date: i=1 → +0 months, i=2 → +1 month
         const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
@@ -160,7 +165,7 @@ export async function POST(request: NextRequest) {
       } else {
         // Single invoice (no installments, no entry split)
         invoiceAmount = totalAmount;
-        invoiceDescription = data.description || 'Service';
+        invoiceDescription = serviceName;
         invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
       }
 
@@ -186,7 +191,7 @@ export async function POST(request: NextRequest) {
         // Entry invoice - single line item for entry
         lineItems = [
           {
-            description: `${data.description || 'Service'} - Entry Payment`,
+            description: `${serviceName} - Entry Payment`,
             quantity: 1,
             unitPrice: entryAmount,
             amount: entryAmount,
@@ -199,7 +204,7 @@ export async function POST(request: NextRequest) {
         const installmentAmount = remaining / installmentCount;
         lineItems = [
           {
-            description: `${data.description || 'Service'} - Installment ${installmentNum} of ${installmentCount}`,
+            description: `${serviceName} - Installment ${installmentNum} of ${installmentCount}`,
             quantity: 1,
             unitPrice: Number(installmentAmount.toFixed(2)),
             amount: Number(installmentAmount.toFixed(2)),
@@ -211,7 +216,7 @@ export async function POST(request: NextRequest) {
         const installmentAmount = totalAmount / installmentCount;
         lineItems = [
           {
-            description: `${data.description || 'Service'} - Installment ${i} of ${installmentCount}`,
+            description: `${serviceName} - Installment ${i} of ${installmentCount}`,
             quantity: 1,
             unitPrice: Number(installmentAmount.toFixed(2)),
             amount: Number(installmentAmount.toFixed(2)),
@@ -395,16 +400,18 @@ export async function POST(request: NextRequest) {
 
       // Determine if this invoice should be emailed immediately
       // LOGIC:
-      // - Single payment (a vista): ALWAYS send immediately (customer needs to pay, due date is deadline not delivery date)
+      // - Single payment (a vista): ALWAYS send immediately
       // - Entry invoice: Send immediately (customer needs to pay TODAY)
-      // - Installments (non-entry): Schedule (cron sends 5 days before each installment due date)
+      // - First installment (even without entry): Send immediately (first payment is due soon)
+      // - Subsequent installments: Schedule (cron sends 5 days before each due date)
       const isInstallmentSeries = invoiceCountToCreate > 1;
       const isEntryInvoice = entryAmount > 0 && i === 1;
+      const isFirstInstallment = i === 1;
       const isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries;
 
-      // Single invoices and entry invoices are always sent immediately.
-      // Only installments (future recurring payments) are scheduled via cron.
-      const shouldSendEmail = isSingleInvoice || isEntryInvoice;
+      // Single invoices, entry invoices, and first installment are always sent immediately.
+      // Only subsequent installments (future recurring payments) are scheduled via cron.
+      const shouldSendEmail = isSingleInvoice || isEntryInvoice || isFirstInstallment;
 
       console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
         isInstallmentSeries,

@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
-        invoice: {
+        invoices: {
           select: {
             id: true,
             invoiceNumber: true,
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { customerId, invoiceId, signerName, signerEmail, expiresInDays = 30, templateId } = body;
+    const { customerId, invoiceId, signerName, signerEmail, expiresInDays = 30, templateId, program } = body;
 
     // Validation
     if (!customerId) {
@@ -217,9 +217,6 @@ export async function POST(request: NextRequest) {
         deal: {
           connect: { id: dealId },
         },
-        invoice: invoiceId ? {
-          connect: { id: invoiceId },
-        } : undefined,
         signerName,
         signerEmail,
         expiresAt,
@@ -227,19 +224,71 @@ export async function POST(request: NextRequest) {
       },
       include: {
         customer: true,
-        invoice: true,
+        invoices: true,
         deal: true,
       },
     });
 
+    // Link all series invoices to this contract
+    if (invoiceId) {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: invoiceId },
+        select: { installments: true, customerId: true },
+      });
+      const installmentData = invoice?.installments as any;
+      if (installmentData?.seriesId) {
+        // Link ALL invoices in this series
+        await prisma.invoice.updateMany({
+          where: {
+            customerId,
+            installments: { path: ['seriesId'], equals: installmentData.seriesId },
+          },
+          data: { contractId: contract.id },
+        });
+      } else {
+        // Single invoice — just link it
+        await prisma.invoice.update({
+          where: { id: invoiceId },
+          data: { contractId: contract.id },
+        });
+      }
+    }
+
     try {
       // Send to DocuSign
       let envelopeId: string;
-      
-      if (templateId) {
-        // Use specific template selected by user
-        console.log(`[API_CONTRACTS] Creating envelope from selected template: ${templateId}`);
-        
+
+      // Resolve the template ID from the program selection or direct templateId
+      let resolvedTemplateId = templateId || null;
+
+      if (program && !resolvedTemplateId) {
+        // Map program key to env var name
+        const PROGRAM_ENV_MAP: Record<string, string> = {
+          pass_advanced: 'DOCUSIGN_TEMPLATE_PASS_ADVANCED',
+          pass: 'DOCUSIGN_TEMPLATE_PASS',
+          combo: 'DOCUSIGN_TEMPLATE_COMBO',
+          start: 'DOCUSIGN_TEMPLATE_START',
+          avulso: 'DOCUSIGN_TEMPLATE_AVULSO',
+          upgrade: 'DOCUSIGN_TEMPLATE_UPGRADE',
+          new_pass: 'DOCUSIGN_TEMPLATE_NEW_PASS',
+          treinamento: 'DOCUSIGN_TEMPLATE_TREINAMENTO',
+        };
+
+        const envVar = PROGRAM_ENV_MAP[program];
+        if (envVar) {
+          resolvedTemplateId = process.env[envVar] || null;
+          if (!resolvedTemplateId) {
+            console.warn(`[API_CONTRACTS] No template configured for program "${program}" (${envVar})`);
+          } else {
+            console.log(`[API_CONTRACTS] Program "${program}" resolved to template ${resolvedTemplateId} via ${envVar}`);
+          }
+        }
+      }
+
+      if (resolvedTemplateId) {
+        // Each template already contains the main contract + annex as two documents
+        console.log(`[API_CONTRACTS] Creating envelope from template: ${resolvedTemplateId}`);
+
         // Build custom fields from customer and invoice data
         const customFields: Record<string, string> = {};
         // Client identification fields
@@ -259,23 +308,136 @@ export async function POST(request: NextRequest) {
         // Legacy aliases
         customFields['customer_name'] = customer.name;
         customFields['customer_email'] = customer.email;
-        // Invoice fields
+        // Invoice and installment fields
         if (invoice) {
           customFields['invoice_number'] = invoice.invoiceNumber || '';
           customFields['invoice_amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
           customFields['invoice_due_date'] = new Date(invoice.dueDate).toLocaleDateString('en-US');
           customFields['amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
+          customFields['due_date'] = new Date(invoice.dueDate).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'long', day: 'numeric',
+          });
+
+          // Installment/payment plan fields — individual tabLabels per line
+          const installmentData = invoice.installments as any;
+          if (installmentData?.seriesId) {
+            // Fetch all invoices in this series to build payment plan
+            const seriesInvoices = await prisma.invoice.findMany({
+              where: {
+                customerId,
+                installments: { path: ['seriesId'], equals: installmentData.seriesId },
+              },
+              orderBy: { dueDate: 'asc' },
+            });
+
+            const totalAmount = seriesInvoices.reduce(
+              (sum, inv) => sum + parseFloat(inv.amount.toString()), 0
+            );
+
+            customFields['total_amount'] = `$${totalAmount.toFixed(2)}`;
+            customFields['installment_count'] = seriesInvoices.length.toString();
+
+            // Build payment plan description
+            const entryInvoice = seriesInvoices.find(
+              (inv) => (inv.installments as any)?.isFirstInstallment
+            );
+            const regularInvoices = seriesInvoices.filter(
+              (inv) => !(inv.installments as any)?.isFirstInstallment
+            );
+
+            if (entryInvoice && regularInvoices.length > 0) {
+              const entryAmt = parseFloat(entryInvoice.amount.toString());
+              customFields['entry_amount'] = `$${entryAmt.toFixed(2)}`;
+              customFields['entry_due_date'] = new Date(entryInvoice.dueDate).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric',
+              });
+              customFields['payment_plan'] = `Entrada: $${entryAmt.toFixed(2)} + ${regularInvoices.length}x $${parseFloat(regularInvoices[0].amount.toString()).toFixed(2)}`;
+            } else if (seriesInvoices.length > 1) {
+              customFields['entry_amount'] = '';
+              customFields['entry_due_date'] = '';
+              customFields['payment_plan'] = `${seriesInvoices.length}x $${parseFloat(seriesInvoices[0].amount.toString()).toFixed(2)}`;
+            }
+
+            // Individual installment fields: installment_amount_1, due_date_1, etc.
+            // Each line in the DocuSign template has its own tabLabel
+            seriesInvoices.forEach((inv, idx) => {
+              const num = idx + 1; // 1-indexed
+              const amt = parseFloat(inv.amount.toString());
+              const dueDate = new Date(inv.dueDate).toLocaleDateString('en-US', {
+                year: 'numeric', month: 'long', day: 'numeric',
+              });
+              const dueDateShort = new Date(inv.dueDate).toLocaleDateString('pt-BR');
+
+              customFields[`installment_amount_${num}`] = `$${amt.toFixed(2)}`;
+              customFields[`due_date_${num}`] = dueDate;
+              customFields[`due_date_short_${num}`] = dueDateShort;
+              customFields[`invoice_number_${num}`] = inv.invoiceNumber || '';
+
+              // Also set description for each line
+              const instData = inv.installments as any;
+              if (instData?.isFirstInstallment) {
+                customFields[`installment_desc_${num}`] = 'Entrada';
+              } else {
+                const installmentNum = instData?.current ? instData.current - (entryInvoice ? 1 : 0) : idx;
+                customFields[`installment_desc_${num}`] = `Parcela ${installmentNum}`;
+              }
+            });
+
+            // Clear unused installment slots (up to 12) so template doesn't show stale data
+            for (let n = seriesInvoices.length + 1; n <= 12; n++) {
+              customFields[`installment_amount_${n}`] = '';
+              customFields[`due_date_${n}`] = '';
+              customFields[`due_date_short_${n}`] = '';
+              customFields[`invoice_number_${n}`] = '';
+              customFields[`installment_desc_${n}`] = '';
+            }
+
+            // Legacy: keep single installment_amount for backward compat with older templates
+            if (regularInvoices.length > 0) {
+              customFields['installment_amount'] = `$${parseFloat(regularInvoices[0].amount.toString()).toFixed(2)}`;
+            }
+
+            // All invoice numbers in the series
+            customFields['invoice_numbers'] = seriesInvoices
+              .map((inv) => inv.invoiceNumber)
+              .filter(Boolean)
+              .join(', ');
+          } else {
+            // Single payment — total = invoice amount
+            customFields['total_amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
+            customFields['payment_plan'] = `Pagamento único: $${parseFloat(invoice.amount.toString()).toFixed(2)}`;
+            customFields['installment_count'] = '1';
+            customFields['entry_amount'] = '';
+            customFields['installment_amount'] = '';
+
+            // Single payment as installment_1
+            customFields['installment_amount_1'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
+            customFields['due_date_1'] = new Date(invoice.dueDate).toLocaleDateString('en-US', {
+              year: 'numeric', month: 'long', day: 'numeric',
+            });
+            customFields['due_date_short_1'] = new Date(invoice.dueDate).toLocaleDateString('pt-BR');
+            customFields['invoice_number_1'] = invoice.invoiceNumber || '';
+            customFields['installment_desc_1'] = 'Pagamento único';
+
+            // Clear remaining slots
+            for (let n = 2; n <= 12; n++) {
+              customFields[`installment_amount_${n}`] = '';
+              customFields[`due_date_${n}`] = '';
+              customFields[`due_date_short_${n}`] = '';
+              customFields[`invoice_number_${n}`] = '';
+              customFields[`installment_desc_${n}`] = '';
+            }
+          }
         }
-        
+
         envelopeId = await docusignService.createEnvelopeFromSelectedTemplate(
-          templateId,
+          resolvedTemplateId,
           signerEmail,
           signerName,
           customFields
         );
       } else {
-        // Fallback to default template (legacy behavior)
-        // Create a minimal invoice object if not provided (for DocuSign template)
+        // Fallback to invoice-based template resolution (keyword matching) or inline PDF
         const invoiceForDocuSign = invoice || {
           id: `manual-${contract.id}`,
           invoiceNumber: `MANUAL-${Date.now()}`,
@@ -284,7 +446,6 @@ export async function POST(request: NextRequest) {
           customerId: customer.id,
         } as any;
 
-        // Use invoice-based template creation (DocuSign service requires invoice)
         envelopeId = await docusignService.createEnvelopeFromTemplate(invoiceForDocuSign, customer);
       }
 
@@ -298,7 +459,7 @@ export async function POST(request: NextRequest) {
         },
         include: {
           customer: true,
-          invoice: true,
+          invoices: true,
         },
       });
 

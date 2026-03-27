@@ -21,7 +21,7 @@ export async function GET(
       where: { id: params.id },
       include: {
         customer: true,
-        invoice: {
+        invoices: {
           include: {
             deal: true,
           },

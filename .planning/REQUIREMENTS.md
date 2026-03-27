@@ -37,27 +37,27 @@ Requirements for the randomized English placement test system. Maps to Phase 13.
 
 ### Question Bank
 
-- [ ] **CEFR-01**: Question bank of 130+ questions organized by CEFR level (A1-C2) with unique IDs, skill type tags, and career/immigration context for Brazilian immigrants
+- [x] **CEFR-01**: Question bank of 130+ questions organized by CEFR level (A1-C2) with unique IDs, skill type tags, and career/immigration context for Brazilian immigrants
 
 ### Randomization & No-Repeat
 
-- [ ] **CEFR-02**: Fisher-Yates randomized question selection with per-student no-repeat guarantee across retakes (pool reset on exhaustion)
+- [x] **CEFR-02**: Fisher-Yates randomized question selection with per-student no-repeat guarantee across retakes (pool reset on exhaustion)
 
 ### Scoring
 
-- [ ] **CEFR-03**: Percentage-based adaptive scoring algorithm using contiguous pass method (60% threshold per section, variable question counts)
+- [x] **CEFR-03**: Percentage-based adaptive scoring algorithm using contiguous pass method (60% threshold per section, variable question counts)
 
 ### Database
 
-- [ ] **CEFR-04**: PlacementTest schema updated with questionIds (String[]) and questionCount (Int) for question tracking and auditing
+- [x] **CEFR-04**: PlacementTest schema updated with questionIds (String[]) and questionCount (Int) for question tracking and auditing
 
 ### API Integration
 
-- [ ] **CEFR-05**: API routes generate unique randomized question sets per student with pending test tracking, and score against the specific served questions
+- [x] **CEFR-05**: API routes generate unique randomized question sets per student with pending test tracking, and score against the specific served questions
 
 ### UI Adaptation
 
-- [ ] **CEFR-06**: All UI and admin displays show dynamic score/questionCount (no hardcoded /25), test UI sends testId for stateless scoring
+- [x] **CEFR-06**: All UI and admin displays show dynamic score/questionCount (no hardcoded /25), test UI sends testId for stateless scoring
 
 ## Future Requirements
 
@@ -106,12 +106,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BRD-01 | Phase 11 | Complete |
 | DASH-03 | Phase 12 | Pending |
 | BRD-02 | Phase 12 | Pending |
-| CEFR-01 | Phase 13 | Pending |
-| CEFR-02 | Phase 13 | Pending |
-| CEFR-03 | Phase 13 | Pending |
-| CEFR-04 | Phase 13 | Pending |
-| CEFR-05 | Phase 13 | Pending |
-| CEFR-06 | Phase 13 | Pending |
+| CEFR-01 | Phase 13 | Complete |
+| CEFR-02 | Phase 13 | Complete |
+| CEFR-03 | Phase 13 | Complete |
+| CEFR-04 | Phase 13 | Complete |
+| CEFR-05 | Phase 13 | Complete |
+| CEFR-06 | Phase 13 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 12 total
