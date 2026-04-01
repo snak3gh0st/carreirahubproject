@@ -9,6 +9,8 @@ interface Invoice {
   invoiceNumber: string | null;
   amount: any;
   dueDate: Date;
+  customerId?: string;
+  installments?: any;
   deal?: {
     title: string;
   } | null;
@@ -31,6 +33,165 @@ interface Customer {
   zipCode?: string | null;
   country?: string | null;
   ssn?: string | null;
+}
+
+function getPreferredCustomerIdentificationValue(customer: Customer): string {
+  return customer.ssn || customer.cpf || customer.passport || '';
+}
+
+function getInvoiceServiceDescriptionValue(invoice: Invoice): string {
+  const lineItem = Array.isArray(invoice.lineItems) ? invoice.lineItems[0] : null;
+  return lineItem?.description || invoice.deal?.title || 'Professional Services';
+}
+
+async function buildDocuSignCustomFields(
+  invoice: Invoice,
+  customer: Customer
+): Promise<Record<string, string>> {
+  const customFields: Record<string, string> = {};
+  const amount = Number(invoice.amount);
+
+  customFields.client_name = customer.name;
+  customFields.client_email = customer.email;
+  customFields.client_cpf = customer.cpf || '';
+  customFields.client_passport = customer.passport || '';
+  customFields.client_ssn_last4 = getPreferredCustomerIdentificationValue(customer);
+  customFields.client_address = [
+    customer.address,
+    customer.city,
+    customer.state,
+    customer.zipCode,
+    customer.country,
+  ].filter(Boolean).join(', ');
+  customFields.contract_date_day = new Date().getDate().toString();
+  customFields.contract_date_month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
+  customFields.contract_date_year = new Date().getFullYear().toString().slice(-2);
+  customFields.customer_name = customer.name;
+  customFields.customer_email = customer.email;
+  customFields.invoice_number = invoice.invoiceNumber || invoice.id;
+  customFields.invoice_numbers = invoice.invoiceNumber || invoice.id;
+  customFields.invoice_amount = `$${amount.toFixed(2)}`;
+  customFields.invoice_due_date = new Date(invoice.dueDate).toLocaleDateString('en-US');
+  customFields.amount = `$${amount.toFixed(2)}`;
+  customFields.due_date = new Date(invoice.dueDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  customFields.service_description = getInvoiceServiceDescriptionValue(invoice);
+
+  const installmentData = invoice.installments as any;
+
+  if (invoice.customerId && installmentData?.seriesId) {
+    const seriesInvoices = await prisma.invoice.findMany({
+      where: {
+        customerId: invoice.customerId,
+        installments: { path: ['seriesId'], equals: installmentData.seriesId },
+      },
+      orderBy: { dueDate: 'asc' },
+    });
+
+    const totalAmount = seriesInvoices.reduce(
+      (sum, seriesInvoice) => sum + Number(seriesInvoice.amount),
+      0
+    );
+
+    customFields.total_amount = `$${totalAmount.toFixed(2)}`;
+    customFields.installment_count = seriesInvoices.length.toString();
+
+    const entryInvoice = seriesInvoices.find(
+      (seriesInvoice) => (seriesInvoice.installments as any)?.isFirstInstallment
+    );
+    const regularInvoices = seriesInvoices.filter(
+      (seriesInvoice) => !(seriesInvoice.installments as any)?.isFirstInstallment
+    );
+
+    if (entryInvoice && regularInvoices.length > 0) {
+      const entryAmount = Number(entryInvoice.amount);
+      customFields.entry_amount = `$${entryAmount.toFixed(2)}`;
+      customFields.entry_due_date = new Date(entryInvoice.dueDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      customFields.payment_plan = `Entrada: $${entryAmount.toFixed(2)} + ${regularInvoices.length}x $${Number(regularInvoices[0].amount).toFixed(2)}`;
+    } else if (seriesInvoices.length > 1) {
+      customFields.entry_amount = '';
+      customFields.entry_due_date = '';
+      customFields.payment_plan = `${seriesInvoices.length}x $${Number(seriesInvoices[0].amount).toFixed(2)}`;
+    } else {
+      customFields.entry_amount = '';
+      customFields.entry_due_date = '';
+      customFields.payment_plan = `Pagamento unico: $${amount.toFixed(2)}`;
+    }
+
+    seriesInvoices.forEach((seriesInvoice, index) => {
+      const slot = index + 1;
+      const installmentAmount = Number(seriesInvoice.amount);
+      const dueDateLong = new Date(seriesInvoice.dueDate).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+      const installmentMeta = seriesInvoice.installments as any;
+
+      customFields[`installment_amount_${slot}`] = `$${installmentAmount.toFixed(2)}`;
+      customFields[`due_date_${slot}`] = dueDateLong;
+      customFields[`due_date_short_${slot}`] = new Date(seriesInvoice.dueDate).toLocaleDateString('pt-BR');
+      customFields[`invoice_number_${slot}`] = seriesInvoice.invoiceNumber || '';
+
+      if (installmentMeta?.isFirstInstallment) {
+        customFields[`installment_desc_${slot}`] = 'Entrada';
+      } else {
+        const installmentNumber = installmentMeta?.current
+          ? installmentMeta.current - (entryInvoice ? 1 : 0)
+          : index;
+        customFields[`installment_desc_${slot}`] = `Parcela ${installmentNumber}`;
+      }
+    });
+
+    for (let slot = seriesInvoices.length + 1; slot <= 12; slot++) {
+      customFields[`installment_amount_${slot}`] = '';
+      customFields[`due_date_${slot}`] = '';
+      customFields[`due_date_short_${slot}`] = '';
+      customFields[`invoice_number_${slot}`] = '';
+      customFields[`installment_desc_${slot}`] = '';
+    }
+
+    if (regularInvoices.length > 0) {
+      customFields.installment_amount = `$${Number(regularInvoices[0].amount).toFixed(2)}`;
+    }
+
+    customFields.invoice_numbers = seriesInvoices
+      .map((seriesInvoice) => seriesInvoice.invoiceNumber)
+      .filter(Boolean)
+      .join(', ');
+  } else {
+    customFields.total_amount = `$${amount.toFixed(2)}`;
+    customFields.payment_plan = `Pagamento unico: $${amount.toFixed(2)}`;
+    customFields.installment_count = '1';
+    customFields.entry_amount = '';
+    customFields.installment_amount = '';
+    customFields.installment_amount_1 = `$${amount.toFixed(2)}`;
+    customFields.due_date_1 = new Date(invoice.dueDate).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+    customFields.due_date_short_1 = new Date(invoice.dueDate).toLocaleDateString('pt-BR');
+    customFields.invoice_number_1 = invoice.invoiceNumber || invoice.id;
+    customFields.installment_desc_1 = 'Pagamento unico';
+
+    for (let slot = 2; slot <= 12; slot++) {
+      customFields[`installment_amount_${slot}`] = '';
+      customFields[`due_date_${slot}`] = '';
+      customFields[`due_date_short_${slot}`] = '';
+      customFields[`invoice_number_${slot}`] = '';
+      customFields[`installment_desc_${slot}`] = '';
+    }
+  }
+
+  return customFields;
 }
 
 /**
@@ -856,6 +1017,7 @@ export class DocuSignService {
 
       const annexLabel = resolved.annex ? ` (Anexo ${resolved.annex})` : '';
       const programLabel = resolved.program || lineItem?.description || invoice.deal?.title || 'unknown';
+      const customFields = await buildDocuSignCustomFields(invoice, customer);
       console.log(`[DOCUSIGN] Creating envelope from template ${templateId}${annexLabel} for program "${programLabel}"`);
 
       // Build envelope definition using Composite Templates
@@ -873,7 +1035,7 @@ export class DocuSignService {
             ],
             inlineTemplates: [
               {
-                sequence: '1',
+                sequence: '2',
                 recipients: {
                   signers: [
                     {
@@ -882,97 +1044,11 @@ export class DocuSignService {
                       recipientId: '1',
                       roleName: 'Client', // Must match template role
                       tabs: {
-                        textTabs: [
-                          // Client identification fields
-                          {
-                            tabLabel: 'client_name',
-                            value: customer.name,
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'client_cpf',
-                            value: customer.cpf || '',
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'client_passport',
-                            value: customer.passport || '',
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'client_address',
-                            value: [
-                              customer.address,
-                              customer.city,
-                              customer.state,
-                              customer.zipCode,
-                              customer.country,
-                            ].filter(Boolean).join(', '),
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'client_email',
-                            value: customer.email,
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'client_ssn_last4',
-                            value: customer.ssn || '',
-                            locked: 'true',
-                          },
-                          // Contract date fields
-                          {
-                            tabLabel: 'contract_date_day',
-                            value: new Date().getDate().toString(),
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'contract_date_month',
-                            value: new Date().toLocaleDateString('pt-BR', { month: 'long' }),
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'contract_date_year',
-                            value: new Date().getFullYear().toString().slice(-2),
-                            locked: 'true',
-                          },
-                          // Invoice/service fields
-                          {
-                            tabLabel: 'invoice_number',
-                            value: invoice.invoiceNumber || invoice.id,
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'amount',
-                            value: `$${Number(invoice.amount).toFixed(2)}`,
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'due_date',
-                            value: new Date(invoice.dueDate).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            }),
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'service_description',
-                            value: invoice.deal?.title || 'Professional Services',
-                            locked: 'true',
-                          },
-                          // Legacy aliases (backward compatibility)
-                          {
-                            tabLabel: 'customer_name',
-                            value: customer.name,
-                            locked: 'true',
-                          },
-                          {
-                            tabLabel: 'customer_email',
-                            value: customer.email,
-                            locked: 'true',
-                          },
-                        ],
+                        textTabs: Object.entries(customFields).map(([label, value]) => ({
+                          tabLabel: label,
+                          value,
+                          locked: 'true',
+                        })),
                       },
                     },
                   ],
@@ -1242,7 +1318,7 @@ export class DocuSignService {
             ],
             inlineTemplates: [
               {
-                sequence: '1',
+                sequence: '2',
                 recipients: {
                   signers: [
                     {

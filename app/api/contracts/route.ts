@@ -5,6 +5,49 @@ import { prisma } from '@/lib/db';
 import { ContractStatus } from '@prisma/client';
 import { docusignService, validateCustomerForContract } from '@/lib/services/docusign.service';
 
+const PROGRAM_LABEL_MAP: Record<string, string> = {
+  pass_advanced: 'Pass Advanced',
+  pass: 'Pass',
+  combo: 'Combo',
+  start: 'Start',
+  avulso: 'Avulso',
+  upgrade: 'Upgrade',
+  new_pass: 'New Pass',
+  treinamento: 'Treinamento',
+};
+
+function getPreferredCustomerIdentification(customer: {
+  ssn?: string | null;
+  cpf?: string | null;
+  passport?: string | null;
+}): string {
+  return customer.ssn || customer.cpf || customer.passport || '';
+}
+
+function getInvoiceServiceDescription(
+  invoice: { lineItems?: unknown } | null,
+  program?: string | null
+): string {
+  if (invoice && Array.isArray(invoice.lineItems)) {
+    const firstLineItem = invoice.lineItems[0];
+    if (
+      firstLineItem &&
+      typeof firstLineItem === 'object' &&
+      'description' in firstLineItem &&
+      typeof firstLineItem.description === 'string' &&
+      firstLineItem.description.trim() !== ''
+    ) {
+      return firstLineItem.description;
+    }
+  }
+
+  if (program && PROGRAM_LABEL_MAP[program]) {
+    return PROGRAM_LABEL_MAP[program];
+  }
+
+  return 'Professional Services';
+}
+
 /**
  * GET /api/contracts
  * Fetch contracts with optional filtering
@@ -296,7 +339,7 @@ export async function POST(request: NextRequest) {
         customFields['client_email'] = customer.email;
         customFields['client_cpf'] = customer.cpf || '';
         customFields['client_passport'] = customer.passport || '';
-        customFields['client_ssn_last4'] = customer.ssn || '';
+        customFields['client_ssn_last4'] = getPreferredCustomerIdentification(customer);
         customFields['client_address'] = [
           customer.address, customer.city, customer.state,
           customer.zipCode, customer.country,
@@ -310,7 +353,9 @@ export async function POST(request: NextRequest) {
         customFields['customer_email'] = customer.email;
         // Invoice and installment fields
         if (invoice) {
+          customFields['service_description'] = getInvoiceServiceDescription(invoice, program);
           customFields['invoice_number'] = invoice.invoiceNumber || '';
+          customFields['invoice_numbers'] = invoice.invoiceNumber || '';
           customFields['invoice_amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
           customFields['invoice_due_date'] = new Date(invoice.dueDate).toLocaleDateString('en-US');
           customFields['amount'] = `$${parseFloat(invoice.amount.toString()).toFixed(2)}`;
