@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
 status: verifying
-stopped_at: Completed 14-data-foundation-04-PLAN.md (awaiting human-verify checkpoint)
-last_updated: "2026-04-01T16:22:04.381Z"
+stopped_at: Completed 14-data-foundation-04-PLAN.md
+last_updated: "2026-04-01T16:34:19.721Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 17
@@ -72,6 +72,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4
 | Phase 14 P02 | 3 | 1 tasks | 1 files |
 | Phase 14-data-foundation P03 | 4 | 2 tasks | 3 files |
 | Phase 14 P04 | 8 | 3 tasks | 4 files |
+| Phase 14-data-foundation P04 | 8 | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -117,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase 14-data-foundation]: RBAC enforces ADMIN|OPERATIONAL on all /api/ops/ routes — matches NextAuth middleware pattern
 - [Phase 14]: Toast library: sonner v2.0.7 used for enrollment form feedback — already in package.json
 - [Phase 14]: Assignable users: manual text input fallback in enrollment form — /api/dashboard/users endpoint does not exist yet
+- [Phase 14-data-foundation]: Toast library: sonner v2.0.7 used for enrollment form feedback — already in package.json
+- [Phase 14-data-foundation]: Enrollment form moved to /ops/enroll (not /dashboard/ops/enroll) to match Ops Hub portal route prefix
 
 ### Roadmap Evolution
 
@@ -132,7 +135,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-01T16:21:58.124Z
-Stopped at: Completed 14-data-foundation-04-PLAN.md (awaiting human-verify checkpoint)
+Last session: 2026-04-01T16:34:19.718Z
+Stopped at: Completed 14-data-foundation-04-PLAN.md
 Resume file: None
 Next action: `/gsd:plan-phase 14` to plan Data Foundation
