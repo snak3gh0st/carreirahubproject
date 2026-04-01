@@ -7,6 +7,7 @@ import { Logo } from "@/components/brand/Logo";
 import {
   LayoutDashboard,
   Users,
+  GraduationCap,
   LogOut,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ops/customers", label: "Clientes", icon: Users },
+  { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
 ];
 
 interface OpsSidebarProps {

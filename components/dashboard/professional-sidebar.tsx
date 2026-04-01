@@ -13,7 +13,6 @@ import {
   BarChart3,
   LogOut,
   HeadphonesIcon,
-  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { APP_VERSION } from "@/lib/changelog";
@@ -69,12 +68,6 @@ const mainNavItems: NavItem[] = [
     label: "Suporte",
     icon: HeadphonesIcon,
     roles: ["ADMIN", "OPERATIONAL", "SUPPORT"],
-  },
-  {
-    href: "/dashboard/ops/enroll",
-    label: "Ops Hub",
-    icon: GraduationCap,
-    roles: ["ADMIN", "OPERATIONAL"],
   },
 ];
 
