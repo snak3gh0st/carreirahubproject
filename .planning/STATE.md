@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Ops Hub — Student Journey Management
-status: Defining requirements
+status: Roadmap ready
 stopped_at: ~
 last_updated: "2026-04-01T00:00:00.000Z"
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -16,18 +16,22 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-25)
+See: .planning/PROJECT.md (updated 2026-04-01)
 
-**Core value:** Complete Finance workflow automation — seamless integration between QuickBooks and DocuSign to handle invoicing and contracts without manual data entry or lost transactions.
+**Core value:** Give the Carreira USA support team a single operational workspace to track every student's journey phase, replacing ClickUp as the team's hub.
 
 **Current focus:** Milestone v1.2 — Ops Hub Student Journey Management
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 14 — Data Foundation (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-01 — Milestone v1.2 started
+Status: Roadmap defined, awaiting first plan
+Last activity: 2026-04-01 — v1.2 roadmap created (Phases 14-17)
+
+```
+Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4 phases)
+```
 
 ## Performance Metrics
 
@@ -92,20 +96,30 @@ Recent decisions affecting current work:
 - [Phase 13-cefr-english-proficiency-test-engine]: totalScore=-1 as pending sentinel — avoids nullable field, reuses existing Int column
 - [Phase 13-cefr-english-proficiency-test-engine]: Update-not-create on submit — preserves pending record with questionIds for exact scoring
 - [Phase 13-cefr-english-proficiency-test-engine]: questionCount||25 fallback — backward compatible with pre-Plan 01 test records
+- **v1.2 Data Model**: MentorshipPhase stored as a lookup table (key, label, sortOrder) — not a Prisma enum — to avoid untransactable ALTER TYPE migrations during phase renames
+- **v1.2 Data Model**: MentorshipEnrollment anchored to existing Customer identity — no parallel Student entity to avoid reintroducing the deduplication problem
+- **v1.2 Architecture**: Ops Hub at /ops/* with ADMIN | OPERATIONAL role gates following the same NextAuth middleware pattern as the Admin Dashboard
+- **v1.2 Architecture**: Phase transitions always written as a Prisma $transaction pairing enrollment update + PhaseTransition log row — atomicity is non-negotiable
+- **v1.2 Architecture**: Pipeline board uses single findMany with include and in-memory grouping — acceptable for under 500 students; add pagination from day one
+- **v1.2 Architecture**: Daily action SLA thresholds defined as named constants — calibrate after 2-4 weeks of real Phase 14-16 usage, not before
+- **v1.2 Scope**: WhatsApp sending, Google Calendar, and Pipedrive auto-enrollment are explicitly v1.3 — not in scope for any Phase 14-17 work
+- **v1.2 DnD**: dnd-kit v6.3.1 + sortable v10.0.0 are the only stable React DnD libraries as of 2026 — react-beautiful-dnd is deprecated, @dnd-kit/react is pre-1.0 alpha
 
 ### Roadmap Evolution
 
 - Phase 13 added: CEFR English Proficiency Test Engine — scientifically validated placement test with randomized question bank (100-200+ questions, A1-C2), adaptive scoring, no-repeat guarantee
+- Phases 14-17 added: v1.2 Ops Hub — Student Journey Management (2026-04-01)
 
 ### Blockers/Concerns
 
 - **Logo assets**: Logo integration (Phase 11) requires compass/arrow SVG files from brand team. If unavailable before Phase 11, implement Logo.tsx with placeholder and merge paths as follow-up commit
 - **Font licensing**: Confirm Blaak and Neue Montreal licenses permit self-hosted web embedding before committing OTF files to repository (Phase 10 blocker if restricted)
 - **Exact color scale values**: Brand color stops in brand.css should be verified via tints.dev before shipping — approximated values are starting points only
+- **Phase SLA thresholds (Phase 17)**: Exact days-per-phase values for the daily action view cannot be determined before Phase 14-16 are in production use — define conservative defaults (7 calendar days) and adjust after 2-4 weeks of real data
 
 ## Session Continuity
 
-Last session: 2026-03-25T23:01:22.266Z
-Stopped at: Completed 13-cefr-english-proficiency-test-engine-03-PLAN.md
+Last session: 2026-04-01T00:00:00.000Z
+Stopped at: v1.2 roadmap created — Phases 14-17 defined
 Resume file: None
-Next action: `/gsd:plan-phase 10` to plan Token & Font Foundation
+Next action: `/gsd:plan-phase 14` to plan Data Foundation

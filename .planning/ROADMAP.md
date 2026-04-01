@@ -4,6 +4,7 @@
 
 - ✅ **v1.0 Finance Automation** - Phases 1-9 (shipped 2026-02-04)
 - 🚧 **v1.1 Brand Identity Reskin** - Phases 10-12 (in progress)
+- 🚧 **v1.2 Ops Hub — Student Journey Management** - Phases 14-17 (in progress)
 
 ## Phases
 
@@ -158,6 +159,17 @@ Plans:
 - [x] **Phase 11: Portal Shell Reskin** - Admin Dashboard sidebar/components and Client Hub layout/pages migrated to brand tokens, with logo replacement (completed 2026-03-25)
 - [ ] **Phase 12: Chart Rebrand & Brand Polish** - All Recharts charts updated to brand palette, focus rings/badges updated, WCAG AA validated
 
+---
+
+### v1.2 Ops Hub — Student Journey Management (In Progress)
+
+**Milestone Goal:** Give the Carreira USA support team (Fraenze, Dária, Rafael) a single operational workspace to track every student's journey phase, see what needs action today, log sessions, and manage student data — replacing ClickUp as the team's operational hub.
+
+- [ ] **Phase 14: Data Foundation** - Mentorship schema (MentorshipPhase lookup, MentorshipEnrollment, MentorshipSession, PhaseTransition), mentorship.service.ts, enrollment API and form
+- [ ] **Phase 15: Pipeline Board** - Kanban UI with dnd-kit, phase advance, team member filter, overdue and debtor indicators
+- [ ] **Phase 16: Student Profile** - Full student profile page, phase timeline, session log, session log form
+- [ ] **Phase 17: Daily Action View + Coordinator Overview** - Daily checklist with SLA rules, coordinator metrics, debtors list
+
 ## Phase Details
 
 ### Phase 10: Token & Font Foundation
@@ -228,6 +240,57 @@ Plans:
 - [x] 13-02-PLAN.md — Question bank content: B1, B2, C1, C2 questions (88+ questions completing the 130+ bank)
 - [ ] 13-03-PLAN.md — API route rewrites, test UI integration, admin display updates, i18n
 
+### Phase 14: Data Foundation
+**Goal**: The ops team can enroll any existing Customer into a mentorship program and every subsequent student journey event — phase transitions, sessions — is reliably persisted with a full audit trail
+**Depends on**: Phase 13
+**Requirements**: DATA-01, DATA-02, DATA-03, DATA-04, ENRL-01, ENRL-02
+**Success Criteria** (what must be TRUE):
+  1. Ops team member can search for an existing Customer by name or email and enroll them in a mentorship program by selecting program type (Pass/Advanced) and assigned team member
+  2. After enrollment, the student's current phase is set to Phase 1 (first of 11 phases) and a PhaseTransition row is written recording who created the enrollment and when
+  3. Ops team member can log a session against an enrolled student with session type (from a controlled dropdown), conductor (a User), date, and optional notes — and the session persists immediately
+  4. Every phase advance writes a PhaseTransition row with from-phase, to-phase, timestamp, and triggered-by user inside a single database transaction — partial writes never occur
+  5. The `/api/ops/*` routes reject requests from users without ADMIN or OPERATIONAL roles with 403; all data is scoped to the authenticated user's role at the query level, not post-filter
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 15: Pipeline Board
+**Goal**: The ops team can see every active student's current phase at a glance on a Kanban board and advance a student's phase from within that view
+**Depends on**: Phase 14
+**Requirements**: PIPE-01, PIPE-02, PIPE-03, PIPE-04, PIPE-05
+**Success Criteria** (what must be TRUE):
+  1. All active enrollments appear in a Kanban board with one column per phase — student cards show name, program type badge, phase age in days, and assignee initials
+  2. Ops team member can drag a student card to the next valid phase column (or use a phase-advance button) and the transition is recorded atomically with a confirmation step
+  3. Applying the "My students" filter hides all cards not assigned to the current user, and the URL reflects the active filter so the view is bookmarkable
+  4. Student cards with a phase age exceeding the SLA threshold display a visible overdue indicator (amber or red) distinguishable from cards within SLA
+  5. Student cards for customers with an overdue QuickBooks payment balance display a debtor flag badge alongside the student name
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 16: Student Profile
+**Goal**: An ops team member clicking on any student in the system sees a complete, chronological record of that student's journey — who they are, where they are in the program, every phase change, and every session
+**Depends on**: Phase 15
+**Requirements**: PROF-01, PROF-02, PROF-03
+**Success Criteria** (what must be TRUE):
+  1. Student profile page displays contact info, program type, CEFR English test result, assigned team member, and current phase — all sourced from the Customer and MentorshipEnrollment records
+  2. A phase timeline section shows every PhaseTransition in chronological order with the date, from-phase label, to-phase label, and the name of the user who triggered each transition
+  3. A session log section shows all sessions for the student in reverse-chronological order — paginated at 20 per page — with session type, conductor name, date, and notes visible per row
+  4. The log session form on the profile page accepts a controlled session type, conductor selection, date, and optional notes and adds the new session to the log without a full page reload
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 17: Daily Action View + Coordinator Overview
+**Goal**: Each ops team member starts the day knowing exactly which students need attention, and the coordinator can see the state of the entire program in one view
+**Depends on**: Phase 16
+**Requirements**: DAILY-01, DAILY-02, DAILY-03, COORD-01, COORD-02, COORD-03, COORD-04
+**Success Criteria** (what must be TRUE):
+  1. Daily action view shows only students assigned to the current user and automatically flags students whose phase SLA expires within 2 days or who have had no session in the past 7 days
+  2. Each flagged student entry in the daily view shows the reason for the flag (SLA expiring or no recent session), the number of days remaining or overdue, and a direct link to the student profile
+  3. Coordinator role sees the daily action view without the per-user scope filter — all flagged students across all team members appear in a single list
+  4. Coordinator metrics screen shows a count of active students per phase (phase distribution), and two lists: students with no session in the past 7 days and students with overdue QB payment balances
+  5. Phase distribution count updates without a manual page refresh — React Query polling keeps the coordinator view current within 60 seconds
+**Plans**: TBD
+**UI hint**: yes
+
 ---
 
 ## Progress
@@ -235,6 +298,7 @@ Plans:
 **Execution Order:**
 v1.0 phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5 → 6 → 9
 v1.1 phases execute in numeric order: 10 → 11 → 12
+v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -247,7 +311,11 @@ v1.1 phases execute in numeric order: 10 → 11 → 12
 | 5. DocuSign Production Setup | v1.0 | 2/2 | Complete | 2026-01-29 |
 | 6. Pipedrive Integration | v1.0 | 5/5 | Complete | 2026-01-29 |
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
-| 10. Token & Font Foundation | v1.1 | 2/2 | Complete    | 2026-03-25 |
-| 11. Portal Shell Reskin | v1.1 | 5/5 | Complete    | 2026-03-25 |
+| 10. Token & Font Foundation | v1.1 | 2/2 | Complete | 2026-03-25 |
+| 11. Portal Shell Reskin | v1.1 | 5/5 | Complete | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
-| 13. CEFR English Proficiency Test Engine | - | 2/3 | Complete    | 2026-03-25 |
+| 13. CEFR English Proficiency Test Engine | - | 2/3 | In progress | - |
+| 14. Data Foundation | v1.2 | 0/TBD | Not started | - |
+| 15. Pipeline Board | v1.2 | 0/TBD | Not started | - |
+| 16. Student Profile | v1.2 | 0/TBD | Not started | - |
+| 17. Daily Action View + Coordinator Overview | v1.2 | 0/TBD | Not started | - |
