@@ -27,6 +27,7 @@ const routeRoleMap: { prefix: string; roles: UserRole[] }[] = [
   { prefix: "/dashboard/support", roles: ["ADMIN", "OPERATIONAL", "SUPPORT"] },
   { prefix: "/dashboard/forms", roles: ["ADMIN", "OPERATIONAL", "SALES"] },
   { prefix: "/dashboard/tests", roles: ["ADMIN", "OPERATIONAL", "SALES"] },
+  { prefix: "/dashboard/ops", roles: ["ADMIN", "OPERATIONAL"] },
   { prefix: "/dashboard/customers", roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT", "COMMERCIAL"] },
   { prefix: "/dashboard/deals", roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT"] },
   { prefix: "/dashboard/analytics", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
