@@ -28,8 +28,8 @@
 
 ### Enrollment
 
-- [ ] **ENRL-01**: Ops team member can manually enroll an existing Customer into a mentorship program by selecting program type and assigned team member
-- [ ] **ENRL-02**: Enrollment form includes a Customer search by name or email to select the student being enrolled
+- [x] **ENRL-01**: Ops team member can manually enroll an existing Customer into a mentorship program by selecting program type and assigned team member
+- [x] **ENRL-02**: Enrollment form includes a Customer search by name or email to select the student being enrolled
 
 ### Daily Action View
 
@@ -87,8 +87,8 @@
 | DATA-02 | Phase 14 | Complete |
 | DATA-03 | Phase 14 | Complete |
 | DATA-04 | Phase 14 | Complete |
-| ENRL-01 | Phase 14 | Pending |
-| ENRL-02 | Phase 14 | Pending |
+| ENRL-01 | Phase 14 | Complete |
+| ENRL-02 | Phase 14 | Complete |
 | PIPE-01 | Phase 15 | Pending |
 | PIPE-02 | Phase 15 | Pending |
 | PIPE-03 | Phase 15 | Pending |
