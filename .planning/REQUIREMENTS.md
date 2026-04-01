@@ -1,125 +1,115 @@
-# Requirements: Carreira AI Hub — Brand Identity Reskin
+# Requirements: Carreira AI Hub
 
-**Defined:** 2026-03-25
-**Core Value:** Complete Finance workflow automation — seamless integration between QuickBooks and DocuSign to handle invoicing and contracts without manual data entry or lost transactions.
+**Defined:** 2026-04-01
+**Core Value:** Give the Carreira USA support team a single operational workspace to track every student's journey phase, replacing ClickUp as the team's hub.
 
-## v1.1 Requirements
+## v1.2 Requirements — Ops Hub: Student Journey Management
 
-Requirements for brand identity reskin. Each maps to roadmap phases.
+### Data Foundation
 
-### Token & Font Foundation
+- [ ] **DATA-01**: System stores 11 mentorship phases as DB rows with key, label, and sortOrder — not a Prisma enum
+- [ ] **DATA-02**: Ops team member can create a MentorshipEnrollment for any Customer with program type (Pass/Advanced), assigned team member, and start date
+- [ ] **DATA-03**: System records a PhaseTransition row (timestamp, from-phase, to-phase, triggered-by user) every time a student's phase changes
+- [ ] **DATA-04**: Ops team member can log a MentorshipSession with session type, conductor (User), session date, and optional notes
 
-- [x] **TKN-01**: Design system uses a three-layer CSS custom property architecture (brand primitives, semantic aliases, portal overrides) as single source of truth
-- [x] **TKN-02**: Blaak and Neue Montreal fonts loaded via next/font/local with CSS variable injection, Google Fonts @import removed
-- [x] **TKN-03**: Typography hierarchy defined — Blaak for h1-h3 display headings, Neue Montreal for body/UI text
-- [x] **TKN-04**: Color role rules enforced — Verde as primary text color, Tangerina only on dark surfaces or as non-text accent, contrast ratios verified
+### Pipeline Board
 
-### Admin Dashboard
+- [ ] **PIPE-01**: Ops team member sees all active enrollments grouped by current phase in a Kanban board layout
+- [ ] **PIPE-02**: Ops team member can advance a student to the next valid phase via drag-and-drop or a phase advance button
+- [ ] **PIPE-03**: Ops team member can filter the pipeline board to show only students assigned to a specific team member
+- [ ] **PIPE-04**: Pipeline board shows an overdue indicator on student cards when the student has exceeded the expected SLA for their current phase
+- [ ] **PIPE-05**: Pipeline board shows a debtor flag on student cards when the student has an overdue QB payment balance
 
-- [x] **DASH-01**: Sidebar uses Verde (#2F443F) background with Tangerina active states and new brand logo
-- [x] **DASH-02**: Shared components (Button, Card, StatCard, Badge, Input) consume new brand tokens via CSS variables
-- [ ] **DASH-03**: All Recharts chart components use brand palette colors (Verde, Tangerina, Cafe com Leite, Caramelo)
+### Student Profile
 
-### Client Hub
+- [ ] **PROF-01**: Ops team member can view a student's full profile including contact info, program type, English test result (CEFR level), assigned team member, and current phase
+- [ ] **PROF-02**: Student profile shows a chronological timeline of all phase transitions with dates and who triggered each transition
+- [ ] **PROF-03**: Student profile shows a paginated log of all sessions with type, conductor, date, and notes
 
-- [x] **HUB-01**: All hardcoded hex literals and GOLD constants across hub files replaced with token classes
-- [x] **HUB-02**: Hub layout uses Creme surface backgrounds, Verde text, Tangerina accents, brand logo in header
-- [x] **HUB-03**: Login page features Verde + Creme hero treatment with Blaak headline and Tangerina CTA
+### Enrollment
 
-### Brand Assets & Polish
+- [ ] **ENRL-01**: Ops team member can manually enroll an existing Customer into a mentorship program by selecting program type and assigned team member
+- [ ] **ENRL-02**: Enrollment form includes a Customer search by name or email to select the student being enrolled
 
-- [x] **BRD-01**: Favicon and logo assets replaced across both portals with new Carreira USA brand mark
-- [ ] **BRD-02**: Focus rings, status badges, and interactive states updated to brand colors with WCAG AA contrast
+### Daily Action View
 
-## CEFR English Proficiency Test Engine Requirements
+- [ ] **DAILY-01**: Ops team member sees a daily action list scoped to their assigned students that require attention today based on phase and SLA rules
+- [ ] **DAILY-02**: Daily action view flags students whose current phase SLA expires within the next 2 days
+- [ ] **DAILY-03**: Daily action view flags students who have had no session logged in the past 7 days
 
-Requirements for the randomized English placement test system. Maps to Phase 13.
+### Coordinator Overview
 
-### Question Bank
+- [ ] **COORD-01**: Coordinator can view phase distribution metrics — count of active students per phase across all team members
+- [ ] **COORD-02**: Coordinator can view all active enrollments regardless of assigned team member (no scoping filter)
+- [ ] **COORD-03**: Coordinator sees a list of students with no session activity in the past 7 days
+- [ ] **COORD-04**: Coordinator sees a list of students with overdue QB payment balances (debtors)
 
-- [x] **CEFR-01**: Question bank of 130+ questions organized by CEFR level (A1-C2) with unique IDs, skill type tags, and career/immigration context for Brazilian immigrants
+---
 
-### Randomization & No-Repeat
+## v1.3 Requirements (Deferred)
 
-- [x] **CEFR-02**: Fisher-Yates randomized question selection with per-student no-repeat guarantee across retakes (pool reset on exhaustion)
+### Automation
 
-### Scoring
+- **AUTO-01**: Enrollment is created automatically when a Pipedrive Deal is marked Won (webhook trigger)
+- **AUTO-02**: Daily WhatsApp message templates can be sent from Ops Hub per student phase
 
-- [x] **CEFR-03**: Percentage-based adaptive scoring algorithm using contiguous pass method (60% threshold per section, variable question counts)
+### Communication
 
-### Database
+- **COMM-01**: Ops team member can write free-text notes/observations per student visible to the whole team
+- **COMM-02**: Google Calendar invites are created when a session is scheduled from Ops Hub
 
-- [x] **CEFR-04**: PlacementTest schema updated with questionIds (String[]) and questionCount (Int) for question tracking and auditing
+### Reporting
 
-### API Integration
+- **RPT-01**: Coordinator sees NPS entry/exit scores per student on their profile
+- **RPT-02**: Coordinator can export student phase distribution as CSV
 
-- [x] **CEFR-05**: API routes generate unique randomized question sets per student with pending test tracking, and score against the specific served questions
-
-### UI Adaptation
-
-- [x] **CEFR-06**: All UI and admin displays show dynamic score/questionCount (no hardcoded /25), test UI sends testId for stateless scoring
-
-## Future Requirements
-
-Deferred to v2+. Tracked but not in current roadmap.
-
-### Dark Mode
-
-- **DARK-01**: Full two-theme token system with dark mode variants for both portals
-
-### Brand Enhancements
-
-- **ENH-01**: Illustrated icon system from brand patterns
-- **ENH-02**: Responsive fluid typography (clamp/vw scaling)
-- **ENH-03**: Page transition micro-animations
-- **ENH-04**: Typographic repeat/pattern backgrounds on login and marketing pages
-
-### Accessibility
-
-- **A11Y-01**: Automated Lighthouse accessibility baseline comparison (pre vs post reskin)
+---
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Layout restructuring | v1.1 is a reskin — existing page layouts preserved |
-| New pages or routes | No functionality additions in this milestone |
-| Dark mode | Requires full two-theme token system — separate milestone |
-| Tailwind v4 migration | Incompatible with existing config; separate project |
-| Mobile app | Web-only |
+| WhatsApp sending | No integrations in v1.2 — keep scope tight |
+| Google Calendar integration | No integrations in v1.2 |
+| Invoice creation from Ops Hub | Handled by Admin Dashboard — no duplication |
+| Student-facing portal writes | Violates two-portal separation rule in CLAUDE.md |
+| Automated notifications/alerts | Alert fatigue risk; defer to v1.3 with real SLA data |
+| Bulk phase operations | Scope creep — single-student flow first |
+| Notes/observations (v1.2) | Deferred to v1.3 to keep profile scope focused |
+
+---
 
 ## Traceability
 
-Which phases cover which requirements. Updated during roadmap creation.
-
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TKN-01 | Phase 10 | Complete |
-| TKN-02 | Phase 10 | Complete |
-| TKN-03 | Phase 10 | Complete |
-| TKN-04 | Phase 10 | Complete |
-| DASH-01 | Phase 11 | Complete |
-| DASH-02 | Phase 11 | Complete |
-| HUB-01 | Phase 11 | Complete |
-| HUB-02 | Phase 11 | Complete |
-| HUB-03 | Phase 11 | Complete |
-| BRD-01 | Phase 11 | Complete |
-| DASH-03 | Phase 12 | Pending |
-| BRD-02 | Phase 12 | Pending |
-| CEFR-01 | Phase 13 | Complete |
-| CEFR-02 | Phase 13 | Complete |
-| CEFR-03 | Phase 13 | Complete |
-| CEFR-04 | Phase 13 | Complete |
-| CEFR-05 | Phase 13 | Complete |
-| CEFR-06 | Phase 13 | Complete |
+| DATA-01 | Phase 14 | Pending |
+| DATA-02 | Phase 14 | Pending |
+| DATA-03 | Phase 14 | Pending |
+| DATA-04 | Phase 14 | Pending |
+| ENRL-01 | Phase 14 | Pending |
+| ENRL-02 | Phase 14 | Pending |
+| PIPE-01 | Phase 15 | Pending |
+| PIPE-02 | Phase 15 | Pending |
+| PIPE-03 | Phase 15 | Pending |
+| PIPE-04 | Phase 15 | Pending |
+| PIPE-05 | Phase 15 | Pending |
+| PROF-01 | Phase 16 | Pending |
+| PROF-02 | Phase 16 | Pending |
+| PROF-03 | Phase 16 | Pending |
+| DAILY-01 | Phase 17 | Pending |
+| DAILY-02 | Phase 17 | Pending |
+| DAILY-03 | Phase 17 | Pending |
+| COORD-01 | Phase 17 | Pending |
+| COORD-02 | Phase 17 | Pending |
+| COORD-03 | Phase 17 | Pending |
+| COORD-04 | Phase 17 | Pending |
 
 **Coverage:**
-- v1.1 requirements: 12 total
-- Mapped to phases: 12
-- Unmapped: 0
-- CEFR requirements: 6 total
-- Mapped to Phase 13: 6
+- v1.2 requirements: 21 total
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
-*Requirements defined: 2026-03-25*
-*Last updated: 2026-03-25 — CEFR requirements added for Phase 13*
+*Requirements defined: 2026-04-01*
+*Last updated: 2026-04-01 after initial definition*
