@@ -29,6 +29,9 @@ model User {
   supportTickets         SupportTicket[]     @relation("UserSupportTickets")
   assignedTickets        SupportTicket[]     @relation("AssignedSupportTickets")
   formAssignments        FormAssignment[]    @relation("AssignedForms")
+  assignedEnrollments    MentorshipEnrollment[] @relation("AssignedEnrollments")
+  conductedSessions      MentorshipSession[]    @relation("ConductedSessions")
+  triggeredTransitions   PhaseTransition[]      @relation("TriggeredTransitions")
 
   @@index([id])
   @@map("users")
@@ -79,6 +82,7 @@ model Customer {
   notifications        Notification[]
   payments             Payment[]
   placementTests       PlacementTest[]
+  mentorshipEnrollments MentorshipEnrollment[]
 
   @@index([email])
   @@index([pipedrive_id])
@@ -846,4 +850,86 @@ enum SupportMessageRole {
   USER
   AI
   AGENT
+}
+
+model MentorshipPhase {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  label     String
+  sortOrder Int      @unique
+  slaDays   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  enrollments        MentorshipEnrollment[] @relation("CurrentPhaseEnrollments")
+  transitionsFrom    PhaseTransition[]      @relation("TransitionFrom")
+  transitionsTo      PhaseTransition[]      @relation("TransitionTo")
+
+  @@index([sortOrder])
+  @@map("mentorship_phases")
+}
+
+model MentorshipEnrollment {
+  id           String    @id @default(cuid())
+  programType  String    // "PASS" | "ADVANCED" (per D-03)
+  status       String    @default("ACTIVE") // "ACTIVE" | "COMPLETED" | "PAUSED"
+  startDate    DateTime
+  endDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  customerId      String
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  assignedToId    String
+  assignedTo      User             @relation("AssignedEnrollments", fields: [assignedToId], references: [id])
+  currentPhaseId  String?
+  currentPhase    MentorshipPhase? @relation("CurrentPhaseEnrollments", fields: [currentPhaseId], references: [id])
+
+  sessions    MentorshipSession[]
+  transitions PhaseTransition[]
+
+  @@index([customerId])
+  @@index([assignedToId])
+  @@index([currentPhaseId])
+  @@index([status])
+  @@map("mentorship_enrollments")
+}
+
+model MentorshipSession {
+  id           String   @id @default(cuid())
+  sessionType  String   // controlled values per D-12
+  sessionDate  DateTime
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  enrollmentId String
+  enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
+  conductorId  String
+  conductor    User   @relation("ConductedSessions", fields: [conductorId], references: [id])
+
+  @@index([enrollmentId])
+  @@index([conductorId])
+  @@index([sessionDate])
+  @@map("mentorship_sessions")
+}
+
+model PhaseTransition {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  enrollmentId    String
+  enrollment      MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
+  fromPhaseId     String?
+  fromPhase       MentorshipPhase?     @relation("TransitionFrom", fields: [fromPhaseId], references: [id])
+  toPhaseId       String
+  toPhase         MentorshipPhase      @relation("TransitionTo", fields: [toPhaseId], references: [id])
+  triggeredById   String
+  triggeredBy     User                 @relation("TriggeredTransitions", fields: [triggeredById], references: [id])
+
+  @@index([enrollmentId])
+  @@index([fromPhaseId])
+  @@index([toPhaseId])
+  @@index([triggeredById])
+  @@map("phase_transitions")
 }
