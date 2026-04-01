@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Brand Identity Reskin
-status: Milestone complete
-stopped_at: Completed 13-cefr-english-proficiency-test-engine-03-PLAN.md
-last_updated: "2026-03-25T23:06:57.646Z"
+milestone: v1.2
+milestone_name: Ops Hub — Student Journey Management
+status: Defining requirements
+stopped_at: ~
+last_updated: "2026-04-01T00:00:00.000Z"
 progress:
-  total_phases: 4
-  completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
 ---
 
 # Project State
@@ -20,12 +20,14 @@ See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Complete Finance workflow automation — seamless integration between QuickBooks and DocuSign to handle invoicing and contracts without manual data entry or lost transactions.
 
-**Current focus:** Phase 13 — cefr-english-proficiency-test-engine
+**Current focus:** Milestone v1.2 — Ops Hub Student Journey Management
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-01 — Milestone v1.2 started
 
 ## Performance Metrics
 

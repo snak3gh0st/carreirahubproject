@@ -8,16 +8,16 @@ Carreira AI Hub is a proprietary middleware system that replaces expensive No-Co
 
 Complete Finance workflow automation — seamless integration between QuickBooks and DocuSign to handle invoicing and contracts without manual data entry or lost transactions.
 
-## Current Milestone: v1.1 Brand Identity Reskin
+## Current Milestone: v1.2 Ops Hub — Student Journey Management
 
-**Goal:** Apply the new Carreira USA visual identity across both Admin Dashboard and Client Hub portals — colors, typography, logos, and visual tokens — while preserving all existing layouts and functionality.
+**Goal:** Give the Carreira USA support team (Fraenze, Dária, Rafael) a single operational workspace to track every student's journey phase, see what needs action today, log sessions, and manage student data — replacing ClickUp as the team's operational hub.
 
 **Target features:**
-- Design system foundation with new brand tokens (colors, typography, spacing)
-- Admin Dashboard reskin (sidebar, header, cards, tables, forms, charts)
-- Client Hub reskin (login, dashboard, payment, settings, forms)
-- Shared component updates (buttons, badges, inputs, modals)
-- Logo and favicon replacement across both portals
+- Student pipeline board — all students, current phase, phase history, program type (Pass/Advanced)
+- Daily action view — per-team-member checklist of students needing attention today
+- Session management — log sessions (type, who conducted, date), surface upcoming sessions
+- Student profile — contact info, phase timeline, session history, notes, English test result
+- Admin/coordinator view — cross-team overview, debtors check, phase distribution metrics
 
 ## Requirements
 
@@ -41,13 +41,13 @@ Complete Finance workflow automation — seamless integration between QuickBooks
 
 ### Active
 
-<!-- v1.1: Brand Identity Reskin -->
+<!-- v1.2: Ops Hub — Student Journey Management -->
 
-- [x] Design system with new Carreira USA brand tokens — v1.1 Phase 10
-- [ ] Admin Dashboard reskin to new identity
-- [ ] Client Hub reskin to new identity
-- [ ] Shared components updated with brand tokens
-- [ ] Logo/favicon replacement across both portals
+- [ ] Student pipeline board with 11 phases and team assignment
+- [ ] Daily action view per team member
+- [ ] Session logging (type, conductor, date)
+- [ ] Student profile with phase timeline and history
+- [ ] Admin/coordinator overview with metrics
 
 ### Out of Scope
 
@@ -139,4 +139,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-03-25 — Phase 10 complete (Token & Font Foundation)*
+*Last updated: 2026-04-01 — Milestone v1.2 started (Ops Hub — Student Journey Management)*
