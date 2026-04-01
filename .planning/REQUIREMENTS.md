@@ -14,11 +14,11 @@
 
 ### Pipeline Board
 
-- [ ] **PIPE-01**: Ops team member sees all active enrollments grouped by current phase in a Kanban board layout
-- [ ] **PIPE-02**: Ops team member can advance a student to the next valid phase via drag-and-drop or a phase advance button
+- [x] **PIPE-01**: Ops team member sees all active enrollments grouped by current phase in a Kanban board layout
+- [x] **PIPE-02**: Ops team member can advance a student to the next valid phase via drag-and-drop or a phase advance button
 - [ ] **PIPE-03**: Ops team member can filter the pipeline board to show only students assigned to a specific team member
-- [ ] **PIPE-04**: Pipeline board shows an overdue indicator on student cards when the student has exceeded the expected SLA for their current phase
-- [ ] **PIPE-05**: Pipeline board shows a debtor flag on student cards when the student has an overdue QB payment balance
+- [x] **PIPE-04**: Pipeline board shows an overdue indicator on student cards when the student has exceeded the expected SLA for their current phase
+- [x] **PIPE-05**: Pipeline board shows a debtor flag on student cards when the student has an overdue QB payment balance
 
 ### Student Profile
 
@@ -89,11 +89,11 @@
 | DATA-04 | Phase 14 | Complete |
 | ENRL-01 | Phase 14 | Complete |
 | ENRL-02 | Phase 14 | Complete |
-| PIPE-01 | Phase 15 | Pending |
-| PIPE-02 | Phase 15 | Pending |
+| PIPE-01 | Phase 15 | Complete |
+| PIPE-02 | Phase 15 | Complete |
 | PIPE-03 | Phase 15 | Pending |
-| PIPE-04 | Phase 15 | Pending |
-| PIPE-05 | Phase 15 | Pending |
+| PIPE-04 | Phase 15 | Complete |
+| PIPE-05 | Phase 15 | Complete |
 | PROF-01 | Phase 16 | Pending |
 | PROF-02 | Phase 16 | Pending |
 | PROF-03 | Phase 16 | Pending |
