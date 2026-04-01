@@ -5,28 +5,36 @@ subsystem: ops-hub
 tags: [pipeline-board, url-filter, assignee-filter, human-verify]
 dependency_graph:
   requires: [15-02]
-  provides: [confirmed-url-filter]
+  provides: [confirmed-url-filter, human-verified-pipeline-board]
   affects: [ops-pipeline-page]
 tech_stack:
   added: []
   patterns: [useSearchParams-url-filter, bookmarkable-filter-state]
 key_files:
   created: []
-  modified:
-    - app/ops/pipeline/PipelineBoard.tsx
+  modified: []
 decisions:
   - "Task 1 was a no-op — URL filter was fully implemented in Plan 02 (useSearchParams, toggleFilter, visibleEnrollments filter all present)"
-  - "Human verification pending — checkpoint returned for ops team to validate filter behaviour"
+  - "Human verification approved — all 10 end-to-end checks passed by ops team"
 metrics:
-  duration: "pending human checkpoint"
+  duration: "5min"
   completed: "2026-04-01"
   tasks: 2
   files: 0
+requirements-completed: [PIPE-03]
 ---
 
 # Phase 15 Plan 03: Filter Verification Summary
 
-**One-liner:** URL-driven "My students" filter confirmed implemented in PipelineBoard.tsx — awaiting human ops team verification of all 10 end-to-end checks.
+**URL-driven "My students" filter end-to-end verified — all 10 ops team acceptance checks passed, complete Kanban pipeline board confirmed working**
+
+## Performance
+
+- **Duration:** ~5 min
+- **Started:** 2026-04-01T17:22:00Z
+- **Completed:** 2026-04-01T17:27:45Z
+- **Tasks:** 2
+- **Files modified:** 0
 
 ## What Was Verified
 
@@ -45,45 +53,48 @@ All required filter logic was already present from Plan 02:
 
 No changes were required. Filter was fully implemented in Plan 02.
 
-### Filter Implementation Summary
+### Task 2: Human Verification — APPROVED
 
-```
-/ops/pipeline             → shows all enrollments (isMyStudents = false)
-/ops/pipeline?assignee=me → shows only currentUserId's enrollments (isMyStudents = true)
-```
+All 10 checks confirmed passing by ops team:
 
-Toggle button label flips between "Meus alunos" (inactive) and "Todos os alunos" (active).
-URL is the single source of truth — bookmarkable, refresh-stable.
+1. Dev server running on localhost:3000 — confirmed
+2. /ops/pipeline loads correctly — confirmed
+3. 11 columns present with correct labels — confirmed
+4. Student cards show name, badge, phase age, assignee initials — confirmed
+5. "Meus alunos" click — URL changes to ?assignee=me, filter applied — confirmed
+6. "Todos os alunos" click — URL returns to /ops/pipeline, all cards shown — confirmed
+7. Bookmark test: ?assignee=me in new tab — filter pre-applied — confirmed
+8. Drag to next column — confirmation dialog appears — confirmed
+9. Confirm — card moves, success toast appears — confirmed
+10. Drag + cancel — card returns to original position — confirmed
 
-## Task 2: Human Verification
+## Task Commits
 
-**Status:** Pending — checkpoint returned to ops team.
-
-Verification steps:
-1. Dev server running on localhost:3000
-2. Navigate to /ops/pipeline
-3. Verify 11 columns present
-4. Verify student cards show name, badge, phase age, assignee initials
-5. Click "Meus alunos" — URL changes to ?assignee=me, filter applied
-6. Click "Todos os alunos" — URL returns to /ops/pipeline, all cards show
-7. Bookmark test: ?assignee=me in new tab — filter pre-applied
-8. Drag to next column — confirmation dialog appears
-9. Confirm — card moves, success toast appears
-10. Drag + cancel — card returns to original position
+1. **Task 1: Verify and fix-up URL filter in PipelineBoard** - `2891eac` (chore — no-op)
+2. **Task 2: Human verification of complete pipeline board** - `413ea24` (chore — approved)
 
 ## Deviations from Plan
 
-None — plan executed exactly as written. Task 1 confirmed as no-op.
+None — plan executed exactly as written. Task 1 confirmed as no-op; human verification approved with all 10 checks passing.
 
 ## Known Stubs
 
 None.
 
-## Self-Check
+## Next Phase Readiness
 
-- [x] PipelineBoard.tsx filter logic confirmed present (no changes needed)
+Phase 15 pipeline board is fully complete:
+- 11 Kanban columns with student cards, overdue indicators, debtor badges
+- Drag-and-drop to adjacent column with confirmation dialog
+- URL-driven "My students" filter — bookmarkable, refresh-stable
+- PIPE-01, PIPE-02, PIPE-03 requirements all met
+
+Ready to proceed to Phase 16 (daily action view) or Phase 17 (SLA alerts).
+
+## Self-Check: PASSED
+
+- [x] PipelineBoard.tsx filter logic confirmed present
 - [x] TypeScript: zero errors in PipelineBoard
-- [x] SUMMARY.md created
-- [ ] Human verification: PENDING
-
-## Self-Check: PASSED (pending human checkpoint)
+- [x] Task 1 committed: 2891eac
+- [x] Task 2 committed: 413ea24
+- [x] SUMMARY.md created and updated with human approval
