@@ -1,24 +1,25 @@
 # Feature Research
 
-**Domain:** Brand reskin / visual identity migration — production web application (Next.js 14, two portals)
-**Researched:** 2026-03-25
-**Confidence:** HIGH (token architecture, font loading, contrast requirements) / MEDIUM (pattern/texture usage, animation conventions)
+**Domain:** Student journey management ops workspace — internal team tool for coaching/mentorship program delivery
+**Researched:** 2026-04-01
+**Confidence:** HIGH (pipeline patterns, session logging, profile views) / MEDIUM (daily task queue specifics from coaching CRM patterns)
 
 ---
 
-## Codebase Snapshot
+## Context: What This Is and Is Not
 
-Before feature mapping, key facts about what already exists:
+This is an internal ops tool for a 3-person team (Fraenze, Dária, Rafael) replacing ClickUp as their operational hub. It is **not** a product for students — students have the Client Hub already. The research question is: what do coaching CRMs, mentorship platforms, and CS ops tools (CoachVantage, HubSpot CS Workspace, Gainsight, Vitally, Totango) actually implement in the four target areas, and which of those features are load-bearing vs. nice-to-have for a small team managing a fixed 11-phase journey?
 
-| Area | Current State | Implication for Reskin |
-|------|--------------|------------------------|
-| Color tokens | CSS custom properties in `globals.css` + mirrored in `tailwind.config.ts` + mirrored in `lib/design-tokens.ts` (three sources) | Must update all three in sync; opportunity to collapse to one source |
-| Hub pages | 74 hardcoded hex literals across 16 files, plus `const GOLD = "#C9A84C"` scattered per-file | Critical cleanup required; no token coverage yet |
-| Analytics charts | 129 hardcoded hex literals across 17 Recharts chart components | Chart colors must be re-tokenised separately; cannot be replaced via CSS alone |
-| Typography | `@import` Google Fonts (Space Grotesk + Inter + JetBrains Mono) in `globals.css` | Must replace with `next/font/local` for Blaak + Neue Montreal; Google import must be removed |
-| Sidebar | `bg-secondary-dark` / `bg-gold-600` active state via Tailwind tokens | Updates via token layer only — no per-file edits needed |
-| Shared `components/ui/` | Custom implementations (not shadcn originals); already use Tailwind tokens from `tailwind.config.ts` | Token layer update cascades here automatically |
-| Dark mode | `darkMode: ["class"]` configured in Tailwind but no `.dark` tokens defined; effectively unused | No dark mode rework required this milestone |
+### Existing Foundation (Do Not Re-Build)
+
+| Already Built | Where |
+|---------------|-------|
+| Customer records (contact info, QB IDs, Pipedrive IDs) | `lib/services/identity-mapper.ts`, `Customer` model |
+| English test results | `app/dashboard/tests/`, `Test` model |
+| Invoice / payment status | QuickBooks sync, `Invoice` model |
+| Client Hub (student-facing portal) | `app/hub/` |
+| Auth / RBAC with team roles | `lib/auth.ts`, `User` model |
+| Ops portal skeleton (layout, login, customers placeholder) | `app/ops/` |
 
 ---
 
@@ -26,131 +27,121 @@ Before feature mapping, key facts about what already exists:
 
 ### Table Stakes (Users Expect These)
 
-Features a reskin milestone must deliver for the result to feel complete and coherent. Missing any of these produces a "patchy" result.
+Features the team assumes will exist. Missing any of these produces a tool that cannot replace ClickUp for daily operations.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Token layer consolidation** — single source of truth for all 5 brand colors | Patchy reskins happen when colors are defined in multiple places; updating one but missing another is the #1 cause of visual inconsistency | MEDIUM | Collapse `globals.css` custom props, `tailwind.config.ts` theme values, and `lib/design-tokens.ts` into one canonical file. CSS custom props remain the runtime layer; Tailwind config and TS tokens reference them via `var()`. New palette: Creme #FFF8E8, Verde #2F443F, Tangerina #FF8142, Cafe com Leite #E1C19B, Caramelo #BD925F |
-| **Semantic token naming** — role-based tokens on top of primitive palette | Without semantic tokens (`--color-brand-primary`, `--color-surface-default`, `--color-accent`) components are coupled to literal palette names (e.g. `gold-600`). Rebrand later = change hundreds of classnames | MEDIUM | Define at minimum: `--brand-primary` (Verde), `--brand-accent` (Tangerina), `--brand-surface` (Creme), `--brand-warm` (Cafe com Leite), `--brand-mid` (Caramelo), `--brand-on-dark` (white/Creme for text on Verde bg) |
-| **Hub page hardcoded color removal** — replace 74 hex literals | All 16 hub files use inline `style={{ backgroundColor: GOLD }}` or per-file `const GOLD` constants. These are invisible to the token layer and will not update | HIGH | Audit each file; replace with Tailwind token classes or CSS variables. Most critical: `layout.tsx` (brand surface bg), `login/page.tsx`, `page.tsx` (status badges), all form pages |
-| **Tailwind config rebrand** — swap palette keys from `gold-*` / `secondary-dark` to new brand names | Component classes like `bg-gold-600` and `bg-secondary-dark` are scattered throughout dashboard sidebar, stat cards, and buttons. Either remap the token values (keeping class names) or introduce new semantic classes | MEDIUM | Recommend remapping values, not names, for this milestone (less diff). `gold-500` → Verde value, `gold-600` → Tangerina accent as needed. Introduce `brand-verde`, `brand-tangerina`, `brand-creme`, `brand-caramelo` as new Tailwind color keys |
-| **Font replacement** — Blaak (display/headings) + Neue Montreal (body/UI), remove Google Fonts import | Typography is the strongest signal of brand identity; keeping Inter/Space Grotesk while changing colors produces a "wrapped but not rebranded" feel | HIGH | Use `next/font/local` in `app/layout.tsx` (root layout). Serve from `/public/fonts/`. Define CSS variables `--font-display` (Blaak) and `--font-sans` (Neue Montreal). Both must be WOFF2 for performance. Remove Google Fonts `@import` from `globals.css` |
-| **Typography hierarchy reassignment** — Blaak for display+h1-h3, Neue Montreal for h4-h6+body+UI | Blaak is a premium serif. Using it at body sizes is illegible. Using sans-serif for display headings negates the brand identity signal | LOW | Update `globals.css` h1-h3 + `font-display` Tailwind class to map to Blaak. Update `font-sans` to Neue Montreal. `font-mono` keeps JetBrains Mono (unchanged; used for codes/IDs) |
-| **Dashboard sidebar rebrand** — Verde (#2F443F) background replacing `#1A1A1A`, Tangerina active states | Sidebar is the highest-frequency visible element for admin users; it is the "face" of the admin portal | LOW | Change `bg-secondary-dark` CSS value to Verde. Change `bg-gold-600` active nav item to Tangerina. Update `bg-gold-500` avatar/logo dot to Tangerina or Caramelo |
-| **Hub layout surface rebrand** — Creme (#FFF8E8) as page background, replace `#FBF8F0` inline style | Hub layout already uses a warm cream-ish hardcoded hex (#FBF8F0 ≈ Creme). Replacing with the official token unifies with the brand system | LOW | Replace inline `style={{ backgroundColor: "#FBF8F0" }}` in `app/hub/layout.tsx` with `className="bg-brand-creme"` |
-| **Focus ring color update** — `--primary-500` focus outline must map to new brand color | Accessibility is already implemented; focus rings currently reference `--primary-500` (Classic Gold). This must update to reflect new primary brand color (Tangerina or Verde) | LOW | Update `*:focus-visible` outline and `button:focus-visible` box-shadow color references in `globals.css` |
-| **Chart color palette rebrand** — 129 hardcoded Recharts hex values replaced with brand-derived palette | Charts are data communication tools; using the old gold/blue palette while all UI chrome is rebranded looks like a different product embedded in the page | HIGH | Extract a `chartColors` constant in `lib/design-tokens.ts` using new brand palette. Replace hardcoded `stroke=`, `fill=`, `CartesianGrid stroke=` values in all 17 analytics/dashboard chart components. Minimum: Verde for primary series, Tangerina for accents, Caramelo for tertiary, success/warning/error semantics preserved |
-| **Status badge color review** — verify Hub status badge colors work on Creme surface | Hub dashboard page uses inline background/text hex pairs for PAID/SENT/OVERDUE/PARTIAL/DRAFT status badges. These were designed for a white surface. The Creme background may reduce apparent contrast | LOW | Re-check badge backgrounds against Creme (#FFF8E8) surface; PAID green, OVERDUE red, PARTIAL orange are likely fine. DRAFT gray-on-cream needs verification. Use WebAIM contrast checker (minimum 4.5:1 for AA normal text) |
-| **Logo integration** — compass/arrow speech-bubble logo replacing "C" letter placeholder | All logo placements currently use a colored square with "C" as a placeholder. The new mark must replace this everywhere: Hub header, Dashboard sidebar, email templates if any | MEDIUM | Replace in `app/hub/layout.tsx` (header logo) and `components/dashboard/professional-sidebar.tsx` (sidebar logo). Use `next/image` with the logo SVG. Maintain at least 3 variants: horizontal (sidebar), icon-only (hub header), seal (footer or login page) |
+| **Phase pipeline board** — all active students in a single board view, one column per phase | Every coaching CRM (HubSpot, CoachVantage, Vitally) surfaces a pipeline board as the primary entry point. Teams expect to see "who is in what phase" at a glance without querying | MEDIUM | 11 columns (Bastão → Renovação/Saída). Card shows student name, program type (Pass/Advanced), days in phase, assigned team member. Drag-and-drop phase transition is P2 (manual button trigger first). Depends on `StudentJourney` model with `currentPhase` enum |
+| **Phase transition** — move a student from phase N to phase N+1 with a confirmation action | Team members perform phase transitions daily. Without this, the board is read-only and ClickUp remains necessary | LOW | Dedicated "Avançar Fase" button with confirmation modal. Records `PhaseHistory` entry (from_phase, to_phase, transitioned_by, transitioned_at, notes). All CS platforms (Gainsight CTAs, HubSpot pipeline stages) model this as explicit events, not auto-progression |
+| **Student profile page** — single-student view with all context in one place | CS platforms universally expose a "360° account view." Teams cannot operate without one. Every tool — Gainsight, Vitally, Totango — treats this as their core screen | MEDIUM | Sections: contact info (from `Customer`), current phase + phase timeline, session history, English test result, assigned team members, notes, invoice/payment status (read from QB sync). No writes to QB/Pipedrive from this view |
+| **Phase history timeline** — chronological list of phase transitions per student | Ops teams need audit trail. HubSpot CS Workspace shows activity log on every record. CoachVantage shows coaching log per engagement | LOW | `PhaseHistory` table: each row = one transition. Displayed as a vertical timeline on the student profile. Includes who moved them and any notes left at transition time |
+| **Session logging** — record that a session happened (type, date, conducted by, notes) | CoachVantage's core feature is coaching hour logs. HubSpot CS tracks notes after every call. Session history is the primary evidence that work was done | LOW | Session types map to the journey: Bússola, Raio X, Devolutiva, Ongoing (mock interview), ad-hoc. `Session` table: student_id, type, date, conducted_by, duration_minutes (optional), notes. Not a scheduling tool — log after the fact |
+| **Team member filter / assignment view** — "show me only my students" | HubSpot CS Workspace's primary UX pattern is a personalized workspace per CSM. Vitally and Gainsight both route tasks by owner. A team of 3 with defined responsibilities needs this to avoid noise | LOW | Fraenze sees all students. Dária sees phases 1-9. Rafael sees phases 10+. Filter by assignee on the pipeline board and list views. `StudentJourney.assignedTo` field (or two fields: `coordinator_id`, `advisor_id`) |
+| **Daily action view** — per-team-member list of students needing attention today | HubSpot CS Workspace "Actions tab" with Overdue / Due Today views is the most-cited feature in CS tooling research. ClickUp replacement users specifically need a daily queue | HIGH | Rules engine: students SLA-trigger "needs attention" when they have been in their current phase beyond a phase-specific threshold (e.g., Board phase = 7 days, Material phase = 15 business days). Surface as a list per team member: student name, phase, days overdue, last action. No push notifications required |
+| **Notes** — freeform per-student notes visible to the whole team | Every tool (CoachVantage, HubSpot, Gainsight) provides notes attached to a client record. Teams cannot share context without this | LOW | Simple `Note` model: student_id, author_id, content (text), created_at. Displayed in reverse-chronological order on student profile. No mentions or threading needed in v1 |
 
 ### Differentiators (Competitive Advantage)
 
-Features that elevate the reskin from "color swap" to "brand moment." Not required to ship, but separate a professional result from a minimal one.
+Features that make this tool noticeably better than using ClickUp for this specific workflow. Not required to ship v1, but high team value.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Verde + Creme hero backgrounds on Hub login/onboarding** — full-bleed verde section with Creme card overlay | Login and set-password are the first impressions for clients. Currently they use plain white with a gold dot. A full-bleed Verde background with Creme card and Tangerina CTA creates the "premium, warm, authoritative" feel described in the brief | MEDIUM | Apply to `app/hub/login/page.tsx`, `set-password/page.tsx`, `reset-password/page.tsx`. Verde bg, Creme card, Blaak headline, Neue Montreal body, Tangerina submit button |
-| **Typographic repeat / pattern in login panel** — subtle brand pattern on verde hero section | The brand identity includes typographic repeat and geometric arrow patterns. A low-opacity SVG background pattern (e.g. compass arrows or brand wordmark tile) on the verde hero section adds depth and brand texture without busy-ness | MEDIUM | Implement as an SVG data URI or `/public/patterns/` file applied via `background-image` CSS on the hero column. Opacity 4-8% to keep it subtle. Must not fail on mobile or impact CLS |
-| **Page transition micro-animations** — subtle fade-in for main content on route change | Next.js App Router does not animate route transitions by default. A subtle 150ms opacity fade on the `<main>` element adds perceived polish and makes the brand feel intentional | MEDIUM | Use CSS `@keyframes` on the main content wrapper with `animation: fadeIn 150ms ease-out`. No JS required. Must not delay TTI |
-| **Sidebar hover states with Tangerina left-border accent** | Currently sidebar hover = `bg-secondary-gray`. A 3px left-border in Tangerina on hover gives a premium "indicator" feel common in high-end SaaS tools (Linear, Notion, Stripe Dashboard) | LOW | Add `border-l-2 border-transparent hover:border-tangerina` to each nav item. Works within existing transition duration tokens |
-| **Hub card elevation system** — Creme surface with Caramelo border-on-hover | Hub invoice cards and stat sections currently use white/gray. Applying `bg-brand-creme border border-brand-caramelo/20 hover:border-brand-caramelo/60` creates a warm, distinct card identity consistent with the premium palette | LOW | Update `app/hub/page.tsx` invoice list items and any Hub-specific card wrappers. Does not require changes to shared `Card` component (use `className` prop override) |
-| **Receipt / document page brand treatment** — Creme paper background, Verde accents, Blaak invoice number | Receipts are printed/shared artifacts. Carreira USA receipts with the new brand feel like premium documents vs. generic software output | MEDIUM | Update `app/hub/documents/receipt/[invoiceId]/page.tsx`. Apply brand typography, Verde header bar with Creme text, Tangerina total amount highlight |
-| **Tabular number font review** — ensure `font-feature-settings: "tnum"` applies correctly to Neue Montreal | Financial data displays (invoice amounts, stat cards) use the existing `.tabular-nums` utility. Some fonts handle tabular figures differently. Neue Montreal needs to be verified that its `tnum` OpenType feature is available in the licensed weight files | LOW | Check during font integration. If Neue Montreal lacks tnum, use explicit `font-variant-numeric: tabular-nums` as fallback. JetBrains Mono is still available for IDs/codes where true monospace is required |
-| **Chart legend and tooltip skin** — Recharts Legend + Tooltip styled with Neue Montreal, Creme background, Verde border | Out-of-box Recharts tooltips use system fonts and a generic white popup. After chart color rebrand, the tooltips will still feel unbranded | LOW | Create a shared `ChartTooltip` wrapper component with `contentStyle={{ backgroundColor: '#FFF8E8', border: '1px solid #2F443F', fontFamily: 'var(--font-sans)' }}`. Apply to all 17 chart components |
+| **Debtor flag on pipeline board** — visual badge when a student has overdue invoices | ClickUp has no knowledge of QB payment status. This gives the coordinator (Fraenze) immediate visibility into debtors without switching to the Finance dashboard | LOW | Pull invoice status from existing `Invoice` model + QB sync. Badge on student card: "Em atraso" if any invoice is overdue. Coordinator-only context by default; all team members can see it. Read-only from QB data — no writes |
+| **Phase SLA indicators** — visual signal when a student is past the expected time in their current phase | Totango's core philosophy is "tell you which customer needs attention and why." Phase SLA visibility means Fraenze can prioritize before the student complains. Not offered by generic PM tools | MEDIUM | Phase thresholds: Board = 7 calendar days, Material = 15 business days, Ongoing = renews every 6 months. Card shows green/amber/red indicator based on days_in_phase vs threshold. Feeds the daily action view. `PhaseThreshold` config table or hard-coded constants v1 |
+| **Program type context** — Pass vs. Advanced displayed consistently throughout all views | Pass and Advanced programs have different deliverables and pacing. Dária and Rafael need this context always visible without opening the full profile | LOW | `StudentJourney.programType` enum (PASS / ADVANCED). Shown as a small badge on every student card and in the daily action list. Sourced from deal data at enrollment time |
+| **Coordinator overview** — cross-team metrics screen for Fraenze: total active students, phase distribution, this week's sessions, phase age averages | ClickUp dashboards are generic. A custom view for Fraenze shows exactly what matters for program management: no student left behind, no phase stuck | MEDIUM | Metrics: count per phase, students in Material phase (most time-sensitive), sessions logged this week, students flagged in daily action view. Uses aggregated queries over `StudentJourney` + `Session` tables. No external analytics dependency |
+| **Enrollment from existing Deal** — create a student journey record by selecting a won deal from Pipedrive/CRM | Reduces manual data entry. Student data (name, email, program type) already exists in `Customer` and deal records | MEDIUM | Ops team initiates "Onboard student" from a won deal in the dashboard. Creates `StudentJourney` record pre-populated from `Customer`. Assigns team members. Sets initial phase to Bastão. No new Pipedrive API calls if deal data is already synced |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Features that seem like obvious inclusions but create scope creep, visual inconsistency, or technical debt in a reskin milestone.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| **Dark mode implementation** | Brand has strong dark surface potential (Verde sidebar already uses dark pattern) | Tailwind dark mode is configured but zero dark tokens are defined. Adding a full dark/light theme doubles the token surface area and requires every new component to handle both states. This is a separate design system milestone, not a reskin task | Defer to a dedicated dark mode milestone after reskin stabilises. The sidebar uses dark surfaces intentionally (dark bg + light text) — this is a deliberate design choice, not dark mode |
-| **Full component-by-component rewrite** — touching every file's JSX structure alongside the reskin | Tempting to "improve" components while in their files during the reskin | Structural rewrites mixed with visual updates create large, hard-to-review PRs. Regressions in data logic are impossible to separate from CSS bugs. Reskins that accidentally change behaviour are the #1 source of production incidents | Change only visual attributes (color classes, font classes, background values). Separate structural improvements to a different PR |
-| **New icon system** — replacing Lucide React icons with brand-illustrated icons during the reskin | Brand identity includes illustrated icons | SVG icon illustration is a multi-week asset production task. Using illustrated icons in nav/UI contexts (vs. marketing contexts) also reduces legibility. Lucide is well-tested and accessible | Introduce illustrated icons only in brand-forward surfaces (login page hero, empty states, onboarding). Keep Lucide in data-dense admin UI |
-| **Animation library introduction** (Framer Motion, Motion) | Brand "feels premium" so adding rich animations seems appropriate | Adding an animation library to a Next.js 14 App Router application increases bundle size and introduces RSC/client boundary complexity. The existing `transition-all duration-200` CSS pattern already covers 95% of reskin animation needs | Stick to CSS transitions and `@keyframes` for this milestone. Reserve Framer Motion evaluation for a future interactive component milestone |
-| **Global font smoothing changes** | Neue Montreal at certain weights may look better with `-webkit-font-smoothing: antialiased` vs `subpixel-antialiased` | Already enabled in `globals.css` body styles. Changing this globally can affect all existing text rendering unexpectedly. Per-element overrides add noise | Verify current `antialiased` setting works for Neue Montreal before any changes. It is already set; no action needed unless visual QA reveals issues |
-| **Responsive typography fluid scaling** (clamp, vw-based font sizes) | Fluid typography is a 2025 best practice | The existing scale uses CSS custom properties (`--text-h1: 2.25rem`) that are static. Converting to fluid values changes every heading size across both portals, invalidating all existing layout spacing. This is a typography system overhaul, not a reskin | Keep static rem scale. Fluid typography is a future enhancement once layout is stable under the new brand |
-| **Print stylesheet rebrand** | Receipts can be printed; print styles should match brand | The existing `PrintButton.tsx` and receipt page already function for print. Comprehensive print stylesheet work is a non-trivial CSS task with device-specific quirks. A minimal update (Blaak heading, brand colors on receipt header) is achievable; a full print design is not reskin scope | Scope to minimum: font-family update for print + Verde header bar on receipt. No full print stylesheet rewrite |
+| **Automated notifications / push alerts** | "Tell me when a student changes phase" sounds useful | For a 3-person team who will check the tool daily, push notifications add implementation complexity (email/Slack integration, preference management) and create noise. Industry pattern: Gainsight's automated health alerts are frequently cited as creating "alert fatigue" even in large CS teams | Daily action view + SLA indicators provide the same signal without infrastructure. Notification system is v2+ if team requests it after using the tool |
+| **Session scheduling / calendar integration** | "Book a Bússola session directly in the tool" | Calendar sync (Google Calendar, Outlook) requires OAuth scopes and bidirectional sync complexity. CoachVantage's calendar feature is its most complex module. For a team of 3 doing Brazilian-market timezone scheduling, they already have their own calendar tools | Session logging (after-the-fact) delivers 90% of the value at 10% of the complexity. Schedule in your own calendar; log it here when done |
+| **Student-facing portal updates from Ops Hub** | "When I change the phase, the student should see it in their Client Hub" | The Client Hub is a separate authenticated portal. Ops → Hub cross-portal writes introduce coupling between two independent auth systems. This is explicitly an architectural anti-pattern per CLAUDE.md (never mix portals) | Phase changes in the Ops Hub write to the shared `StudentJourney` table. If the Client Hub needs to surface phase info later, it reads from the same table. One-way data flow, no coupling |
+| **Document storage / file uploads** | "Attach the resume draft to the student profile" | File storage requires S3/blob setup, upload APIs, file type validation, and storage cost management. DocuSign already handles contracts. Resumes and materials are shared externally (Google Drive, email) | Notes field can hold links (Google Drive URLs). File attachment is v2+ if the team confirms they need it in-tool rather than linked |
+| **Real-time collaborative editing of notes** | "Two team members writing notes at same time" | A 3-person team that does not work simultaneously on the same student record does not need real-time sync. WebSocket infrastructure is explicitly out of scope per CLAUDE.md constraints | Optimistic UI with last-write-wins is sufficient. Notes have timestamps and author attribution. No conflicts in practice for this team size |
+| **Phase automation / auto-advancement** | "After 7 days in Board phase, auto-advance to Bússola" | Journey phases require human judgment — a student who did not complete the Board deliverable should not auto-advance. Totango's playbook-driven auto-advancement is designed for product adoption signals, not service delivery milestones | SLA indicators and daily action view surface the need for human action. The team member clicks "Avançar Fase" intentionally. Automation is misaligned with the service model |
 
 ---
 
 ## Feature Dependencies
 
 ```
-Token Layer Consolidation
-    └──required by──> Tailwind Config Rebrand
-                          └──required by──> Sidebar Rebrand
-                          └──required by──> Button / StatCard / Card auto-update (cascades)
-                          └──required by──> Focus Ring Update
+Customer model (existing)
+    └──required by──> StudentJourney record creation
+                          └──required by──> Pipeline board (read)
+                          └──required by──> Student profile page
+                          └──required by──> Phase transition action
+                          └──required by──> Daily action view (SLA calc)
+                          └──required by──> Coordinator overview (aggregates)
 
-Font Replacement (next/font/local, Blaak + Neue Montreal)
-    └──required by──> Typography Hierarchy Reassignment
-                          └──enables──> Hub Login/Onboarding hero treatment
-                          └──enables──> Receipt/document brand treatment
-                          └──enables──> Chart tooltip skin (Neue Montreal in tooltips)
+PhaseHistory model (new)
+    └──required by──> Phase history timeline (student profile)
+    └──required by──> Phase transition action (writes here on advance)
 
-Hub Hardcoded Color Removal
-    └──required by──> Hub Layout Surface Rebrand (Creme bg token)
-    └──required by──> Status Badge Color Review (must be on Creme, not inline bg)
+Session model (new)
+    └──required by──> Session logging UI
+    └──required by──> Session history on student profile
+    └──required by──> Coordinator overview ("sessions this week")
 
-Logo Integration
-    └──depends on──> Logo asset files in /public/
-    └──independent of──> Token layer
+Note model (new)
+    └──required by──> Notes UI on student profile
 
-Chart Color Rebrand
-    └──depends on──> Token Layer (chartColors from design-tokens.ts)
-    └──independent of──> Typography replacement
+Invoice model (existing QB sync)
+    └──enhances──> Student profile (payment status section)
+    └──enhances──> Debtor flag on pipeline board card
 
-Verde + Creme Hub Login Hero (differentiator)
-    └──requires──> Font Replacement (Blaak headline)
-    └──requires──> Token Layer (verde / creme / tangerina classes)
+English test result (existing)
+    └──enhances──> Student profile (test result section)
 
-Sidebar Tangerina left-border accent (differentiator)
-    └──requires──> Tailwind Config Rebrand (tangerina token available)
+User model + RBAC (existing)
+    └──required by──> Team member filter / "my students" view
+    └──required by──> Session logging (conducted_by field)
+    └──required by──> Phase transition (transitioned_by field)
+    └──required by──> Note authorship
 ```
 
 ### Dependency Notes
 
-- **Token layer must be Phase 1**: Every other feature depends on the canonical palette and Tailwind token names being available. No parallel work can reliably proceed without this.
-- **Font replacement blocks typography-dependent differentiators**: Hub login hero and receipt branding are blocked until Blaak and Neue Montreal are served via `next/font`.
-- **Hub hardcoded color removal is independent**: Can proceed in parallel with chart rebrand but must not be combined into the same PR (unrelated files).
-- **Logo integration is fully independent**: Only needs asset files. Can be done in any phase once assets are available from the brand team.
+- **`StudentJourney` model is the keystone**: Every single Ops Hub feature reads from or writes to this table. It must be designed first. All other new models hang off it.
+- **Phase transition writes PhaseHistory**: The transition action and history timeline are one atomic operation — create both together, not as separate features.
+- **Enrollment gate**: Before any student appears in the Ops Hub, a `StudentJourney` record must exist. The enrollment flow (from a won deal) is a prerequisite for the team to use any other feature.
+- **Daily action view depends on SLA thresholds**: SLA config must be defined before the daily queue can compute anything. Even hard-coded constants unblock this.
+- **Coordinator overview is last**: It's a read-only aggregation of data that all other features produce. Build it last.
 
 ---
 
 ## MVP Definition
 
-### Launch With (v1) — "Complete Reskin"
+### Launch With (v1) — "Can Replace ClickUp"
 
-Minimum set that produces a visually cohesive result across both portals.
+Minimum set for the team to stop using ClickUp for day-to-day student management.
 
-- [ ] **Token layer consolidation** — canonical palette in CSS custom props, Tailwind config + TS tokens reference via `var()`. New 5-color brand palette defined.
-- [ ] **Semantic token naming** — `--brand-primary`, `--brand-accent`, `--brand-surface`, `--brand-warm`, `--brand-mid` defined and used.
-- [ ] **Tailwind config rebrand** — `brand-verde`, `brand-tangerina`, `brand-creme`, `brand-caramelo` added as color keys; old `gold-*` values remapped to new palette values.
-- [ ] **Font replacement** — Blaak + Neue Montreal loaded via `next/font/local`. Google Fonts `@import` removed. WOFF2 files in `/public/fonts/`.
-- [ ] **Typography hierarchy reassignment** — h1-h3 use Blaak. Body + UI use Neue Montreal.
-- [ ] **Dashboard sidebar rebrand** — Verde bg, Tangerina active states.
-- [ ] **Hub hardcoded color removal** — all 74 hex literals and `const GOLD` instances replaced with token classes.
-- [ ] **Hub layout surface rebrand** — Creme token applied to Hub page background.
-- [ ] **Focus ring color update** — reflects new primary brand color.
-- [ ] **Logo integration** — compass/arrow mark replaces "C" placeholder in both portals (requires logo assets).
-- [ ] **Status badge contrast check** — verified WCAG AA on Creme surface.
+- [ ] **StudentJourney data model** — `currentPhase`, `programType`, `assignedTo`, `enrolledAt`, linked to `Customer` — everything else depends on this
+- [ ] **Phase pipeline board** — all students, 11 phase columns, student cards with name + program type + phase age + assignee badge
+- [ ] **Phase transition** — "Avançar Fase" action with confirmation, writes `PhaseHistory` entry with notes
+- [ ] **Phase history timeline** — chronological list on student profile
+- [ ] **Student profile page** — contact info, current phase, phase history, session history, notes, English test result, invoice status
+- [ ] **Session logging** — log a session (type, date, conducted by, notes) from the student profile
+- [ ] **Team member filter** — "My students" toggle on pipeline board (Fraenze = all, Dária = phases 1-9, Rafael = phases 10+)
+- [ ] **Notes** — add/view per-student notes on the profile page
+- [ ] **Enrollment from existing Customer** — create a `StudentJourney` from a won deal / existing Customer record; assign team members; set initial phase
 
-### Add After Validation (v1.x) — "Brand Polish"
+### Add After Validation (v1.x) — "Proactive Ops"
 
-- [ ] **Chart color rebrand** — triggered when visual QA confirms portal chrome is cohesive and analytics charts visually break the pattern.
-- [ ] **Verde + Creme Hub login hero** — triggered when product team confirms it matches brand direction.
-- [ ] **Chart tooltip skin** — follows chart color rebrand.
-- [ ] **Sidebar Tangerina left-border accent** — triggered if visual QA finds hover states feel flat.
-- [ ] **Hub card elevation system** — triggered if Hub dashboard feels visually disconnected from login page.
+- [ ] **Daily action view** — SLA-based per-member queue, triggered when team asks "how do we know who to contact today?" (requires v1 data to define realistic SLA thresholds)
+- [ ] **Phase SLA indicators** — green/amber/red on pipeline cards (requires real usage data to validate threshold values)
+- [ ] **Debtor flag on pipeline card** — triggered when first coordinator sprint review reveals finance context is needed in the ops view
+- [ ] **Coordinator overview** — metrics screen for Fraenze (triggered when v1 is in use and reporting needs emerge)
+- [ ] **Program type badge** — shown as needed once team confirms Pass vs. Advanced affects their daily workflow decisions
 
-### Future Consideration (v2+) — "Brand Moments"
+### Future Consideration (v2+)
 
-- [ ] **Typographic repeat / pattern on login** — requires finalized SVG pattern assets from brand team.
-- [ ] **Receipt document brand treatment** — requires alignment on "brand document" standards for client-facing PDF/print.
-- [ ] **Page transition micro-animations** — defer until performance budget is assessed post-reskin.
-- [ ] **Dark mode** — separate milestone; requires full two-theme token system design.
-- [ ] **Illustrated icon system** — requires asset production from design team.
+- [ ] **Enrollment from Pipedrive deal directly** — requires Pipedrive deal data to be surfaced in Ops Hub UI; current data is in dashboard portal
+- [ ] **Document links / file attachments** — defer until team confirms Google Drive links in Notes are insufficient
+- [ ] **Automated notifications** — defer until daily action view proves insufficient for surfacing overdue students
+- [ ] **Client Hub phase display** — show student's current phase in their Client Hub portal; deferred until student-facing phase communication is validated as a need
 
 ---
 
@@ -158,80 +149,61 @@ Minimum set that produces a visually cohesive result across both portals.
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Token layer consolidation | HIGH | MEDIUM | P1 |
-| Semantic token naming | HIGH | LOW | P1 |
-| Tailwind config rebrand | HIGH | MEDIUM | P1 |
-| Font replacement (Blaak + Neue Montreal) | HIGH | HIGH | P1 |
-| Typography hierarchy reassignment | HIGH | LOW | P1 |
-| Dashboard sidebar rebrand | HIGH | LOW | P1 |
-| Hub hardcoded color removal | HIGH | HIGH | P1 |
-| Hub layout surface rebrand | MEDIUM | LOW | P1 |
-| Focus ring color update | LOW | LOW | P1 |
-| Logo integration | HIGH | MEDIUM | P1 (asset-dependent) |
-| Status badge contrast check | MEDIUM | LOW | P1 |
-| Chart color rebrand | MEDIUM | HIGH | P2 |
-| Verde + Creme hub login hero | HIGH | MEDIUM | P2 |
-| Chart tooltip skin | LOW | LOW | P2 |
-| Sidebar Tangerina left-border accent | LOW | LOW | P2 |
-| Hub card elevation system | MEDIUM | LOW | P2 |
-| Typographic pattern in login | MEDIUM | MEDIUM | P3 |
-| Receipt brand treatment | MEDIUM | MEDIUM | P3 |
-| Page transition micro-animations | LOW | MEDIUM | P3 |
+| StudentJourney data model | HIGH | MEDIUM | P1 |
+| Phase pipeline board | HIGH | MEDIUM | P1 |
+| Phase transition action | HIGH | LOW | P1 |
+| Phase history timeline | HIGH | LOW | P1 |
+| Student profile page | HIGH | MEDIUM | P1 |
+| Session logging | HIGH | LOW | P1 |
+| Team member filter | HIGH | LOW | P1 |
+| Notes | MEDIUM | LOW | P1 |
+| Enrollment flow | HIGH | MEDIUM | P1 |
+| Daily action view | HIGH | HIGH | P2 |
+| Phase SLA indicators | HIGH | MEDIUM | P2 |
+| Debtor flag on card | MEDIUM | LOW | P2 |
+| Coordinator overview | MEDIUM | MEDIUM | P2 |
+| Program type badge | LOW | LOW | P2 |
+| Document/file attachment | LOW | HIGH | P3 |
+| Notifications (email/Slack) | MEDIUM | HIGH | P3 |
+| Calendar scheduling integration | LOW | HIGH | P3 |
+| Client Hub phase display | LOW | MEDIUM | P3 |
 
 **Priority key:**
-- P1: Must have for launch — reskin is not "complete" without these
-- P2: Should have — add in v1.x pass once P1 is merged and QA'd
-- P3: Nice to have — future consideration; blocked on design assets or performance validation
+- P1: Must have for v1 launch — team cannot replace ClickUp without these
+- P2: Should have — add once v1 is in production use; triggered by real usage pain
+- P3: Nice to have — defer until product-market fit with this team is established
 
 ---
 
 ## Competitor Feature Analysis
 
-This is an internal tool rebrand, not a competitive product. The relevant comparison is against industry standards for premium fintech/edtech client portals.
-
-| Standard | Premium Fintech Reference (Stripe, Mercury, Brex) | This Reskin Target | Gap |
-|----------|---------------------------------------------------|-------------------|-----|
-| Color token architecture | 3-layer (primitives → semantic → component tokens) | Currently 1 layer (primitives only) | Add semantic layer |
-| Typography | Custom/licensed typefaces, clear display/body split | Google Fonts currently; moving to Blaak + Neue Montreal | Requires font asset acquisition |
-| Chart theming | Charts match overall portal color palette | 129 hardcoded hex values, mismatched | Chart rebrand in P2 |
-| Dark surfaces | Dark sidebar + light content (intentional, not dark-mode) | Already has dark sidebar | Matches standard |
-| Focus management | Branded focus rings (not default browser blue) | Already custom; needs color update | Minor update |
-| Logo marks | Multi-variant SVGs (icon-only + full wordmark) | Currently "C" placeholder | Logo assets needed |
-
----
-
-## Critical Contrast Checks Required
-
-The new palette introduces combinations that must be verified against WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large text) before shipping:
-
-| Combination | Context | Risk Level |
-|-------------|---------|------------|
-| White/Creme text on Verde (#2F443F) bg | Sidebar nav labels, Hub login hero text | LOW — Verde is dark, expect pass |
-| Tangerina (#FF8142) on Verde (#2F443F) bg | Active sidebar nav item, CTA buttons on dark bg | MEDIUM — orange on dark green, check luminance |
-| Dark text on Creme (#FFF8E8) surface | Hub page body text, card labels | LOW — Creme is very light |
-| Caramelo (#BD925F) on Creme (#FFF8E8) | Decorative borders, secondary labels | HIGH — brown on cream is low-contrast; use for decorative only, not text |
-| Tangerina (#FF8142) on white (#FFFFFF) | Primary CTA button labels | MEDIUM — needs check; orange buttons with white text are a known contrast risk |
-
-Use [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/) before finalising token values.
+| Feature Area | CoachVantage | HubSpot CS Workspace | Gainsight / Vitally | Our Approach |
+|--------------|-------------|---------------------|---------------------|--------------|
+| Phase pipeline | Per-client engagement with session count | Kanban board per pipeline with drag stages | Customizable Hubs / SuccessBLOCs per lifecycle stage | 11-column board fixed to Carreira phases — no generic pipeline builder needed |
+| Daily task queue | None (scheduling-focused, not queue) | Actions tab: Overdue / Due Tomorrow / All | Automated CTAs triggered by health signals | SLA-based rule engine: days_in_phase vs phase threshold constant |
+| Session logging | Core feature — auto logs coaching hours for certification | Notes after calls, manual activity logging | Activity feed with meeting recorder (Vitally) | Manual log-after-the-fact; no calendar integration v1 |
+| Student/client profile | Contact + session notes + goals + invoices | 360° record: all activity, notes, health score | 360° view: CRM + product + support + billing | Same pattern: contact + phase timeline + session log + test result + payment status |
+| Team assignment | Single coach per client | CSM property on record; workspace filtered by owner | Account ownership routing + playbook assignment | Assignee field on StudentJourney; filter toggle on board |
+| Notifications | Email reminders for sessions | Task alerts for overdue items | Health score alerts, CTA routing | Deferred to v2 — daily action view is sufficient for 3-person team |
 
 ---
 
 ## Sources
 
-- [Tailwind CSS Best Practices 2025: Design Token Patterns](https://www.frontendtools.tech/blog/tailwind-css-best-practices-design-system-patterns)
-- [CSS Variables Guide: Design Tokens & Theming (2025)](https://www.frontendtools.tech/blog/css-variables-guide-design-tokens-theming-2025)
-- [Building a Multi-Brand Design System with Tailwind](https://www.thinkmill.com.au/blog/building-a-multi-brand-design-system-with-tailwind-tips-tricks-and-tradeoffs)
-- [Dark Mode with Design Tokens in Tailwind CSS](https://www.richinfante.com/2024/10/21/tailwind-dark-mode-design-tokens-themes-css)
-- [Next.js Font Optimization: Getting Started](https://nextjs.org/docs/app/getting-started/fonts)
-- [Custom fonts without compromise using next/font — Vercel](https://vercel.com/blog/nextjs-next-font)
-- [Customizing shadcn/ui Themes Without Breaking Updates](https://medium.com/@sureshdotariya/customizing-shadcn-ui-themes-without-breaking-updates-a3140726ca1e)
-- [Design Tokens in Practice: Figma Variables to Production Code](https://www.designsystemscollective.com/design-tokens-in-practice-from-figma-variables-to-production-code-fd40aeccd6f5)
-- [shadcn/ui Chart component (Recharts v3 + CSS variables)](https://ui.shadcn.com/docs/components/radix/chart)
-- [WCAG 1.4.3 Contrast (Minimum) — W3C](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html)
-- [WebAIM Contrast Checker](https://webaim.org/resources/contrastchecker/)
-- [Pangram Pangram: Best Font Pairings 2025](https://pangrampangram.com/blogs/journal/best-font-pairings-2025)
+- [CoachVantage Features — Coaching Management Software](https://www.coachvantage.com/coaches-platform-features)
+- [HubSpot Customer Success Workspace — Use Guide](https://knowledge.hubspot.com/customer-success/use-the-customer-success-workspace)
+- [HubSpot CS Workspace by Team Configuration](https://knowledge.hubspot.com/customer-success/create-customer-success-workspaces-for-teams)
+- [LZC Marketing: HubSpot Customer Success Workspace Features](https://lzcmarketing.com/blog/hubspot-customer-success-workspace/)
+- [Best Customer Success Platforms 2026 — thecscafe.com](https://www.thecscafe.com/p/best-customer-success-platforms)
+- [Best Customer Success Tools 2026 — Userpilot](https://userpilot.com/blog/customer-success-tools/)
+- [Gainsight vs Totango 2026 — oliv.ai](https://oliv.ai/blog/gainsight-vs-totango)
+- [Gainsight Features 2026: Health Scores, Playbooks](https://www.oliv.ai/blog/gainsight-features)
+- [Salesforce Education CRM: Student Lifecycle Management](https://www.rolustech.com/blog/salesforce-education-crm)
+- [Education CRM Best Practices 2026 — Monday.com](https://monday.com/blog/crm-and-sales/crm-in-higher-education/)
+- [What is Customer Success Operations? — Dock.us](https://www.dock.us/library/customer-success-operations)
+- [Kanban Board Patterns — Atlassian](https://www.atlassian.com/agile/kanban/boards)
 
 ---
 
-*Feature research for: Carreira USA brand reskin — Next.js 14 two-portal web application*
-*Researched: 2026-03-25*
+*Feature research for: Carreira USA Ops Hub — Student Journey Management (v1.2)*
+*Researched: 2026-04-01*

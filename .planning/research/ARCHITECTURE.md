@@ -1,10 +1,8 @@
 # Architecture Research
 
-**Domain:** Brand identity reskin — design token system for dual-portal Next.js 14 App Router application
-**Researched:** 2026-03-25
-**Confidence:** HIGH
-
----
+**Domain:** Ops Hub — Student Journey Management (v1.2 milestone)
+**Researched:** 2026-04-01
+**Confidence:** HIGH (based on direct codebase inspection of schema, middleware, and existing service layer)
 
 ## Standard Architecture
 
@@ -12,29 +10,27 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    Brand Token Layer                                  │
-│   public/fonts/   lib/fonts.ts   styles/tokens/   public/assets/    │
-│   (Blaak.otf,     (next/font     (brand.css,       (logo.svg,        │
-│   NMontreal.otf)   definitions)   portal overrides) patterns/)       │
+│                     Three-Portal Frontend                           │
+├──────────────────┬──────────────────┬───────────────────────────────┤
+│  Admin Dashboard │   Client Hub     │        Ops Hub                │
+│  /dashboard/*    │   /hub/*         │        /ops/*                 │
+│  NextAuth JWT    │   Custom JWT     │        NextAuth JWT            │
+│  ALL roles       │   ClientUser     │        ADMIN / OPERATIONAL     │
+├──────────────────┴──────────────────┴───────────────────────────────┤
+│              Unified Middleware (middleware.ts — already wired)      │
+│   /ops/* → getToken() + role check (ADMIN | OPERATIONAL)            │
+│   /api/ops/* → same guard, already in config.matcher                │
 ├─────────────────────────────────────────────────────────────────────┤
-│                  Token Distribution Layer                             │
-│   globals.css (:root primitives)  tailwind.config.ts (utilities)    │
-│   styles/dashboard.css            styles/hub.css                     │
-│   ([data-portal="dashboard"] {…}) ([data-portal="hub"] {…})         │
-├─────────────────────────────────────────────────────────────────────┤
-│                  Component Layer                                      │
-│  ┌──────────────────┐        ┌────────────────────────────────────┐  │
-│  │  Shared UI        │        │  Portal-Specific Components        │  │
-│  │  components/ui/   │        │  components/dashboard/*            │  │
-│  │  Button, Card,    │        │  app/hub/* inline components       │  │
-│  │  Badge, Input,    │        │  Logo (variant prop)               │  │
-│  │  StatCard         │        │  PatternBackground                 │  │
-│  └──────────────────┘        └────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────────┤
-│                   Layout Layer                                        │
-│  app/layout.tsx (root — fonts injected as CSS vars on <html>)       │
-│  app/dashboard/layout.tsx   app/hub/layout.tsx                      │
-│  (data-portal="dashboard")  (data-portal="hub")                     │
+│                       Service Layer                                 │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌─────────────────────┐ │
+│  │  mentorship     │  │  identity-       │  │  existing services  │ │
+│  │  .service.ts    │  │  mapper.ts       │  │  (QB, DocuSign …)   │ │
+│  │  (NEW)          │  │  (shared, read)  │  │  (unchanged)        │ │
+│  └────────┬────────┘  └──────────────────┘  └─────────────────────┘ │
+├───────────┴─────────────────────────────────────────────────────────┤
+│                    Prisma ORM / PostgreSQL (Neon)                   │
+│  Customer   User   MentorshipEnrollment   MentorshipSession         │
+│  PhaseTransition   PlacementTest   Deal   Invoice   Contract …      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,461 +38,506 @@
 
 | Component | Responsibility | Implementation |
 |-----------|---------------|----------------|
-| `lib/fonts.ts` | Single font definition source, exports CSS variable names | `localFont` instances exported as constants |
-| `app/layout.tsx` | Inject font CSS variables onto `<html>` | `className={blaak.variable + " " + neueMontreal.variable}` |
-| `styles/tokens/brand.css` | Primitive color tokens (verde, tangerina, escuro, etc.) | `:root { --brand-verde: #... }` |
-| `styles/tokens/portal-dashboard.css` | Dashboard-specific semantic overrides | `[data-portal="dashboard"] { --portal-accent: ... }` |
-| `styles/tokens/portal-hub.css` | Hub-specific semantic overrides | `[data-portal="hub"] { --portal-accent: ... }` |
-| `tailwind.config.ts` | Map CSS variables to Tailwind utility classes | `colors: { verde: 'var(--brand-verde)' }` |
-| `components/brand/Logo.tsx` | Logo with variant system (dark/light/symbol) | Inline SVG component, currentColor aware |
-| `components/brand/PatternBackground.tsx` | Texture/pattern overlay | SVG as CSS `background-image` data URI |
-| `app/dashboard/layout.tsx` | Set `data-portal="dashboard"` on wrapper | Activates dashboard token overrides |
-| `app/hub/layout.tsx` | Set `data-portal="hub"` on wrapper | Activates hub token overrides |
+| `middleware.ts` | Route-level auth dispatch for all three portals | Already handles `/ops/*` and `/api/ops/*` — no changes needed |
+| `app/ops/layout.tsx` | Session guard + ADMIN/OPERATIONAL role check | Already implemented — no changes needed |
+| `lib/services/mentorship.service.ts` | All student journey business logic | New: enroll, transition phase, log session, query pipeline, daily actions |
+| `app/api/ops/` | Thin route handlers delegating to service | New directory — all Ops API routes live here |
+| `app/ops/pipeline/page.tsx` | Pipeline board (Server Component) | New: fetches all active enrollments grouped by phase |
+| `app/ops/daily/page.tsx` | Daily action view (Server Component) | New: enrollments for current user, needs-action filter |
+| `app/ops/students/[id]/page.tsx` | Student profile detail | New: full customer record + timeline + sessions |
+| `components/ops/ops-sidebar.tsx` | Ops portal navigation | Modify: add Pipeline, Daily, Students nav items |
 
 ---
 
-## Recommended Project Structure
+## Prisma Schema Design
+
+### New Models
+
+The three new models attach to `Customer` (the student) and `User` (the team member) as anchor points. No existing model fields change — only back-relations are added.
+
+```prisma
+// ── New Enums ─────────────────────────────────────────────────────────
+
+enum MentorshipProgram {
+  PASS
+  ADVANCED
+}
+
+// 11 phases. Sequential order is implied by the enum; store an Int
+// ordinal in application code (or a separate lookup table) if UI needs
+// to enforce advancement direction. PAUSADO is a non-sequential state.
+enum MentorshipPhase {
+  ONBOARDING        // 1
+  BUSSOLA           // 2 — compass / goal alignment session
+  RAIO_X            // 3 — diagnostic / English assessment
+  PLANO_DE_ESTUDOS  // 4 — study plan delivered
+  TREINAMENTO       // 5 — active training
+  MOCK_INTERVIEW    // 6
+  DEVOLUTIVA        // 7 — feedback session
+  REVISAO           // 8 — review / correction cycle
+  FINALIZACAO       // 9 — wrap-up
+  CONCLUIDO         // 10 — program complete
+  PAUSADO           // non-sequential hold state
+}
+
+enum SessionType {
+  ONBOARDING
+  BUSSOLA
+  RAIO_X
+  TREINAMENTO
+  MOCK_INTERVIEW
+  DEVOLUTIVA
+  OUTROS
+}
+
+// ── New Models ────────────────────────────────────────────────────────
+
+model MentorshipEnrollment {
+  id            String            @id @default(cuid())
+  program       MentorshipProgram
+  currentPhase  MentorshipPhase   @default(ONBOARDING)
+  enrolledAt    DateTime          @default(now())
+  programEndsAt DateTime          // explicit: enrolledAt + 6 months, adjustable
+  completedAt   DateTime?         // null = active enrollment
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  customerId    String
+  customer      Customer          @relation(fields: [customerId], references: [id])
+
+  assignedUserId String?
+  assignedUser   User?            @relation("MentorshipAssignments", fields: [assignedUserId], references: [id])
+
+  sessions         MentorshipSession[]
+  phaseTransitions PhaseTransition[]
+
+  @@index([customerId])
+  @@index([assignedUserId])
+  @@index([currentPhase])
+  @@index([program])
+  @@map("mentorship_enrollments")
+}
+
+model MentorshipSession {
+  id           String            @id @default(cuid())
+  type         SessionType
+  conductedAt  DateTime
+  notes        String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  enrollmentId  String
+  enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
+
+  conductedById String
+  conductedBy   User             @relation("ConductedSessions", fields: [conductedById], references: [id])
+
+  @@index([enrollmentId])
+  @@index([conductedById])
+  @@index([conductedAt])
+  @@map("mentorship_sessions")
+}
+
+model PhaseTransition {
+  id              String            @id @default(cuid())
+  fromPhase       MentorshipPhase
+  toPhase         MentorshipPhase
+  reason          String?
+  transitionedAt  DateTime          @default(now())
+
+  enrollmentId     String
+  enrollment       MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
+
+  transitionedById String
+  transitionedBy   User             @relation("PhaseTransitions", fields: [transitionedById], references: [id])
+
+  @@index([enrollmentId])
+  @@index([transitionedAt])
+  @@map("phase_transitions")
+}
+```
+
+### Required Back-Relation Additions to Existing Models
+
+These are purely additive. No existing fields are modified.
+
+```prisma
+// model User — add:
+mentorshipAssignments MentorshipEnrollment[] @relation("MentorshipAssignments")
+conductedSessions     MentorshipSession[]    @relation("ConductedSessions")
+phaseTransitions      PhaseTransition[]      @relation("PhaseTransitions")
+
+// model Customer — add:
+mentorshipEnrollments MentorshipEnrollment[]
+```
+
+### Schema Design Rationale
+
+**Why `customerId` FK, not a new `studentId`:**
+`Customer` is the existing identity anchor shared by invoices, contracts, and payments. A parallel "Student" entity would create a second record for the same human — the exact duplication problem the Identity Mapper was built to prevent. A student is simply a `Customer` who has a `MentorshipEnrollment`. Filter the student list with `where: { mentorshipEnrollments: { some: {} } }`.
+
+**Why `MentorshipEnrollment` is one-to-many on `Customer`:**
+A student can complete the Pass program and later enroll in Advanced. A `@unique` constraint on `customerId` would block re-enrollment. The active enrollment is identified by `completedAt: null`. A customer should never have more than one active enrollment — enforce this in `MentorshipService.createEnrollment()` with an existence check, not at the DB level.
+
+**Why `PhaseTransition` is a separate log model, not a JSON array:**
+`currentPhase` on `MentorshipEnrollment` is the denormalized fast-read field for the pipeline board. `PhaseTransition` is the audit log for the student profile timeline. The timeline requires ordering by transition date; admin metrics need to count transitions by phase. JSON arrays in PostgreSQL cannot be indexed or filtered efficiently. Keep both: update `currentPhase` and insert a `PhaseTransition` row inside a single `$transaction`.
+
+**Why `programEndsAt` is explicit:**
+Computing `enrolledAt + 6 months` would be wrong if the program is paused and restarted. An explicit field gives the ops team manual control and makes the query trivial (`WHERE programEndsAt < NOW()`).
+
+**Why `assignedUserId` is nullable:**
+Unassigned students must be visible in the pipeline board (not hidden). The daily action view filters `WHERE assignedUserId = :currentUserId`. Unassigned students appear only in the admin/coordinator overview.
+
+---
+
+## Recommended File Structure (new additions only)
 
 ```
-carreirahubproject/
-├── public/
-│   ├── fonts/                     # Font source files
-│   │   ├── Blaak-Regular.otf      # Serif display font
-│   │   ├── Blaak-Bold.otf
-│   │   ├── NouveauMontreal-Regular.otf   # Sans-serif body font
-│   │   ├── NouveauMontreal-Medium.otf
-│   │   └── NouveauMontreal-Bold.otf
-│   └── assets/
-│       ├── logo-full.svg          # Full logo (wordmark + icon) — static use
-│       ├── logo-symbol.svg        # Icon-only — favicon, avatar fallback
-│       └── logo-white.svg         # White version for dark backgrounds
-│
-├── lib/
-│   └── fonts.ts                   # SINGLE font definition file (next/font/local)
-│
-├── styles/
-│   └── tokens/
-│       ├── brand.css              # Primitive tokens — raw color palette values
-│       ├── semantic.css           # Semantic aliases — role-based names
-│       ├── portal-dashboard.css   # Dashboard-specific overrides
-│       └── portal-hub.css         # Hub-specific overrides
-│
-├── components/
-│   ├── brand/
-│   │   ├── Logo.tsx               # NEW: multi-variant logo component
-│   │   └── PatternBackground.tsx  # NEW: texture/pattern overlay
-│   └── ui/
-│       ├── button.tsx             # MODIFY: swap gold-* for verde-* / brand tokens
-│       ├── badge.tsx              # MODIFY: same token swap
-│       ├── stat-card.tsx          # MODIFY: same token swap
-│       ├── input.tsx              # MODIFY: focus ring token swap
-│       └── card.tsx               # MODIFY: hover border token swap
-│
-├── app/
-│   ├── globals.css                # MODIFY: import token files, update @font-face refs
-│   ├── layout.tsx                 # MODIFY: apply font CSS variables to <html>
-│   ├── dashboard/
-│   │   └── layout.tsx             # MODIFY: add data-portal="dashboard" to wrapper
-│   └── hub/
-│       └── layout.tsx             # MODIFY: add data-portal="hub" to wrapper
-│
-└── tailwind.config.ts             # MODIFY: map new brand token CSS vars to utilities
+app/
+  ops/
+    pipeline/
+      page.tsx              ← Server Component: all active enrollments by phase
+    daily/
+      page.tsx              ← Server Component: current user's students needing action
+    students/
+      page.tsx              ← Server Component: paginated student list with search
+      [id]/
+        page.tsx            ← Server Component: full student profile
+  api/
+    ops/
+      pipeline/
+        route.ts            ← GET: all active enrollments grouped by phase
+      daily/
+        route.ts            ← GET: enrollments for calling user, needs-action filter
+      students/
+        route.ts            ← GET (list/search), POST (create enrollment)
+        [id]/
+          route.ts          ← GET (profile), PATCH (notes, assignedUser)
+          phase/
+            route.ts        ← POST: transition to new phase ($transaction)
+          sessions/
+            route.ts        ← GET (history), POST (log session)
+
+lib/
+  services/
+    mentorship.service.ts   ← New: all student journey business logic
+
+components/
+  ops/
+    ops-sidebar.tsx         ← Modify: add Pipeline, Daily, Students nav items
+    pipeline-board.tsx      ← New: phase column layout
+    student-card.tsx        ← New: compact card for pipeline and daily views
+    phase-timeline.tsx      ← New: vertical timeline for student profile
+    session-log-form.tsx    ← New: "use client" form to log a session
+    phase-advance-button.tsx ← New: "use client" mutation trigger
 ```
-
-### Structure Rationale
-
-- **`public/fonts/`** — Co-locating `.otf` files inside `public/` makes paths simple for `localFont` (`src: '/fonts/Blaak-Regular.otf'`), serves them statically via Vercel CDN, and keeps them accessible for potential CSS `@font-face` fallbacks. Next.js resolves `localFont` paths relative to the calling file; when defined in `lib/fonts.ts`, `public/` is the cleanest cross-file target.
-
-- **`lib/fonts.ts`** — The "one instance" rule from Next.js docs: calling `localFont()` in multiple files creates multiple hosted instances. A single exported file prevents duplication.
-
-- **`styles/tokens/`** — Splitting tokens into separate files (brand primitives, semantic aliases, portal overrides) keeps concerns isolated. Each file is `@import`ed in `globals.css`. This is **not** Tailwind v4 — the project runs Tailwind v3.4, so `@theme` is unavailable. CSS custom properties in `:root` fed into `tailwind.config.ts` via `var()` references remains the correct v3 dual-layer approach.
-
-- **`components/brand/`** — A dedicated folder for brand-identity components that don't belong in `components/ui/` (generic) or `components/dashboard/` (portal-specific). Logo and PatternBackground are brand concerns shared across both portals with variant props.
 
 ---
 
 ## Architectural Patterns
 
-### Pattern 1: CSS Variable Dual-Layer Tokens (Primitives + Semantics)
+### Pattern 1: Phase Transition Transaction
 
-**What:** Define raw palette values as primitive tokens, then alias them with role-based semantic names. Tailwind utilities reference the semantic layer, not primitives directly.
+**What:** Every phase change writes to `currentPhase` (on the enrollment) and creates a `PhaseTransition` log row inside a single Prisma `$transaction`. These two writes are inseparable — never update one without the other.
 
-**When to use:** Always — this allows swapping the entire palette by repointing semantic tokens without touching any Tailwind class in components.
+**When to use:** Every call to `MentorshipService.transitionPhase()`.
 
-**Trade-offs:** Slight indirection to trace a color; pays off immediately when portal overrides or future brand changes land.
+**Trade-offs:** Slightly more code than a plain update; worth it because the timeline on the student profile would silently corrupt if the log row is missing.
 
-**Example:**
-```css
-/* styles/tokens/brand.css — primitives */
-:root {
-  --brand-verde-500: #2D6A4F;
-  --brand-verde-600: #1B4332;
-  --brand-tangerina-500: #F4631E;
-  --brand-tangerina-600: #D44D0D;
-  --brand-escuro: #1A1A1A;
-  --brand-creme: #FBF8F0;
-}
-
-/* styles/tokens/semantic.css — aliases */
-:root {
-  --color-accent: var(--brand-verde-500);
-  --color-accent-hover: var(--brand-verde-600);
-  --color-cta: var(--brand-tangerina-500);
-  --color-surface-dark: var(--brand-escuro);
-  --color-surface-base: var(--brand-creme);
-}
-```
-
-```ts
-/* tailwind.config.ts — Tailwind references semantic tokens */
-theme: {
-  extend: {
-    colors: {
-      verde: {
-        500: 'var(--brand-verde-500)',
-        600: 'var(--brand-verde-600)',
+```typescript
+// lib/services/mentorship.service.ts
+async transitionPhase(
+  enrollmentId: string,
+  fromPhase: MentorshipPhase,
+  toPhase: MentorshipPhase,
+  userId: string,
+  reason?: string
+) {
+  return prisma.$transaction([
+    prisma.mentorshipEnrollment.update({
+      where: { id: enrollmentId },
+      data: { currentPhase: toPhase },
+    }),
+    prisma.phaseTransition.create({
+      data: {
+        enrollmentId,
+        fromPhase,
+        toPhase,
+        reason,
+        transitionedById: userId,
       },
-      tangerina: {
-        500: 'var(--brand-tangerina-500)',
-        600: 'var(--brand-tangerina-600)',
-      },
-      accent: 'var(--color-accent)',
-      cta: 'var(--color-cta)',
-    }
+    }),
+  ]);
+}
+```
+
+### Pattern 2: Pipeline Query — Single Fetch, In-Memory Group
+
+**What:** The pipeline board fetches all active enrollments in one `findMany` with `include`, then groups by `currentPhase` in JavaScript. At Carreira's expected scale (< 500 active students), this is faster to implement and maintain than a SQL view.
+
+**When to use:** The `/api/ops/pipeline` GET handler and the `pipeline/page.tsx` server component.
+
+**Trade-offs:** In-memory grouping is O(n) on the result set — acceptable under 500 rows. If the pipeline query latency exceeds 200 ms in production, replace with a SQL view.
+
+```typescript
+const enrollments = await prisma.mentorshipEnrollment.findMany({
+  where: { completedAt: null },
+  include: {
+    customer: { select: { id: true, name: true, email: true, phone: true, country: true } },
+    assignedUser: { select: { id: true, name: true } },
+    sessions: { orderBy: { conductedAt: "desc" }, take: 1 },
+    phaseTransitions: { orderBy: { transitionedAt: "desc" }, take: 1 },
+  },
+  orderBy: { updatedAt: "desc" },
+});
+
+// Group in-memory by phase (O(n), fine for < 500 students)
+const byPhase = enrollments.reduce((acc, e) => {
+  (acc[e.currentPhase] ??= []).push(e);
+  return acc;
+}, {} as Record<MentorshipPhase, typeof enrollments>);
+```
+
+### Pattern 3: Daily Action View — Token-Scoped User Filter
+
+**What:** The daily action view shows only the enrollments where `assignedUserId = session.user.id`. The API route reads the NextAuth token via `getToken()` to get the user ID — it never accepts a `userId` query parameter from the client.
+
+**When to use:** The `/api/ops/daily` GET handler and `daily/page.tsx`.
+
+**Trade-offs:** Server-side scoping means a team member cannot accidentally (or intentionally) see another member's list via URL manipulation. Admins use the pipeline board for the cross-team view.
+
+```typescript
+// app/api/ops/daily/route.ts
+export async function GET(req: NextRequest) {
+  const token = await getToken({ req });
+  if (!token || !["ADMIN", "OPERATIONAL"].includes(token.role as string)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  const userId = token.sub as string;
+
+  const enrollments = await prisma.mentorshipEnrollment.findMany({
+    where: {
+      completedAt: null,
+      assignedUserId: userId,
+    },
+    include: {
+      customer: { select: { id: true, name: true, email: true } },
+      sessions: { take: 1, orderBy: { conductedAt: "desc" } },
+    },
+  });
+  return NextResponse.json(enrollments);
 }
 ```
 
-### Pattern 2: Portal-Scoped CSS Variable Overrides via `data-portal` Attribute
+### Pattern 4: Server Component Fetch + Isolated "use client" Mutations
 
-**What:** Each portal layout wraps content in a div (or the `<html>` element via `data-*`) with a portal identifier. Portal-specific CSS files override semantic tokens under that selector scope. Shared components pick up different colors automatically without any conditional logic in component code.
+**What:** Pipeline board, daily view, and student profile pages are Server Components that fetch data directly from `mentorship.service.ts`. The only client-side interactivity (phase advance button, session log form) is isolated into small `"use client"` leaf components nested inside the server-rendered tree.
 
-**When to use:** When two portals share 80%+ of components but differ in accent colors, surface treatments, or brand emphasis.
+**When to use:** All Ops Hub pages — they are read-heavy, non-real-time views.
 
-**Trade-offs:** Adds a layer of CSS specificity management; portal token files must be kept small and focused on overrides only (not re-declaring all primitives).
-
-**Example:**
-```css
-/* styles/tokens/portal-dashboard.css */
-[data-portal="dashboard"] {
-  --color-accent: var(--brand-verde-500);       /* Admin uses verde */
-  --color-accent-hover: var(--brand-verde-600);
-  --color-sidebar-bg: var(--brand-escuro);
-}
-
-/* styles/tokens/portal-hub.css */
-[data-portal="hub"] {
-  --color-accent: var(--brand-tangerina-500);   /* Hub uses tangerina */
-  --color-accent-hover: var(--brand-tangerina-600);
-  --color-surface-base: var(--brand-creme);     /* Warm cream bg */
-}
-```
-
-```tsx
-/* app/dashboard/layout.tsx */
-<div data-portal="dashboard" className="min-h-screen bg-[var(--color-surface-base)]">
-  ...
-</div>
-
-/* app/hub/layout.tsx */
-<div data-portal="hub" className="min-h-screen bg-[var(--color-surface-base)]">
-  ...
-</div>
-```
-
-### Pattern 3: Font Definitions File with CSS Variables + Tailwind Integration
-
-**What:** All `localFont` calls live in one `lib/fonts.ts` file. Each font instance uses the `variable` option to expose a CSS custom property. The root layout applies all variable classes to `<html>`. Tailwind config maps the CSS variables to `fontFamily` utilities.
-
-**When to use:** Always with multiple custom fonts in Next.js — prevents multiple hosted instances and centralizes loading.
-
-**Trade-offs:** `.otf` files are supported by `next/font/local` (it converts and serves them). They are larger than `.woff2` — if performance budget is tight, convert to `.woff2` first. For initial implementation, `.otf` works.
-
-**Example:**
-```ts
-/* lib/fonts.ts */
-import localFont from 'next/font/local'
-
-export const blaak = localFont({
-  src: [
-    { path: '../public/fonts/Blaak-Regular.otf', weight: '400', style: 'normal' },
-    { path: '../public/fonts/Blaak-Bold.otf',    weight: '700', style: 'normal' },
-  ],
-  variable: '--font-blaak',
-  display: 'swap',
-})
-
-export const neueMontreal = localFont({
-  src: [
-    { path: '../public/fonts/NouveauMontreal-Regular.otf', weight: '400', style: 'normal' },
-    { path: '../public/fonts/NouveauMontreal-Medium.otf',  weight: '500', style: 'normal' },
-    { path: '../public/fonts/NouveauMontreal-Bold.otf',    weight: '700', style: 'normal' },
-  ],
-  variable: '--font-neue-montreal',
-  display: 'swap',
-})
-```
-
-```tsx
-/* app/layout.tsx */
-import { blaak, neueMontreal } from '@/lib/fonts'
-
-<html lang="pt-BR" className={`${blaak.variable} ${neueMontreal.variable}`}>
-```
-
-```ts
-/* tailwind.config.ts */
-fontFamily: {
-  display: ['var(--font-blaak)', 'Georgia', 'serif'],
-  sans:    ['var(--font-neue-montreal)', 'system-ui', 'sans-serif'],
-}
-```
-
-### Pattern 4: Logo Component with Variant System
-
-**What:** A single `Logo` React component accepts a `variant` prop and renders the appropriate inline SVG. Inline SVG allows `currentColor` to inherit text color, enabling the same component to work on dark (sidebar) and light (hub header) backgrounds without prop drilling of color values.
-
-**When to use:** When the same logo appears in multiple color contexts across both portals. Avoids maintaining multiple logo files with hardcoded fill colors.
-
-**Trade-offs:** SVG markup lives in JS bundle; fine for a logo (< 3KB). For large decorative SVGs, CSS `background-image` with data URI is better.
-
-**Example:**
-```tsx
-/* components/brand/Logo.tsx */
-type LogoVariant = 'full' | 'symbol' | 'white-full' | 'white-symbol'
-
-interface LogoProps {
-  variant?: LogoVariant
-  className?: string
-  size?: number
-}
-
-export function Logo({ variant = 'full', className, size = 32 }: LogoProps) {
-  if (variant === 'symbol' || variant === 'white-symbol') {
-    return (
-      <svg width={size} height={size} viewBox="0 0 40 40"
-           className={className}
-           aria-label="Carreira USA" role="img">
-        {/* symbol paths — fill="currentColor" */}
-      </svg>
-    )
-  }
-  // full wordmark variant
-  return (
-    <svg viewBox="0 0 160 40" className={className} aria-label="Carreira USA" role="img">
-      {/* full logo paths */}
-    </svg>
-  )
-}
-```
-
-### Pattern 5: Pattern/Texture as CSS Background Data URI
-
-**What:** Background patterns (grain, dot grid, diagonal lines) are expressed as inline SVG data URIs in CSS custom properties, not as external image files. Applied via a `PatternBackground` wrapper component or utility class.
-
-**When to use:** For decorative texture on hero sections, login pages, or the hub's cream background. Avoids extra HTTP requests; pattern SVGs are typically < 500 bytes.
-
-**Trade-offs:** Data URIs can't be cached separately by the browser (they travel with the CSS). For patterns applied to full-page backgrounds, the performance delta is negligible.
-
-**Example:**
-```css
-/* styles/tokens/brand.css */
-:root {
-  --pattern-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  --pattern-dots: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Ccircle cx='2' cy='2' r='1' fill='%23C9A84C' opacity='0.12'/%3E%3C/svg%3E");
-}
-```
-
-```tsx
-/* components/brand/PatternBackground.tsx */
-export function PatternBackground({ pattern = 'grain', children, className }: PatternBackgroundProps) {
-  const patternVar = `var(--pattern-${pattern})`
-  return (
-    <div
-      className={cn('relative', className)}
-      style={{ backgroundImage: patternVar, backgroundRepeat: 'repeat' }}
-    >
-      {children}
-    </div>
-  )
-}
-```
+**Trade-offs:** Eliminates loading flash, reduces client JS bundle, and allows streamed rendering. The small mutation components do not need to re-render the full page — they call `/api/ops/students/[id]/phase` or `/api/ops/students/[id]/sessions` and then `router.refresh()` to revalidate the Server Component above them.
 
 ---
 
 ## Data Flow
 
-### Token Resolution Flow
+### Student Enrollment Creation
 
 ```
-Brand Primitive Defined        Semantic Alias Resolves           Component Renders
-in brand.css (:root)     →     to Portal Override via         →  with final computed
---brand-verde-500: #2D6A4F     data-portal="dashboard"           color value
-                               --color-accent: var(--brand-verde-500)
-                                                                   bg-accent → #2D6A4F
+Ops user submits enrollment form
+    ↓
+POST /api/ops/students  { customerId, program, assignedUserId? }
+    ↓
+getToken() → verify ADMIN or OPERATIONAL
+    ↓
+MentorshipService.createEnrollment()
+    → check no active enrollment exists for customerId
+    → prisma.mentorshipEnrollment.create(...)
+    → prisma.phaseTransition.create({ fromPhase: null, toPhase: ONBOARDING })
+    ↓
+201 Created  { enrollmentId }
 ```
 
-### Font Loading Flow
+### Phase Transition
 
 ```
-lib/fonts.ts              app/layout.tsx                Components
-localFont({              <html className=             font-display → Blaak
-  variable:               blaak.variable +  →         font-sans   → Neue Montreal
-  '--font-blaak'          neueMontreal.variable        (via tailwind.config.ts)
-})                       >
+Ops user clicks "Advance Phase" on Pipeline Board
+    ↓
+POST /api/ops/students/[id]/phase  { toPhase, reason? }
+    ↓
+getToken() → verify ADMIN or OPERATIONAL
+    ↓
+MentorshipService.transitionPhase()
+    → prisma.$transaction([update enrollment, create PhaseTransition])
+    ↓
+200 OK → client calls router.refresh() → Server Component re-renders
 ```
 
-### Logo Rendering Flow
+### Pipeline Board Load
 
 ```
-Dashboard Sidebar               Hub Header
-<aside bg-secondary-dark>       <header bg-white>
-  <Logo variant="symbol"          <Logo variant="full"
-    className="text-white" />       className="text-[--brand-escuro]" />
-  currentColor → white            currentColor → dark
+User navigates to /ops/pipeline
+    ↓
+pipeline/page.tsx (Server Component)
+    → getServerSession() → verify role
+    → MentorshipService.getPipelineData()
+        → prisma.mentorshipEnrollment.findMany({ completedAt: null, include: ... })
+        → group by currentPhase in memory
+    ↓
+Render <PipelineBoard byPhase={byPhase} /> (Server Component)
+    → each phase column renders <StudentCard> list
+    → each card embeds <PhaseAdvanceButton> ("use client" leaf)
 ```
+
+### Daily Action Load
+
+```
+User navigates to /ops/daily
+    ↓
+daily/page.tsx (Server Component)
+    → getServerSession() → userId
+    → MentorshipService.getDailyActions(userId)
+        → prisma.mentorshipEnrollment.findMany({
+            assignedUserId: userId,
+            completedAt: null
+          })
+        → filter / sort by "needs action" heuristic:
+            - last session > 7 days ago, OR
+            - phase is ONBOARDING with zero sessions, OR
+            - programEndsAt within 30 days
+    ↓
+Render checklist of StudentCard items
+```
+
+---
+
+## API Route Structure
+
+| Route | Method | Purpose | Guard |
+|-------|--------|---------|-------|
+| `/api/ops/pipeline` | GET | All active enrollments grouped by phase | ADMIN, OPERATIONAL |
+| `/api/ops/daily` | GET | Enrollments assigned to calling user, needs-action sorted | ADMIN, OPERATIONAL |
+| `/api/ops/students` | GET | Paginated list with name/email search and phase filter | ADMIN, OPERATIONAL |
+| `/api/ops/students` | POST | Create enrollment for existing Customer | ADMIN, OPERATIONAL |
+| `/api/ops/students/[id]` | GET | Full student profile: customer info, timeline, sessions, placement test | ADMIN, OPERATIONAL |
+| `/api/ops/students/[id]` | PATCH | Update notes, assignedUserId | ADMIN, OPERATIONAL |
+| `/api/ops/students/[id]/phase` | POST | Transition to new phase (writes $transaction) | ADMIN, OPERATIONAL |
+| `/api/ops/students/[id]/sessions` | GET | Full session history | ADMIN, OPERATIONAL |
+| `/api/ops/students/[id]/sessions` | POST | Log a new session | ADMIN, OPERATIONAL |
+
+Middleware at `middleware.ts` already enforces authentication and role check for all `/api/ops/*` routes. Each handler must additionally call `getToken()` to read the caller's `sub` for user-scoped queries (daily view, session conductor).
 
 ---
 
 ## Integration Points
 
-### New Components (create from scratch)
+### New Models → Existing Models (additive only)
 
-| Component | File | What It Does |
-|-----------|------|--------------|
-| Logo | `components/brand/Logo.tsx` | Multi-variant inline SVG logo |
-| PatternBackground | `components/brand/PatternBackground.tsx` | CSS data URI pattern wrapper |
+| Integration | Direction | What Changes |
+|-------------|-----------|-------------|
+| `MentorshipEnrollment` → `Customer` | FK reference | Add `mentorshipEnrollments` back-relation to `Customer` model |
+| `MentorshipEnrollment` → `User` (assignedUser) | FK reference | Add `mentorshipAssignments` back-relation to `User` model |
+| `MentorshipSession` → `User` (conductedBy) | FK reference | Add `conductedSessions` back-relation to `User` model |
+| `PhaseTransition` → `User` (transitionedBy) | FK reference | Add `phaseTransitions` back-relation to `User` model |
+| Student Profile reads `PlacementTest` | Read-only | No schema change — already on `Customer` via `customer.placementTests` |
+| Student Profile reads `Invoice` | Read-only | No schema change — already on `Customer` via `customer.invoices` |
+| Student Profile reads `Deal` | Read-only | No schema change — already on `Customer` via `customer.deals` |
+| Student Profile reads `Contract` | Read-only | No schema change — already on `Customer` via `customer.contracts` |
 
-### Modified Components (targeted updates)
+### Webhook Hook Point (out of scope for v1.2, design for it)
 
-| Component | File | Change Required |
-|-----------|------|----------------|
-| Root Layout | `app/layout.tsx` | Replace Inter Google Fonts import with `lib/fonts.ts`; apply `.variable` classes |
-| Dashboard Layout | `app/dashboard/layout.tsx` | Add `data-portal="dashboard"` attribute |
-| Hub Layout | `app/hub/layout.tsx` | Add `data-portal="hub"` attribute |
-| Button | `components/ui/button.tsx` | Swap `gold-*` token names for new brand token names (`verde-*` / `tangerina-*`) |
-| Badge | `components/ui/badge.tsx` | Same token swap |
-| StatCard | `components/ui/stat-card.tsx` | Same token swap; update icon background |
-| Input | `components/ui/input.tsx` | Focus ring token swap |
-| Card | `components/ui/card.tsx` | Hover border token swap |
-| ProfessionalSidebar | `components/dashboard/professional-sidebar.tsx` | Swap `gold-*` → `verde-*`; update Logo placeholder with `<Logo>` component |
-| globals.css | `app/globals.css` | Remove Google Fonts @import; `@import` token files instead of inline `:root` primitives |
-| tailwind.config.ts | `tailwind.config.ts` | Add `verde`, `tangerina`, `creme`, `escuro` color tokens; update `fontFamily` to reference CSS vars |
+The Pipedrive Deal WON webhook (`/api/webhooks/pipedrive/deal`) is the natural trigger for auto-creating a `MentorshipEnrollment` when a deal closes. For v1.2, enrollment is manual. Write `MentorshipService.createEnrollment()` as a standalone function so it can be called from the webhook handler in v1.3 without refactoring.
 
-### New Files (infrastructure)
+### Internal Boundaries
 
-| File | Purpose |
-|------|---------|
-| `lib/fonts.ts` | Central font definition (Blaak + Neue Montreal via `next/font/local`) |
-| `public/fonts/` | Font binary files (.otf) |
-| `public/assets/` | Logo SVG files for static `<img>` fallback contexts |
-| `styles/tokens/brand.css` | Primitive brand color tokens |
-| `styles/tokens/semantic.css` | Semantic role-based token aliases |
-| `styles/tokens/portal-dashboard.css` | Dashboard accent/surface overrides |
-| `styles/tokens/portal-hub.css` | Hub accent/surface overrides |
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Ops Hub pages ↔ `/api/ops/*` | HTTP fetch (Server Components) or fetch + router.refresh() (client mutations) | Server Components can also call service directly, skipping the API layer |
+| `mentorship.service.ts` ↔ Prisma | Direct import, singleton pattern | Same pattern as all existing services |
+| Ops Hub ↔ Admin Dashboard | Shared database, no cross-portal API calls | Ops reads `Customer`, `Invoice`, `PlacementTest` via Prisma directly — not via `/api/dashboard/*` routes |
+| Ops Hub ↔ Client Hub | No shared state | ClientUser and MentorshipEnrollment are both anchored on Customer but never queried together in the Ops context |
 
 ---
 
-## Build Order (Dependency-Ordered)
+## Build Order (dependency-aware)
 
-Phase ordering matters because lower layers must exist before higher layers reference them.
+Each step unblocks the next. Do not start a UI surface until its data layer is confirmed correct.
 
-```
-Step 1: Fonts (no deps)
-  → Add font files to public/fonts/
-  → Create lib/fonts.ts
-  → Modify app/layout.tsx to apply variable classNames
+1. **Schema migration** — Add the three new models and back-relations to `User` and `Customer`. Run `npm run db:migrate`. Everything else depends on this.
 
-Step 2: Token Infrastructure (no deps beyond CSS)
-  → Create styles/tokens/brand.css (primitives)
-  → Create styles/tokens/semantic.css (aliases)
-  → Create styles/tokens/portal-dashboard.css
-  → Create styles/tokens/portal-hub.css
-  → Modify app/globals.css to @import token files
+2. **`lib/services/mentorship.service.ts`** — Implement `createEnrollment`, `transitionPhase`, `logSession`, `getPipelineData`, `getDailyActions`, `getStudentProfile`. All business logic in one place before any route or UI touches it.
 
-Step 3: Tailwind Config Update (depends on Step 2 token names)
-  → Update tailwind.config.ts: new color tokens + font families
-  → Remove hardcoded hex values, legacy Google font names
+3. **`/api/ops/pipeline` and `/api/ops/daily`** — Read-only endpoints first. Validates the query shape and response structure before building UI.
 
-Step 4: Portal Scope Attributes (depends on Step 2 portal css)
-  → Add data-portal="dashboard" to dashboard layout wrapper
-  → Add data-portal="hub" to hub layout wrapper
+4. **`/api/ops/students` and `/api/ops/students/[id]`** — CRUD endpoints including the mutation routes (`/phase`, `/sessions`).
 
-Step 5: Shared UI Component Update (depends on Steps 2-3)
-  → Button: gold-* → new tokens
-  → Badge: same
-  → StatCard: same
-  → Input: same
-  → Card: same
+5. **Pipeline board page** (`/ops/pipeline`) — First UI surface. Confirms the pipeline query renders correctly across all 11 phases. Add "Pipeline" to `ops-sidebar.tsx` nav.
 
-Step 6: Brand Components (depends on Step 3 Tailwind config)
-  → Create components/brand/Logo.tsx (inline SVG)
-  → Create components/brand/PatternBackground.tsx
+6. **Daily action view** (`/ops/daily`) — Second UI surface. Validates the per-user filter and needs-action heuristic. Add "Daily" to `ops-sidebar.tsx` nav.
 
-Step 7: Portal-Specific Shells (depends on Steps 4-6)
-  → Update ProfessionalSidebar to use Logo component + verde tokens
-  → Update Hub header/footer in layout.tsx to use Logo + tangerina tokens
-  → Replace inline `const GOLD = "#C9A84C"` hardcodes in hub pages
+7. **Student profile page** (`/ops/students/[id]`) — Aggregates customer data, placement test, sessions, and phase timeline. Build after data layer is stable. Add "Students" to `ops-sidebar.tsx` nav.
 
-Step 8: Recharts & Data Viz (depends on Step 2 — access to hex values)
-  → Update chart color arrays to reference brand primitive hex values
-  → (CSS variables don't work inside Recharts color props — use hex constants
-     exported from lib/brand-colors.ts that mirror brand.css primitives)
-```
+8. **Mutation components** (`PhaseAdvanceButton`, `SessionLogForm`) — The two interactive surfaces. Build last because they depend on the read views being validated first.
+
+9. **Ops sidebar nav update** — Add Pipeline, Daily, Students to `navItems`. Intentionally last so nav only surfaces working routes.
 
 ---
 
-## Anti-Patterns
+## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Hardcoded Hex Values in Component Files
+### Anti-Pattern 1: Creating a Parallel "Student" Model
 
-**What people do:** `const GOLD = "#C9A84C"` inline in page components (currently present in `app/hub/page.tsx`, `app/hub/layout.tsx`).
+**What people do:** Add a `Student` model with its own `email`, `name`, `phone` fields to represent the ops concept of a student separately from `Customer`.
 
-**Why it's wrong:** The value lives outside the token system. When the brand color changes, grep-and-replace is error-prone and misses dynamic strings. The pattern is already present in 3+ hub files.
+**Why it's wrong:** Creates a second identity record for the same human. The existing `Invoice`, `Contract`, `Payment`, and `Deal` models all anchor on `Customer.id`. A separate `Student` model either duplicates these relations or requires joins through two identity tables. The Identity Mapper was built precisely to prevent this class of duplication.
 
-**Do this instead:** Export a `brandColors` constant from `lib/brand-colors.ts` that mirrors the CSS primitives. For Recharts specifically, import hex values from this file — CSS vars don't work in JS prop strings.
+**Do this instead:** A student is a `Customer` with at least one `MentorshipEnrollment`. Filter with `where: { mentorshipEnrollments: { some: {} } }` to scope any customer list to enrolled students.
 
-```ts
-/* lib/brand-colors.ts */
-export const brandColors = {
-  verde500: '#2D6A4F',
-  tangerina500: '#F4631E',
-  escuro: '#1A1A1A',
-  creme: '#FBF8F0',
-} as const
+### Anti-Pattern 2: Storing Phase History as JSON on the Enrollment
+
+**What people do:** Add a `phaseHistory: Json` field to `MentorshipEnrollment` and append objects to it on each phase change.
+
+**Why it's wrong:** PostgreSQL JSON columns cannot be indexed, filtered by date, or joined. The student profile timeline needs ordering by transition date. Admin metrics need to count transitions by phase. Both become full-table scans on a JSON blob.
+
+**Do this instead:** `PhaseTransition` as a proper relational model. Each transition is one row, indexed on `enrollmentId` and `transitionedAt`.
+
+### Anti-Pattern 3: Skipping Role Enforcement Inside Route Handlers
+
+**What people do:** Rely solely on `middleware.ts` to enforce the ADMIN/OPERATIONAL role check, then omit `getToken()` calls inside each route handler.
+
+**Why it's wrong:** Middleware is the first line of defense, not the only line. A misconfigured route prefix, a future refactor that moves a handler, or a direct invocation in tests bypasses middleware entirely. Defense in depth means each handler independently verifies the token.
+
+**Do this instead:** Every `/api/ops/*` handler begins with:
+```typescript
+const token = await getToken({ req });
+if (!token || !["ADMIN", "OPERATIONAL"].includes(token.role as string)) {
+  return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+}
 ```
 
-### Anti-Pattern 2: Portal-Specific Logic Inside Shared Components
+### Anti-Pattern 4: Building the Pipeline Board as a Client Component with useEffect Fetch
 
-**What people do:** `const color = isHub ? tangerina : verde` inside `Button.tsx`.
+**What people do:** Mark the pipeline board page `"use client"` and fetch from `/api/ops/pipeline` on mount via `useEffect` (or `useQuery`).
 
-**Why it's wrong:** Couples shared primitives to portal context. Components should be context-agnostic and inherit color from the token scope they're rendered within.
+**Why it's wrong:** The pipeline board is a read-heavy initial render. Client-side fetching introduces a loading flash, increases JS payload, and prevents server-side caching. The board has no real-time requirement — polling or manual refresh is acceptable.
 
-**Do this instead:** Use the `data-portal` scoped CSS variable override pattern. The Button renders `bg-accent` everywhere; the portal's CSS scope resolves `--color-accent` to the right hue.
+**Do this instead:** `pipeline/page.tsx` is a Server Component that calls `MentorshipService.getPipelineData()` directly. Phase advance buttons are small isolated `"use client"` leaf components that call the API and trigger `router.refresh()`. The vast majority of the board is server-rendered with zero client JS.
 
-### Anti-Pattern 3: Multiple `localFont()` Calls for the Same Font
+### Anti-Pattern 5: Allowing Multiple Active Enrollments Per Customer at the DB Level
 
-**What people do:** Import and call `localFont({ src: './Blaak.otf' })` in both `dashboard/layout.tsx` and `hub/layout.tsx`.
+**What people do:** Try to enforce "one active enrollment" via a unique constraint on `(customerId, completedAt)` in Prisma.
 
-**Why it's wrong:** Next.js hosts a separate font instance per call — the same binary gets served twice as different hashed static files. Doubles the font payload.
+**Why it's wrong:** PostgreSQL treats `NULL` values as distinct for unique constraints — two rows with `completedAt: null` for the same `customerId` would not violate a `@@unique([customerId, completedAt])` constraint.
 
-**Do this instead:** Define once in `lib/fonts.ts`, export the instances, import in `app/layout.tsx` only.
-
-### Anti-Pattern 4: Storing Font Files Inside `app/`
-
-**What people do:** Place `.otf` files in `app/fonts/` because the Next.js docs show relative paths.
-
-**Why it's wrong:** Files inside `app/` are not served as static assets — they're part of the server bundle context. Only `public/` files are served directly via URL.
-
-**Do this instead:** Store font files in `public/fonts/`. The `localFont` `src` path in `lib/fonts.ts` uses `../public/fonts/` (relative to the file) or an absolute path from project root.
-
-### Anti-Pattern 5: Using `next/image` for SVG Logos
-
-**What people do:** `<Image src="/assets/logo.svg" width={160} height={40} alt="Logo" />`.
-
-**Why it's wrong:** `next/image` optimization pipeline doesn't benefit SVGs (they're already vector and don't need format conversion). More importantly, it prevents `currentColor` theming since SVG fills are baked in as attributes rather than inheriting from CSS.
-
-**Do this instead:** Inline SVG React component for logos that need color variants. `<img src="/assets/logo.svg" />` is acceptable for email templates or static contexts where JS theming isn't needed.
+**Do this instead:** Enforce in `MentorshipService.createEnrollment()`:
+```typescript
+const existing = await prisma.mentorshipEnrollment.findFirst({
+  where: { customerId, completedAt: null },
+});
+if (existing) throw new Error("Customer already has an active enrollment");
+```
+Document this invariant with a comment in the schema.
 
 ---
 
@@ -504,23 +545,24 @@ export const brandColors = {
 
 | Scale | Architecture Adjustments |
 |-------|--------------------------|
-| Current (2 portals, 1 brand) | Token files as described — no additional tooling needed |
-| Future (white-label or new brand) | Add `styles/tokens/portal-[name].css` + new `data-portal` value; zero component changes |
-| Design tool sync (Figma tokens) | Add Style Dictionary pipeline to generate `brand.css` from `tokens.json`; structure already compatible |
+| 0–200 active students | Single `findMany` with `include` for pipeline; in-memory grouping by phase. No additional optimization needed. |
+| 200–1000 active students | Add a partial index `WHERE completed_at IS NULL` on `mentorship_enrollments`. Consider a Postgres view for the pipeline query to avoid computing last-session in application code. |
+| 1000+ active students | Paginate the pipeline board by phase column. Cache the pipeline query with `unstable_cache` for 30 seconds (acceptable staleness for an ops board). |
+
+The first bottleneck will be the pipeline query joining enrollments + customer + last session + last transition for all active students. The indexes on `completedAt IS NULL` (partial), `assignedUserId`, and `currentPhase` address this before it becomes a problem.
 
 ---
 
 ## Sources
 
-- [Next.js Font Optimization (v14)](https://nextjs.org/docs/14/app/building-your-application/optimizing/fonts) — HIGH confidence, official docs
-- [Next.js Font Optimization (current)](https://nextjs.org/docs/app/getting-started/fonts) — HIGH confidence, official docs (v16.2.1, same API)
-- [Tailwind CSS Theme Variables](https://tailwindcss.com/docs/theme) — HIGH confidence, official docs
-- [CSS Custom Properties Strategy Guide — Smashing Magazine](https://www.smashingmagazine.com/2018/05/css-custom-properties-strategy-guide/) — MEDIUM confidence, authoritative reference
-- [Tailwind Design Tokens: Complete Guide 2025](https://nicolalazzari.ai/articles/integrating-design-tokens-with-tailwind-css) — MEDIUM confidence (single source, verified pattern against official docs)
-- [Using SVG in Next.js/React — SVG Verse](https://svgverseai.com/blog/using-svg-in-nextjs-react-inline-img-components) — MEDIUM confidence, consistent with broader community consensus
-- [Multiple Themes with Next.js, Tailwind CSS, and CSS Custom Properties](https://dev.to/dlw/multiple-themes-for-next-js-with-next-themes-tailwind-css-and-css-custom-properties-2knp) — MEDIUM confidence, consistent with MDN and official docs on CSS variable scoping
+- Direct inspection of `prisma/schema.prisma` — HIGH confidence
+- Direct inspection of `middleware.ts` — HIGH confidence
+- Direct inspection of `app/ops/` shell (layout, pages, sidebar) — HIGH confidence
+- Direct inspection of `lib/services/` directory listing — HIGH confidence (service pattern established)
+- Prisma relations documentation (one-to-many, back-relations): https://www.prisma.io/docs/orm/prisma-schema/data-model/relations — MEDIUM confidence (established from existing schema patterns)
+- Next.js App Router Server Components and data fetching: https://nextjs.org/docs/app/building-your-application/data-fetching — MEDIUM confidence
 
 ---
 
-*Architecture research for: Brand identity reskin — Carreira USA, dual-portal Next.js 14 App Router*
-*Researched: 2026-03-25*
+*Architecture research for: Ops Hub — Student Journey Management (v1.2)*
+*Researched: 2026-04-01*
