@@ -85,8 +85,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
+- [x] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [x] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 
 Plans:
 - [x] 03-01: End-to-end workflow orchestration with retry logic (completed 2026-01-15)
@@ -176,7 +176,7 @@ Plans:
 - [x] **Phase 14: Data Foundation** - Mentorship schema (MentorshipPhase lookup, MentorshipEnrollment, MentorshipSession, PhaseTransition), mentorship.service.ts, enrollment API and form (completed 2026-04-01)
 - [x] **Phase 15: Pipeline Board** - Kanban UI with dnd-kit, phase advance, team member filter, overdue and debtor indicators (completed 2026-04-01)
 - [x] **Phase 16: Student Profile** - Full student profile page, phase timeline, session log, session log form (completed 2026-04-01)
-- [ ] **Phase 17: Daily Action View + Coordinator Overview** - Daily checklist with SLA rules, coordinator metrics, debtors list
+- [x] **Phase 17: Daily Action View + Coordinator Overview** - Daily checklist with SLA rules, coordinator metrics, debtors list (completed 2026-04-01)
 
 ## Phase Details
 
@@ -347,4 +347,4 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 14. Data Foundation | v1.2 | 4/4 | Complete    | 2026-04-01 |
 | 15. Pipeline Board | v1.2 | 3/3 | Complete    | 2026-04-01 |
 | 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-01 |
-| 17. Daily Action View + Coordinator Overview | v1.2 | 0/2 | Planned    |  |
+| 17. Daily Action View + Coordinator Overview | v1.2 | 2/2 | Complete   | 2026-04-01 |

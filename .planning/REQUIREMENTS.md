@@ -39,10 +39,10 @@
 
 ### Coordinator Overview
 
-- [ ] **COORD-01**: Coordinator can view phase distribution metrics — count of active students per phase across all team members
-- [ ] **COORD-02**: Coordinator can view all active enrollments regardless of assigned team member (no scoping filter)
-- [ ] **COORD-03**: Coordinator sees a list of students with no session activity in the past 7 days
-- [ ] **COORD-04**: Coordinator sees a list of students with overdue QB payment balances (debtors)
+- [x] **COORD-01**: Coordinator can view phase distribution metrics — count of active students per phase across all team members
+- [x] **COORD-02**: Coordinator can view all active enrollments regardless of assigned team member (no scoping filter)
+- [x] **COORD-03**: Coordinator sees a list of students with no session activity in the past 7 days
+- [x] **COORD-04**: Coordinator sees a list of students with overdue QB payment balances (debtors)
 
 ---
 
@@ -100,10 +100,10 @@
 | DAILY-01 | Phase 17 | Complete |
 | DAILY-02 | Phase 17 | Complete |
 | DAILY-03 | Phase 17 | Complete |
-| COORD-01 | Phase 17 | Pending |
-| COORD-02 | Phase 17 | Pending |
-| COORD-03 | Phase 17 | Pending |
-| COORD-04 | Phase 17 | Pending |
+| COORD-01 | Phase 17 | Complete |
+| COORD-02 | Phase 17 | Complete |
+| COORD-03 | Phase 17 | Complete |
+| COORD-04 | Phase 17 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 21 total
