@@ -321,6 +321,6 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
 | 13. CEFR English Proficiency Test Engine | - | 2/3 | In progress | - |
 | 14. Data Foundation | v1.2 | 4/4 | Complete    | 2026-04-01 |
-| 15. Pipeline Board | v1.2 | 0/3 | Not started | - |
+| 15. Pipeline Board | v1.2 | 2/3 | In Progress|  |
 | 16. Student Profile | v1.2 | 0/TBD | Not started | - |
 | 17. Daily Action View + Coordinator Overview | v1.2 | 0/TBD | Not started | - |

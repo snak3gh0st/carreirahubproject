@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
-status: verifying
-stopped_at: Completed 14-data-foundation-04-PLAN.md
-last_updated: "2026-04-01T17:01:39.333Z"
+status: executing
+stopped_at: Completed 15-pipeline-board-01-PLAN.md
+last_updated: "2026-04-01T17:22:18.448Z"
 last_activity: 2026-04-01
 progress:
-  total_phases: 17
+  total_phases: 18
   completed_phases: 17
-  total_plans: 52
-  completed_plans: 54
+  total_plans: 55
+  completed_plans: 56
   percent: 0
 ---
 
@@ -22,13 +22,13 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Give the Carreira USA support team a single operational workspace to track every student's journey phase, replacing ClickUp as the team's hub.
 
-**Current focus:** Phase 14 — data-foundation
+**Current focus:** Phase 15 — pipeline-board
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 15 (pipeline-board) — EXECUTING
+Plan: 3 of 3
+Status: Ready to execute
 Last activity: 2026-04-01
 
 ```
@@ -73,6 +73,8 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4
 | Phase 14-data-foundation P03 | 4 | 2 tasks | 3 files |
 | Phase 14 P04 | 8 | 3 tasks | 4 files |
 | Phase 14-data-foundation P04 | 8 | 4 tasks | 4 files |
+| Phase 15-pipeline-board P01 | 2 | 2 tasks | 3 files |
+| Phase 15-pipeline-board P02 | 3 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -120,6 +122,8 @@ Recent decisions affecting current work:
 - [Phase 14]: Assignable users: manual text input fallback in enrollment form — /api/dashboard/users endpoint does not exist yet
 - [Phase 14-data-foundation]: Toast library: sonner v2.0.7 used for enrollment form feedback — already in package.json
 - [Phase 14-data-foundation]: Enrollment form moved to /ops/enroll (not /dashboard/ops/enroll) to match Ops Hub portal route prefix
+- [Phase 15-pipeline-board]: GET /api/ops/pipeline returns all phases unconditionally — assignee filter is client-side only
+- [Phase 15-pipeline-board]: MentorshipError INVALID_TRANSITION maps to HTTP 422; other MentorshipError codes map to 400
 
 ### Roadmap Evolution
 
@@ -135,7 +139,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-01T16:34:19.718Z
-Stopped at: Completed 14-data-foundation-04-PLAN.md
+Last session: 2026-04-01T17:22:18.445Z
+Stopped at: Completed 15-pipeline-board-01-PLAN.md
 Resume file: None
 Next action: `/gsd:plan-phase 14` to plan Data Foundation
