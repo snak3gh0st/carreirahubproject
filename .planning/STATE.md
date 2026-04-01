@@ -1,10 +1,10 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Brand Identity Reskin
+milestone: v1.2
+milestone_name: Ops Hub — Student Journey Management
 status: verifying
-stopped_at: Completed 15-pipeline-board-03-PLAN.md
-last_updated: "2026-04-01T17:32:52.268Z"
+stopped_at: Completed 16-student-profile-02-PLAN.md
+last_updated: "2026-04-01T18:30:00.000Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 18
