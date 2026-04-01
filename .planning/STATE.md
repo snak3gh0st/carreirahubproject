@@ -1,15 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.2
-milestone_name: Ops Hub — Student Journey Management
-status: Roadmap ready
-stopped_at: ~
-last_updated: "2026-04-01T00:00:00.000Z"
+milestone: v1.1
+milestone_name: Brand Identity Reskin
+status: executing
+stopped_at: Completed 14-data-foundation-01-PLAN.md
+last_updated: "2026-04-01T16:11:05.969Z"
+last_activity: 2026-04-01
 progress:
-  total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_phases: 17
+  completed_phases: 16
+  total_plans: 52
+  completed_plans: 51
+  percent: 0
 ---
 
 # Project State
@@ -20,14 +22,14 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Give the Carreira USA support team a single operational workspace to track every student's journey phase, replacing ClickUp as the team's hub.
 
-**Current focus:** Milestone v1.2 — Ops Hub Student Journey Management
+**Current focus:** Phase 14 — data-foundation
 
 ## Current Position
 
-Phase: Phase 14 — Data Foundation (not started)
-Plan: —
-Status: Roadmap defined, awaiting first plan
-Last activity: 2026-04-01 — v1.2 roadmap created (Phases 14-17)
+Phase: 14 (data-foundation) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-01
 
 ```
 Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4 phases)
@@ -66,6 +68,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4
 | Phase 13-cefr-english-proficiency-test-engine P01 | 4 | 2 tasks | 10 files |
 | Phase 13-cefr-english-proficiency-test-engine P02 | 4 | 2 tasks | 4 files |
 | Phase 13-cefr-english-proficiency-test-engine P03 | 4 | 2 tasks | 9 files |
+| Phase 14-data-foundation P01 | 3 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -104,6 +107,9 @@ Recent decisions affecting current work:
 - **v1.2 Architecture**: Daily action SLA thresholds defined as named constants — calibrate after 2-4 weeks of real Phase 14-16 usage, not before
 - **v1.2 Scope**: WhatsApp sending, Google Calendar, and Pipedrive auto-enrollment are explicitly v1.3 — not in scope for any Phase 14-17 work
 - **v1.2 DnD**: dnd-kit v6.3.1 + sortable v10.0.0 are the only stable React DnD libraries as of 2026 — react-beautiful-dnd is deprecated, @dnd-kit/react is pre-1.0 alpha
+- [Phase 14-data-foundation]: Used npx tsx instead of ts-node for prisma seed — ts-node not installed, tsx already used by all project scripts
+- [Phase 14-data-foundation]: String fields for programType/status (not Prisma enums) — avoids untransactable ALTER TYPE migrations per D-03
+- [Phase 14-data-foundation]: Named relations TransitionFrom/TransitionTo on PhaseTransition — required by Prisma to disambiguate two FK refs to the same model
 
 ### Roadmap Evolution
 
@@ -119,7 +125,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-01T00:00:00.000Z
-Stopped at: v1.2 roadmap created — Phases 14-17 defined
+Last session: 2026-04-01T16:11:05.966Z
+Stopped at: Completed 14-data-foundation-01-PLAN.md
 Resume file: None
 Next action: `/gsd:plan-phase 14` to plan Data Foundation

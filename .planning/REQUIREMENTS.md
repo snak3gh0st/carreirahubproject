@@ -7,10 +7,10 @@
 
 ### Data Foundation
 
-- [ ] **DATA-01**: System stores 11 mentorship phases as DB rows with key, label, and sortOrder — not a Prisma enum
-- [ ] **DATA-02**: Ops team member can create a MentorshipEnrollment for any Customer with program type (Pass/Advanced), assigned team member, and start date
-- [ ] **DATA-03**: System records a PhaseTransition row (timestamp, from-phase, to-phase, triggered-by user) every time a student's phase changes
-- [ ] **DATA-04**: Ops team member can log a MentorshipSession with session type, conductor (User), session date, and optional notes
+- [x] **DATA-01**: System stores 11 mentorship phases as DB rows with key, label, and sortOrder — not a Prisma enum
+- [x] **DATA-02**: Ops team member can create a MentorshipEnrollment for any Customer with program type (Pass/Advanced), assigned team member, and start date
+- [x] **DATA-03**: System records a PhaseTransition row (timestamp, from-phase, to-phase, triggered-by user) every time a student's phase changes
+- [x] **DATA-04**: Ops team member can log a MentorshipSession with session type, conductor (User), session date, and optional notes
 
 ### Pipeline Board
 
@@ -83,10 +83,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 14 | Pending |
-| DATA-02 | Phase 14 | Pending |
-| DATA-03 | Phase 14 | Pending |
-| DATA-04 | Phase 14 | Pending |
+| DATA-01 | Phase 14 | Complete |
+| DATA-02 | Phase 14 | Complete |
+| DATA-03 | Phase 14 | Complete |
+| DATA-04 | Phase 14 | Complete |
 | ENRL-01 | Phase 14 | Pending |
 | ENRL-02 | Phase 14 | Pending |
 | PIPE-01 | Phase 15 | Pending |
