@@ -300,11 +300,14 @@ export class QuickbooksService {
           throw new Error("QuickBooks Payments access token expired.");
         }
 
-        // 404 = no payment methods on file (expected, not an error)
+        // 404 = no payment methods on file (expected, not an error for the Payments API).
+        // Return a sentinel object instead of throwing so the circuit breaker records
+        // this as a SUCCESS. Callers (getCustomerCards, getCustomerBankAccounts) check
+        // for this sentinel and return []. Throwing here would cause paymentsCircuitBreaker
+        // to count every "no payment method on file" lookup as a failure, falsely opening
+        // the circuit after 5 such customers are checked.
         if (response.status === 404) {
-          const error: any = new Error(`QuickBooks Payments API error (404): Not Found`);
-          error.status = 404;
-          throw error;
+          return { __qb_404_not_found: true };
         }
 
         if (!response.ok) {
@@ -345,6 +348,9 @@ export class QuickbooksService {
   async getCustomerCards(qbCustomerId: string): Promise<any[]> {
     try {
       const result = await this.paymentsRequest(`/customers/${qbCustomerId}/cards`);
+      // paymentsRequest returns a sentinel object for 404 (no cards on file) to avoid
+      // tripping the circuit breaker on an expected "customer has no cards" response.
+      if (result?.__qb_404_not_found) return [];
       return result || [];
     } catch (error: any) {
       if (error.status === 404) return [];
@@ -359,6 +365,9 @@ export class QuickbooksService {
   async getCustomerBankAccounts(qbCustomerId: string): Promise<any[]> {
     try {
       const result = await this.paymentsRequest(`/customers/${qbCustomerId}/bank-accounts`);
+      // paymentsRequest returns a sentinel object for 404 (no bank accounts on file) to avoid
+      // tripping the circuit breaker on an expected "customer has no bank accounts" response.
+      if (result?.__qb_404_not_found) return [];
       return result || [];
     } catch (error: any) {
       if (error.status === 404) return [];
@@ -1096,6 +1105,28 @@ export class QuickbooksService {
   }
 
   /**
+   * QB Accounting commonly returns fault code 610 for entities that do not exist
+   * in the current company/environment. This is a permanent failure, not something
+   * a retry will fix.
+   */
+  private isQbObjectNotFoundError(errorText: string | undefined): boolean {
+    if (!errorText) return false;
+
+    try {
+      const parsed = JSON.parse(errorText);
+      const errors: any[] = parsed?.Fault?.Error || [];
+      return errors.some((err: any) => {
+        const code = String(err?.code || "");
+        const message = String(err?.Message || "");
+        const detail = String(err?.Detail || "");
+        return code === "610" || /object not found/i.test(message) || /object not found/i.test(detail);
+      });
+    } catch {
+      return /"code"\s*:\s*"?610"?/i.test(errorText) || /object not found/i.test(errorText);
+    }
+  }
+
+  /**
    * Enviar Invoice por email via QuickBooks (verbose version with diagnostics)
    * Uses the QB send invoice endpoint to email the invoice to the customer
    *
@@ -1290,7 +1321,13 @@ export class QuickbooksService {
         if (!response.ok) {
           const errorText = await response.text();
           console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
-          throw new Error(`QB /send failed (${response.status}): ${errorText}`);
+
+          const error: any = new Error(`QB /send failed (${response.status}): ${errorText}`);
+          error.status = response.status;
+          error.responseText = errorText;
+          error.isPermanent = this.isQbObjectNotFoundError(errorText);
+
+          throw error;
         }
 
         const result = await response.json();
@@ -1310,6 +1347,11 @@ export class QuickbooksService {
       } catch (error: any) {
         lastError = error;
         console.error(`[QuickBooks] ✗ Send attempt ${attempt}/${maxAttempts} failed:`, error.message || String(error));
+
+        if (error?.isPermanent) {
+          console.warn(`[QuickBooks] Permanent send failure for invoice ${invoiceId}; skipping retry because QuickBooks reported Object Not Found / code 610.`);
+          break;
+        }
 
         // If not last attempt, wait 1s before retry
         if (attempt < maxAttempts) {
@@ -2180,4 +2222,3 @@ export class QuickbooksService {
 }
 
 export const quickbooksService = new QuickbooksService();
-

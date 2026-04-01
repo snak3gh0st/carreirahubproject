@@ -37,11 +37,41 @@ export async function GET(request: NextRequest) {
     // 1. Have been synced to QuickBooks (quickbooks_invoice_id is set)
     // 2. Have NOT yet been emailed (emailSentAt is null)
     // 3. Have a customer email to send to
+    // MAX_SEND_ATTEMPTS: invoices that have failed this many times are considered
+    // "ghost" invoices — their QB ID does not exist in the current QB company (e.g.
+    // imported from a sandbox or different QB account during a data migration).
+    // Continuing to retry them causes cascading 400 "Object Not Found" errors which
+    // trip the circuit breaker and degrade service for all QB operations.
+    const MAX_SEND_ATTEMPTS = 5;
+
+    // Clean up invoices already proven to be ghosts by prior QB 610/Object Not Found
+    // responses so they do not remain indefinitely in the pending queue.
+    const autoVoidedGhostInvoices = await prisma.invoice.updateMany({
+      where: {
+        quickbooks_invoice_id: { not: null },
+        emailSentAt: null,
+        status: { notIn: ['PAID', 'VOID'] },
+        OR: [
+          { lastEmailSendError: { contains: 'Object Not Found' } },
+          { lastEmailSendError: { contains: '"code":"610"' } },
+          { lastEmailSendError: { contains: '"code": "610"' } },
+        ],
+      },
+      data: {
+        status: 'VOID',
+      },
+    });
+
+    if (autoVoidedGhostInvoices.count > 0) {
+      console.log(`[CRON] Auto-voided ${autoVoidedGhostInvoices.count} ghost invoices previously confirmed by QuickBooks as Object Not Found`);
+    }
+
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
         quickbooks_invoice_id: { not: null }, // Already in QuickBooks
         emailSentAt: null,                    // Not yet emailed to customer
         status: { notIn: ['PAID', 'VOID'] },  // Skip already-closed invoices
+        emailSendAttempts: { lt: MAX_SEND_ATTEMPTS }, // Skip ghost invoices that keep failing
       },
       include: {
         customer: true,
@@ -49,7 +79,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[CRON] Found ${pendingInvoices.length} QB-synced invoices not yet emailed`);
+    console.log(`[CRON] Found ${pendingInvoices.length} QB-synced invoices not yet emailed (excluding invoices with ${MAX_SEND_ATTEMPTS}+ failed attempts)`);
 
     let sent = 0;
     let skipped = 0;
@@ -128,13 +158,26 @@ export async function GET(request: NextRequest) {
 
             console.log(`[CRON] ✓ Email sent for invoice ${invoice.id} to ${invoice.customer.email}`);
           } else {
-            // Send failed — update error tracking but don't increment sentAt
+            // Check if QB returned "Object Not Found" (error code 610).
+            // This means the invoice was deleted or voided directly in QuickBooks
+            // (e.g. by the finance team) and no longer exists there. Mark the local
+            // record as VOID so the cron stops retrying it.
+            const isQbObjectNotFound = sendResult.error?.includes('"code":"610"') ||
+              sendResult.error?.includes('Object Not Found');
+
+            const invoiceUpdateData: any = {
+              emailSendAttempts: { increment: 1 },
+              lastEmailSendError: sendResult.error || 'QB send failed',
+            };
+
+            if (isQbObjectNotFound) {
+              invoiceUpdateData.status = 'VOID';
+              console.log(`[CRON] ⚠ Invoice ${invoice.id} (QB: ${invoice.quickbooks_invoice_id}) no longer exists in QuickBooks — marking as VOID`);
+            }
+
             await prisma.invoice.update({
               where: { id: invoice.id },
-              data: {
-                emailSendAttempts: { increment: 1 },
-                lastEmailSendError: sendResult.error || 'QB send failed',
-              },
+              data: invoiceUpdateData,
             });
 
             errors++;
@@ -142,7 +185,7 @@ export async function GET(request: NextRequest) {
             await prisma.integrationLog.create({
               data: {
                 service: 'quickbooks',
-                action: 'scheduled_invoice_send_failed',
+                action: isQbObjectNotFound ? 'scheduled_invoice_voided_not_found' : 'scheduled_invoice_send_failed',
                 status: 'ERROR',
                 error: sendResult.error || 'QB send returned failure',
                 payload: {
@@ -152,6 +195,7 @@ export async function GET(request: NextRequest) {
                   daysUntilDue,
                   attempts: sendResult.attempts,
                   emailStatus: sendResult.emailStatus,
+                  voidedLocally: isQbObjectNotFound,
                 } as any,
               },
             });
@@ -201,6 +245,7 @@ export async function GET(request: NextRequest) {
       sent,
       skipped,
       errors,
+      autoVoidedGhostInvoices: autoVoidedGhostInvoices.count,
       total: pendingInvoices.length,
       timestamp: new Date().toISOString(),
     });
