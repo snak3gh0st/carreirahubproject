@@ -10,6 +10,12 @@ interface CustomerResult {
   cefrLevel: string | null;
 }
 
+interface AssignableUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export default function EnrollForm() {
   const [query, setQuery] = useState("");
   const [customers, setCustomers] = useState<CustomerResult[]>([]);
@@ -21,8 +27,16 @@ export default function EnrollForm() {
   const [isSearching, setIsSearching] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState<AssignableUser[]>([]);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    fetch("/api/ops/users")
+      .then((r) => r.json())
+      .then((d) => setAssignableUsers(d.users ?? []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (query.length < 2) {
@@ -185,20 +199,22 @@ export default function EnrollForm() {
       {/* Assigned to */}
       <div>
         <label htmlFor="assignedToId" className="block text-sm font-medium text-gray-700 mb-1">
-          Responsável (User ID)
+          Responsável
         </label>
-        <input
+        <select
           id="assignedToId"
-          type="text"
           value={assignedToId}
           onChange={(e) => setAssignedToId(e.target.value)}
-          placeholder="ID do responsável..."
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-verde focus:border-transparent"
-        />
-        <p className="mt-1 text-xs text-gray-400">
-          Será substituído por seleção de usuário quando o endpoint de usuários estiver disponível.
-        </p>
+        >
+          <option value="">Selecione o responsável...</option>
+          {assignableUsers.map((u) => (
+            <option key={u.id} value={u.id}>
+              {u.name} ({u.email})
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Start date */}
