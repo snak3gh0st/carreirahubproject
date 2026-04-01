@@ -33,9 +33,9 @@
 
 ### Daily Action View
 
-- [ ] **DAILY-01**: Ops team member sees a daily action list scoped to their assigned students that require attention today based on phase and SLA rules
-- [ ] **DAILY-02**: Daily action view flags students whose current phase SLA expires within the next 2 days
-- [ ] **DAILY-03**: Daily action view flags students who have had no session logged in the past 7 days
+- [x] **DAILY-01**: Ops team member sees a daily action list scoped to their assigned students that require attention today based on phase and SLA rules
+- [x] **DAILY-02**: Daily action view flags students whose current phase SLA expires within the next 2 days
+- [x] **DAILY-03**: Daily action view flags students who have had no session logged in the past 7 days
 
 ### Coordinator Overview
 
@@ -97,9 +97,9 @@
 | PROF-01 | Phase 16 | Pending |
 | PROF-02 | Phase 16 | Pending |
 | PROF-03 | Phase 16 | Pending |
-| DAILY-01 | Phase 17 | Pending |
-| DAILY-02 | Phase 17 | Pending |
-| DAILY-03 | Phase 17 | Pending |
+| DAILY-01 | Phase 17 | Complete |
+| DAILY-02 | Phase 17 | Complete |
+| DAILY-03 | Phase 17 | Complete |
 | COORD-01 | Phase 17 | Pending |
 | COORD-02 | Phase 17 | Pending |
 | COORD-03 | Phase 17 | Pending |

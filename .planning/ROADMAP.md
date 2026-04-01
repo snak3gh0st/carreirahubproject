@@ -347,4 +347,4 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 14. Data Foundation | v1.2 | 4/4 | Complete    | 2026-04-01 |
 | 15. Pipeline Board | v1.2 | 3/3 | Complete    | 2026-04-01 |
 | 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-01 |
-| 17. Daily Action View + Coordinator Overview | v1.2 | 0/2 | Not started | - |
+| 17. Daily Action View + Coordinator Overview | v1.2 | 0/2 | Planned    |  |
