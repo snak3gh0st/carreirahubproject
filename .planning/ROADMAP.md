@@ -165,7 +165,7 @@ Plans:
 
 **Milestone Goal:** Give the Carreira USA support team (Fraenze, Dária, Rafael) a single operational workspace to track every student's journey phase, see what needs action today, log sessions, and manage student data — replacing ClickUp as the team's operational hub.
 
-- [ ] **Phase 14: Data Foundation** - Mentorship schema (MentorshipPhase lookup, MentorshipEnrollment, MentorshipSession, PhaseTransition), mentorship.service.ts, enrollment API and form
+- [x] **Phase 14: Data Foundation** - Mentorship schema (MentorshipPhase lookup, MentorshipEnrollment, MentorshipSession, PhaseTransition), mentorship.service.ts, enrollment API and form (completed 2026-04-01)
 - [ ] **Phase 15: Pipeline Board** - Kanban UI with dnd-kit, phase advance, team member filter, overdue and debtor indicators
 - [ ] **Phase 16: Student Profile** - Full student profile page, phase timeline, session log, session log form
 - [ ] **Phase 17: Daily Action View + Coordinator Overview** - Daily checklist with SLA rules, coordinator metrics, debtors list
@@ -315,7 +315,7 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 11. Portal Shell Reskin | v1.1 | 5/5 | Complete | 2026-03-25 |
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
 | 13. CEFR English Proficiency Test Engine | - | 2/3 | In progress | - |
-| 14. Data Foundation | v1.2 | 3/4 | In Progress|  |
+| 14. Data Foundation | v1.2 | 4/4 | Complete   | 2026-04-01 |
 | 15. Pipeline Board | v1.2 | 0/TBD | Not started | - |
 | 16. Student Profile | v1.2 | 0/TBD | Not started | - |
 | 17. Daily Action View + Coordinator Overview | v1.2 | 0/TBD | Not started | - |
