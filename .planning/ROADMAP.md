@@ -250,7 +250,7 @@ Plans:
   3. Ops team member can log a session against an enrolled student with session type (from a controlled dropdown), conductor (a User), date, and optional notes — and the session persists immediately
   4. Every phase advance writes a PhaseTransition row with from-phase, to-phase, timestamp, and triggered-by user inside a single database transaction — partial writes never occur
   5. The `/api/ops/*` routes reject requests from users without ADMIN or OPERATIONAL roles with 403; all data is scoped to the authenticated user's role at the query level, not post-filter
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
 
 ### Phase 15: Pipeline Board
@@ -263,8 +263,13 @@ Plans:
   3. Applying the "My students" filter hides all cards not assigned to the current user, and the URL reflects the active filter so the view is bookmarkable
   4. Student cards with a phase age exceeding the SLA threshold display a visible overdue indicator (amber or red) distinguishable from cards within SLA
   5. Student cards for customers with an overdue QuickBooks payment balance display a debtor flag badge alongside the student name
-**Plans**: TBD
+**Plans**: 3 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 15-01-PLAN.md — Pipeline API (GET /api/ops/pipeline) + Advance API (POST /api/ops/enrollments/[id]/advance)
+- [ ] 15-02-PLAN.md — Kanban board UI: columns, draggable cards, DragOverlay, overdue indicators, debtor badges, advance dialog
+- [ ] 15-03-PLAN.md — "My students" URL filter verification + human-verify checkpoint
 
 ### Phase 16: Student Profile
 **Goal**: An ops team member clicking on any student in the system sees a complete, chronological record of that student's journey — who they are, where they are in the program, every phase change, and every session
@@ -316,6 +321,6 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
 | 13. CEFR English Proficiency Test Engine | - | 2/3 | In progress | - |
 | 14. Data Foundation | v1.2 | 4/4 | Complete    | 2026-04-01 |
-| 15. Pipeline Board | v1.2 | 0/TBD | Not started | - |
+| 15. Pipeline Board | v1.2 | 0/3 | Not started | - |
 | 16. Student Profile | v1.2 | 0/TBD | Not started | - |
 | 17. Daily Action View + Coordinator Overview | v1.2 | 0/TBD | Not started | - |
