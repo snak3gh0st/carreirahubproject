@@ -35,21 +35,15 @@ export function StudentCard({ enrollment, slaDays, onAdvanceClick }: StudentCard
         .toUpperCase()
     : "?";
 
-  const borderColor = isOverdue
-    ? "border-l-red-500"
+  const slaColor = isOverdue
+    ? { bar: "bg-red-500", text: "text-red-600", dot: "bg-red-400" }
     : isApproachingSLA
-    ? "border-l-amber-400"
-    : "border-l-transparent";
+    ? { bar: "bg-amber-400", text: "text-amber-500", dot: "bg-amber-400" }
+    : { bar: "bg-gray-200", text: "text-gray-400", dot: "bg-gray-300" };
 
-  const ageColor = isOverdue
-    ? "text-red-600"
-    : isApproachingSLA
-    ? "text-amber-500"
-    : "text-gray-400";
+  const slaPercent = Math.min(Math.round((phaseAgeDays / slaDays) * 100), 100);
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-  };
+  const style = { transform: CSS.Translate.toString(transform) };
 
   return (
     <div
@@ -57,26 +51,26 @@ export function StudentCard({ enrollment, slaDays, onAdvanceClick }: StudentCard
       style={style}
       {...listeners}
       {...attributes}
-      className={`bg-white rounded-xl border border-gray-200 border-l-4 ${borderColor} p-3 shadow-sm cursor-grab active:cursor-grabbing select-none ${
-        isDragging ? "opacity-40" : ""
+      className={`bg-white rounded-xl border border-gray-200 p-3 shadow-sm cursor-grab active:cursor-grabbing select-none transition-shadow hover:shadow-md ${
+        isDragging ? "opacity-40 shadow-none" : ""
       }`}
     >
-      {/* Top row: name + debtor badge */}
-      <div className="flex items-start justify-between gap-1 mb-2">
-        <span className="text-sm font-medium text-gray-900 truncate leading-tight">
+      {/* Name + debtor badge */}
+      <div className="flex items-start justify-between gap-1 mb-2.5">
+        <span className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
           {enrollment.customer.name}
         </span>
         {isDebtor && (
-          <span className="flex-shrink-0 text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">
-            Devedor
+          <span className="flex-shrink-0 text-[9px] font-bold bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+            Débito
           </span>
         )}
       </div>
 
-      {/* Middle row: program badge + assignee */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Program + assignee */}
+      <div className="flex items-center justify-between mb-3">
         <span
-          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${
             enrollment.programType === "PASS"
               ? "bg-brand-verde/10 text-brand-verde"
               : "bg-brand-tangerina/10 text-brand-tangerina"
@@ -84,22 +78,38 @@ export function StudentCard({ enrollment, slaDays, onAdvanceClick }: StudentCard
         >
           {enrollment.programType}
         </span>
-        <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-600">
+        <div
+          title={enrollment.assignedTo.name ?? undefined}
+          className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center text-[9px] font-bold text-white"
+        >
           {assigneeInitials}
         </div>
       </div>
 
-      {/* Bottom row: phase age + advance button */}
+      {/* SLA progress bar */}
+      <div className="mb-2">
+        <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${slaColor.bar}`}
+            style={{ width: `${slaPercent}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Days + advance */}
       <div className="flex items-center justify-between">
-        <span className={`text-[11px] font-mono ${ageColor}`}>
-          {phaseAgeDays}d
-        </span>
+        <div className="flex items-center gap-1">
+          <span className={`w-1.5 h-1.5 rounded-full ${slaColor.dot}`} />
+          <span className={`text-[11px] font-mono font-medium ${slaColor.text}`}>
+            {phaseAgeDays}d / {slaDays}d
+          </span>
+        </div>
         <button
           onClick={(e) => {
             e.stopPropagation();
             onAdvanceClick(enrollment.id);
           }}
-          className="text-[11px] font-medium text-brand-verde hover:text-brand-verde/70 transition-colors"
+          className="text-[11px] font-semibold text-brand-verde hover:text-white hover:bg-brand-verde px-2 py-0.5 rounded-full transition-all"
         >
           Avançar →
         </button>

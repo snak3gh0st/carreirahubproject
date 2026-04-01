@@ -30,20 +30,35 @@ interface PhaseColumnProps {
 function PhaseColumn({ phase, enrollments, onAdvanceClick }: PhaseColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: phase.id });
 
+  const hasStudents = enrollments.length > 0;
+
   return (
     <div
       ref={setNodeRef}
-      className={`flex-shrink-0 w-52 bg-gray-50 rounded-xl p-3 transition-colors ${
-        isOver ? "bg-brand-verde/5 ring-2 ring-brand-verde/30" : ""
+      className={`flex-shrink-0 w-56 flex flex-col rounded-2xl border transition-all duration-150 ${
+        isOver
+          ? "border-brand-verde/40 bg-brand-verde/5 shadow-md"
+          : "border-gray-200 bg-white shadow-sm"
       }`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-xs font-display font-semibold text-gray-700 truncate">
+      {/* Column header */}
+      <div className="px-4 pt-4 pb-3 border-b border-gray-100 flex items-center justify-between gap-2">
+        <h3 className="text-xs font-display font-bold text-gray-700 truncate uppercase tracking-wider leading-tight">
           {phase.label}
         </h3>
-        <span className="text-xs text-gray-400 font-mono">{enrollments.length}</span>
+        <span
+          className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold ${
+            hasStudents
+              ? "bg-brand-verde text-white"
+              : "bg-gray-100 text-gray-400"
+          }`}
+        >
+          {enrollments.length}
+        </span>
       </div>
-      <div className="space-y-2 min-h-[4rem]">
+
+      {/* Cards */}
+      <div className="flex-1 p-3 space-y-2 min-h-[120px]">
         {enrollments.map((e) => (
           <StudentCard
             key={e.id}
@@ -52,6 +67,11 @@ function PhaseColumn({ phase, enrollments, onAdvanceClick }: PhaseColumnProps) {
             onAdvanceClick={onAdvanceClick}
           />
         ))}
+        {!hasStudents && (
+          <div className="h-16 flex items-center justify-center">
+            <span className="text-[11px] text-gray-300 select-none">Vazio</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -59,9 +79,9 @@ function PhaseColumn({ phase, enrollments, onAdvanceClick }: PhaseColumnProps) {
 
 function PipelineSkeleton() {
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
+    <div className="flex gap-3 overflow-x-auto pb-4">
       {Array.from({ length: 11 }).map((_, i) => (
-        <div key={i} className="flex-shrink-0 w-52 h-96 bg-gray-100 rounded-xl animate-pulse" />
+        <div key={i} className="flex-shrink-0 w-56 h-80 bg-white rounded-2xl border border-gray-200 animate-pulse" />
       ))}
     </div>
   );
@@ -135,7 +155,6 @@ export function PipelineBoard({ currentUserId }: PipelineBoardProps) {
     const targetPhase = phases.find((p) => p.id === targetPhaseId);
     if (!targetPhase) return;
 
-    // Only allow advance to adjacent next phase
     if (targetPhase.sortOrder !== currentPhase.sortOrder + 1) return;
 
     setPendingMove({
@@ -170,6 +189,8 @@ export function PipelineBoard({ currentUserId }: PipelineBoardProps) {
       })()
     : null;
 
+  const totalStudents = phases?.reduce((sum, p) => sum + p.enrollments.length, 0) ?? 0;
+
   if (isLoading) return <PipelineSkeleton />;
 
   if (isError || !phases) {
@@ -188,14 +209,19 @@ export function PipelineBoard({ currentUserId }: PipelineBoardProps) {
 
   return (
     <div>
-      {/* Filter toggle */}
-      <div className="mb-4">
+      {/* Toolbar */}
+      <div className="mb-5 flex items-center justify-between">
+        <p className="text-sm text-gray-500">
+          <span className="font-semibold text-brand-verde">{totalStudents}</span> aluno{totalStudents !== 1 ? "s" : ""} ativo{totalStudents !== 1 ? "s" : ""}
+          {" · "}
+          <span className="font-semibold text-brand-verde">{phases.length}</span> fases
+        </p>
         <button
           onClick={toggleFilter}
-          className={`text-sm border rounded-lg px-3 py-1.5 font-medium transition-colors ${
+          className={`text-xs font-semibold rounded-full px-4 py-1.5 transition-all border ${
             isMyStudents
-              ? "bg-brand-verde text-white border-brand-verde"
-              : "border-gray-300 text-gray-600 hover:border-brand-verde"
+              ? "bg-brand-verde text-white border-brand-verde shadow-sm"
+              : "border-gray-200 text-gray-600 hover:border-brand-verde hover:text-brand-verde bg-white"
           }`}
         >
           {isMyStudents ? "Todos os alunos" : "Meus alunos"}
@@ -207,7 +233,7 @@ export function PipelineBoard({ currentUserId }: PipelineBoardProps) {
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-6">
+        <div className="flex gap-3 overflow-x-auto pb-6" style={{ minHeight: "400px" }}>
           {phases.map((phase) => {
             const visibleEnrollments = isMyStudents
               ? phase.enrollments.filter((e) => e.assignedTo.id === currentUserId)
@@ -226,7 +252,7 @@ export function PipelineBoard({ currentUserId }: PipelineBoardProps) {
 
         <DragOverlay style={{ zIndex: 50 }}>
           {activeEnrollment ? (
-            <div className="rotate-2 shadow-xl">
+            <div className="rotate-2 shadow-2xl">
               <StudentCard
                 enrollment={activeEnrollment.enrollment}
                 slaDays={activeEnrollment.slaDays}
