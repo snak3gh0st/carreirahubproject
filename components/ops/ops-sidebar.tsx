@@ -10,6 +10,8 @@ import {
   GraduationCap,
   KanbanSquare,
   LogOut,
+  CalendarCheck,
+  LayoutList,
 } from "lucide-react";
 
 interface NavItem {
@@ -18,20 +20,25 @@ interface NavItem {
   icon: React.ElementType;
 }
 
-const navItems: NavItem[] = [
-  { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/ops/customers", label: "Clientes", icon: Users },
-  { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
-  { href: "/ops/pipeline", label: "Pipeline", icon: KanbanSquare },
-];
-
 interface OpsSidebarProps {
   userName?: string;
   userEmail?: string;
+  userRole?: string;
 }
 
-export function OpsSidebar({ userName = "User", userEmail = "" }: OpsSidebarProps) {
+export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }: OpsSidebarProps) {
   const pathname = usePathname();
+
+  const navItems: NavItem[] = [
+    { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/ops/daily", label: "Ações do Dia", icon: CalendarCheck },
+    { href: "/ops/customers", label: "Clientes", icon: Users },
+    { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
+    { href: "/ops/pipeline", label: "Pipeline", icon: KanbanSquare },
+    ...(userRole === "ADMIN"
+      ? [{ href: "/ops/coordinator", label: "Coordenador", icon: LayoutList }]
+      : []),
+  ];
 
   const isActive = (href: string) => {
     if (href === "/ops") return pathname === "/ops";

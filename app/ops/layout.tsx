@@ -31,7 +31,7 @@ export default async function OpsLayout({
 
   return (
     <div data-portal="ops" className="min-h-screen bg-gray-50">
-      <OpsSidebar userName={userName} userEmail={userEmail} />
+      <OpsSidebar userName={userName} userEmail={userEmail} userRole={userRole} />
       <main id="main-content" className="min-h-screen pl-60">
         {children}
       </main>
