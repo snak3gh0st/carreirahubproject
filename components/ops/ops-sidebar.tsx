@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Users,
   GraduationCap,
+  KanbanSquare,
   LogOut,
 } from "lucide-react";
 
@@ -21,6 +22,7 @@ const navItems: NavItem[] = [
   { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
   { href: "/ops/customers", label: "Clientes", icon: Users },
   { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
+  { href: "/ops/pipeline", label: "Pipeline", icon: KanbanSquare },
 ];
 
 interface OpsSidebarProps {
