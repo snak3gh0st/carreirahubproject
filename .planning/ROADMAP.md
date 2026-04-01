@@ -85,6 +85,10 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
+- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
+
+Plans:
 - [x] 03-01: End-to-end workflow orchestration with retry logic (completed 2026-01-15)
 - [x] 03-02: Customer data consistency and Finance dashboard (completed 2026-01-15)
 
@@ -110,6 +114,10 @@ Plans:
 **Status**: ✅ Complete (2026-01-29)
 **Depends on**: Phase 2
 **Plans**: 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 
 Plans:
 - [x] 05-01: Production credentials setup and configuration (completed 2026-01-28)
@@ -183,6 +191,10 @@ Plans:
   4. Tangerina used on a white or Creme background anywhere in the app produces a lint/audit warning — contrast rules are codified before any component work begins
   5. A JS constant file exports all brand hex values so Recharts and other non-CSS consumers can use them without hardcoding
 **Plans**: 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 **UI hint**: yes
 
 Plans:
@@ -219,7 +231,11 @@ Plans:
   2. Chart tooltips use Neue Montreal typography with Creme background and Verde border
   3. Focus rings on interactive elements reflect the brand primary color and pass the 3:1 UI contrast ratio requirement on both portal backgrounds
   4. Status badges (invoice status, contract status, user roles) pass WCAG AA 4.5:1 contrast when rendered on Creme or white surfaces
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 **UI hint**: yes
 
 ### Phase 13: CEFR English Proficiency Test Engine
@@ -280,7 +296,11 @@ Plans:
   2. A phase timeline section shows every PhaseTransition in chronological order with the date, from-phase label, to-phase label, and the name of the user who triggered each transition
   3. A session log section shows all sessions for the student in reverse-chronological order — paginated at 20 per page — with session type, conductor name, date, and notes visible per row
   4. The log session form on the profile page accepts a controlled session type, conductor selection, date, and optional notes and adds the new session to the log without a full page reload
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 **UI hint**: yes
 
 ### Phase 17: Daily Action View + Coordinator Overview
@@ -293,7 +313,11 @@ Plans:
   3. Coordinator role sees the daily action view without the per-user scope filter — all flagged students across all team members appear in a single list
   4. Coordinator metrics screen shows a count of active students per phase (phase distribution), and two lists: students with no session in the past 7 days and students with overdue QB payment balances
   5. Phase distribution count updates without a manual page refresh — React Query polling keeps the coordinator view current within 60 seconds
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
+- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 **UI hint**: yes
 
 ---
@@ -323,4 +347,4 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 14. Data Foundation | v1.2 | 4/4 | Complete    | 2026-04-01 |
 | 15. Pipeline Board | v1.2 | 3/3 | Complete    | 2026-04-01 |
 | 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-01 |
-| 17. Daily Action View + Coordinator Overview | v1.2 | 0/TBD | Not started | - |
+| 17. Daily Action View + Coordinator Overview | v1.2 | 0/2 | Not started | - |
