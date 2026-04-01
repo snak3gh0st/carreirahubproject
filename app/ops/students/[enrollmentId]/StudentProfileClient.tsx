@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { SessionSection } from "./SessionSection";
 import { ArrowLeft, User, GraduationCap, Clock } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -172,16 +173,3 @@ export function StudentProfileClient({
   );
 }
 
-// Placeholder — implemented in Plan 02
-function SessionSection(_props: {
-  enrollmentId: string;
-  initialSessions: ProfileData["enrollment"]["sessions"];
-  totalSessions: number;
-  currentUserId: string;
-}) {
-  return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6">
-      <p className="text-sm text-gray-400">Sessões — em construção (Plan 02)</p>
-    </div>
-  );
-}
