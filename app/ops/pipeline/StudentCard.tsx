@@ -3,6 +3,7 @@
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { differenceInDays } from "date-fns";
+import Link from "next/link";
 import type { EnrollmentCard } from "./usePipelineData";
 
 interface StudentCardProps {
@@ -57,9 +58,13 @@ export function StudentCard({ enrollment, slaDays, onAdvanceClick }: StudentCard
     >
       {/* Name + debtor badge */}
       <div className="flex items-start justify-between gap-1 mb-2.5">
-        <span className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
+        <Link
+          href={`/ops/students/${enrollment.id}`}
+          className="font-semibold text-gray-900 hover:text-brand-verde transition-colors truncate text-[13px] leading-tight"
+          onClick={(e) => e.stopPropagation()}
+        >
           {enrollment.customer.name}
-        </span>
+        </Link>
         {isDebtor && (
           <span className="flex-shrink-0 text-[9px] font-bold bg-red-50 text-red-500 border border-red-200 px-1.5 py-0.5 rounded-full uppercase tracking-wide">
             Débito
