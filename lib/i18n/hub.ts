@@ -132,6 +132,9 @@ const translations = {
     "status.inProgress": "In Progress",
     "status.processActive": "Your process is active",
     "status.completePreviousSteps": "Complete previous steps",
+    "status.mentorshipPhase": "Mentorship",
+    "status.awaitingEnrollment": "Awaiting enrollment by the team",
+    "status.currentPhaseLabel": "Current phase",
 
     // Documents page
     "documents.title": "Documents",
@@ -350,6 +353,9 @@ const translations = {
     "status.inProgress": "Em Andamento",
     "status.processActive": "Seu processo está ativo",
     "status.completePreviousSteps": "Complete as etapas anteriores",
+    "status.mentorshipPhase": "Mentoria",
+    "status.awaitingEnrollment": "Aguardando matrícula pela equipe",
+    "status.currentPhaseLabel": "Fase atual",
 
     // Documents page
     "documents.title": "Documentos",

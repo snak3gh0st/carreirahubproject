@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const { customerId } = auth;
 
     // Fetch all relevant data in parallel
-    const [contracts, invoices, formAssignments, placementTest] = await Promise.all([
+    const [contracts, invoices, formAssignments, placementTest, enrollment] = await Promise.all([
       prisma.contract.findMany({
         where: { customerId },
         select: { status: true, signedAt: true },
@@ -47,6 +47,10 @@ export async function GET(request: NextRequest) {
         where: { customerId },
         orderBy: { createdAt: "desc" },
         select: { displayLevel: true, cefrLevel: true },
+      }),
+      prisma.mentorshipEnrollment.findFirst({
+        where: { customerId, status: "ACTIVE" },
+        select: { currentPhase: { select: { label: true } } },
       }),
     ]);
 
@@ -116,15 +120,24 @@ export async function GET(request: NextRequest) {
       detailPt: testDone ? `Nível: ${placementTest.displayLevel} (${placementTest.cefrLevel})` : "Ainda não realizado",
     });
 
-    // Step 5: In Progress (all previous completed)
+    // Step 5: Mentorship — shows current pipeline phase when enrolled
     const allPriorDone = contractSigned && anyPaid && (onboardingDone === null || onboardingDone) && testDone;
+    const currentPhaseLabel = enrollment?.currentPhase?.label ?? null;
     steps.push({
-      id: "in-progress",
-      label: "In Progress",
-      labelPt: "Em Andamento",
-      status: allPriorDone ? "completed" : "pending",
-      detail: allPriorDone ? "All steps completed — your process is active" : "Complete previous steps",
-      detailPt: allPriorDone ? "Todas as etapas concluídas — seu processo está ativo" : "Complete as etapas anteriores",
+      id: "mentorship",
+      label: "Mentorship",
+      labelPt: "Mentoria",
+      status: currentPhaseLabel ? "current" : allPriorDone ? "current" : "pending",
+      detail: currentPhaseLabel
+        ? `Current phase: ${currentPhaseLabel}`
+        : allPriorDone
+        ? "Awaiting enrollment by the team"
+        : "Complete previous steps",
+      detailPt: currentPhaseLabel
+        ? `Fase atual: ${currentPhaseLabel}`
+        : allPriorDone
+        ? "Aguardando matrícula pela equipe"
+        : "Complete as etapas anteriores",
     });
 
     // Calculate overall progress

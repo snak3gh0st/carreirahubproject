@@ -23,7 +23,7 @@ interface Step {
 }
 
 export default async function HubStatusPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("hub-token")?.value;
   if (!token) redirect("/hub/login");
   const payload = getPayload(token);
@@ -33,11 +33,15 @@ export default async function HubStatusPage() {
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
   const customerId = payload.customerId;
 
-  const [contracts, invoices, formAssignments, placementTest] = await Promise.all([
+  const [contracts, invoices, formAssignments, placementTest, enrollment] = await Promise.all([
     prisma.contract.findMany({ where: { customerId }, select: { status: true, signedAt: true } }),
     prisma.invoice.findMany({ where: { customerId }, select: { status: true, paidAt: true } }),
     prisma.formAssignment.findMany({ where: { customerId }, select: { status: true } }),
     prisma.placementTest.findFirst({ where: { customerId }, orderBy: { createdAt: "desc" }, select: { displayLevel: true, cefrLevel: true } }),
+    prisma.mentorshipEnrollment.findFirst({
+      where: { customerId, status: "ACTIVE" },
+      select: { currentPhase: { select: { label: true } } },
+    }),
   ]);
 
   const contractSigned = contracts.some((c) => c.status === ContractStatus.SIGNED);
@@ -88,11 +92,16 @@ export default async function HubStatusPage() {
     icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
   });
 
+  const currentPhaseLabel = enrollment?.currentPhase?.label ?? null;
   steps.push({
-    id: "in-progress",
-    label: t(lang, "status.inProgress"),
-    status: allPriorDone ? "completed" : "pending",
-    detail: allPriorDone ? t(lang, "status.processActive") : t(lang, "status.completePreviousSteps"),
+    id: "mentorship",
+    label: t(lang, "status.mentorshipPhase"),
+    status: currentPhaseLabel ? "current" : allPriorDone ? "current" : "pending",
+    detail: currentPhaseLabel
+      ? `${t(lang, "status.currentPhaseLabel")}: ${currentPhaseLabel}`
+      : allPriorDone
+      ? t(lang, "status.awaitingEnrollment")
+      : t(lang, "status.completePreviousSteps"),
     icon: "M13 10V3L4 14h7v7l9-11h-7z",
   });
 
