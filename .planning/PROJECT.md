@@ -16,7 +16,7 @@ Complete Finance workflow automation — seamless integration between QuickBooks
 - Student pipeline board — all students, current phase, phase history, program type (Pass/Advanced)
 - Daily action view — per-team-member checklist of students needing attention today
 - Session management — log sessions (type, who conducted, date), surface upcoming sessions
-- Student profile — contact info, phase timeline, session history, notes, English test result
+- Student profile — contact info, phase timeline, session history, notes, English test result (Validated in Phase 16: student-profile)
 - Admin/coordinator view — cross-team overview, debtors check, phase distribution metrics
 
 ## Requirements
