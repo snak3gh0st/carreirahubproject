@@ -948,6 +948,7 @@ export class QuickbooksService {
       postalCode?: string;
       country?: string;
     };
+    emailStatus?: "NeedToSend" | "NotSet";  // Default: "NeedToSend". Use "NotSet" for scheduled installments.
   }): Promise<any> {
     // Build line items array, adding DiscountLineDetail if discount exists
     const invoiceLines: any[] = data.lineItems.map((item) => ({
@@ -994,7 +995,7 @@ export class QuickbooksService {
       BillEmail: {
         Address: data.customerEmail,  // SET EMAIL ON CREATION
       },
-      EmailStatus: "NeedToSend",  // Tell QB this needs to be sent
+      EmailStatus: data.emailStatus || "NeedToSend",
       AllowOnlineCreditCardPayment: true,
       AllowOnlineACHPayment: true,
       AllowOnlinePayPalPayment: true,

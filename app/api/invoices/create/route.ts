@@ -326,12 +326,20 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      // Determine email status BEFORE creating in QB so future installments stay invisible
+      const isInstallmentSeries = invoiceCountToCreate > 1;
+      const isEntryInvoice = entryAmount > 0 && i === 1;
+      const isFirstInstallment = i === 1;
+      const isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries;
+      const shouldSendEmail = isSingleInvoice || isEntryInvoice || isFirstInstallment;
+
       // Prepare QB invoice data with BillEmail - QB requires email on invoice for sending
       const qbInvoiceData: any = {
         customerId: qbCustomer.Id,
         customerEmail: customer.email, // REQUIRED - set email on invoice itself
         dueDate: invoiceDueDate,
         docNumber: invoiceNumber, // Custom professional invoice number
+        emailStatus: shouldSendEmail ? "NeedToSend" as const : "NotSet" as const,
         lineItems: (() => {
           // For installment invoices with discount: line item amounts are already post-discount.
           // We need to inflate them back to pre-discount values so QB can show Subtotal - Discount = Total.
@@ -397,21 +405,6 @@ export async function POST(request: NextRequest) {
       // invoiceNumber already set above with professional format
 
       console.log(`[INVOICE_CREATE] Invoice ${qbInvoice.Id} created in QB with status: ${qbInvoice.EmailStatus}`);
-
-      // Determine if this invoice should be emailed immediately
-      // LOGIC:
-      // - Single payment (a vista): ALWAYS send immediately
-      // - Entry invoice: Send immediately (customer needs to pay TODAY)
-      // - First installment (even without entry): Send immediately (first payment is due soon)
-      // - Subsequent installments: Schedule (cron sends 5 days before each due date)
-      const isInstallmentSeries = invoiceCountToCreate > 1;
-      const isEntryInvoice = entryAmount > 0 && i === 1;
-      const isFirstInstallment = i === 1;
-      const isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries;
-
-      // Single invoices, entry invoices, and first installment are always sent immediately.
-      // Only subsequent installments (future recurring payments) are scheduled via cron.
-      const shouldSendEmail = isSingleInvoice || isEntryInvoice || isFirstInstallment;
 
       console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
         isInstallmentSeries,
