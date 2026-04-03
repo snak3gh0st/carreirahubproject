@@ -57,11 +57,11 @@ Source: default 8-point scale. Touch target exception is WCAG 2.5.5.
 | Role | Size | Weight | Line Height | Font | Usage |
 |------|------|--------|-------------|------|-------|
 | Body | 14px (`text-sm`) | 400 (regular) | 1.5 | Neue Montreal | Form field labels, assignment status text, NPS comment textarea |
-| Label | 12px (`text-xs`) | 500 (medium) | 1.4 | Neue Montreal | Scale endpoint labels ("Not likely" / "Extremely likely"), metadata badges (status pill, date) |
+| Label | 12px (`text-xs`) | 600 (semibold) | 1.4 | Neue Montreal | Scale endpoint labels ("Not likely" / "Extremely likely"), metadata badges (status pill, date) |
 | Heading | 16px (`text-base`) | 600 (semibold) | 1.3 | Neue Montreal | Forms section heading in student profile ("Formulários"), NPS score display ("Score: 8/10") |
 | Display | 20px (`text-xl`) | 600 (semibold) | 1.2 | Neue Montreal | Section title on any standalone ops forms list page |
 
-Maximum 4 sizes, 2 weights (regular 400 and semibold 600). Medium 500 is used only for the scale endpoint labels, which are UI chrome not body copy — within the 2-weight constraint in spirit.
+Maximum 4 sizes, 2 weights: regular (400) and semibold (600).
 
 Source: matches existing ops portal files (`text-sm`, `text-xs`, semibold section labels confirmed in StudentProfileClient.tsx and SessionSection.tsx).
 
@@ -91,6 +91,16 @@ Pending form status badge: `bg-yellow-100 text-yellow-700` — using existing wa
 Assigned (not started) form status badge: `bg-gray-100 text-gray-600`.
 
 Source: brand.css, semantic.css, STATE.md WCAG constraint note for Tangerina.
+
+---
+
+## Visuals
+
+Primary focal point: the "Atribuir Formulário" Tangerina-filled button is the visual anchor of the FormsSection card. It carries the only accent-color fill in the section and draws the operator's eye to the single available action.
+
+Secondary focal point: the Verde section heading "Formulários" at the top of the FormsSection card. Verde at `text-base font-semibold` is the strongest text weight in the section and establishes the section boundary within the student profile.
+
+Tertiary focal point: the form row status badges (Pendente / Em Andamento / Concluído). Their background fills (yellow, gray, green) are the only non-neutral inline color in the rows and communicate completion state at a glance without requiring the operator to read the row text.
 
 ---
 
