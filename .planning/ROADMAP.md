@@ -177,6 +177,7 @@ Plans:
 - [x] **Phase 15: Pipeline Board** - Kanban UI with dnd-kit, phase advance, team member filter, overdue and debtor indicators (completed 2026-04-01)
 - [x] **Phase 16: Student Profile** - Full student profile page, phase timeline, session log, session log form (completed 2026-04-01)
 - [x] **Phase 17: Daily Action View + Coordinator Overview** - Daily checklist with SLA rules, coordinator metrics, debtors list (completed 2026-04-01)
+- [ ] **Phase 18: Client Surveys - Intake and NPS Forms** - Client intake surveys and NPS feedback forms
 
 ## Phase Details
 
@@ -319,6 +320,16 @@ Plans:
 - [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
 - [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 **UI hint**: yes
+
+### Phase 18: Client Surveys - Intake and NPS Forms
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 17
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 18 to break down)
 
 ---
 
