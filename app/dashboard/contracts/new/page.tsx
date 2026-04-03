@@ -37,6 +37,7 @@ interface Invoice {
   amount: string;
   status: string;
   description?: string | null;
+  dealId?: string | null;
   lineItems?: { description: string; quantity: number; unitPrice: number; amount: number }[] | null;
   installments?: {
     seriesId?: string;
@@ -546,13 +547,15 @@ export default function CreateContractPage() {
                   <SelectItem value="none">Nenhum serviço</SelectItem>
                   {(() => {
                     // Group invoices by series to show services, not individual invoices
+                    // Priority: seriesId → dealId → standalone
                     const seriesMap = new Map<string, Invoice[]>();
                     const standalone: Invoice[] = [];
                     filteredInvoices.forEach(inv => {
                       const seriesId = inv.installments?.seriesId;
-                      if (seriesId) {
-                        if (!seriesMap.has(seriesId)) seriesMap.set(seriesId, []);
-                        seriesMap.get(seriesId)!.push(inv);
+                      const groupKey = seriesId ?? (inv.dealId ? `deal:${inv.dealId}` : null);
+                      if (groupKey) {
+                        if (!seriesMap.has(groupKey)) seriesMap.set(groupKey, []);
+                        seriesMap.get(groupKey)!.push(inv);
                       } else {
                         standalone.push(inv);
                       }

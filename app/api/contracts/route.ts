@@ -274,11 +274,11 @@ export async function POST(request: NextRequest) {
 
     // Link all series invoices to this contract
     if (invoiceId) {
-      const invoice = await prisma.invoice.findUnique({
+      const invoiceForLink = await prisma.invoice.findUnique({
         where: { id: invoiceId },
-        select: { installments: true, customerId: true },
+        select: { installments: true, customerId: true, dealId: true },
       });
-      const installmentData = invoice?.installments as any;
+      const installmentData = invoiceForLink?.installments as any;
       if (installmentData?.seriesId) {
         // Link ALL invoices in this series
         await prisma.invoice.updateMany({
@@ -286,6 +286,12 @@ export async function POST(request: NextRequest) {
             customerId,
             installments: { path: ['seriesId'], equals: installmentData.seriesId },
           },
+          data: { contractId: contract.id },
+        });
+      } else if (invoiceForLink?.dealId) {
+        // Fallback: link all invoices from the same deal
+        await prisma.invoice.updateMany({
+          where: { customerId, dealId: invoiceForLink.dealId },
           data: { contractId: contract.id },
         });
       } else {
@@ -365,15 +371,26 @@ export async function POST(request: NextRequest) {
 
           // Installment/payment plan fields — individual tabLabels per line
           const installmentData = invoice.installments as any;
+
+          // Resolve full invoice series: by seriesId → dealId → single
+          let seriesInvoices: Awaited<ReturnType<typeof prisma.invoice.findMany>> = [];
           if (installmentData?.seriesId) {
-            // Fetch all invoices in this series to build payment plan
-            const seriesInvoices = await prisma.invoice.findMany({
+            seriesInvoices = await prisma.invoice.findMany({
               where: {
                 customerId,
                 installments: { path: ['seriesId'], equals: installmentData.seriesId },
               },
               orderBy: { dueDate: 'asc' },
             });
+          } else if ((invoice as any).dealId) {
+            seriesInvoices = await prisma.invoice.findMany({
+              where: { customerId, dealId: (invoice as any).dealId },
+              orderBy: { dueDate: 'asc' },
+            });
+          }
+
+          if (seriesInvoices.length > 1) {
+            // Use the resolved series — same building logic regardless of grouping key
 
             const totalAmount = seriesInvoices.reduce(
               (sum, inv) => sum + parseFloat(inv.amount.toString()), 0
@@ -423,7 +440,7 @@ export async function POST(request: NextRequest) {
               if (instData?.isFirstInstallment) {
                 customFields[`installment_desc_${num}`] = 'Entrada';
               } else {
-                const installmentNum = instData?.current ? instData.current - (entryInvoice ? 1 : 0) : idx;
+                const installmentNum = instData?.current ? instData.current - (entryInvoice ? 1 : 0) : idx + 1;
                 customFields[`installment_desc_${num}`] = `Parcela ${installmentNum}`;
               }
             });
