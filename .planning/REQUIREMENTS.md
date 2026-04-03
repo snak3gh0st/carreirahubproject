@@ -47,8 +47,8 @@
 ### Surveys & Feedback
 
 - [x] **SURV-01**: Form template registry includes NPS entry and NPS exit surveys that render through the existing Hub form system without adding new schema or a DB-backed template model
-- [ ] **SURV-02**: Enrolling a student auto-assigns the correct intake form for their program type and does not create duplicate pending/in-progress intake assignments
-- [ ] **SURV-03**: Ops team member can assign supported survey templates to a student directly from the Ops Hub profile without leaving the Ops portal
+- [x] **SURV-02**: Enrolling a student auto-assigns the correct intake form for their program type and does not create duplicate pending/in-progress intake assignments
+- [x] **SURV-03**: Ops team member can assign supported survey templates to a student directly from the Ops Hub profile without leaving the Ops portal
 - [ ] **SURV-04**: Student profile shows assigned forms, submission status, and completed NPS entry/exit scores for coordinator visibility
 
 ---
@@ -112,8 +112,8 @@
 | COORD-03 | Phase 17 | Complete |
 | COORD-04 | Phase 17 | Complete |
 | SURV-01 | Phase 18 | Complete |
-| SURV-02 | Phase 18 | Pending |
-| SURV-03 | Phase 18 | Pending |
+| SURV-02 | Phase 18 | Complete |
+| SURV-03 | Phase 18 | Complete |
 | SURV-04 | Phase 18 | Pending |
 
 **Coverage:**
