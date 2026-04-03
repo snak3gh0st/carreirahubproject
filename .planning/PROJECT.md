@@ -48,6 +48,8 @@ Complete Finance workflow automation — seamless integration between QuickBooks
 - [ ] Session logging (type, conductor, date)
 - [ ] Student profile with phase timeline and history
 - [ ] Admin/coordinator overview with metrics
+- ✓ Client intake surveys auto-assigned at enrollment (Validated in Phase 18: client-surveys-intake-and-nps-forms)
+- ✓ NPS entry/exit forms visible in Ops Hub student profile (Validated in Phase 18: client-surveys-intake-and-nps-forms)
 
 ### Out of Scope
 
@@ -139,4 +141,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 — Milestone v1.2 started (Ops Hub — Student Journey Management)*
+*Last updated: 2026-04-03 — Phase 18 complete (Client Surveys — Intake and NPS Forms)*
