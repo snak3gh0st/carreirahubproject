@@ -83,6 +83,8 @@ export class MentorshipService {
     const bastaoPhase = await prisma.mentorshipPhase.findUniqueOrThrow({
       where: { key: "bastao" },
     });
+    const intakeTemplateId =
+      programType === "PASS" ? "onboarding-pass" : "onboarding-career";
 
     // 3. Atomic: create enrollment + initial PhaseTransition in one transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -105,6 +107,24 @@ export class MentorshipService {
           triggeredById,
         },
       });
+
+      const existingIntake = await tx.formAssignment.findFirst({
+        where: {
+          customerId,
+          templateId: intakeTemplateId,
+          status: { not: "COMPLETED" },
+        },
+      });
+
+      if (!existingIntake) {
+        await tx.formAssignment.create({
+          data: {
+            templateId: intakeTemplateId,
+            customerId,
+            assignedById: triggeredById,
+          },
+        });
+      }
 
       return { enrollment, transition };
     });
