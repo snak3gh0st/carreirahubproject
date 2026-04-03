@@ -60,6 +60,7 @@ export default async function HubFormsPage() {
         <div className="space-y-4">
           {assignments.map((a) => {
             const tpl = FORM_TEMPLATES[a.templateId];
+            const title = lang === "pt-BR" ? tpl?.titlePt : tpl?.title;
             return (
               <Link
                 key={a.id}
@@ -68,7 +69,7 @@ export default async function HubFormsPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{tpl?.title || a.templateId}</h3>
+                    <h3 className="font-semibold text-gray-900">{title || a.templateId}</h3>
                     <p className="text-sm text-gray-400 mt-1">
                       {t(lang, "forms.assigned")} {new Date(a.assignedAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
                       {a.submission && ` \u00b7 ${t(lang, "forms.submitted")} ${new Date(a.submission.submittedAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric" })}`}

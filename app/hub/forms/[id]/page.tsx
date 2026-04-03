@@ -72,6 +72,9 @@ export default function HubFormFillPage() {
 
   const isReadOnly = assignment?.status === "COMPLETED";
   const isPt = lang === "pt-BR";
+  const templateTitle = isPt && template?.titlePt ? template.titlePt : template?.title;
+  const templateDescription =
+    isPt && template?.descriptionPt ? template.descriptionPt : template?.description;
 
   async function handleFileUpload(fieldId: string, file: File) {
     setUploading((prev) => ({ ...prev, [fieldId]: true }));
@@ -136,8 +139,8 @@ export default function HubFormFillPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{template.title}</h1>
-        <p className="text-gray-500 text-sm mt-1">{template.description}</p>
+        <h1 className="text-2xl font-bold text-gray-900">{templateTitle}</h1>
+        <p className="text-gray-500 text-sm mt-1">{templateDescription}</p>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
