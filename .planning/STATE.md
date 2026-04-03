@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
 status: executing
-stopped_at: Completed 17-02-PLAN.md
-last_updated: "2026-04-02T00:00:38.901Z"
-last_activity: 2026-04-02
+stopped_at: Completed 18-client-surveys-intake-and-nps-forms-01-PLAN.md
+last_updated: "2026-04-03T18:14:33.398Z"
+last_activity: 2026-04-03
 progress:
-  total_phases: 20
+  total_phases: 21
   completed_phases: 20
-  total_plans: 60
-  completed_plans: 62
-  percent: 0
+  total_plans: 63
+  completed_plans: 63
+  percent: 80
 ---
 
 # Project State
@@ -22,17 +22,17 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Give the Carreira USA support team a single operational workspace to track every student's journey phase, replacing ClickUp as the team's hub.
 
-**Current focus:** Phase 16 — student-profile
+**Current focus:** Phase 18 — client-surveys-intake-and-nps-forms
 
 ## Current Position
 
-Phase: 17
-Plan: Not started
-Status: Executing Phase 16
-Last activity: 2026-04-02
+Phase: 18 (client-surveys-intake-and-nps-forms) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-03
 
 ```
-Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4 phases)
+Progress: [████████░░] 80% (4/5 phases)
 ```
 
 ## Performance Metrics
@@ -79,6 +79,7 @@ Progress: [░░░░░░░░░░░░░░░░░░░░] 0% (0/4
 | Phase 17-daily-action-view-coordinator-overview P01 | 15 | 2 tasks | 5 files |
 | Phase 17-daily-action-view-coordinator-overview P02 | — | 2 tasks | — |
 | Phase 17 P02 | 12 | 2 tasks | 4 files |
+| Phase 18-client-surveys-intake-and-nps-forms P01 | 4 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -132,11 +133,17 @@ Recent decisions affecting current work:
 - [Phase 17]: SLA_DAYS_PER_PHASE=7 and SLA_WARNING_DAYS=2 as conservative defaults — calibrate after real usage
 - [Phase 17-02]: Coordinator page puts all data in single CoordinatorQueryProvider — one polling query renders all three sections for simplicity
 - [Phase 17-02]: Coordinator page uses single CoordinatorQueryProvider — one polling query renders all three sections for simplicity
+- [Phase 18]: Reuse the existing FormAssignment/FormSubmission infrastructure — no new schema and no DB-backed template definitions
+- [Phase 18]: NPS visibility lands on the student profile, not the coordinator dashboard; entry/exit templates share a single `npsScore` answer contract
+- [Phase 18]: Intake auto-assignment must be duplicate-safe for re-enrollment scenarios (no second pending onboarding form)
+- [Phase 18-client-surveys-intake-and-nps-forms]: NPS templates use existing scale field type with scaleMin:0 and scaleMax:10 — no custom nps field type introduced
+- [Phase 18-client-surveys-intake-and-nps-forms]: NPS_SCORE_FIELD = 'npsScore' is the single score contract exported for all downstream NPS extraction
 
 ### Roadmap Evolution
 
 - Phase 13 added: CEFR English Proficiency Test Engine — scientifically validated placement test with randomized question bank (100-200+ questions, A1-C2), adaptive scoring, no-repeat guarantee
 - Phases 14-17 added: v1.2 Ops Hub — Student Journey Management (2026-04-01)
+- Phase 18 added: Client Surveys - Intake and NPS Forms (2026-04-03)
 
 ### Blockers/Concerns
 
@@ -147,7 +154,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-01T18:41:53.353Z
-Stopped at: Completed 17-02-PLAN.md
+Last session: 2026-04-03T18:14:33.396Z
+Stopped at: Completed 18-client-surveys-intake-and-nps-forms-01-PLAN.md
 Resume file: None
-Next action: Complete Phase 17 Plan 02
+Next action: Manually verify Phase 18 flows and write 18-01/18-02/18-03 summaries

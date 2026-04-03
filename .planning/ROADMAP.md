@@ -323,13 +323,21 @@ Plans:
 
 ### Phase 18: Client Surveys - Intake and NPS Forms
 
-**Goal:** [To be planned]
-**Requirements**: TBD
+**Goal:** Extend the existing form system so intake surveys are auto-assigned at enrollment, ops can manage intake/NPS forms from the student profile, and NPS entry/exit feedback is visible in the Ops Hub without cross-portal navigation
+**Requirements**: SURV-01, SURV-02, SURV-03, SURV-04
 **Depends on:** Phase 17
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. `FORM_TEMPLATES` includes `nps-entry` and `nps-exit` using the existing `scale` field type and a shared `npsScore` field contract
+  2. `mentorshipService.createEnrollment()` auto-assigns the correct onboarding form (`onboarding-pass` or `onboarding-career`) and prevents duplicate non-completed intake assignments
+  3. `/ops/students/[enrollmentId]` shows a Forms section with current assignments, statuses, and an inline assign action that stays inside the Ops portal
+  4. Completed NPS entry/exit submissions surface on the student profile so coordinators can see scores without opening the Dashboard portal
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 18 to break down)
+- [x] 18-01-PLAN.md — Add NPS templates, shared score constants, and Hub PT/EN rendering support
+- [ ] 18-02-PLAN.md — Auto-assign intake on enrollment and add ops form assignment/data APIs
+- [ ] 18-03-PLAN.md — Extend the student profile with Forms section and NPS visibility
+**UI hint**: yes
 
 ---
 
@@ -338,7 +346,7 @@ Plans:
 **Execution Order:**
 v1.0 phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5 → 6 → 9
 v1.1 phases execute in numeric order: 10 → 11 → 12
-v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
+v1.2 phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -359,3 +367,4 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17
 | 15. Pipeline Board | v1.2 | 3/3 | Complete    | 2026-04-01 |
 | 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-02 |
 | 17. Daily Action View + Coordinator Overview | v1.2 | 2/2 | Complete    | 2026-04-01 |
+| 18. Client Surveys - Intake and NPS Forms | v1.2 | 1/3 | In Progress|  |
