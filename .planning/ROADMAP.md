@@ -177,7 +177,7 @@ Plans:
 - [x] **Phase 15: Pipeline Board** - Kanban UI with dnd-kit, phase advance, team member filter, overdue and debtor indicators (completed 2026-04-01)
 - [x] **Phase 16: Student Profile** - Full student profile page, phase timeline, session log, session log form (completed 2026-04-01)
 - [x] **Phase 17: Daily Action View + Coordinator Overview** - Daily checklist with SLA rules, coordinator metrics, debtors list (completed 2026-04-01)
-- [ ] **Phase 18: Client Surveys - Intake and NPS Forms** - Client intake surveys and NPS feedback forms
+- [x] **Phase 18: Client Surveys - Intake and NPS Forms** - Client intake surveys and NPS feedback forms (completed 2026-04-03)
 
 ## Phase Details
 
@@ -331,12 +331,12 @@ Plans:
   2. `mentorshipService.createEnrollment()` auto-assigns the correct onboarding form (`onboarding-pass` or `onboarding-career`) and prevents duplicate non-completed intake assignments
   3. `/ops/students/[enrollmentId]` shows a Forms section with current assignments, statuses, and an inline assign action that stays inside the Ops portal
   4. Completed NPS entry/exit submissions surface on the student profile so coordinators can see scores without opening the Dashboard portal
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 18-01-PLAN.md — Add NPS templates, shared score constants, and Hub PT/EN rendering support
 - [x] 18-02-PLAN.md — Auto-assign intake on enrollment and add ops form assignment/data APIs
-- [ ] 18-03-PLAN.md — Extend the student profile with Forms section and NPS visibility
+- [x] 18-03-PLAN.md — Extend the student profile with Forms section and NPS visibility
 **UI hint**: yes
 
 ---
@@ -367,4 +367,4 @@ v1.2 phases execute in numeric order: 14 → 15 → 16 → 17 → 18
 | 15. Pipeline Board | v1.2 | 3/3 | Complete    | 2026-04-01 |
 | 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-02 |
 | 17. Daily Action View + Coordinator Overview | v1.2 | 2/2 | Complete    | 2026-04-01 |
-| 18. Client Surveys - Intake and NPS Forms | v1.2 | 2/3 | In Progress|  |
+| 18. Client Surveys - Intake and NPS Forms | v1.2 | 3/3 | Complete   | 2026-04-03 |
