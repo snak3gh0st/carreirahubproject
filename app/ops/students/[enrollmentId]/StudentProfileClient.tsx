@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { FormsSection } from "./FormsSection";
 import { SessionSection } from "./SessionSection";
 import { ArrowLeft, User, GraduationCap, Clock } from "lucide-react";
 import Link from "next/link";
@@ -29,6 +30,13 @@ type ProfileData = {
       notes: string | null;
       conductor: { name: string };
     }>;
+    formAssignments: Array<{
+      id: string;
+      templateId: string;
+      status: string;
+      assignedAt: string;
+      submission: { id: string; submittedAt: string } | null;
+    }>;
   };
   placementTest: {
     cefrLevel: string;
@@ -37,6 +45,17 @@ type ProfileData = {
     createdAt: string;
   } | null;
   totalSessions: number;
+  availableFormTemplates: Array<{
+    id: string;
+    title: string;
+    titlePt: string;
+  }>;
+  npsResults: Array<{
+    templateId: string;
+    score: number;
+    comment: string | null;
+    submittedAt: string;
+  }>;
 };
 
 function useProfileData(enrollmentId: string) {
@@ -134,6 +153,19 @@ export function StudentProfileClient({
             </div>
           )}
         </div>
+
+        {data.npsResults.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {data.npsResults.map((result) => (
+              <span
+                key={result.templateId}
+                className="inline-flex items-center gap-1 rounded-full bg-brand-verde px-3 py-1 text-xs font-semibold text-brand-creme"
+              >
+                {result.templateId === "nps-entry" ? "NPS Entrada" : "NPS Saída"}: {result.score}/10
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Phase timeline */}
@@ -162,6 +194,14 @@ export function StudentProfileClient({
         )}
       </div>
 
+      <FormsSection
+        enrollmentId={enrollmentId}
+        customerId={enrollment.customer.id}
+        assignments={enrollment.formAssignments}
+        availableTemplates={data.availableFormTemplates}
+        npsResults={data.npsResults}
+      />
+
       {/* Session log + form — rendered by SessionSection (Plan 02) */}
       <SessionSection
         enrollmentId={enrollmentId}
@@ -172,4 +212,3 @@ export function StudentProfileClient({
     </div>
   );
 }
-
