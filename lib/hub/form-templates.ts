@@ -42,6 +42,9 @@ export interface FormTemplate {
   fields: FormField[];
 }
 
+export const NPS_SCORE_FIELD = "npsScore";
+export const NPS_TEMPLATE_IDS = ["nps-entry", "nps-exit"] as const;
+
 // ---------------------------------------------------------------------------
 // Templates
 // ---------------------------------------------------------------------------
@@ -300,6 +303,74 @@ export const FORM_TEMPLATES: Record<string, FormTemplate> = {
             labelPt: "Não, vou chamar o suporte para entender melhor!",
           },
         ],
+      },
+    ],
+  },
+
+  "nps-entry": {
+    id: "nps-entry",
+    title: "Carreira USA - Entry Feedback",
+    titlePt: "Carreira USA - Feedback de Entrada",
+    description:
+      "Help us understand your expectations at the start of your journey.",
+    descriptionPt:
+      "Nos ajude a entender suas expectativas no início da sua jornada.",
+    fields: [
+      {
+        id: NPS_SCORE_FIELD,
+        type: "scale",
+        label:
+          "How likely are you to recommend Carreira USA to a friend or colleague?",
+        labelPt:
+          "Qual a probabilidade de você recomendar a Carreira USA a um amigo ou colega?",
+        required: true,
+        scaleMin: 0,
+        scaleMax: 10,
+        scaleMinLabel: "0 - Not likely",
+        scaleMinLabelPt: "0 - Pouco provável",
+        scaleMaxLabel: "10 - Extremely likely",
+        scaleMaxLabelPt: "10 - Muito provável",
+      },
+      {
+        id: "npsComment",
+        type: "textarea",
+        label: "What is the main reason for your score?",
+        labelPt: "Qual é o principal motivo da sua nota?",
+        required: false,
+      },
+    ],
+  },
+
+  "nps-exit": {
+    id: "nps-exit",
+    title: "Carreira USA - Exit Feedback",
+    titlePt: "Carreira USA - Feedback de Saída",
+    description:
+      "Tell us how your journey felt now that this cycle is ending.",
+    descriptionPt:
+      "Conte para nós como foi sua jornada agora que este ciclo está terminando.",
+    fields: [
+      {
+        id: NPS_SCORE_FIELD,
+        type: "scale",
+        label:
+          "How likely are you to recommend Carreira USA to a friend or colleague?",
+        labelPt:
+          "Qual a probabilidade de você recomendar a Carreira USA a um amigo ou colega?",
+        required: true,
+        scaleMin: 0,
+        scaleMax: 10,
+        scaleMinLabel: "0 - Not likely",
+        scaleMinLabelPt: "0 - Pouco provável",
+        scaleMaxLabel: "10 - Extremely likely",
+        scaleMaxLabelPt: "10 - Muito provável",
+      },
+      {
+        id: "npsComment",
+        type: "textarea",
+        label: "What should we keep doing or improve?",
+        labelPt: "O que deveríamos continuar fazendo ou melhorar?",
+        required: false,
       },
     ],
   },
