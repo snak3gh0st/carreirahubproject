@@ -45,6 +45,7 @@ export default async function PaymentV2Page({ params }: Props) {
       dueDate={invoice.dueDate.toISOString()}
       isOverdue={daysUntilDue < 0}
       daysUntilDue={daysUntilDue}
+      onSuccessRedirect="/hub/login?payment=success"
     />
   );
 }

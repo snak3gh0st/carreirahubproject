@@ -28,6 +28,7 @@ const checkoutSchema = z.object({
   email: z.string().email(),
   programName: z.string().min(1),
   programSlug: z.string().min(1),
+  phone: z.string().optional().or(z.literal("")),
   amount: z.number().positive(),
   locale: z.enum(["en", "pt"]).default("pt"),
 });
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
         data: {
           email: normalizedEmail,
           name: data.name,
+          phone: data.phone || undefined,
           preferredLanguage: data.locale === "pt" ? "pt-BR" : "en",
         },
       });
@@ -98,8 +100,7 @@ export async function POST(request: NextRequest) {
         dueDate,
         status: InvoiceStatus.SENT,
         customerId: customer.id,
-        description: data.programName,
-        installments: {
+        lineItems: {
           items: [
             {
               description: data.programName,
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
           language: data.locale === "pt" ? "pt-BR" : "en",
         },
       });
-      console.log(`[PUBLIC_CHECKOUT] ClientUser created for ${normalizedEmail}`);
+      console.log(`[PUBLIC_CHECKOUT] ClientUser created for ${normalizedEmail} — temp password: ${tempPassword}`);
       // TODO: Send welcome email with temp password via notificationService
     }
 

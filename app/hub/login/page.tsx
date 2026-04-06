@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
 import { Logo } from "@/components/brand/Logo";
@@ -21,6 +21,9 @@ function getLangFromCookie(): Language {
 
 export default function HubLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const paymentSuccess = searchParams.get("payment") === "success";
+  const nextUrl = searchParams.get("next") || "/hub";
   // Login page: user is not yet authenticated, so there may be no token.
   // Default to "en"; after login the JWT will carry the language.
   const [lang] = useState<Language>(() => {
@@ -62,11 +65,12 @@ export default function HubLoginPage() {
       }
 
       if (data.mustResetPw) {
-        router.push(`/hub/set-password?token=${data.resetToken}`);
+        const resetNext = nextUrl !== "/hub" ? `&next=${encodeURIComponent(nextUrl)}` : "";
+        router.push(`/hub/set-password?token=${data.resetToken}${resetNext}`);
         return;
       }
 
-      window.location.href = "/hub";
+      window.location.href = nextUrl;
     } catch {
       setError(t(lang, "errors.connectionError"));
     } finally {
@@ -84,6 +88,14 @@ export default function HubLoginPage() {
           </h1>
           <p className="text-white/60 text-sm mt-2">{t(lang, "login.loginSubtitle")}</p>
         </div>
+
+        {paymentSuccess && (
+          <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800 text-center">
+            {lang === "pt-BR"
+              ? "Pagamento realizado com sucesso! Acesse seu portal abaixo."
+              : "Payment successful! Log in below to access your client portal."}
+          </div>
+        )}
 
         <div className="bg-brand-creme rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
