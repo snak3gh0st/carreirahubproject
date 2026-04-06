@@ -21,13 +21,11 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log("[AUTH] Missing credentials");
+          // removed debug log
           return null;
         }
 
         try {
-          console.log("[AUTH] Attempting login for:", credentials.email);
-
           // Query otimizada - selecionar campos necessários
           // Note: password field selection wrapped in try-catch for backward compatibility
           // (password column may not exist on all database deployments)
@@ -47,7 +45,6 @@ export const authOptions: NextAuthOptions = {
             });
           } catch (selectError) {
             // If password field doesn't exist, select without it
-            console.warn("[AUTH] Password field not available, retrying without it");
             user = await prisma.user.findUnique({
               where: { email: credentials.email },
               select: {
@@ -60,34 +57,14 @@ export const authOptions: NextAuthOptions = {
             });
           }
 
-          if (!user) {
-            console.log("[AUTH] User not found:", credentials.email);
-            return null;
-          }
+          if (!user || !user.active || !user.password) return null;
 
-          if (!user.active) {
-            console.log("[AUTH] User is not active:", credentials.email);
-            return null;
-          }
-
-          // Check if user has a password set
-          if (!user.password) {
-            console.log("[AUTH] User has no password set:", credentials.email);
-            return null;
-          }
-
-          // Verify password with bcrypt
           const passwordValid = await authService.verifyPassword(
             credentials.password,
             user.password
           );
 
-          if (!passwordValid) {
-            console.log("[AUTH] Invalid password for:", credentials.email);
-            return null;
-          }
-
-          console.log("[AUTH] Login successful for:", credentials.email, "Role:", user.role);
+          if (!passwordValid) return null;
 
           return {
             id: user.id,
@@ -104,9 +81,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user }) {
-      // Adicionar dados do usuário ao token apenas no primeiro login
       if (user) {
-        console.log("[AUTH] JWT callback - Adding user to token:", user.email);
         token.id = user.id;
         token.role = (user as any).role;
         token.email = user.email;
@@ -115,8 +90,6 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      // Adicionar dados do token à sessão
-      console.log("[AUTH] Session callback - Creating session for:", token.email);
       if (session.user && token) {
         (session.user as any).id = token.id as string;
         (session.user as any).role = token.role as string;

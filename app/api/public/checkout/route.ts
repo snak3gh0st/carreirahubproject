@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
           language: data.locale === "pt" ? "pt-BR" : "en",
         },
       });
-      console.log(`[PUBLIC_CHECKOUT] ClientUser created for ${normalizedEmail} — temp password: ${tempPassword}`);
+      console.log(`[PUBLIC_CHECKOUT] ClientUser created for ${normalizedEmail}`);
       // TODO: Send welcome email with temp password via notificationService
     }
 
