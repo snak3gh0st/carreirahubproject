@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
     const invoiceNumber = generateInvoiceNumber({
       customerName: customer.name,
       serviceName: data.programName,
+      installmentType: 'single',
+      amount: data.amount,
     });
 
     const now = new Date();

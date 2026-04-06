@@ -148,7 +148,7 @@ export const authOptions: NextAuthOptions = {
       },
     },
   },
-  debug: process.env.NODE_ENV !== 'production', // Enable debug mode only in development
+  debug: false,
 };
 
 /**

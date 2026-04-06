@@ -9,6 +9,7 @@ export default function HubSetPasswordPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const nextUrl = searchParams.get("next") || "/hub";
 
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -38,12 +39,17 @@ export default function HubSetPasswordPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        // Token already used (e.g. browser back after success) — just go to login
+        if (res.status === 400) {
+          window.location.href = "/hub/login";
+          return;
+        }
         setError(data.error || "Failed to set password. The link may have expired.");
         return;
       }
 
-      // Auto-login: the API sets the cookie, go straight to dashboard
-      window.location.href = "/hub";
+      // Auto-login: the API sets the cookie, go straight to destination
+      window.location.href = nextUrl;
     } catch {
       setError("Connection error. Please try again.");
     } finally {
