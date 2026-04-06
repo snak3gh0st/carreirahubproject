@@ -22,7 +22,7 @@ function getLangFromCookie(): Language {
 export default function HubLoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const paymentSuccess = searchParams.get("payment") === "success";
+  const accountCreated = searchParams.get("account") === "created";
   const nextUrl = searchParams.get("next") || "/hub";
   // Login page: user is not yet authenticated, so there may be no token.
   // Default to "en"; after login the JWT will carry the language.
@@ -89,11 +89,11 @@ export default function HubLoginPage() {
           <p className="text-white/60 text-sm mt-2">{t(lang, "login.loginSubtitle")}</p>
         </div>
 
-        {paymentSuccess && (
-          <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-800 text-center">
+        {accountCreated && (
+          <div className="mb-4 px-4 py-3 border rounded-xl text-sm text-center" style={{ backgroundColor: "#FFF8E8", borderColor: "#E1C19B", color: "#2F443F" }}>
             {lang === "pt-BR"
-              ? "Pagamento realizado com sucesso! Acesse seu portal abaixo."
-              : "Payment successful! Log in below to access your client portal."}
+              ? "✓ Sua conta foi criada! Entre abaixo para acessar sua fatura e finalizar o pagamento."
+              : "✓ Your account is ready! Log in below to view your invoice and complete your payment."}
           </div>
         )}
 

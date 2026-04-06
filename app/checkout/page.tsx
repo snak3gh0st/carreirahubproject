@@ -49,7 +49,7 @@ function CheckoutForm() {
 
       // Redirect to login with next pointing to the portal pay page
       const next = encodeURIComponent(`/hub/pay/${data.invoiceId}`);
-      window.location.href = `/hub/login?payment=success&next=${next}`;
+      window.location.href = `/hub/login?account=created&next=${next}`;
     } catch {
       setError(isPt ? "Erro de conexão. Tente novamente." : "Connection error. Please try again.");
       setLoading(false);
