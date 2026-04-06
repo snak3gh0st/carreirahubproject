@@ -4,6 +4,7 @@ import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 import { generateTempPassword, hashPassword } from "@/lib/hub-auth";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
+import { emailService } from "@/lib/services/email.service";
 
 export const dynamic = "force-dynamic";
 
@@ -135,7 +136,15 @@ export async function POST(request: NextRequest) {
         },
       });
       console.log(`[PUBLIC_CHECKOUT] ClientUser created for ${normalizedEmail}`);
-      // TODO: Send welcome email with temp password via notificationService
+      const baseUrl = process.env.NEXTAUTH_URL || "https://carreirausa.sigmaintel.io";
+      const loginUrl = `${baseUrl}/hub/login?account=created&next=${encodeURIComponent(`/hub/pay/${invoice.id}`)}`;
+      emailService.sendWelcomeWithTempPassword({
+        customerName: customer.name,
+        email: normalizedEmail,
+        tempPassword,
+        loginUrl,
+        locale: data.locale === "pt" ? "pt-BR" : "en",
+      }).catch((err) => console.error("[PUBLIC_CHECKOUT] Welcome email failed:", err));
     }
 
     // 4. Return payment URL

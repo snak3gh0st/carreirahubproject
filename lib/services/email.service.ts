@@ -403,6 +403,86 @@ export class EmailService {
       html,
     });
   }
+  async sendWelcomeWithTempPassword(data: {
+    customerName: string;
+    email: string;
+    tempPassword: string;
+    loginUrl: string;
+    locale?: string;
+  }): Promise<boolean> {
+    const isPt = data.locale === "pt-BR" || data.locale === "pt";
+    const firstName = data.customerName.split(" ")[0];
+
+    const html = isPt ? `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 40px 0;">
+  <div style="max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+    <div style="background: #2F443F; padding: 40px 40px 32px; text-align: center;">
+      <h1 style="color: #FFF8E8; font-size: 26px; margin: 0; font-weight: 700;">Bem-vindo(a) à Carreira USA</h1>
+      <p style="color: rgba(255,248,232,0.7); margin: 8px 0 0; font-size: 15px;">Seu portal do cliente está pronto</p>
+    </div>
+    <div style="padding: 36px 40px;">
+      <p style="color: #2F443F; font-size: 16px; margin: 0 0 20px;">Olá, ${firstName}!</p>
+      <p style="color: #444; font-size: 15px; line-height: 1.6; margin: 0 0 28px;">
+        Sua conta foi criada com sucesso. Use as credenciais abaixo para acessar seu portal e finalizar o pagamento da sua fatura.
+      </p>
+      <div style="background: #FFF8E8; border: 1px solid #E1C19B; border-radius: 12px; padding: 24px; margin-bottom: 28px;">
+        <p style="margin: 0 0 8px; font-size: 13px; color: #6B6358; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Seu acesso temporário</p>
+        <p style="margin: 0 0 4px; font-size: 15px; color: #2F443F;"><strong>E-mail:</strong> ${data.email}</p>
+        <p style="margin: 0; font-size: 15px; color: #2F443F;"><strong>Senha temporária:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 8px; border-radius: 4px; border: 1px solid #E1C19B;">${data.tempPassword}</span></p>
+      </div>
+      <p style="color: #666; font-size: 13px; margin: 0 0 28px;">Você será solicitado(a) a criar uma senha definitiva no primeiro acesso.</p>
+      <div style="text-align: center;">
+        <a href="${data.loginUrl}" style="display: inline-block; background: #FF8142; color: #fff; font-weight: 700; font-size: 16px; padding: 14px 40px; border-radius: 12px; text-decoration: none;">Acessar Portal →</a>
+      </div>
+    </div>
+    <div style="border-top: 1px solid #f0ebe3; padding: 20px 40px; text-align: center;">
+      <p style="color: #aaa; font-size: 12px; margin: 0;">Carreira USA · carreirausa.com</p>
+    </div>
+  </div>
+</body>
+</html>` : `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="font-family: 'Helvetica Neue', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 40px 0;">
+  <div style="max-width: 520px; margin: 0 auto; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+    <div style="background: #2F443F; padding: 40px 40px 32px; text-align: center;">
+      <h1 style="color: #FFF8E8; font-size: 26px; margin: 0; font-weight: 700;">Welcome to Carreira USA</h1>
+      <p style="color: rgba(255,248,232,0.7); margin: 8px 0 0; font-size: 15px;">Your client portal is ready</p>
+    </div>
+    <div style="padding: 36px 40px;">
+      <p style="color: #2F443F; font-size: 16px; margin: 0 0 20px;">Hi, ${firstName}!</p>
+      <p style="color: #444; font-size: 15px; line-height: 1.6; margin: 0 0 28px;">
+        Your account has been created. Use the credentials below to access your portal and complete your invoice payment.
+      </p>
+      <div style="background: #FFF8E8; border: 1px solid #E1C19B; border-radius: 12px; padding: 24px; margin-bottom: 28px;">
+        <p style="margin: 0 0 8px; font-size: 13px; color: #6B6358; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Your temporary access</p>
+        <p style="margin: 0 0 4px; font-size: 15px; color: #2F443F;"><strong>Email:</strong> ${data.email}</p>
+        <p style="margin: 0; font-size: 15px; color: #2F443F;"><strong>Temporary password:</strong> <span style="font-family: monospace; background: #fff; padding: 2px 8px; border-radius: 4px; border: 1px solid #E1C19B;">${data.tempPassword}</span></p>
+      </div>
+      <p style="color: #666; font-size: 13px; margin: 0 0 28px;">You will be asked to set a permanent password on first login.</p>
+      <div style="text-align: center;">
+        <a href="${data.loginUrl}" style="display: inline-block; background: #FF8142; color: #fff; font-weight: 700; font-size: 16px; padding: 14px 40px; border-radius: 12px; text-decoration: none;">Access Portal →</a>
+      </div>
+    </div>
+    <div style="border-top: 1px solid #f0ebe3; padding: 20px 40px; text-align: center;">
+      <p style="color: #aaa; font-size: 12px; margin: 0;">Carreira USA · carreirausa.com</p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    return this.sendEmail({
+      to: data.email,
+      subject: isPt
+        ? "Bem-vindo(a) à Carreira USA — Acesse seu portal"
+        : "Welcome to Carreira USA — Access your portal",
+      html,
+    });
+  }
 }
 
 // Export singleton
