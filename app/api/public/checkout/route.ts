@@ -32,7 +32,32 @@ const checkoutSchema = z.object({
   locale: z.enum(["en", "pt"]).default("pt"),
 });
 
+const ALLOWED_ORIGINS = [
+  "http://localhost:3001",
+  "https://carreirausa.com",
+  "https://www.carreirausa.com",
+];
+
+function corsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+}
+
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get("origin");
+  const cors = corsHeaders(origin);
+
   try {
     const body = await request.json();
     const data = checkoutSchema.parse(body);
@@ -120,20 +145,20 @@ export async function POST(request: NextRequest) {
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
       },
-      { status: 201 }
+      { status: 201, headers: cors }
     );
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Invalid data", details: error.flatten().fieldErrors },
-        { status: 400 }
+        { status: 400, headers: cors }
       );
     }
 
     console.error("[PUBLIC_CHECKOUT] Error:", error);
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
-      { status: 500 }
+      { status: 500, headers: cors }
     );
   }
 }
