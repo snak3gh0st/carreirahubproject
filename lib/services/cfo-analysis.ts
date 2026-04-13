@@ -24,6 +24,15 @@ export interface CfoAnalysisInput {
   aging90Plus: number;
   cashProjection30Day: number;
   patternAlerts: string[];
+  // Expense data (from QB reports, may be 0 if not loaded)
+  totalExpenses: number;
+  netIncome: number;
+  marginPct: number;
+  burnRate: number;
+  cashOnHand: number;
+  runwayMonths: number;
+  topExpenseCategory: string;
+  topExpenseAmount: number;
   dateRangeLabel: string;
 }
 
@@ -57,6 +66,11 @@ ${input.worstOverdue ? `- Worst overdue: ${input.worstOverdue.customer} — $${i
 - AR aging 90+ days: $${input.aging90Plus.toLocaleString()}
 - Cash flow 30-day projection: $${input.cashProjection30Day.toLocaleString()}
 ${input.patternAlerts.length > 0 ? `- Payment pattern alerts: ${input.patternAlerts.join("; ")}` : "- No payment pattern alerts"}
+${input.totalExpenses > 0 ? `- Total Expenses: $${input.totalExpenses.toLocaleString()}
+- Net Income: $${input.netIncome.toLocaleString()} (margin: ${input.marginPct.toFixed(1)}%)
+- Burn Rate: $${input.burnRate.toLocaleString()}/month
+- Cash on Hand: $${input.cashOnHand.toLocaleString()} (runway: ${input.runwayMonths.toFixed(1)} months)
+- Top expense: ${input.topExpenseCategory} at $${input.topExpenseAmount.toLocaleString()}` : "- Expense data: not available from QuickBooks"}
 
 Write the briefing and recommendations as JSON.`;
 
