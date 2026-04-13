@@ -4,6 +4,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { startOfMonth, subMonths, subDays, startOfYear, format, differenceInDays } from "date-fns";
 import { evaluateCfoRules, CfoFacts } from "@/lib/services/cfo-rules";
 import { getCachedCfoInsight, CfoAnalysisInput } from "@/lib/services/cfo-analysis";
+import { parseProfitAndLoss, parseBalanceSheet } from "@/lib/services/qb-report-parser";
 import {
   FinancialBIResponse,
   KPIMetric,
@@ -13,6 +14,7 @@ import {
   ArCollectionsData,
   CashFlowData,
   CustomerAnalysisData,
+  PnLData,
 } from "@/lib/types/financial-bi";
 
 // ── Date range helpers ──────────────────────────────────────
@@ -419,6 +421,81 @@ async function queryCustomerAnalysis(): Promise<CustomerAnalysisData> {
   return { concentration, topCustomers, segments, ltv: { average, median, trend: [] } };
 }
 
+// ── P&L from QB report cache ────────────────────────────────
+
+async function queryPnL(startDate: Date, endDate: Date): Promise<PnLData | null> {
+  try {
+    const [pnlCache, bsCache] = await Promise.all([
+      prisma.qbReportCache.findUnique({ where: { reportType: "ProfitAndLoss" } }),
+      prisma.qbReportCache.findUnique({ where: { reportType: "BalanceSheet" } }),
+    ]);
+
+    if (!pnlCache) return null;
+
+    const pnlData = JSON.parse(pnlCache.data);
+    const bsData = bsCache ? JSON.parse(bsCache.data) : null;
+
+    const { income, cogs, expenses, netIncome, months } = pnlData;
+
+    const monthlyPnL = months.map((month: string, i: number) => ({
+      month,
+      revenue: income.byMonth[i] || 0,
+      cogs: cogs.byMonth[i] || 0,
+      expenses: expenses.byMonth[i] || 0,
+      netIncome: netIncome.byMonth[i] || 0,
+    }));
+
+    const totalExp = expenses.total || 1;
+    const expensesByCategory = (expenses.byCategory || []).slice(0, 15).map(
+      (c: { category: string; amount: number }) => ({
+        category: c.category,
+        amount: c.amount,
+        pctOfTotal: (c.amount / totalExp) * 100,
+      })
+    );
+
+    const recentMonths = monthlyPnL.slice(-3);
+    const burnRate = recentMonths.length > 0
+      ? recentMonths.reduce((sum: number, m: { expenses: number; cogs: number }) => sum + m.expenses + m.cogs, 0) / recentMonths.length
+      : 0;
+
+    const prevMonths = monthlyPnL.slice(-6, -3);
+    const prevBurnRate = prevMonths.length > 0
+      ? prevMonths.reduce((sum: number, m: { expenses: number; cogs: number }) => sum + m.expenses + m.cogs, 0) / prevMonths.length
+      : 0;
+
+    const cashOnHand = bsData?.bankAccounts?.total || 0;
+    const runwayMonths = burnRate > 0 ? cashOnHand / burnRate : 99;
+
+    const halfPoint = Math.floor(months.length / 2);
+    const prevRevenue = monthlyPnL.slice(0, halfPoint).reduce((s: number, m: { revenue: number }) => s + m.revenue, 0);
+    const prevExpenses = monthlyPnL.slice(0, halfPoint).reduce((s: number, m: { expenses: number; cogs: number }) => s + m.expenses + m.cogs, 0);
+
+    const marginPct = income.total > 0 ? (netIncome.total / income.total) * 100 : 0;
+
+    return {
+      totalRevenue: income.total,
+      totalExpenses: expenses.total + cogs.total,
+      totalCOGS: cogs.total,
+      netIncome: netIncome.total,
+      marginPct,
+      prevTotalRevenue: prevRevenue,
+      prevTotalExpenses: prevExpenses,
+      prevNetIncome: prevRevenue - prevExpenses,
+      monthlyPnL,
+      expensesByCategory,
+      burnRate,
+      prevBurnRate,
+      cashOnHand,
+      runwayMonths,
+      lastFetchedAt: pnlCache.fetchedAt.toISOString(),
+    };
+  } catch (error) {
+    console.error("[FINANCIAL-BI] Error reading QB report cache:", error);
+    return null;
+  }
+}
+
 // ── Public API ──────────────────────────────────────────────
 
 export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisInput> {
@@ -482,6 +559,10 @@ export async function getFinancialBIData(
   if (tab === "all" || tab === "ar") { tabQueries.push(queryArCollections(startDate, endDate)); tabKeys.push("arCollections"); }
   if (tab === "all" || tab === "cashflow") { tabQueries.push(queryCashFlow()); tabKeys.push("cashFlow"); }
   if (tab === "all" || tab === "customers") { tabQueries.push(queryCustomerAnalysis()); tabKeys.push("customerAnalysis"); }
+  if (tab === "all" || tab === "pnl") {
+    tabQueries.push(queryPnL(startDate, endDate));
+    tabKeys.push("pnl");
+  }
 
   const tabResults = await Promise.all(tabQueries);
   const tabData: Record<string, unknown> = {};
