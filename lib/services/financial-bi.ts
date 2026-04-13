@@ -563,18 +563,30 @@ export async function getFinancialBIData(
 ): Promise<FinancialBIResponse> {
   const { startDate, endDate } = getDateRange(dateRange, from, to);
   const prev = getPreviousPeriod(startDate, endDate);
-  const summaryRaw = await querySummary(startDate, endDate, prev.startDate, prev.endDate);
+  // Run summary, overdue invoices, cached insight, and tab queries ALL in parallel
+  const tabQueries: Promise<unknown>[] = [];
+  const tabKeys: string[] = [];
+  if (tab === "all" || tab === "revenue") { tabQueries.push(queryRevenueGrowth(startDate, endDate)); tabKeys.push("revenueGrowth"); }
+  if (tab === "all" || tab === "ar") { tabQueries.push(queryArCollections(startDate, endDate)); tabKeys.push("arCollections"); }
+  if (tab === "all" || tab === "cashflow") { tabQueries.push(queryCashFlow()); tabKeys.push("cashFlow"); }
+  if (tab === "all" || tab === "customers") { tabQueries.push(queryCustomerAnalysis()); tabKeys.push("customerAnalysis"); }
+  if (tab === "all" || tab === "pnl") { tabQueries.push(queryPnL(startDate, endDate)); tabKeys.push("pnl"); }
 
-  const overdueForRules = await prisma.invoice.findMany({
-    where: { status: "OVERDUE" },
-    include: { customer: { select: { name: true } } },
-  });
+  const [summaryRaw, overdueForRules, cachedInsight, ...tabResults] = await Promise.all([
+    querySummary(startDate, endDate, prev.startDate, prev.endDate),
+    prisma.invoice.findMany({
+      where: { status: "OVERDUE" },
+      include: { customer: { select: { name: true } } },
+    }),
+    getCachedCfoInsight(dateRange),
+    ...tabQueries,
+  ]);
 
   const facts: CfoFacts = {
     collectionRate: summaryRaw._raw.collectionRate, prevCollectionRate: summaryRaw._raw.prevCollectionRate,
     collectionRateChange: summaryRaw._raw.collectionRateChange, outstandingAR: summaryRaw.outstandingAR.value,
     topThreeConcentration: summaryRaw._raw.topThreeConcentration, topThreeClients: summaryRaw._raw.topThreeClients,
-    overdueInvoices: overdueForRules.map((inv) => ({
+    overdueInvoices: overdueForRules.map((inv: any) => ({
       id: inv.id, customerName: inv.customer.name, amount: Number(inv.amount),
       daysOverdue: differenceInDays(new Date(), inv.dueDate), remindersSent: inv.paymentReminderCount,
       autoChargeStatus: inv.autoChargeStatus,
@@ -589,21 +601,6 @@ export async function getFinancialBIData(
     burnRate: 0,
     prevBurnRate: 0,
   };
-
-  const cachedInsight = await getCachedCfoInsight(dateRange);
-
-  const tabQueries: Promise<unknown>[] = [];
-  const tabKeys: string[] = [];
-  if (tab === "all" || tab === "revenue") { tabQueries.push(queryRevenueGrowth(startDate, endDate)); tabKeys.push("revenueGrowth"); }
-  if (tab === "all" || tab === "ar") { tabQueries.push(queryArCollections(startDate, endDate)); tabKeys.push("arCollections"); }
-  if (tab === "all" || tab === "cashflow") { tabQueries.push(queryCashFlow()); tabKeys.push("cashFlow"); }
-  if (tab === "all" || tab === "customers") { tabQueries.push(queryCustomerAnalysis()); tabKeys.push("customerAnalysis"); }
-  if (tab === "all" || tab === "pnl") {
-    tabQueries.push(queryPnL(startDate, endDate));
-    tabKeys.push("pnl");
-  }
-
-  const tabResults = await Promise.all(tabQueries);
   const tabData: Record<string, unknown> = {};
   tabKeys.forEach((key, i) => { tabData[key] = tabResults[i]; });
 

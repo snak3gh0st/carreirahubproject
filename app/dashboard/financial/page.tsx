@@ -24,6 +24,15 @@ const tabs = [
 
 type TabKey = (typeof tabs)[number]["key"];
 
+function buildParams(dateRange: string, from?: string, to?: string, tab?: string) {
+  const params = new URLSearchParams();
+  params.set("dateRange", dateRange);
+  if (tab) params.set("tab", tab);
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  return params.toString();
+}
+
 export default function FinancialDashboardPage() {
   const searchParams = useSearchParams();
   const dateRange = (searchParams.get("dateRange") || "last30") as DateRangeParam;
@@ -32,29 +41,37 @@ export default function FinancialDashboardPage() {
 
   const [activeTab, setActiveTab] = useState<TabKey>("revenue");
 
-  const { data, isLoading, isError, refetch } = useQuery<FinancialBIResponse>({
-    queryKey: ["financial-bi", dateRange, from, to],
+  // Phase 1: Summary + PnL (for KPI row) + active tab — fast initial load
+  const { data: summaryData, isLoading: summaryLoading, isError, refetch } = useQuery<FinancialBIResponse>({
+    queryKey: ["financial-bi-summary", dateRange, from, to, activeTab],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      params.set("dateRange", dateRange);
-      params.set("tab", "all");
-      if (from) params.set("from", from);
-      if (to) params.set("to", to);
-      const res = await fetch(`/api/analytics/financial-bi?${params.toString()}`);
+      // Fetch summary + pnl (for KPI cards) + active tab in one call
+      const tabsToFetch = activeTab === "pnl" ? "pnl" : activeTab;
+      const res = await fetch(`/api/analytics/financial-bi?${buildParams(dateRange, from, to, tabsToFetch)}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
   });
 
-  const handleExport = async (format: "pdf" | "excel") => {
-    const params = new URLSearchParams();
-    params.set("dateRange", dateRange);
-    if (from) params.set("from", from);
-    if (to) params.set("to", to);
+  // If active tab is not pnl, also fetch pnl data in background for KPI row
+  const { data: pnlData } = useQuery<FinancialBIResponse>({
+    queryKey: ["financial-bi-pnl", dateRange, from, to],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/financial-bi?${buildParams(dateRange, from, to, "pnl")}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: activeTab !== "pnl", // Only fetch separately if not already the active tab
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
+  });
 
+  const data = summaryData;
+  const pnl = data?.pnl || pnlData?.pnl;
+
+  const handleExport = async (format: "pdf" | "excel") => {
     const endpoint = format === "pdf"
-      ? `/api/analytics/financial-bi/export/pdf?${params}`
-      : `/api/analytics/financial-bi/export/excel?${params}`;
+      ? `/api/analytics/financial-bi/export/pdf?${buildParams(dateRange, from, to)}`
+      : `/api/analytics/financial-bi/export/excel?${buildParams(dateRange, from, to)}`;
 
     const res = await fetch(endpoint);
     if (!res.ok) return;
@@ -116,7 +133,7 @@ export default function FinancialDashboardPage() {
         </div>
       </div>
 
-      {isLoading && (
+      {summaryLoading && (
         <div className="space-y-4">
           <div className="h-24 animate-pulse rounded-xl bg-gray-200" />
           <div className="h-16 animate-pulse rounded-xl bg-gray-200" />
@@ -136,9 +153,9 @@ export default function FinancialDashboardPage() {
             outstandingAR={data.summary.outstandingAR}
             mrr={data.summary.mrr}
             topClientConcentration={data.summary.topClientConcentration}
-            totalExpenses={data.pnl?.totalExpenses}
-            netIncome={data.pnl?.netIncome}
-            cashOnHand={data.pnl?.cashOnHand}
+            totalExpenses={pnl?.totalExpenses}
+            netIncome={pnl?.netIncome}
+            cashOnHand={pnl?.cashOnHand}
           />
           <MiniChartRow
             revenueTrend={data.summary.revenueTrendMini}
@@ -167,6 +184,13 @@ export default function FinancialDashboardPage() {
             {activeTab === "cashflow" && data.cashFlow && <CashFlowTab data={data.cashFlow} />}
             {activeTab === "customers" && data.customerAnalysis && <CustomerAnalysisTab data={data.customerAnalysis} />}
             {activeTab === "pnl" && data.pnl && <PnlExpensesTab data={data.pnl} />}
+
+            {/* Tab loading state */}
+            {summaryLoading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-tangerina border-t-transparent" />
+              </div>
+            )}
           </div>
         </>
       )}
