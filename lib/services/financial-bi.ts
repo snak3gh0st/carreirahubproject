@@ -511,7 +511,7 @@ export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisIn
   });
   const worst = overdueInvoices[0];
 
-  return {
+  const result: CfoAnalysisInput = {
     revenue: summary.revenue.value, revenueChangePct: summary._raw.revenueChangePct,
     collectionRate: summary._raw.collectionRate, prevCollectionRate: summary._raw.prevCollectionRate,
     outstandingAR: summary.outstandingAR.value, mrr: summary.mrr.value,
@@ -521,7 +521,41 @@ export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisIn
     worstOverdue: worst ? { customer: worst.customer.name, amount: Number(worst.amount), days: differenceInDays(new Date(), worst.dueDate) } : null,
     aging90Plus: summary._raw.aging90PlusAmount, cashProjection30Day: summary._raw.thirtyDayCashProjection,
     patternAlerts: [], dateRangeLabel: dateRange,
+    totalExpenses: 0,
+    netIncome: 0,
+    marginPct: 0,
+    burnRate: 0,
+    cashOnHand: 0,
+    runwayMonths: 0,
+    topExpenseCategory: "",
+    topExpenseAmount: 0,
   };
+
+  // Try to enrich with P&L data
+  try {
+    const pnlCache = await prisma.qbReportCache.findUnique({ where: { reportType: "ProfitAndLoss" } });
+    const bsCache = await prisma.qbReportCache.findUnique({ where: { reportType: "BalanceSheet" } });
+    if (pnlCache) {
+      const pnl = JSON.parse(pnlCache.data);
+      const bs = bsCache ? JSON.parse(bsCache.data) : null;
+      const totalExp = (pnl.expenses?.total || 0) + (pnl.cogs?.total || 0);
+      const topCat = pnl.expenses?.byCategory?.[0];
+      Object.assign(result, {
+        totalExpenses: totalExp,
+        netIncome: pnl.netIncome?.total || 0,
+        marginPct: pnl.income?.total > 0 ? ((pnl.netIncome?.total || 0) / pnl.income.total) * 100 : 0,
+        burnRate: totalExp / Math.max(pnl.months?.length || 1, 1),
+        cashOnHand: bs?.bankAccounts?.total || 0,
+        runwayMonths: totalExp > 0 ? (bs?.bankAccounts?.total || 0) / (totalExp / Math.max(pnl.months?.length || 1, 1)) : 0,
+        topExpenseCategory: topCat?.category || "",
+        topExpenseAmount: topCat?.amount || 0,
+      });
+    }
+  } catch (e) {
+    // Ignore — expense data is optional
+  }
+
+  return result;
 }
 
 export async function getFinancialBIData(
@@ -547,11 +581,16 @@ export async function getFinancialBIData(
     })),
     customerPaymentTrends: [], thirtyDayCashProjection: summaryRaw._raw.thirtyDayCashProjection,
     aging90PlusAmount: summaryRaw._raw.aging90PlusAmount, prevAging90PlusAmount: summaryRaw._raw.prevAging90PlusAmount,
+    expenseGrowthPct: 0,
+    revenueGrowthPct: 0,
+    netMarginPct: 0,
+    prevNetMarginPct: 0,
+    cashRunwayMonths: 99,
+    burnRate: 0,
+    prevBurnRate: 0,
   };
 
-  const [actions, cachedInsight] = await Promise.all([
-    evaluateCfoRules(facts), getCachedCfoInsight(dateRange),
-  ]);
+  const cachedInsight = await getCachedCfoInsight(dateRange);
 
   const tabQueries: Promise<unknown>[] = [];
   const tabKeys: string[] = [];
@@ -567,6 +606,26 @@ export async function getFinancialBIData(
   const tabResults = await Promise.all(tabQueries);
   const tabData: Record<string, unknown> = {};
   tabKeys.forEach((key, i) => { tabData[key] = tabResults[i]; });
+
+  // Enrich facts with P&L data if available
+  const pnlResult = tabData.pnl as PnLData | null;
+  if (pnlResult) {
+    facts.expenseGrowthPct = pnlResult.prevTotalExpenses > 0
+      ? ((pnlResult.totalExpenses - pnlResult.prevTotalExpenses) / pnlResult.prevTotalExpenses) * 100
+      : 0;
+    facts.revenueGrowthPct = pnlResult.prevTotalRevenue > 0
+      ? ((pnlResult.totalRevenue - pnlResult.prevTotalRevenue) / pnlResult.prevTotalRevenue) * 100
+      : 0;
+    facts.netMarginPct = pnlResult.marginPct;
+    facts.prevNetMarginPct = pnlResult.prevTotalRevenue > 0
+      ? ((pnlResult.prevNetIncome) / pnlResult.prevTotalRevenue) * 100
+      : 0;
+    facts.cashRunwayMonths = pnlResult.runwayMonths;
+    facts.burnRate = pnlResult.burnRate;
+    facts.prevBurnRate = pnlResult.prevBurnRate;
+  }
+
+  const actions = await evaluateCfoRules(facts);
 
   const { _raw, _lastQbSync, ...summary } = summaryRaw;
 
