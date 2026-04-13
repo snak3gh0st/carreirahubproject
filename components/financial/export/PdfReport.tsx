@@ -114,6 +114,43 @@ export function PdfReport({ data, dateRange }: PdfReportProps) {
           </>
         )}
 
+        {data.pnl && (
+          <>
+            <Text style={styles.sectionTitle}>Profit & Loss Summary</Text>
+            <View style={styles.kpiRow}>
+              {[
+                { label: "Revenue", value: formatCurrency(data.pnl.totalRevenue) },
+                { label: "Expenses", value: formatCurrency(data.pnl.totalExpenses) },
+                { label: "Net Income", value: formatCurrency(data.pnl.netIncome) },
+                { label: "Margin", value: `${data.pnl.marginPct.toFixed(1)}%` },
+                { label: "Burn Rate", value: `${formatCurrency(data.pnl.burnRate)}/mo` },
+                { label: "Cash", value: formatCurrency(data.pnl.cashOnHand) },
+              ].map((item) => (
+                <View key={item.label} style={styles.kpiCard}>
+                  <Text style={styles.kpiLabel}>{item.label}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: "bold" }}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={{ fontSize: 10, fontWeight: "bold", marginTop: 10, marginBottom: 5 }}>Top Expense Categories</Text>
+            <View>
+              <View style={styles.tableHeader}>
+                <Text style={{ ...styles.tableHeaderCell, flex: 2 }}>Category</Text>
+                <Text style={styles.tableHeaderCell}>Amount</Text>
+                <Text style={styles.tableHeaderCell}>% of Total</Text>
+              </View>
+              {data.pnl.expensesByCategory.slice(0, 8).map((c) => (
+                <View key={c.category} style={styles.tableRow}>
+                  <Text style={{ ...styles.tableCell, flex: 2 }}>{c.category}</Text>
+                  <Text style={styles.tableCell}>{formatCurrency(c.amount)}</Text>
+                  <Text style={styles.tableCell}>{c.pctOfTotal.toFixed(1)}%</Text>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         <Text style={styles.footer}>Carreira AI Hub — Confidential Financial Report — {new Date().toLocaleDateString()}</Text>
       </Page>
     </Document>

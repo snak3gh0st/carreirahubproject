@@ -110,6 +110,35 @@ export async function GET(request: NextRequest) {
       custSheet.getColumn("totalPaid").numFmt = "$#,##0.00";
     }
 
+    // Sheet 6: Profit & Loss
+    if (data.pnl) {
+      const pnlSheet = workbook.addWorksheet("Profit & Loss");
+      pnlSheet.columns = [
+        { header: "Month", key: "month", width: 15 },
+        { header: "Revenue", key: "revenue", width: 15 },
+        { header: "COGS", key: "cogs", width: 15 },
+        { header: "Expenses", key: "expenses", width: 15 },
+        { header: "Net Income", key: "netIncome", width: 15 },
+      ];
+      data.pnl.monthlyPnL.forEach((m) => pnlSheet.addRow(m));
+      ["revenue", "cogs", "expenses", "netIncome"].forEach((col) => {
+        pnlSheet.getColumn(col).numFmt = "$#,##0.00";
+      });
+
+      pnlSheet.addRow({});
+      pnlSheet.addRow({ month: "EXPENSE CATEGORIES" });
+      if (data.pnl.expensesByCategory) {
+        data.pnl.expensesByCategory.forEach((c) => {
+          pnlSheet.addRow({ month: c.category, revenue: c.amount });
+        });
+      }
+
+      pnlSheet.addRow({});
+      pnlSheet.addRow({ month: "Burn Rate (monthly)", revenue: data.pnl.burnRate });
+      pnlSheet.addRow({ month: "Cash on Hand", revenue: data.pnl.cashOnHand });
+      pnlSheet.addRow({ month: "Runway (months)", revenue: data.pnl.runwayMonths });
+    }
+
     // Style headers
     workbook.eachSheet((sheet) => {
       const headerRow = sheet.getRow(1);
