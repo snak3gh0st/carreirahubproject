@@ -356,6 +356,18 @@ model Payment {
   @@map("payments")
 }
 
+model CfoInsight {
+  id              String   @id @default(cuid())
+  briefing        String   @db.Text
+  recommendations String   @db.Text
+  dataSnapshot    String   @db.Text
+  dateRange       String
+  generatedAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@map("cfo_insights")
+}
+
 model Contract {
   id                   String         @id @default(uuid())
   docusign_env_id      String?        @unique
