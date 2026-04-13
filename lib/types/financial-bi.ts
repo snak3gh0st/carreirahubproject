@@ -89,6 +89,34 @@ export interface CustomerAnalysisData {
   };
 }
 
+export interface PnLData {
+  totalRevenue: number;
+  totalExpenses: number;
+  totalCOGS: number;
+  netIncome: number;
+  marginPct: number;
+  prevTotalRevenue: number;
+  prevTotalExpenses: number;
+  prevNetIncome: number;
+  monthlyPnL: Array<{
+    month: string;
+    revenue: number;
+    cogs: number;
+    expenses: number;
+    netIncome: number;
+  }>;
+  expensesByCategory: Array<{
+    category: string;
+    amount: number;
+    pctOfTotal: number;
+  }>;
+  burnRate: number;
+  prevBurnRate: number;
+  cashOnHand: number;
+  runwayMonths: number;
+  lastFetchedAt: string;
+}
+
 export interface FinancialBIResponse {
   summary: FinancialBISummary;
   cfoInsight: CfoInsightData;
@@ -96,6 +124,7 @@ export interface FinancialBIResponse {
   arCollections?: ArCollectionsData;
   cashFlow?: CashFlowData;
   customerAnalysis?: CustomerAnalysisData;
+  pnl?: PnLData;
   meta: {
     lastQbSync: string;
     dateRange: { from: string; to: string };
@@ -103,5 +132,5 @@ export interface FinancialBIResponse {
   };
 }
 
-export type TabParam = "all" | "revenue" | "ar" | "cashflow" | "customers";
+export type TabParam = "all" | "revenue" | "ar" | "cashflow" | "customers" | "pnl";
 export type DateRangeParam = "last7" | "last30" | "last90" | "thisYear" | "allTime" | "custom";

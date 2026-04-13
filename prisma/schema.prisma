@@ -368,6 +368,17 @@ model CfoInsight {
   @@map("cfo_insights")
 }
 
+model QbReportCache {
+  id          String   @id @default(cuid())
+  reportType  String   @unique
+  data        String   @db.Text
+  parameters  String
+  fetchedAt   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@map("qb_report_cache")
+}
+
 model Contract {
   id                   String         @id @default(uuid())
   docusign_env_id      String?        @unique
