@@ -80,7 +80,7 @@ Write the briefing and recommendations as JSON.`;
       recommendations: parsed.recommendations || [],
     };
   } catch (error) {
-    integrationLogger.error("CFO_ANALYSIS", "generate", error);
+    integrationLogger.logError("CFO_ANALYSIS", "generate", error instanceof Error ? error : String(error));
     return {
       briefing: "AI analysis temporarily unavailable. Rule-based insights are shown below.",
       recommendations: [],

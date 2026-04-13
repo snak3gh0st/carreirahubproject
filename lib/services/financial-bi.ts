@@ -84,7 +84,7 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
     prisma.payment.findMany({ where: { paymentDate: { gte: subMonths(new Date(), 12) } }, select: { paymentDate: true, amount: true } }),
     prisma.invoice.findMany({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }, select: { id: true, amount: true, dueDate: true, customerId: true } }),
     prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 10 }),
-    prisma.systemConfig.findUnique({ where: { id: "system" }, select: { lastQuickbooksSyncAt: true } }),
+    prisma.systemConfig.findUnique({ where: { id: "system" }, select: { last_qb_sync: true } }),
   ]);
 
   const revenue = Number(paidAgg._sum.amountPaid || 0);
@@ -172,8 +172,9 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
       prevAging90PlusAmount: 0, totalInvoiced, revenue,
       revenueChangePct: prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0,
       mrr, agingInvoices,
+      thirtyDayCashProjection: mrr,
     },
-    _lastQbSync: systemConfig?.lastQuickbooksSyncAt?.toISOString() || null,
+    _lastQbSync: systemConfig?.last_qb_sync?.toISOString() || null,
   };
 }
 

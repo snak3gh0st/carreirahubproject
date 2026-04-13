@@ -11,6 +11,7 @@ import {
   CreditCard,
   FileSignature,
   BarChart3,
+  TrendingUp,
   LogOut,
   HeadphonesIcon,
   GraduationCap,
@@ -63,6 +64,12 @@ const mainNavItems: NavItem[] = [
     label: "Insights",
     icon: BarChart3,
     roles: ["ADMIN", "OPERATIONAL", "FINANCE"],
+  },
+  {
+    href: "/dashboard/financial",
+    label: "Financial",
+    icon: TrendingUp,
+    roles: ["ADMIN", "FINANCE"],
   },
   {
     href: "/dashboard/support",
