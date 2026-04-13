@@ -2220,6 +2220,32 @@ export class QuickbooksService {
       throw error;
     }
   }
+
+  /**
+   * Fetch Profit and Loss Report from QuickBooks
+   */
+  async getProfitAndLossReport(startDate: string, endDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      summarize_column_by: "Month",
+      minorversion: "73",
+    });
+    return this.request(`/reports/ProfitAndLoss?${params.toString()}`);
+  }
+
+  /**
+   * Fetch Balance Sheet Report from QuickBooks
+   */
+  async getBalanceSheetReport(asOfDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      date: asOfDate,
+      minorversion: "73",
+    });
+    return this.request(`/reports/BalanceSheet?${params.toString()}`);
+  }
 }
 
 export const quickbooksService = new QuickbooksService();
