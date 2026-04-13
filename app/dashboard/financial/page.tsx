@@ -11,6 +11,7 @@ import { RevenueGrowthTab } from "@/components/financial/tabs/RevenueGrowthTab";
 import { ArCollectionsTab } from "@/components/financial/tabs/ArCollectionsTab";
 import { CashFlowTab } from "@/components/financial/tabs/CashFlowTab";
 import { CustomerAnalysisTab } from "@/components/financial/tabs/CustomerAnalysisTab";
+import { PnlExpensesTab } from "@/components/financial/tabs/PnlExpensesTab";
 import { useState } from "react";
 
 const tabs = [
@@ -18,6 +19,7 @@ const tabs = [
   { key: "ar", label: "AR & Collections" },
   { key: "cashflow", label: "Cash Flow" },
   { key: "customers", label: "Customer Analysis" },
+  { key: "pnl", label: "P&L & Expenses" },
 ] as const;
 
 type TabKey = (typeof tabs)[number]["key"];
@@ -134,6 +136,9 @@ export default function FinancialDashboardPage() {
             outstandingAR={data.summary.outstandingAR}
             mrr={data.summary.mrr}
             topClientConcentration={data.summary.topClientConcentration}
+            totalExpenses={data.pnl?.totalExpenses}
+            netIncome={data.pnl?.netIncome}
+            cashOnHand={data.pnl?.cashOnHand}
           />
           <MiniChartRow
             revenueTrend={data.summary.revenueTrendMini}
@@ -161,6 +166,7 @@ export default function FinancialDashboardPage() {
             {activeTab === "ar" && data.arCollections && <ArCollectionsTab data={data.arCollections} />}
             {activeTab === "cashflow" && data.cashFlow && <CashFlowTab data={data.cashFlow} />}
             {activeTab === "customers" && data.customerAnalysis && <CustomerAnalysisTab data={data.customerAnalysis} />}
+            {activeTab === "pnl" && data.pnl && <PnlExpensesTab data={data.pnl} />}
           </div>
         </>
       )}

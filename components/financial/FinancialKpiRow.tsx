@@ -8,6 +8,9 @@ interface FinancialKpiRowProps {
   outstandingAR: KPIMetric;
   mrr: KPIMetric;
   topClientConcentration: ConcentrationMetric;
+  totalExpenses?: number;
+  netIncome?: number;
+  cashOnHand?: number;
 }
 
 function formatCurrency(value: number): string {
@@ -36,12 +39,24 @@ function KpiCard({ title, metric, fmt }: { title: string; metric: KPIMetric; fmt
 
 export function FinancialKpiRow(props: FinancialKpiRowProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+    <div className={`grid grid-cols-2 gap-3 ${props.totalExpenses !== undefined ? "md:grid-cols-4 lg:grid-cols-7" : "md:grid-cols-3 lg:grid-cols-5"}`}>
       <KpiCard title="Revenue (Collected)" metric={props.revenue} fmt="currency" />
       <KpiCard title="Collection Rate" metric={props.collectionRate} fmt="percent" />
       <KpiCard title="Outstanding AR" metric={props.outstandingAR} fmt="currency" />
       <KpiCard title="MRR" metric={props.mrr} fmt="currency" />
       <KpiCard title="Top 3 Concentration" metric={props.topClientConcentration} fmt="percent" />
+      {props.totalExpenses !== undefined && (
+        <div className="rounded-lg border border-gray-100 bg-white p-3 text-center">
+          <div className="text-[10px] uppercase text-gray-500">Expenses</div>
+          <div className="mt-1 text-xl font-extrabold text-error-600">{formatCurrency(props.totalExpenses)}</div>
+        </div>
+      )}
+      {props.netIncome !== undefined && (
+        <div className={`rounded-lg border bg-white p-3 text-center ${props.netIncome >= 0 ? "border-gray-100" : "border-red-200"}`}>
+          <div className="text-[10px] uppercase text-gray-500">Net Income</div>
+          <div className={`mt-1 text-xl font-extrabold ${props.netIncome >= 0 ? "text-success-600" : "text-error-600"}`}>{formatCurrency(props.netIncome)}</div>
+        </div>
+      )}
     </div>
   );
 }
