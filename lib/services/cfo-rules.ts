@@ -28,6 +28,14 @@ export interface CfoFacts {
   thirtyDayCashProjection: number;
   aging90PlusAmount: number;
   prevAging90PlusAmount: number;
+  // Expense fields (from QB reports, may be 0 if not loaded)
+  expenseGrowthPct: number;
+  revenueGrowthPct: number;
+  netMarginPct: number;
+  prevNetMarginPct: number;
+  cashRunwayMonths: number;
+  burnRate: number;
+  prevBurnRate: number;
 }
 
 const rules: RuleProperties[] = [
@@ -81,6 +89,61 @@ const rules: RuleProperties[] = [
     event: {
       type: "WATCH",
       params: { rule: "aging-90-plus-growing" },
+    },
+  },
+  {
+    name: "expense-outpacing-revenue",
+    priority: 7,
+    conditions: {
+      all: [
+        { fact: "expenseGrowthPct", operator: "greaterThan", value: 0 },
+        { fact: "revenueGrowthPct", operator: "greaterThanInclusive", value: 0 },
+      ],
+    },
+    event: {
+      type: "WATCH",
+      params: { rule: "expense-outpacing-revenue" },
+    },
+  },
+  {
+    name: "margin-compression",
+    priority: 8,
+    conditions: {
+      all: [
+        { fact: "netMarginPct", operator: "lessThan", value: 100 },
+      ],
+    },
+    event: {
+      type: "WATCH",
+      params: { rule: "margin-compression" },
+    },
+  },
+  {
+    name: "low-runway",
+    priority: 10,
+    conditions: {
+      all: [
+        { fact: "cashRunwayMonths", operator: "lessThan", value: 3 },
+        { fact: "cashRunwayMonths", operator: "greaterThan", value: 0 },
+      ],
+    },
+    event: {
+      type: "URGENT",
+      params: { rule: "low-runway" },
+    },
+  },
+  {
+    name: "burn-rate-spike",
+    priority: 7,
+    conditions: {
+      all: [
+        { fact: "burnRate", operator: "greaterThan", value: 0 },
+        { fact: "prevBurnRate", operator: "greaterThan", value: 0 },
+      ],
+    },
+    event: {
+      type: "WATCH",
+      params: { rule: "burn-rate-spike" },
     },
   },
 ];
@@ -159,6 +222,45 @@ function buildRuleActions(events: Array<{ type: string; params: { rule: string }
             severity: "WATCH",
             title: "Stale receivables growing",
             description: `AR 90+ days is $${facts.aging90PlusAmount.toLocaleString()}, up ${growth.toFixed(0)}% vs prior period. Review for potential write-offs.`,
+          });
+        }
+        break;
+      }
+      case "expense-outpacing-revenue": {
+        if (facts.expenseGrowthPct > facts.revenueGrowthPct) {
+          actions.push({
+            severity: "WATCH",
+            title: "Expenses growing faster than revenue",
+            description: `Expenses grew ${facts.expenseGrowthPct.toFixed(1)}% while revenue grew ${facts.revenueGrowthPct.toFixed(1)}%. Margin compression risk.`,
+          });
+        }
+        break;
+      }
+      case "margin-compression": {
+        const marginDrop = facts.prevNetMarginPct - facts.netMarginPct;
+        if (marginDrop > 5) {
+          actions.push({
+            severity: "WATCH",
+            title: "Net margin declining",
+            description: `Net margin dropped from ${facts.prevNetMarginPct.toFixed(1)}% to ${facts.netMarginPct.toFixed(1)}% (${marginDrop.toFixed(1)} point decline).`,
+          });
+        }
+        break;
+      }
+      case "low-runway":
+        actions.push({
+          severity: "URGENT",
+          title: "Cash runway below 3 months",
+          description: `At current burn rate ($${facts.burnRate.toLocaleString()}/mo), cash runway is ${facts.cashRunwayMonths.toFixed(1)} months. Immediate attention needed.`,
+        });
+        break;
+      case "burn-rate-spike": {
+        const burnIncrease = facts.prevBurnRate > 0 ? ((facts.burnRate - facts.prevBurnRate) / facts.prevBurnRate) * 100 : 0;
+        if (burnIncrease > 20) {
+          actions.push({
+            severity: "WATCH",
+            title: "Burn rate spike",
+            description: `Monthly burn rate increased ${burnIncrease.toFixed(0)}% to $${facts.burnRate.toLocaleString()}/mo (was $${facts.prevBurnRate.toLocaleString()}/mo).`,
           });
         }
         break;
