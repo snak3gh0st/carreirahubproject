@@ -2,12 +2,14 @@
 import OpenAI from "openai";
 import { prisma } from "@/lib/db";
 import { integrationLogger } from "@/lib/utils/logger";
+import { buildQbCfoReportNarrative, QbCfoReportPacket } from "@/lib/financial/qb-cfo-report-packet";
+import { getCfoModelCandidates, modelSupportsJsonResponseFormat } from "@/lib/services/cfo-models";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const AI_MODEL = process.env.AI_MODEL || "gpt-4-turbo-preview";
+const AI_MODEL = process.env.AI_MODEL;
 
 export interface CfoAnalysisInput {
   revenue: number;
@@ -34,21 +36,114 @@ export interface CfoAnalysisInput {
   topExpenseCategory: string;
   topExpenseAmount: number;
   dateRangeLabel: string;
+  qbReportPacket?: QbCfoReportPacket;
 }
 
 interface AiCfoResponse {
   briefing: string;
-  recommendations: string[];
+  financialHealth: string;
+  revenueAnalysis: string;
+  cashFlowAnalysis: string;
+  riskAssessment: string;
+  strategicRecommendations: string[];
+  immediateActions: string[];
+  kpiTargets: string[];
 }
 
-const SYSTEM_PROMPT = `You are a Fractional CFO analyzing financial data for Carreira U.S.A., an immigration services and mentorship company based in the US. Write a concise executive briefing (3-5 sentences) and 2-3 strategic recommendations.
+function parseAiCfoResponse(content: string): { briefing: string; recommendations: string[] } {
+  const parsed = JSON.parse(content || "{}");
 
-Rules:
-- Be specific — reference actual customer names, dollar amounts, and percentages from the data provided
-- Write for a CEO who has 30 seconds to read this
-- Focus on what changed, what's at risk, and what to do about it
-- Do NOT use generic advice — every recommendation must tie to the specific numbers
-- Respond in valid JSON with keys "briefing" (string) and "recommendations" (array of strings)`;
+  // Build the full analysis from structured sections
+  const sections: string[] = [];
+
+  if (parsed.briefing) sections.push(parsed.briefing);
+
+  if (parsed.financialHealth) {
+    sections.push(`\n**Financial Health Assessment**\n${parsed.financialHealth}`);
+  }
+  if (parsed.revenueAnalysis) {
+    sections.push(`\n**Revenue & Collections Analysis**\n${parsed.revenueAnalysis}`);
+  }
+  if (parsed.cashFlowAnalysis) {
+    sections.push(`\n**Cash Flow & Runway**\n${parsed.cashFlowAnalysis}`);
+  }
+  if (parsed.riskAssessment) {
+    sections.push(`\n**Risk Assessment**\n${parsed.riskAssessment}`);
+  }
+
+  const briefing = sections.join("\n") || "Analysis unavailable.";
+
+  // Combine strategic recommendations, immediate actions, and KPI targets
+  const recommendations: string[] = [];
+
+  if (Array.isArray(parsed.immediateActions) && parsed.immediateActions.length > 0) {
+    recommendations.push("**Immediate Actions (This Week)**");
+    parsed.immediateActions.forEach((a: string) => recommendations.push(a));
+  }
+
+  if (Array.isArray(parsed.strategicRecommendations) && parsed.strategicRecommendations.length > 0) {
+    recommendations.push("**Strategic Recommendations (This Month)**");
+    parsed.strategicRecommendations.forEach((r: string) => recommendations.push(r));
+  }
+
+  if (Array.isArray(parsed.kpiTargets) && parsed.kpiTargets.length > 0) {
+    recommendations.push("**KPI Targets to Track**");
+    parsed.kpiTargets.forEach((k: string) => recommendations.push(k));
+  }
+
+  // Fallback for old-format responses
+  if (recommendations.length === 0 && Array.isArray(parsed.recommendations)) {
+    parsed.recommendations.forEach((r: string) => recommendations.push(r));
+  }
+
+  return { briefing, recommendations };
+}
+
+const SYSTEM_PROMPT = `You are a Fractional CFO retained by Carreira U.S.A., an immigration services and career mentorship company based in the US. You serve Brazilian professionals seeking US careers through two programs: PASS (basic mentorship) and ADVANCED (full service).
+
+Your role is to act as a REAL fractional CFO — not a data summarizer. You think strategically about the business, understand the immigration services market, and give the CEO guidance they can act on TODAY.
+
+## Company Context
+- Revenue comes from mentorship program enrollments (PASS and ADVANCED packages)
+- Students go through an 11-phase journey from enrollment to job placement
+- 3-person support team manages student lifecycle
+- Main expenses: team salaries, software/SaaS tools, marketing
+- QuickBooks is the source of truth for all financial data
+- Goal: grow revenue while maintaining healthy margins and reducing customer concentration
+
+## Your Analysis Framework
+Think through these lenses like a real CFO would:
+
+1. **Financial Health** — Is the business fundamentally healthy? Compare revenue vs expenses, track margin trends, assess if the business model is sustainable at current scale.
+
+2. **Revenue Quality** — Is revenue growing? Is it diversified or concentrated? Are customers paying on time? Is MRR stable or volatile? What's the revenue per student trend?
+
+3. **Cash Management** — Can the company meet its obligations? What's the real cash position? How many months of runway exist? Is cash being consumed faster than generated?
+
+4. **Risk Exposure** — What could hurt the business in the next 30/60/90 days? Overdue invoices, customer concentration, expense growth outpacing revenue, stale receivables that may need write-off.
+
+5. **Growth Levers** — Where can the CEO invest to grow? Which services are most profitable? Which customers could be upsold? What operational efficiencies would improve margins?
+
+## Output Format (STRICT JSON)
+Respond with this exact JSON structure:
+{
+  "briefing": "2-3 sentence executive summary — the single most important thing the CEO needs to know right now",
+  "financialHealth": "3-5 sentences assessing overall financial health with specific numbers. Grade it: STRONG / STABLE / CONCERNING / CRITICAL",
+  "revenueAnalysis": "3-5 sentences on revenue trends, collection performance, customer concentration. Name specific customers and amounts.",
+  "cashFlowAnalysis": "3-5 sentences on cash position, burn rate, runway. Be specific about months of runway and what drives cash consumption.",
+  "riskAssessment": "3-5 sentences on the top 2-3 risks with dollar impact. Name the customers, invoices, or expense categories that pose risk.",
+  "strategicRecommendations": ["3-5 strategic recommendations for this month — each must reference specific numbers, customers, or categories"],
+  "immediateActions": ["2-3 things the CEO should do THIS WEEK — be extremely specific with names, amounts, actions"],
+  "kpiTargets": ["3-4 measurable targets to track — e.g., 'Bring collection rate from X% to Y% by [date]', 'Reduce 90+ AR from $X to $Y'"]
+}
+
+## Rules
+- NEVER give generic advice. Every sentence must reference specific data points.
+- Name real customers, real dollar amounts, real percentages.
+- Think like a CFO who knows this business — not a data analyst reading numbers.
+- If something is alarming, say it directly. Don't soften bad news.
+- Prioritize: what moves the needle most for this specific company?
+- Compare to industry benchmarks where relevant (services businesses typically target 15-25% net margin, 90%+ collection rate, <30 DSO).`;
 
 export async function generateCfoAnalysis(input: CfoAnalysisInput): Promise<{ briefing: string; recommendations: string[] }> {
   const top3Text = input.topThreeClients
@@ -71,28 +166,45 @@ ${input.totalExpenses > 0 ? `- Total Expenses: $${input.totalExpenses.toLocaleSt
 - Burn Rate: $${input.burnRate.toLocaleString()}/month
 - Cash on Hand: $${input.cashOnHand.toLocaleString()} (runway: ${input.runwayMonths.toFixed(1)} months)
 - Top expense: ${input.topExpenseCategory} at $${input.topExpenseAmount.toLocaleString()}` : "- Expense data: not available from QuickBooks"}
+${input.qbReportPacket ? `\n${buildQbCfoReportNarrative(input.qbReportPacket)}` : "\nQuickBooks report packet: not available"}
 
 Write the briefing and recommendations as JSON.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: AI_MODEL,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 800,
-      response_format: { type: "json_object" },
-    });
+    let lastError: unknown;
 
-    const content = completion.choices[0]?.message?.content || "{}";
-    const parsed: AiCfoResponse = JSON.parse(content);
+    for (const model of getCfoModelCandidates(AI_MODEL)) {
+      try {
+        const completion = await openai.chat.completions.create({
+          model,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: userPrompt },
+          ],
+          temperature: 0.4,
+          max_tokens: 2000,
+          ...(modelSupportsJsonResponseFormat(model)
+            ? { response_format: { type: "json_object" as const } }
+            : {}),
+        });
 
-    return {
-      briefing: parsed.briefing || "Analysis unavailable.",
-      recommendations: parsed.recommendations || [],
-    };
+        const content = completion.choices[0]?.message?.content || "{}";
+        const parsed = parseAiCfoResponse(content);
+
+        return {
+          briefing: parsed.briefing || "Analysis unavailable.",
+          recommendations: parsed.recommendations || [],
+        };
+      } catch (error: any) {
+        lastError = error;
+        const isAccessIssue = error?.status === 403 || error?.code === "model_not_found";
+        if (!isAccessIssue) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error("No accessible CFO model available");
   } catch (error) {
     integrationLogger.logError("CFO_ANALYSIS", "generate", error instanceof Error ? error : String(error));
     return {
