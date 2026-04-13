@@ -1,0 +1,505 @@
+// lib/services/financial-bi.ts
+import { prisma } from "@/lib/db";
+import { InvoiceStatus } from "@prisma/client";
+import { startOfMonth, subMonths, subDays, startOfYear, format, differenceInDays } from "date-fns";
+import { evaluateCfoRules, CfoFacts } from "@/lib/services/cfo-rules";
+import { getCachedCfoInsight, CfoAnalysisInput } from "@/lib/services/cfo-analysis";
+import {
+  FinancialBIResponse,
+  KPIMetric,
+  TabParam,
+  DateRangeParam,
+  RevenueGrowthData,
+  ArCollectionsData,
+  CashFlowData,
+  CustomerAnalysisData,
+} from "@/lib/types/financial-bi";
+
+// ── Date range helpers ──────────────────────────────────────
+
+function getDateRange(dateRange: DateRangeParam, from?: string, to?: string): { startDate: Date; endDate: Date } {
+  const now = new Date();
+  const endDate = to ? new Date(to) : now;
+
+  switch (dateRange) {
+    case "last7":
+      return { startDate: subDays(now, 7), endDate };
+    case "last30":
+      return { startDate: subDays(now, 30), endDate };
+    case "last90":
+      return { startDate: subDays(now, 90), endDate };
+    case "thisYear":
+      return { startDate: startOfYear(now), endDate };
+    case "custom":
+      return { startDate: from ? new Date(from) : subDays(now, 30), endDate };
+    case "allTime":
+    default:
+      return { startDate: new Date("2020-01-01"), endDate };
+  }
+}
+
+function getPreviousPeriod(startDate: Date, endDate: Date): { startDate: Date; endDate: Date } {
+  const days = differenceInDays(endDate, startDate);
+  return {
+    startDate: subDays(startDate, days),
+    endDate: subDays(startDate, 1),
+  };
+}
+
+function buildKpiMetric(value: number, prevValue: number, thresholds?: { warningPct?: number; dangerPct?: number; invertDirection?: boolean }): KPIMetric {
+  const changePct = prevValue > 0 ? ((value - prevValue) / prevValue) * 100 : 0;
+  const opts = { warningPct: 5, dangerPct: 15, invertDirection: false, ...thresholds };
+
+  let contextLevel: "good" | "warning" | "danger" = "good";
+  let context = "healthy";
+
+  if (!opts.invertDirection) {
+    if (changePct < -opts.dangerPct) { contextLevel = "danger"; context = "critical"; }
+    else if (changePct < -opts.warningPct) { contextLevel = "warning"; context = "needs attention"; }
+  } else {
+    if (changePct > opts.dangerPct) { contextLevel = "danger"; context = "critical"; }
+    else if (changePct > opts.warningPct) { contextLevel = "warning"; context = "needs attention"; }
+  }
+
+  return { value, prevValue, changePct, context, contextLevel };
+}
+
+// ── Core summary queries ────────────────────────────────────
+
+async function querySummary(startDate: Date, endDate: Date, prevStart: Date, prevEnd: Date) {
+  const dateFilter = { gte: startDate, lte: endDate };
+  const prevDateFilter = { gte: prevStart, lte: prevEnd };
+
+  const [
+    paidAgg, invoicedAgg, outstandingAgg,
+    prevPaidAgg, prevInvoicedAgg, prevOutstandingAgg,
+    revenueTrend, agingInvoices, topCustomerPayments, systemConfig,
+  ] = await Promise.all([
+    prisma.invoice.aggregate({ where: { status: "PAID", paidAt: dateFilter }, _sum: { amountPaid: true } }),
+    prisma.invoice.aggregate({ where: { createdAt: dateFilter, status: { not: "VOID" } }, _sum: { amount: true } }),
+    prisma.invoice.aggregate({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }, _sum: { amount: true } }),
+    prisma.invoice.aggregate({ where: { status: "PAID", paidAt: prevDateFilter }, _sum: { amountPaid: true } }),
+    prisma.invoice.aggregate({ where: { createdAt: prevDateFilter, status: { not: "VOID" } }, _sum: { amount: true } }),
+    prisma.invoice.aggregate({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] }, createdAt: { lte: prevEnd } }, _sum: { amount: true } }),
+    prisma.payment.findMany({ where: { paymentDate: { gte: subMonths(new Date(), 12) } }, select: { paymentDate: true, amount: true } }),
+    prisma.invoice.findMany({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }, select: { id: true, amount: true, dueDate: true, customerId: true } }),
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 10 }),
+    prisma.systemConfig.findUnique({ where: { id: "system" }, select: { lastQuickbooksSyncAt: true } }),
+  ]);
+
+  const revenue = Number(paidAgg._sum.amountPaid || 0);
+  const prevRevenue = Number(prevPaidAgg._sum.amountPaid || 0);
+  const totalInvoiced = Number(invoicedAgg._sum.amount || 0);
+  const prevTotalInvoiced = Number(prevInvoicedAgg._sum.amount || 0);
+  const outstanding = Number(outstandingAgg._sum.amount || 0);
+  const prevOutstanding = Number(prevOutstandingAgg._sum.amount || 0);
+
+  const collectionRate = totalInvoiced > 0 ? (revenue / totalInvoiced) * 100 : 0;
+  const prevCollectionRate = prevTotalInvoiced > 0 ? (prevRevenue / prevTotalInvoiced) * 100 : 0;
+
+  // MRR: average monthly collected revenue over last 3 months
+  const threeMonthsAgo = subMonths(new Date(), 3);
+  const recentPayments = revenueTrend.filter((p) => p.paymentDate >= threeMonthsAgo);
+  const recentTotal = recentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const mrr = recentTotal / 3;
+  const sixMonthsAgo = subMonths(new Date(), 6);
+  const prevRecentPayments = revenueTrend.filter((p) => p.paymentDate >= sixMonthsAgo && p.paymentDate < threeMonthsAgo);
+  const prevRecentTotal = prevRecentPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+  const prevMrr = prevRecentTotal / 3;
+
+  // Revenue trend mini (12 months)
+  const monthlyRevenue = new Map<string, number>();
+  for (const p of revenueTrend) {
+    const key = format(p.paymentDate, "yyyy-MM");
+    monthlyRevenue.set(key, (monthlyRevenue.get(key) || 0) + Number(p.amount));
+  }
+  const revenueTrendMini = Array.from(monthlyRevenue.entries())
+    .map(([month, amount]) => ({ month, amount }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  // Aging snapshot
+  const now = new Date();
+  const agingBuckets = [
+    { bucket: "Current", min: -Infinity, max: 0 },
+    { bucket: "1-30", min: 1, max: 30 },
+    { bucket: "31-60", min: 31, max: 60 },
+    { bucket: "61-90", min: 61, max: 90 },
+    { bucket: "90+", min: 91, max: Infinity },
+  ];
+
+  const agingSnapshotMini = agingBuckets.map(({ bucket, min, max }) => {
+    const matching = agingInvoices.filter((inv) => {
+      const days = differenceInDays(now, inv.dueDate);
+      return days >= min && days <= max;
+    });
+    return {
+      bucket,
+      amount: matching.reduce((sum, inv) => sum + Number(inv.amount), 0),
+      count: matching.length,
+    };
+  });
+
+  // Concentration
+  const totalPaidAllTime = topCustomerPayments.reduce((sum, g) => sum + Number(g._sum.amount || 0), 0);
+  const customerIds = topCustomerPayments.slice(0, 3).map((g) => g.customerId);
+  const topThreeTotal = topCustomerPayments.slice(0, 3).reduce((sum, g) => sum + Number(g._sum.amount || 0), 0);
+  const concentration = totalPaidAllTime > 0 ? (topThreeTotal / totalPaidAllTime) * 100 : 0;
+
+  const topCustomerNames = customerIds.length > 0
+    ? await prisma.customer.findMany({ where: { id: { in: customerIds } }, select: { id: true, name: true } })
+    : [];
+  const nameMap = new Map(topCustomerNames.map((c) => [c.id, c.name]));
+  const topClients = topCustomerPayments.slice(0, 3).map((g) => ({
+    name: nameMap.get(g.customerId) || "Unknown",
+    percentage: totalPaidAllTime > 0 ? (Number(g._sum.amount || 0) / totalPaidAllTime) * 100 : 0,
+  }));
+
+  return {
+    revenue: buildKpiMetric(revenue, prevRevenue),
+    collectionRate: buildKpiMetric(collectionRate, prevCollectionRate),
+    outstandingAR: buildKpiMetric(outstanding, prevOutstanding, { invertDirection: true }),
+    mrr: buildKpiMetric(mrr, prevMrr),
+    topClientConcentration: {
+      ...buildKpiMetric(concentration, concentration, { invertDirection: true, warningPct: 40, dangerPct: 50 }),
+      topClients,
+    },
+    revenueTrendMini,
+    agingSnapshotMini,
+    _raw: {
+      collectionRate, prevCollectionRate, collectionRateChange: collectionRate - prevCollectionRate,
+      outstandingAR: outstanding, topThreeConcentration: concentration, topThreeClients: topClients,
+      aging90PlusAmount: agingSnapshotMini.find((b) => b.bucket === "90+")?.amount || 0,
+      prevAging90PlusAmount: 0, totalInvoiced, revenue,
+      revenueChangePct: prevRevenue > 0 ? ((revenue - prevRevenue) / prevRevenue) * 100 : 0,
+      mrr, agingInvoices,
+    },
+    _lastQbSync: systemConfig?.lastQuickbooksSyncAt?.toISOString() || null,
+  };
+}
+
+// ── Tab queries ─────────────────────────────────────────────
+
+async function queryRevenueGrowth(startDate: Date, endDate: Date): Promise<RevenueGrowthData> {
+  const payments = await prisma.payment.findMany({
+    where: { paymentDate: { gte: subMonths(new Date(), 12) } },
+    select: { paymentDate: true, amount: true },
+  });
+  const invoices = await prisma.invoice.findMany({
+    where: { createdAt: { gte: subMonths(new Date(), 12) }, status: { not: "VOID" } },
+    select: { createdAt: true, amount: true, lineItems: true, status: true, amountPaid: true, paidAt: true },
+  });
+
+  const invoicedByMonth = new Map<string, number>();
+  const collectedByMonth = new Map<string, number>();
+  for (const inv of invoices) {
+    const month = format(inv.createdAt, "yyyy-MM");
+    invoicedByMonth.set(month, (invoicedByMonth.get(month) || 0) + Number(inv.amount));
+  }
+  for (const p of payments) {
+    const month = format(p.paymentDate, "yyyy-MM");
+    collectedByMonth.set(month, (collectedByMonth.get(month) || 0) + Number(p.amount));
+  }
+  const allMonths = new Set([...invoicedByMonth.keys(), ...collectedByMonth.keys()]);
+  const invoicedVsCollected = Array.from(allMonths).sort().map((month) => ({
+    month, invoiced: invoicedByMonth.get(month) || 0, collected: collectedByMonth.get(month) || 0,
+  }));
+
+  const serviceRevenue = new Map<string, number>();
+  for (const inv of invoices) {
+    if (inv.lineItems && Array.isArray(inv.lineItems)) {
+      for (const item of inv.lineItems as Array<{ description?: string; name?: string; amount?: number }>) {
+        const name = item.description || item.name || "Other";
+        serviceRevenue.set(name, (serviceRevenue.get(name) || 0) + Number(item.amount || 0));
+      }
+    }
+  }
+  const revenueByService = Array.from(serviceRevenue.entries())
+    .map(([service, amount]) => ({ service, amount }))
+    .sort((a, b) => b.amount - a.amount).slice(0, 10);
+
+  const mrrTrend = invoicedVsCollected.map((m) => ({ month: m.month, mrr: m.collected, arr: m.collected * 12 }));
+  const momGrowth = invoicedVsCollected.map((m, i) => {
+    const prev = i > 0 ? invoicedVsCollected[i - 1].collected : 0;
+    return { month: m.month, growthPct: prev > 0 ? ((m.collected - prev) / prev) * 100 : 0 };
+  });
+
+  return { invoicedVsCollected, revenueByService, mrrTrend, momGrowth };
+}
+
+async function queryArCollections(startDate: Date, endDate: Date): Promise<ArCollectionsData> {
+  const now = new Date();
+  const [overdueInvoicesRaw, paidInvoices] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { status: { in: ["OVERDUE", "SENT", "PARTIALLY_PAID"] } },
+      include: { customer: { select: { name: true } }, owner: { select: { name: true } } },
+      orderBy: { dueDate: "asc" },
+    }),
+    prisma.invoice.findMany({
+      where: { status: "PAID", paidAt: { gte: subMonths(now, 12) } },
+      select: { createdAt: true, paidAt: true, amount: true, amountPaid: true },
+    }),
+  ]);
+
+  const agingBuckets = [
+    { bucket: "Current", min: -Infinity, max: 0 },
+    { bucket: "1-30", min: 1, max: 30 },
+    { bucket: "31-60", min: 31, max: 60 },
+    { bucket: "61-90", min: 61, max: 90 },
+    { bucket: "90+", min: 91, max: Infinity },
+  ];
+  const agingBreakdown = agingBuckets.map(({ bucket, min, max }) => {
+    const matching = overdueInvoicesRaw.filter((inv) => {
+      const days = differenceInDays(now, inv.dueDate);
+      return days >= min && days <= max;
+    });
+    return { bucket, count: matching.length, amount: matching.reduce((sum, inv) => sum + Number(inv.amount), 0) };
+  });
+
+  const monthlyPerformance = new Map<string, { totalDays: number; count: number; paid: number; invoiced: number }>();
+  for (const inv of paidInvoices) {
+    if (!inv.paidAt) continue;
+    const month = format(inv.paidAt, "yyyy-MM");
+    const days = differenceInDays(inv.paidAt, inv.createdAt);
+    const existing = monthlyPerformance.get(month) || { totalDays: 0, count: 0, paid: 0, invoiced: 0 };
+    existing.totalDays += days; existing.count += 1;
+    existing.paid += Number(inv.amountPaid || 0); existing.invoiced += Number(inv.amount);
+    monthlyPerformance.set(month, existing);
+  }
+  const collectionPerformance = Array.from(monthlyPerformance.entries()).sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, data]) => ({
+      month, avgDaysToPayment: data.count > 0 ? Math.round(data.totalDays / data.count) : 0,
+      collectionRate: data.invoiced > 0 ? (data.paid / data.invoiced) * 100 : 0,
+    }));
+
+  const overdueInvoices = overdueInvoicesRaw
+    .filter((inv) => differenceInDays(now, inv.dueDate) > 0)
+    .map((inv) => ({
+      id: inv.id, customerName: inv.customer.name, invoiceNumber: inv.invoiceNumber || "N/A",
+      amount: Number(inv.amount), dueDate: inv.dueDate.toISOString(),
+      daysOverdue: differenceInDays(now, inv.dueDate), remindersSent: inv.paymentReminderCount,
+      collectionCalls: inv.collectionCallCount, autoChargeStatus: inv.autoChargeStatus,
+      ownerName: inv.owner?.name || "Unassigned",
+    }))
+    .sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+  return { agingBreakdown, collectionPerformance, overdueInvoices };
+}
+
+async function queryCashFlow(): Promise<CashFlowData> {
+  const now = new Date();
+  const outstandingInvoices = await prisma.invoice.findMany({
+    where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } },
+    include: { customer: { select: { name: true, id: true } }, payments: { select: { paymentDate: true, amount: true } } },
+  });
+
+  function calcProbability(daysOverdue: number): number {
+    if (daysOverdue <= 0) return 95;
+    if (daysOverdue <= 30) return 80;
+    if (daysOverdue <= 60) return 55;
+    if (daysOverdue <= 90) return 30;
+    if (daysOverdue <= 180) return 15;
+    return 5;
+  }
+
+  function getRiskLevel(prob: number): "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" {
+    if (prob >= 80) return "LOW";
+    if (prob >= 60) return "MEDIUM";
+    if (prob >= 40) return "HIGH";
+    return "CRITICAL";
+  }
+
+  const weeks: CashFlowData["forecast"] = [];
+  for (let i = 0; i < 13; i++) {
+    const weekStart = subDays(now, -(i * 7));
+    const weekEnd = subDays(now, -((i + 1) * 7));
+    const weekLabel = format(weekStart, "MMM dd");
+    let optimistic = 0, expected = 0, conservative = 0;
+
+    for (const inv of outstandingInvoices) {
+      const dueInWeek = inv.dueDate >= weekStart && inv.dueDate < weekEnd;
+      if (!dueInWeek && i > 0) continue;
+      if (i === 0 && inv.dueDate > weekEnd) continue;
+
+      const amount = Number(inv.amount) - Number(inv.amountPaid || 0);
+      if (amount <= 0) continue;
+      const daysOverdue = differenceInDays(now, inv.dueDate);
+      const prob = calcProbability(daysOverdue) / 100;
+      optimistic += amount; expected += amount * prob; conservative += amount * Math.max(prob - 0.2, 0);
+    }
+    weeks.push({ date: weekLabel, optimistic, expected, conservative });
+  }
+
+  const segments: Record<string, { amount: number; count: number }> = {
+    "High (>80%)": { amount: 0, count: 0 }, "Medium (50-80%)": { amount: 0, count: 0 },
+    "Low (20-50%)": { amount: 0, count: 0 }, "Bad debt (<20%)": { amount: 0, count: 0 },
+  };
+  const atRiskList: CashFlowData["atRiskInvoices"] = [];
+
+  for (const inv of outstandingInvoices) {
+    const remaining = Number(inv.amount) - Number(inv.amountPaid || 0);
+    if (remaining <= 0) continue;
+    const daysOverdue = differenceInDays(now, inv.dueDate);
+    const prob = calcProbability(daysOverdue);
+    const riskLevel = getRiskLevel(prob);
+
+    if (prob >= 80) { segments["High (>80%)"].amount += remaining; segments["High (>80%)"].count++; }
+    else if (prob >= 50) { segments["Medium (50-80%)"].amount += remaining; segments["Medium (50-80%)"].count++; }
+    else if (prob >= 20) { segments["Low (20-50%)"].amount += remaining; segments["Low (20-50%)"].count++; }
+    else { segments["Bad debt (<20%)"].amount += remaining; segments["Bad debt (<20%)"].count++; }
+
+    if (prob < 80) {
+      const lastPayment = inv.payments.sort((a, b) => b.paymentDate.getTime() - a.paymentDate.getTime())[0];
+      atRiskList.push({
+        id: inv.id, customerName: inv.customer.name, amount: remaining,
+        dueDate: inv.dueDate.toISOString(), daysOverdue: Math.max(daysOverdue, 0),
+        probability: prob, riskLevel,
+        lastAction: lastPayment ? `Payment $${Number(lastPayment.amount)} on ${format(lastPayment.paymentDate, "MMM dd")}` : "No payments",
+      });
+    }
+  }
+
+  return {
+    forecast: weeks,
+    probabilityBreakdown: Object.entries(segments).map(([segment, data]) => ({ segment, ...data })),
+    atRiskInvoices: atRiskList.sort((a, b) => a.probability - b.probability),
+  };
+}
+
+async function queryCustomerAnalysis(): Promise<CustomerAnalysisData> {
+  const now = new Date();
+  const [customerPayments, allCustomers] = await Promise.all([
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } } }),
+    prisma.customer.findMany({
+      select: { id: true, name: true, invoices: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 } },
+    }),
+  ]);
+
+  const customerNames = await prisma.customer.findMany({
+    where: { id: { in: customerPayments.map((c) => c.customerId) } },
+    select: { id: true, name: true },
+  });
+  const nameMap = new Map(customerNames.map((c) => [c.id, c.name]));
+
+  const totalRevenue = customerPayments.reduce((sum, c) => sum + Number(c._sum.amount || 0), 0);
+  let cumulative = 0;
+  const concentration = customerPayments.map((c) => {
+    const rev = Number(c._sum.amount || 0);
+    cumulative += rev;
+    return { customer: nameMap.get(c.customerId) || "Unknown", revenue: rev, cumulativePct: totalRevenue > 0 ? (cumulative / totalRevenue) * 100 : 0 };
+  });
+
+  const topCustomers = customerPayments.slice(0, 10).map((c) => ({
+    customer: nameMap.get(c.customerId) || "Unknown", totalPaid: Number(c._sum.amount || 0),
+  }));
+
+  const segmentCounts: Record<string, { count: number; revenue: number }> = {
+    Active: { count: 0, revenue: 0 }, Inactive: { count: 0, revenue: 0 }, Churned: { count: 0, revenue: 0 },
+  };
+  const paymentMap = new Map(customerPayments.map((c) => [c.customerId, Number(c._sum.amount || 0)]));
+
+  for (const cust of allCustomers) {
+    const lastInvoice = cust.invoices[0];
+    const rev = paymentMap.get(cust.id) || 0;
+    if (!lastInvoice) { segmentCounts.Churned.count++; segmentCounts.Churned.revenue += rev; }
+    else {
+      const daysSince = differenceInDays(now, lastInvoice.createdAt);
+      if (daysSince <= 90) { segmentCounts.Active.count++; segmentCounts.Active.revenue += rev; }
+      else if (daysSince <= 180) { segmentCounts.Inactive.count++; segmentCounts.Inactive.revenue += rev; }
+      else { segmentCounts.Churned.count++; segmentCounts.Churned.revenue += rev; }
+    }
+  }
+
+  const segments = Object.entries(segmentCounts).map(([segment, data]) => ({ segment, ...data }));
+  const amounts = customerPayments.map((c) => Number(c._sum.amount || 0)).filter((a) => a > 0);
+  const average = amounts.length > 0 ? amounts.reduce((sum, a) => sum + a, 0) / amounts.length : 0;
+  const sorted = [...amounts].sort((a, b) => a - b);
+  const median = sorted.length > 0 ? sorted[Math.floor(sorted.length / 2)] : 0;
+
+  return { concentration, topCustomers, segments, ltv: { average, median, trend: [] } };
+}
+
+// ── Public API ──────────────────────────────────────────────
+
+export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisInput> {
+  const { startDate, endDate } = getDateRange(dateRange as DateRangeParam);
+  const prev = getPreviousPeriod(startDate, endDate);
+  const summary = await querySummary(startDate, endDate, prev.startDate, prev.endDate);
+
+  const overdueInvoices = await prisma.invoice.findMany({
+    where: { status: "OVERDUE" },
+    include: { customer: { select: { name: true } } },
+    orderBy: { dueDate: "asc" },
+    take: 5,
+  });
+  const worst = overdueInvoices[0];
+
+  return {
+    revenue: summary.revenue.value, revenueChangePct: summary._raw.revenueChangePct,
+    collectionRate: summary._raw.collectionRate, prevCollectionRate: summary._raw.prevCollectionRate,
+    outstandingAR: summary.outstandingAR.value, mrr: summary.mrr.value,
+    topThreeConcentration: summary._raw.topThreeConcentration, topThreeClients: summary._raw.topThreeClients,
+    overdueCount: overdueInvoices.length,
+    overdueTotal: overdueInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0),
+    worstOverdue: worst ? { customer: worst.customer.name, amount: Number(worst.amount), days: differenceInDays(new Date(), worst.dueDate) } : null,
+    aging90Plus: summary._raw.aging90PlusAmount, cashProjection30Day: summary._raw.thirtyDayCashProjection,
+    patternAlerts: [], dateRangeLabel: dateRange,
+  };
+}
+
+export async function getFinancialBIData(
+  dateRange: DateRangeParam, from?: string, to?: string, tab: TabParam = "all",
+): Promise<FinancialBIResponse> {
+  const { startDate, endDate } = getDateRange(dateRange, from, to);
+  const prev = getPreviousPeriod(startDate, endDate);
+  const summaryRaw = await querySummary(startDate, endDate, prev.startDate, prev.endDate);
+
+  const overdueForRules = await prisma.invoice.findMany({
+    where: { status: "OVERDUE" },
+    include: { customer: { select: { name: true } } },
+  });
+
+  const facts: CfoFacts = {
+    collectionRate: summaryRaw._raw.collectionRate, prevCollectionRate: summaryRaw._raw.prevCollectionRate,
+    collectionRateChange: summaryRaw._raw.collectionRateChange, outstandingAR: summaryRaw.outstandingAR.value,
+    topThreeConcentration: summaryRaw._raw.topThreeConcentration, topThreeClients: summaryRaw._raw.topThreeClients,
+    overdueInvoices: overdueForRules.map((inv) => ({
+      id: inv.id, customerName: inv.customer.name, amount: Number(inv.amount),
+      daysOverdue: differenceInDays(new Date(), inv.dueDate), remindersSent: inv.paymentReminderCount,
+      autoChargeStatus: inv.autoChargeStatus,
+    })),
+    customerPaymentTrends: [], thirtyDayCashProjection: summaryRaw._raw.thirtyDayCashProjection,
+    aging90PlusAmount: summaryRaw._raw.aging90PlusAmount, prevAging90PlusAmount: summaryRaw._raw.prevAging90PlusAmount,
+  };
+
+  const [actions, cachedInsight] = await Promise.all([
+    evaluateCfoRules(facts), getCachedCfoInsight(dateRange),
+  ]);
+
+  const tabQueries: Promise<unknown>[] = [];
+  const tabKeys: string[] = [];
+  if (tab === "all" || tab === "revenue") { tabQueries.push(queryRevenueGrowth(startDate, endDate)); tabKeys.push("revenueGrowth"); }
+  if (tab === "all" || tab === "ar") { tabQueries.push(queryArCollections(startDate, endDate)); tabKeys.push("arCollections"); }
+  if (tab === "all" || tab === "cashflow") { tabQueries.push(queryCashFlow()); tabKeys.push("cashFlow"); }
+  if (tab === "all" || tab === "customers") { tabQueries.push(queryCustomerAnalysis()); tabKeys.push("customerAnalysis"); }
+
+  const tabResults = await Promise.all(tabQueries);
+  const tabData: Record<string, unknown> = {};
+  tabKeys.forEach((key, i) => { tabData[key] = tabResults[i]; });
+
+  const { _raw, _lastQbSync, ...summary } = summaryRaw;
+
+  return {
+    summary,
+    cfoInsight: {
+      briefing: cachedInsight?.briefing || "AI analysis will be available after the next scheduled run.",
+      generatedAt: cachedInsight?.generatedAt || new Date().toISOString(),
+      actions,
+    },
+    ...tabData,
+    meta: {
+      lastQbSync: _lastQbSync || "Never",
+      dateRange: { from: startDate.toISOString(), to: endDate.toISOString() },
+      generatedAt: new Date().toISOString(),
+    },
+  } as FinancialBIResponse;
+}
