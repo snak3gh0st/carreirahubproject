@@ -25,10 +25,6 @@
       "schedule": "0 */4 * * *"
     },
     {
-      "path": "/api/cron/contract-reminders",
-      "schedule": "0 9 * * *"
-    },
-    {
       "path": "/api/cron/contract-expiration",
       "schedule": "0 1 * * *"
     },
@@ -51,6 +47,10 @@
     {
       "path": "/api/cron/overdue-invoice-alerts",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/cfo-analysis",
+      "schedule": "0 8 * * *"
     }
   ]
 }
