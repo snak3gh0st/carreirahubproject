@@ -33,6 +33,16 @@ export async function GET(
       );
     }
 
+    // Transition PENDING → IN_PROGRESS on first view so ops can distinguish
+    // "student hasn't opened it yet" from "student opened but hasn't submitted".
+    if (assignment.status === "PENDING") {
+      await prisma.formAssignment.update({
+        where: { id: assignment.id },
+        data: { status: "IN_PROGRESS" },
+      });
+      assignment.status = "IN_PROGRESS";
+    }
+
     const template = getTemplate(assignment.templateId);
 
     return NextResponse.json({
