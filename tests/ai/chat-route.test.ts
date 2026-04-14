@@ -1,3 +1,4 @@
+// Note: run with POSTGRES_PRISMA_URL set to a dummy value to avoid PrismaClient constructor error.
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 
