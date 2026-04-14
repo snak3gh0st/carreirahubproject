@@ -4,8 +4,14 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
 import { subDays, startOfYear } from "date-fns";
+import { buildDashboardMetrics } from "@/lib/dashboard/metrics-calculations";
 
 export const dynamic = "force-dynamic";
+
+function getGroupCount(count: true | { _all?: number } | undefined): number {
+  if (!count || count === true) return 0;
+  return count._all || 0;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,31 +77,27 @@ export async function GET(request: NextRequest) {
     // This ensures "Last 30 Days" shows revenue RECEIVED in last 30 days, not invoices CREATED in last 30 days
     const invoiceWherePaidAt = dateFilter ? { paidAt: dateFilter } : {};
     
-    // For invoice counts, we still use createdAt to show invoices created in the period
-    const invoiceWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
-
-    // Fetch all data in parallel
+    // Batch the reads into a single transaction so duplicate requests don't fan out into
+    // a large burst of concurrent DB connections.
     const [
       totalLeads,
       qualifiedLeads,
-      totalDeals,
-      wonDeals,
+      dealSummary,
       wonDealsThisMonth,
       totalInvoices,
       paidInvoicesInPeriod,
       allInvoicesForOverdue,
-      allCustomers,
+      totalCustomers,
       newCustomersThisMonth,
-      allDeals,
-    ] = await Promise.all([
+    ] = await prisma.$transaction([
       prisma.lead.count(),
       prisma.lead.count({ where: { status: LeadStatus.QUALIFIED } }),
-      prisma.deal.count({ where: dealWhereCreatedAt }),
-      prisma.deal.count({
-        where: {
-          status: DealStatus.WON,
-          ...dealWhereCreatedAt,
-        },
+      prisma.deal.groupBy({
+        by: ["status"],
+        where: dealWhereCreatedAt,
+        orderBy: { status: "asc" },
+        _count: { _all: true },
+        _sum: { value: true },
       }),
       prisma.deal.count({
         where: {
@@ -141,14 +143,12 @@ export async function GET(request: NextRequest) {
       prisma.customer.count({
         where: { createdAt: { gte: startOfMonth } },
       }),
-      prisma.deal.findMany({
-        where: dealWhereCreatedAt,
-        select: { value: true, status: true },
-      }),
     ]);
 
     // Calculate financial metrics
     const today = new Date();
+    const totalDeals = dealSummary.reduce((sum, deal) => sum + getGroupCount(deal._count), 0);
+    const wonDeals = getGroupCount(dealSummary.find((deal) => deal.status === DealStatus.WON)?._count);
 
     // Total Revenue = sum of amountPaid from PAID invoices IN THE SELECTED PERIOD (filtered by paidAt)
     const paidInvoices = paidInvoicesInPeriod.filter((inv) => inv.status === InvoiceStatus.PAID);
@@ -174,16 +174,6 @@ export async function GET(request: NextRequest) {
     const pendingAmount = totalInvoiced - totalPaid;
     const collectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
 
-    // Calculate sales metrics
-    const conversionRate = totalLeads > 0 ? (wonDeals / totalLeads) * 100 : 0;
-    const pipelineValue = allDeals
-      .filter((deal) => deal.status !== DealStatus.WON && deal.status !== DealStatus.LOST)
-      .reduce((sum, deal) => sum + Number(deal.value || 0), 0);
-    const avgDealValue = wonDeals > 0 ? totalRevenue / wonDeals : 0;
-
-    // Calculate customer metrics
-    const avgCustomerValue = allCustomers > 0 ? totalRevenue / allCustomers : 0;
-
     // Month-over-month comparison for growth indicators (use ALL invoices, not filtered by period)
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const invoicesPaidLastMonth = allInvoicesForOverdue.filter(
@@ -201,50 +191,31 @@ export async function GET(request: NextRequest) {
         new Date(inv.paidAt) >= startOfMonth
     ).length;
 
-    const revenueGrowth =
-      invoicesPaidLastMonth > 0
-        ? (((invoicesPaidThisMonth - invoicesPaidLastMonth) / invoicesPaidLastMonth) * 100).toFixed(1)
-        : "0";
-
-    // Build comprehensive metrics response
-    const metrics = {
-      sales: {
-        wonDealsThisMonth,
-        totalDeals,
-        wonDeals,
-        totalLeads,
-        qualifiedLeads,
-        conversionRate: conversionRate.toFixed(1),
-        pipelineValue: Math.round(pipelineValue),
-        avgDealValue: Math.round(avgDealValue),
-      },
-      finance: {
-        totalRevenue: Math.round(totalRevenue),
-        totalInvoiced: Math.round(totalInvoiced),
-        totalPaid: Math.round(totalPaid),
-        pendingAmount: Math.round(pendingAmount),
-        overdueAmount: Math.round(overdueAmount),
-        collectionRate: collectionRate.toFixed(1),
-        totalInvoices,
-        overdueCount: overdueInvoices.length,
-        revenueGrowth,
-      },
-      customers: {
-        totalCustomers: allCustomers,
-        newCustomersThisMonth,
-        avgCustomerValue: Math.round(avgCustomerValue),
-      },
-      summary: {
-        totalMetrics: totalLeads + totalDeals + totalInvoices + allCustomers,
-        activeUsers: totalLeads,
-      },
-      filters: {
-        dateRange,
-        customerSegment,
-        invoiceStatus: invoiceStatuses || [],
-        appliedDateRange: dateFilter,
-      },
-    };
+    const metrics = buildDashboardMetrics({
+      totalLeads,
+      qualifiedLeads,
+      totalDeals,
+      wonDeals,
+      wonDealsThisMonth,
+      totalInvoices,
+      totalRevenue,
+      totalInvoiced,
+      totalPaid,
+      overdueAmount,
+      overdueCount: overdueInvoices.length,
+      totalCustomers,
+      newCustomersThisMonth,
+      dealStatusSummary: dealSummary.map((deal) => ({
+        status: deal.status,
+        valueSum: Number(deal._sum?.value || 0),
+      })),
+      invoicesPaidThisMonth,
+      invoicesPaidLastMonth,
+      dateRange,
+      customerSegment,
+      invoiceStatuses: invoiceStatuses || [],
+      appliedDateRange: dateFilter,
+    });
 
     return NextResponse.json(metrics);
   } catch (error) {

@@ -13,6 +13,7 @@ import { CashFlowTab } from "@/components/financial/tabs/CashFlowTab";
 import { CustomerAnalysisTab } from "@/components/financial/tabs/CustomerAnalysisTab";
 import { PnlExpensesTab } from "@/components/financial/tabs/PnlExpensesTab";
 import { useState } from "react";
+import { getFinancialQueryPlan } from "@/lib/financial/query-plan";
 
 const tabs = [
   { key: "revenue", label: "Revenue & Growth" },
@@ -40,33 +41,39 @@ export default function FinancialDashboardPage() {
   const to = searchParams.get("to") || undefined;
 
   const [activeTab, setActiveTab] = useState<TabKey>("revenue");
+  const queryPlan = getFinancialQueryPlan(activeTab);
 
-  // Phase 1: Summary + PnL (for KPI row) + active tab — fast initial load
+  // Phase 1: summary + P&L only. Heavy tab payloads load separately so the page opens faster.
   const { data: summaryData, isLoading: summaryLoading, isError, refetch } = useQuery<FinancialBIResponse>({
-    queryKey: ["financial-bi-summary", dateRange, from, to, activeTab],
+    queryKey: ["financial-bi-summary", dateRange, from, to],
     queryFn: async () => {
-      // Fetch summary + pnl (for KPI cards) + active tab in one call
-      const tabsToFetch = activeTab === "pnl" ? "pnl" : activeTab;
-      const res = await fetch(`/api/analytics/financial-bi?${buildParams(dateRange, from, to, tabsToFetch)}`);
+      const res = await fetch(`/api/analytics/financial-bi?${buildParams(dateRange, from, to, queryPlan.summaryTab)}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
   });
 
-  // If active tab is not pnl, also fetch pnl data in background for KPI row
-  const { data: pnlData } = useQuery<FinancialBIResponse>({
-    queryKey: ["financial-bi-pnl", dateRange, from, to],
+  // Heavy tab payloads are lazy-loaded after the summary data is available.
+  const {
+    data: activeTabData,
+    isLoading: activeTabLoading,
+  } = useQuery<FinancialBIResponse>({
+    queryKey: ["financial-bi-tab", dateRange, from, to, activeTab],
     queryFn: async () => {
-      const res = await fetch(`/api/analytics/financial-bi?${buildParams(dateRange, from, to, "pnl")}`);
+      const res = await fetch(`/api/analytics/financial-bi?${buildParams(dateRange, from, to, queryPlan.activeTabRequest || undefined)}`);
       if (!res.ok) throw new Error("Failed to fetch");
       return res.json();
     },
-    enabled: activeTab !== "pnl", // Only fetch separately if not already the active tab
+    enabled: Boolean(queryPlan.activeTabRequest) && Boolean(summaryData),
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   const data = summaryData;
-  const pnl = data?.pnl || pnlData?.pnl;
+  const revenueData = activeTab === "revenue" ? activeTabData?.revenueGrowth : undefined;
+  const arData = activeTab === "ar" ? activeTabData?.arCollections : undefined;
+  const cashFlowData = activeTab === "cashflow" ? activeTabData?.cashFlow : undefined;
+  const customerData = activeTab === "customers" ? activeTabData?.customerAnalysis : undefined;
+  const pnl = data?.pnl;
 
   const handleExport = async (format: "pdf" | "excel") => {
     const endpoint = format === "pdf"
@@ -179,14 +186,14 @@ export default function FinancialDashboardPage() {
               ))}
             </div>
 
-            {activeTab === "revenue" && data.revenueGrowth && <RevenueGrowthTab data={data.revenueGrowth} />}
-            {activeTab === "ar" && data.arCollections && <ArCollectionsTab data={data.arCollections} />}
-            {activeTab === "cashflow" && data.cashFlow && <CashFlowTab data={data.cashFlow} />}
-            {activeTab === "customers" && data.customerAnalysis && <CustomerAnalysisTab data={data.customerAnalysis} />}
+            {activeTab === "revenue" && revenueData && <RevenueGrowthTab data={revenueData} />}
+            {activeTab === "ar" && arData && <ArCollectionsTab data={arData} />}
+            {activeTab === "cashflow" && cashFlowData && <CashFlowTab data={cashFlowData} />}
+            {activeTab === "customers" && customerData && <CustomerAnalysisTab data={customerData} />}
             {activeTab === "pnl" && data.pnl && <PnlExpensesTab data={data.pnl} />}
 
             {/* Tab loading state */}
-            {summaryLoading && (
+            {activeTabLoading && (
               <div className="flex items-center justify-center py-12">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-tangerina border-t-transparent" />
               </div>

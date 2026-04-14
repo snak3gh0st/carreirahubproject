@@ -22,6 +22,7 @@ export interface CfoAction {
 export interface CfoInsightData {
   briefing: string;
   generatedAt: string;
+  recommendations: string[];
   actions: CfoAction[];
 }
 

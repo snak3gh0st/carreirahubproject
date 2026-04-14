@@ -5,6 +5,8 @@ import { startOfMonth, subMonths, subDays, startOfYear, format, differenceInDays
 import { evaluateCfoRules, CfoFacts } from "@/lib/services/cfo-rules";
 import { getCachedCfoInsight, CfoAnalysisInput } from "@/lib/services/cfo-analysis";
 import { parseProfitAndLoss, parseBalanceSheet } from "@/lib/services/qb-report-parser";
+import { buildCustomerPaymentTrends, buildPatternAlerts } from "@/lib/financial/cfo-signals";
+import { getCachedQbCfoReportPacket } from "@/lib/services/qb-cfo-reports";
 import {
   FinancialBIResponse,
   KPIMetric,
@@ -503,13 +505,50 @@ export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisIn
   const prev = getPreviousPeriod(startDate, endDate);
   const summary = await querySummary(startDate, endDate, prev.startDate, prev.endDate);
 
-  const overdueInvoices = await prisma.invoice.findMany({
-    where: { status: "OVERDUE" },
-    include: { customer: { select: { name: true } } },
-    orderBy: { dueDate: "asc" },
-    take: 5,
-  });
+  const [overdueInvoices, recentPaidInvoices, qbReportPacket] = await Promise.all([
+    prisma.invoice.findMany({
+      where: { status: "OVERDUE" },
+      include: { customer: { select: { name: true } } },
+      orderBy: { dueDate: "asc" },
+      take: 5,
+    }),
+    prisma.invoice.findMany({
+      where: {
+        status: "PAID",
+        paidAt: { not: null, gte: subMonths(new Date(), 6) },
+      },
+      select: {
+        customerId: true,
+        createdAt: true,
+        paidAt: true,
+        customer: { select: { name: true } },
+      },
+    }),
+    getCachedQbCfoReportPacket(),
+  ]);
   const worst = overdueInvoices[0];
+  const customerPaymentTrends = buildCustomerPaymentTrends(
+    recentPaidInvoices
+      .filter((invoice): invoice is typeof invoice & { paidAt: Date } => Boolean(invoice.paidAt))
+      .map((invoice) => ({
+        customerId: invoice.customerId,
+        customerName: invoice.customer.name,
+        issuedAt: invoice.createdAt,
+        paidAt: invoice.paidAt,
+      }))
+  );
+  const patternAlerts = buildPatternAlerts({
+    collectionRateChange: summary._raw.collectionRateChange,
+    aging90PlusAmount: summary._raw.aging90PlusAmount,
+    worstOverdue: worst
+      ? {
+          customer: worst.customer.name,
+          amount: Number(worst.amount),
+          days: differenceInDays(new Date(), worst.dueDate),
+        }
+      : null,
+    customerPaymentTrends,
+  });
 
   const result: CfoAnalysisInput = {
     revenue: summary.revenue.value, revenueChangePct: summary._raw.revenueChangePct,
@@ -520,7 +559,7 @@ export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisIn
     overdueTotal: overdueInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0),
     worstOverdue: worst ? { customer: worst.customer.name, amount: Number(worst.amount), days: differenceInDays(new Date(), worst.dueDate) } : null,
     aging90Plus: summary._raw.aging90PlusAmount, cashProjection30Day: summary._raw.thirtyDayCashProjection,
-    patternAlerts: [], dateRangeLabel: dateRange,
+    patternAlerts, dateRangeLabel: dateRange,
     totalExpenses: 0,
     netIncome: 0,
     marginPct: 0,
@@ -529,6 +568,7 @@ export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisIn
     runwayMonths: 0,
     topExpenseCategory: "",
     topExpenseAmount: 0,
+    qbReportPacket,
   };
 
   // Try to enrich with P&L data
@@ -572,11 +612,23 @@ export async function getFinancialBIData(
   if (tab === "all" || tab === "customers") { tabQueries.push(queryCustomerAnalysis()); tabKeys.push("customerAnalysis"); }
   if (tab === "all" || tab === "pnl") { tabQueries.push(queryPnL(startDate, endDate)); tabKeys.push("pnl"); }
 
-  const [summaryRaw, overdueForRules, cachedInsight, ...tabResults] = await Promise.all([
+  const [summaryRaw, overdueForRules, recentPaidForRules, cachedInsight, ...tabResults] = await Promise.all([
     querySummary(startDate, endDate, prev.startDate, prev.endDate),
     prisma.invoice.findMany({
       where: { status: "OVERDUE" },
       include: { customer: { select: { name: true } } },
+    }),
+    prisma.invoice.findMany({
+      where: {
+        status: "PAID",
+        paidAt: { not: null, gte: subMonths(new Date(), 6) },
+      },
+      select: {
+        customerId: true,
+        createdAt: true,
+        paidAt: true,
+        customer: { select: { name: true } },
+      },
     }),
     getCachedCfoInsight(dateRange),
     ...tabQueries,
@@ -591,7 +643,17 @@ export async function getFinancialBIData(
       daysOverdue: differenceInDays(new Date(), inv.dueDate), remindersSent: inv.paymentReminderCount,
       autoChargeStatus: inv.autoChargeStatus,
     })),
-    customerPaymentTrends: [], thirtyDayCashProjection: summaryRaw._raw.thirtyDayCashProjection,
+    customerPaymentTrends: buildCustomerPaymentTrends(
+      recentPaidForRules
+        .filter((inv): inv is typeof inv & { paidAt: Date } => Boolean(inv.paidAt))
+        .map((inv) => ({
+          customerId: inv.customerId,
+          customerName: inv.customer.name,
+          issuedAt: inv.createdAt,
+          paidAt: inv.paidAt,
+        }))
+    ),
+    thirtyDayCashProjection: summaryRaw._raw.thirtyDayCashProjection,
     aging90PlusAmount: summaryRaw._raw.aging90PlusAmount, prevAging90PlusAmount: summaryRaw._raw.prevAging90PlusAmount,
     expenseGrowthPct: 0,
     revenueGrowthPct: 0,
@@ -631,6 +693,7 @@ export async function getFinancialBIData(
     cfoInsight: {
       briefing: cachedInsight?.briefing || "AI analysis will be available after the next scheduled run.",
       generatedAt: cachedInsight?.generatedAt || new Date().toISOString(),
+      recommendations: cachedInsight?.recommendations || [],
       actions,
     },
     ...tabData,

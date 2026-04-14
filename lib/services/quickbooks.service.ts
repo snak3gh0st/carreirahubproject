@@ -2329,6 +2329,55 @@ export class QuickbooksService {
     });
     return this.request(`/reports/BalanceSheet?${params.toString()}`);
   }
+
+  async getCashFlowReport(startDate: string, endDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      summarize_column_by: "Month",
+      minorversion: "73",
+    });
+    return this.request(`/reports/CashFlow?${params.toString()}`);
+  }
+
+  async getAgedReceivablesReport(asOfDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      report_date: asOfDate,
+      minorversion: "73",
+    });
+    return this.request(`/reports/AgedReceivables?${params.toString()}`);
+  }
+
+  async getAgedPayablesReport(asOfDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      report_date: asOfDate,
+      minorversion: "73",
+    });
+    return this.request(`/reports/AgedPayables?${params.toString()}`);
+  }
+
+  async getCustomerSalesReport(startDate: string, endDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      minorversion: "73",
+    });
+    return this.request(`/reports/CustomerSales?${params.toString()}`);
+  }
+
+  async getVendorExpensesReport(startDate: string, endDate: string): Promise<any> {
+    await this.initialize();
+    const params = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+      minorversion: "73",
+    });
+    return this.request(`/reports/VendorExpenses?${params.toString()}`);
+  }
 }
 
 export const quickbooksService = new QuickbooksService();

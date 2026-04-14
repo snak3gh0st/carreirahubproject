@@ -30,6 +30,20 @@ export interface ParsedBalanceSheet {
   totalEquity: number;
 }
 
+export interface ParsedCashFlow {
+  sections: Array<{ name: string; total: number }>;
+  netCashChange: number;
+}
+
+export interface ParsedAgingSummary {
+  columns: string[];
+  rows: Array<{ name: string; values: number[]; total: number }>;
+}
+
+export interface ParsedEntitySummary {
+  rows: Array<{ name: string; total: number }>;
+}
+
 function parseNumber(value: string | undefined): number {
   if (!value || value === "") return 0;
   return parseFloat(value.replace(/,/g, "")) || 0;
@@ -44,6 +58,19 @@ function extractMonthColumns(report: QbReport): string[] {
 
 function findSectionByGroup(rows: QbReportRow[], groupName: string): QbReportRow | undefined {
   return rows.find((row) => row.group === groupName || row.Header?.ColData?.[0]?.value === groupName);
+}
+
+function flattenDataRows(rows: QbReportRow[]): QbReportRow[] {
+  const flat: QbReportRow[] = [];
+  for (const row of rows) {
+    if (row.ColData && row.ColData.length > 0) {
+      flat.push(row);
+    }
+    if (row.Rows?.Row) {
+      flat.push(...flattenDataRows(row.Rows.Row));
+    }
+  }
+  return flat;
 }
 
 function extractSectionTotal(section: QbReportRow | undefined, colCount: number): { total: number; byMonth: number[] } {
@@ -160,4 +187,54 @@ export function parseBalanceSheet(raw: QbReport): ParsedBalanceSheet {
     totalLiabilities,
     totalEquity,
   };
+}
+
+export function parseCashFlow(raw: QbReport): ParsedCashFlow {
+  const rows = raw.Rows?.Row || [];
+  const sections = rows
+    .map((row) => ({
+      name: row.Header?.ColData?.[0]?.value || row.group || "",
+      total: parseNumber(row.Summary?.ColData?.[row.Summary.ColData.length - 1]?.value),
+    }))
+    .filter((row) => row.name && row.total !== 0);
+
+  const netCashChange = sections.find((section) =>
+    ["Net Cash Increase", "Net Change in Cash", "Net Cash Provided by Operating Activities"].includes(section.name)
+  )?.total || sections.reduce((sum, section) => sum + section.total, 0);
+
+  return { sections, netCashChange };
+}
+
+export function parseAgingSummary(raw: QbReport): ParsedAgingSummary {
+  const columns = (raw.Columns?.Column || [])
+    .slice(1)
+    .map((column) => column.ColTitle)
+    .filter(Boolean);
+
+  const rows = flattenDataRows(raw.Rows?.Row || [])
+    .map((row) => {
+      const colData = row.ColData || [];
+      const name = colData[0]?.value || "";
+      const values = colData.slice(1).map((col) => parseNumber(col.value));
+      const total = values[values.length - 1] || values.reduce((sum, value) => sum + value, 0);
+      return { name, values, total };
+    })
+    .filter((row) => row.name && row.total > 0);
+
+  return { columns, rows };
+}
+
+export function parseEntitySummaryReport(raw: QbReport): ParsedEntitySummary {
+  const rows = flattenDataRows(raw.Rows?.Row || [])
+    .map((row) => {
+      const colData = row.ColData || [];
+      return {
+        name: colData[0]?.value || "",
+        total: parseNumber(colData[colData.length - 1]?.value),
+      };
+    })
+    .filter((row) => row.name && row.total > 0)
+    .sort((a, b) => b.total - a.total);
+
+  return { rows };
 }
