@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ProfessionalSidebar } from "@/components/dashboard/professional-sidebar";
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
+import { ChatBubble } from "@/components/ai/ChatBubble";
 
 /**
  * Professional Dashboard Layout
@@ -64,6 +65,9 @@ export default async function DashboardLayout({
       {!isTeamRole && (
         <SupportChatBubble userId={userId} userName={userName} />
       )}
+
+      {/* CarreiraUSA AI Copilot — team operators only */}
+      {isTeamRole && <ChatBubble />}
     </div>
   );
 }
