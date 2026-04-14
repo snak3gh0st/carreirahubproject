@@ -65,10 +65,13 @@ export class QuickbooksService {
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
 
-    // QB Payments API uses a different base URL but same OAuth tokens
+    // QB Payments API uses a different base URL but same OAuth tokens.
+    // Base is /quickbooks/v4 — payment transaction endpoints live under
+    // /payments/{tokens,charges,echecks}, while customer-scoped payment
+    // method endpoints live at the root (e.g. /customers/{id}/cards).
     this.paymentsBaseUrl = isProduction
-      ? "https://api.intuit.com/quickbooks/v4/payments"
-      : "https://sandbox.api.intuit.com/quickbooks/v4/payments";
+      ? "https://api.intuit.com/quickbooks/v4"
+      : "https://sandbox.api.intuit.com/quickbooks/v4";
   }
 
   /**
@@ -300,13 +303,18 @@ export class QuickbooksService {
           throw new Error("QuickBooks Payments access token expired.");
         }
 
-        // 404 = no payment methods on file (expected, not an error for the Payments API).
+        // 404 on GET = no payment methods on file (expected, not an error).
         // Return a sentinel object instead of throwing so the circuit breaker records
         // this as a SUCCESS. Callers (getCustomerCards, getCustomerBankAccounts) check
         // for this sentinel and return []. Throwing here would cause paymentsCircuitBreaker
         // to count every "no payment method on file" lookup as a failure, falsely opening
         // the circuit after 5 such customers are checked.
-        if (response.status === 404) {
+        //
+        // On POST/PUT/DELETE a 404 is a REAL error (customer not found in Payments,
+        // merchant not configured for saved profiles, etc.) — fall through to the
+        // standard error path so callers can see it.
+        const method = (options.method || "GET").toUpperCase();
+        if (response.status === 404 && method === "GET") {
           return { __qb_404_not_found: true };
         }
 
@@ -417,7 +425,7 @@ export class QuickbooksService {
       description: params.description,
     };
 
-    return this.paymentsRequest("/charges", {
+    return this.paymentsRequest("/payments/charges", {
       method: "POST",
       body: JSON.stringify(chargeData),
     }, params.requestId);
@@ -445,7 +453,7 @@ export class QuickbooksService {
       description: params.description,
     };
 
-    return this.paymentsRequest("/echecks", {
+    return this.paymentsRequest("/payments/echecks", {
       method: "POST",
       body: JSON.stringify(echeckData),
     }, params.requestId);
@@ -455,14 +463,14 @@ export class QuickbooksService {
    * Get charge status by ID.
    */
   async getCharge(chargeId: string): Promise<any> {
-    return this.paymentsRequest(`/charges/${chargeId}`);
+    return this.paymentsRequest(`/payments/charges/${chargeId}`);
   }
 
   /**
    * Get eCheck status by ID.
    */
   async getEcheck(echeckId: string): Promise<any> {
-    return this.paymentsRequest(`/echecks/${echeckId}`);
+    return this.paymentsRequest(`/payments/echecks/${echeckId}`);
   }
 
   /**
@@ -493,7 +501,7 @@ export class QuickbooksService {
         },
       },
     };
-    const result = await this.paymentsRequest("/tokens", {
+    const result = await this.paymentsRequest("/payments/tokens", {
       method: "POST",
       body: JSON.stringify(payload),
     }, requestId);
@@ -507,10 +515,15 @@ export class QuickbooksService {
    */
   async createCardFromToken(qbCustomerId: string, token: string): Promise<any> {
     const requestId = `sav-${qbCustomerId.slice(0, 10)}-${Date.now()}`;
-    return this.paymentsRequest(`/customers/${qbCustomerId}/cards`, {
-      method: "POST",
-      body: JSON.stringify({ token }),
-    }, requestId);
+    // Intuit SDK shape: POST /customers/{id}/cards/createFromToken  { value: tokenId }
+    return this.paymentsRequest(
+      `/customers/${qbCustomerId}/cards/createFromToken`,
+      {
+        method: "POST",
+        body: JSON.stringify({ value: token }),
+      },
+      requestId
+    );
   }
 
   /**
@@ -534,7 +547,7 @@ export class QuickbooksService {
         phone: data.phone || "",
       },
     };
-    const result = await this.paymentsRequest("/tokens", {
+    const result = await this.paymentsRequest("/payments/tokens", {
       method: "POST",
       body: JSON.stringify(payload),
     }, requestId);
@@ -547,10 +560,15 @@ export class QuickbooksService {
    */
   async createBankAccountFromToken(qbCustomerId: string, token: string): Promise<any> {
     const requestId = `sav-ach-${qbCustomerId.slice(0, 8)}-${Date.now()}`;
-    return this.paymentsRequest(`/customers/${qbCustomerId}/bank-accounts`, {
-      method: "POST",
-      body: JSON.stringify({ token }),
-    }, requestId);
+    // Intuit SDK shape: POST /customers/{id}/bank-accounts/createFromToken  { value: tokenId }
+    return this.paymentsRequest(
+      `/customers/${qbCustomerId}/bank-accounts/createFromToken`,
+      {
+        method: "POST",
+        body: JSON.stringify({ value: token }),
+      },
+      requestId
+    );
   }
 
   /**
@@ -571,7 +589,7 @@ export class QuickbooksService {
       context: { mobile: "false", isEcommerce: "true" },
       description: params.description,
     };
-    return this.paymentsRequest("/echecks", {
+    return this.paymentsRequest("/payments/echecks", {
       method: "POST",
       body: JSON.stringify(echeckData),
     }, params.requestId);
@@ -596,7 +614,7 @@ export class QuickbooksService {
       context: { mobile: "false", isEcommerce: "true" },
       description: params.description,
     };
-    return this.paymentsRequest("/charges", {
+    return this.paymentsRequest("/payments/charges", {
       method: "POST",
       body: JSON.stringify(chargeData),
     }, params.requestId);
