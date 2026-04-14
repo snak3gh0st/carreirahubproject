@@ -178,6 +178,17 @@ function fmtMoney(n: number): string {
   return `$${Number(n || 0).toFixed(2)}`;
 }
 
+function fmtDateBR(d: Date | string | null | undefined): string {
+  if (!d) return '';
+  const date = typeof d === 'string' ? new Date(d) : d;
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function describeMethod(method: { type: 'card' | 'ach'; last4: string; brand?: string }): string {
+  const brand = method.brand || (method.type === 'card' ? 'Cartão' : 'Conta bancária');
+  return `${brand} ••${method.last4}`;
+}
+
 function tableRow(cells: string[]): string {
   return `<tr>${cells
     .map(
@@ -762,6 +773,80 @@ export class EmailService {
       html,
       NotificationType.HUB_PASSWORD_RESET,
       { customerId: customer.id }
+    );
+  }
+
+  // =========================================================================
+  // Autopay (customer-facing) — covers new-invoice + scheduled autopay charge,
+  // successful autopay receipt, and autopay failure notifications.
+  // Uses existing NotificationType enum values to avoid a schema migration.
+  // =========================================================================
+
+  /**
+   * Sent when a new invoice is created for a customer whose payment method
+   * is already on file in QuickBooks Payments. Covers both "nova invoice"
+   * and "fatura chegando" — the customer sees the amount, due date, and
+   * the method that will be charged automatically.
+   */
+  async sendHubAutopayScheduled(
+    customer: { id: string; email: string; name: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any; dueDate: Date },
+    method: { type: 'card' | 'ach'; last4: string; brand?: string }
+  ): Promise<void> {
+    const invNum = invoice.invoiceNumber || invoice.id.slice(0, 8);
+    const subject = `Nova fatura #${invNum} — cobrança automática em ${fmtDateBR(invoice.dueDate)}`;
+    const html = this.generateHubAutopayScheduledEmail(customer, invoice, method);
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      html,
+      NotificationType.HUB_INVOICE_AVAILABLE,
+      { customerId: customer.id, invoiceId: invoice.id }
+    );
+  }
+
+  /** Sent after the auto-charge cron successfully charges a saved method. */
+  async sendHubAutopayReceipt(
+    customer: { id: string; email: string; name: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any },
+    method: { type: 'card' | 'ach'; last4: string; brand?: string }
+  ): Promise<void> {
+    const invNum = invoice.invoiceNumber || invoice.id.slice(0, 8);
+    const subject = `Pagamento automático processado — Fatura #${invNum}`;
+    const html = this.generateHubAutopayReceiptEmail(customer, invoice, method);
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      html,
+      NotificationType.PAYMENT_RECEIVED,
+      { customerId: customer.id, invoiceId: invoice.id }
+    );
+  }
+
+  /** Sent after an autopay attempt fails. Informs retry schedule or manual-pay link if exhausted. */
+  async sendHubAutopayFailed(
+    customer: { id: string; email: string; name: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any; dueDate: Date },
+    method: { type: 'card' | 'ach'; last4: string; brand?: string },
+    nextRetry: Date | null,
+    isFinalAttempt: boolean
+  ): Promise<void> {
+    const invNum = invoice.invoiceNumber || invoice.id.slice(0, 8);
+    const subject = isFinalAttempt
+      ? `Não foi possível cobrar automaticamente — Fatura #${invNum}`
+      : `Tentativa de cobrança falhou — Fatura #${invNum}`;
+    const html = this.generateHubAutopayFailedEmail(
+      customer, invoice, method, nextRetry, isFinalAttempt
+    );
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      html,
+      NotificationType.PAYMENT_REMINDER,
+      { customerId: customer.id, invoiceId: invoice.id }
     );
   }
 
@@ -1435,6 +1520,120 @@ export class EmailService {
       ctaLabel: 'View invoice in portal',
       ctaUrl: portalUrl,
       footerNote: 'Do not reply to this email',
+    });
+  }
+
+  // ----- Autopay templates (PT-BR) -----
+
+  private generateHubAutopayScheduledEmail(
+    customer: { name: string; email: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any; dueDate: Date },
+    method: { type: 'card' | 'ach'; last4: string; brand?: string }
+  ): string {
+    const invNum = esc(invoice.invoiceNumber || invoice.id.slice(0, 8));
+    const due = fmtDateBR(invoice.dueDate);
+    const amount = fmtMoney(Number(invoice.amount));
+    const portalUrl = `${APP_URL}/hub/login`;
+
+    const bodyHtml = `
+      <p>Olá ${esc(customer.name)},</p>
+      <p>Uma nova fatura foi gerada na sua conta. Ela será cobrada <strong>automaticamente</strong> na data de vencimento, conforme previsto em contrato.</p>
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:6px; padding:14px; margin:16px 0;">
+        <h3 style="margin:0 0 8px 0; color:${BRAND_COLORS.verde}; font-size:15px;">Detalhes da fatura</h3>
+        <p style="margin:4px 0;"><strong>Fatura:</strong> #${invNum}</p>
+        <p style="margin:4px 0;"><strong>Valor:</strong> ${amount}</p>
+        <p style="margin:4px 0;"><strong>Vencimento:</strong> ${esc(due)}</p>
+        <p style="margin:4px 0;"><strong>Método de cobrança:</strong> ${esc(describeMethod(method))}</p>
+      </div>
+      <p>Não é necessária nenhuma ação. No dia do vencimento, o valor será debitado automaticamente do método cadastrado acima.</p>
+      <p style="font-size:13px; color:${BRAND_COLORS.textMuted};">Se precisar trocar o método de pagamento ou tiver qualquer dúvida, fale com o nosso suporte antes da data de vencimento.</p>
+    `;
+
+    return renderBaseLayout({
+      title: 'Nova fatura — cobrança automática',
+      preheader: `Fatura #${invNum} de ${amount} será cobrada em ${due}`,
+      bodyHtml,
+      ctaLabel: 'Ver fatura no portal',
+      ctaUrl: portalUrl,
+      footerNote: 'Este é um e-mail automático. Por favor, não responda.',
+    });
+  }
+
+  private generateHubAutopayReceiptEmail(
+    customer: { name: string; email: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any },
+    method: { type: 'card' | 'ach'; last4: string; brand?: string }
+  ): string {
+    const invNum = esc(invoice.invoiceNumber || invoice.id.slice(0, 8));
+    const amount = fmtMoney(Number(invoice.amount));
+    const paidAt = fmtDateBR(new Date());
+    const portalUrl = `${APP_URL}/hub/login`;
+
+    const bodyHtml = `
+      <p>Olá ${esc(customer.name)},</p>
+      <p>Seu pagamento foi processado com sucesso. Obrigado!</p>
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:6px; padding:14px; margin:16px 0;">
+        <h3 style="margin:0 0 8px 0; color:${BRAND_COLORS.verde}; font-size:15px;">Recibo de pagamento</h3>
+        <p style="margin:4px 0;"><strong>Fatura:</strong> #${invNum}</p>
+        <p style="margin:4px 0;"><strong>Valor cobrado:</strong> ${amount}</p>
+        <p style="margin:4px 0;"><strong>Data:</strong> ${esc(paidAt)}</p>
+        <p style="margin:4px 0;"><strong>Método:</strong> ${esc(describeMethod(method))}</p>
+        <p style="margin:4px 0;"><strong>Status:</strong> <span style="color:${BRAND_COLORS.verde}; font-weight:bold;">PAGO</span></p>
+      </div>
+      <p>Você pode acessar o portal do cliente para revisar o histórico de pagamentos e baixar o comprovante.</p>
+      <p style="font-size:13px; color:${BRAND_COLORS.textMuted};">Em caso de dúvidas sobre este pagamento, entre em contato com o suporte.</p>
+    `;
+
+    return renderBaseLayout({
+      title: 'Pagamento automático processado',
+      preheader: `Pagamento de ${amount} recebido — Fatura #${invNum}`,
+      bodyHtml,
+      ctaLabel: 'Ver no portal',
+      ctaUrl: portalUrl,
+      footerNote: 'Obrigado pela parceria.',
+    });
+  }
+
+  private generateHubAutopayFailedEmail(
+    customer: { name: string; email: string },
+    invoice: { id: string; invoiceNumber: string | null; amount: any; dueDate: Date },
+    method: { type: 'card' | 'ach'; last4: string; brand?: string },
+    nextRetry: Date | null,
+    isFinalAttempt: boolean
+  ): string {
+    const invNum = esc(invoice.invoiceNumber || invoice.id.slice(0, 8));
+    const amount = fmtMoney(Number(invoice.amount));
+    const payUrl = `${APP_URL}/hub/pay/${invoice.id}`;
+
+    const statusLine = isFinalAttempt
+      ? `<p><strong>Esgotamos as tentativas automáticas.</strong> Por favor, regularize o pagamento manualmente clicando no botão abaixo.</p>`
+      : nextRetry
+        ? `<p>Faremos uma nova tentativa automaticamente em <strong>${esc(fmtDateBR(nextRetry))}</strong>. Se preferir, você pode pagar agora manualmente.</p>`
+        : `<p>Faremos uma nova tentativa automaticamente nos próximos dias. Se preferir, você pode pagar agora manualmente.</p>`;
+
+    const bodyHtml = `
+      <p>Olá ${esc(customer.name)},</p>
+      <p>Tentamos processar a cobrança automática da fatura abaixo, mas não foi possível.</p>
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:6px; padding:14px; margin:16px 0;">
+        <h3 style="margin:0 0 8px 0; color:${ERROR_RED}; font-size:15px;">Cobrança não processada</h3>
+        <p style="margin:4px 0;"><strong>Fatura:</strong> #${invNum}</p>
+        <p style="margin:4px 0;"><strong>Valor:</strong> ${amount}</p>
+        <p style="margin:4px 0;"><strong>Vencimento:</strong> ${esc(fmtDateBR(invoice.dueDate))}</p>
+        <p style="margin:4px 0;"><strong>Método tentado:</strong> ${esc(describeMethod(method))}</p>
+      </div>
+      ${statusLine}
+      ${calloutBox('Motivos comuns: cartão recusado pelo banco, limite insuficiente, cartão expirado ou dados desatualizados. Se o problema persistir, atualize seu método no portal ou fale com o suporte.', 'warn')}
+    `;
+
+    return renderBaseLayout({
+      title: isFinalAttempt ? 'Ação necessária: cobrança automática falhou' : 'Cobrança automática não processada',
+      preheader: isFinalAttempt
+        ? `Fatura #${invNum} precisa ser paga manualmente`
+        : `Tentaremos novamente — fatura #${invNum}`,
+      bodyHtml,
+      ctaLabel: 'Pagar agora manualmente',
+      ctaUrl: payUrl,
+      footerNote: 'Se já efetuou o pagamento, desconsidere este aviso.',
     });
   }
 

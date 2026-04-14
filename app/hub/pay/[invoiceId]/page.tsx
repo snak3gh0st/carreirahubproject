@@ -73,6 +73,8 @@ export default async function HubPaymentPage({ params }: Props) {
         language={lang}
         chargeEndpoint={`/api/hub/pay/${invoice.id}/charge`}
         onSuccessRedirect="/hub?paid=1"
+        showAutopayNotice
+
       />
     </div>
   );

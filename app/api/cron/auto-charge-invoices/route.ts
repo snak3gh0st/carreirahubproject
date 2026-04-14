@@ -216,6 +216,38 @@ export async function GET(request: NextRequest) {
           { invoiceId: invoice.id, chargeId: chargeResult?.id, amount }
         );
 
+        // Email receipt to the customer (best-effort — do not fail the charge).
+        if (invoice.customer.email) {
+          try {
+            const { emailService } = await import("@/lib/services/email.service");
+            const methodSource =
+              methods.cards.length > 0 ? methods.cards[0] : methods.bankAccounts[0];
+            const last4 = (methodSource.number || methodSource.accountNumber || "").slice(-4);
+            const brand =
+              methods.cards.length > 0
+                ? (methodSource.cardType || undefined)
+                : (methodSource.bankName || methodSource.name || "Conta bancária");
+            await emailService.sendHubAutopayReceipt(
+              {
+                id: invoice.customer.id,
+                email: invoice.customer.email,
+                name: invoice.customer.name,
+              },
+              invoice,
+              {
+                type: methods.cards.length > 0 ? "card" : "ach",
+                last4,
+                brand,
+              }
+            );
+          } catch (mailErr: any) {
+            console.error(
+              `[CRON] Failed to email autopay receipt for invoice ${invoice.id}:`,
+              mailErr.message
+            );
+          }
+        }
+
         charged++;
       } catch (error: any) {
         console.error(
@@ -272,6 +304,52 @@ export async function GET(request: NextRequest) {
           },
           { invoiceId: invoice.id }
         );
+
+        // Email customer about the failure (best-effort).
+        if (invoice.customer.email) {
+          try {
+            const { emailService } = await import("@/lib/services/email.service");
+            // Best-effort method description — may be null if the method
+            // was deleted after the attempt failed.
+            const methodSource =
+              methods?.cards?.length > 0
+                ? methods.cards[0]
+                : methods?.bankAccounts?.[0];
+            const methodInfo = methodSource
+              ? {
+                  type: (methods.cards.length > 0 ? "card" : "ach") as
+                    | "card"
+                    | "ach",
+                  last4: (
+                    methodSource.number || methodSource.accountNumber || ""
+                  ).slice(-4),
+                  brand:
+                    methods.cards.length > 0
+                      ? methodSource.cardType || undefined
+                      : methodSource.bankName ||
+                        methodSource.name ||
+                        "Conta bancária",
+                }
+              : { type: "card" as const, last4: "????", brand: undefined };
+
+            await emailService.sendHubAutopayFailed(
+              {
+                id: invoice.customer.id,
+                email: invoice.customer.email,
+                name: invoice.customer.name,
+              },
+              invoice,
+              methodInfo,
+              nextRetry,
+              isFinalAttempt
+            );
+          } catch (mailErr: any) {
+            console.error(
+              `[CRON] Failed to email autopay failure for invoice ${invoice.id}:`,
+              mailErr.message
+            );
+          }
+        }
 
         failed++;
       }

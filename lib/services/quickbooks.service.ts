@@ -403,6 +403,39 @@ export class QuickbooksService {
   }
 
   /**
+   * Normalized view of the customer's default autopay method. Prefers
+   * cards over bank accounts (matching the cron's charge priority).
+   * Returns null if no method is on file.
+   */
+  async getAutopayMethodFor(qbCustomerId: string): Promise<
+    | { type: 'card' | 'ach'; id: string; last4: string; brand?: string }
+    | null
+  > {
+    const methods = await this.getCustomerPaymentMethods(qbCustomerId);
+    if (methods.cards.length > 0) {
+      const c = methods.cards[0];
+      const num: string = c.number || '';
+      return {
+        type: 'card',
+        id: c.id,
+        last4: num.slice(-4),
+        brand: c.cardType || undefined,
+      };
+    }
+    if (methods.bankAccounts.length > 0) {
+      const b = methods.bankAccounts[0];
+      const num: string = b.accountNumber || '';
+      return {
+        type: 'ach',
+        id: b.id,
+        last4: num.slice(-4),
+        brand: b.bankName || b.name || 'Conta bancária',
+      };
+    }
+    return null;
+  }
+
+  /**
    * Charge a stored credit card via QB Payments API.
    * POST /charges
    */

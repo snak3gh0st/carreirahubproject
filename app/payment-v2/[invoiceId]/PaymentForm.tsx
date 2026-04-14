@@ -16,6 +16,8 @@ interface Props {
   language?: string;
   chargeEndpoint?: string;
   onSuccessRedirect?: string;
+  /** When true, shows the autopay authorization notice above the submit button. */
+  showAutopayNotice?: boolean;
 }
 
 type PaymentMethod = "card" | "ach";
@@ -93,6 +95,7 @@ export default function PaymentForm({
   language = "en",
   chargeEndpoint,
   onSuccessRedirect,
+  showAutopayNotice = false,
 }: Props) {
   const lang = language as Language;
   const endpoint = chargeEndpoint || `/api/payment-v2/${invoiceId}/charge`;
@@ -348,6 +351,15 @@ export default function PaymentForm({
             {error && (
               <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
                 {error}
+              </div>
+            )}
+
+            {showAutopayNotice && (
+              <div
+                className="px-4 py-3 rounded-xl text-xs leading-relaxed"
+                style={{ backgroundColor: GOLD_LIGHT, color: "#5C4B36" }}
+              >
+                <strong>Autorização de cobrança automática.</strong> Ao confirmar este pagamento, este método ficará registrado no QuickBooks para cobrança automática das próximas faturas da sua conta, conforme previsto em contrato.
               </div>
             )}
 

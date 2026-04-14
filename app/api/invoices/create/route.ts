@@ -705,9 +705,32 @@ export async function POST(request: NextRequest) {
           await notificationService.sendHubWelcome(customer, tempPassword);
           console.log(`[INVOICE_CREATE] ClientUser created for ${customer.email}`);
         } else {
-          // Send "new invoice available" notification
-          await notificationService.sendHubInvoiceAvailable(customer, invoices[0]);
-          console.log(`[INVOICE_CREATE] Hub invoice notification sent to ${customer.email}`);
+          // If customer has a payment method on file in QB Payments, send the
+          // autopay-scheduled notification (explains the method + due date).
+          // Otherwise fall back to the generic "new invoice" email.
+          let sentAutopay = false;
+          if (customer.quickbooks_id) {
+            try {
+              const { quickbooksService } = await import('@/lib/services/quickbooks.service');
+              await quickbooksService.initialize();
+              const method = await quickbooksService.getAutopayMethodFor(customer.quickbooks_id);
+              if (method) {
+                await notificationService.sendHubAutopayScheduled(
+                  customer,
+                  invoices[0],
+                  { type: method.type, last4: method.last4, brand: method.brand }
+                );
+                sentAutopay = true;
+                console.log(`[INVOICE_CREATE] Hub autopay notification sent to ${customer.email} (method ${method.type} ••${method.last4})`);
+              }
+            } catch (autopayErr: any) {
+              console.error('[INVOICE_CREATE] Failed to check autopay method:', autopayErr.message);
+            }
+          }
+          if (!sentAutopay) {
+            await notificationService.sendHubInvoiceAvailable(customer, invoices[0]);
+            console.log(`[INVOICE_CREATE] Hub invoice notification sent to ${customer.email}`);
+          }
         }
       } catch (hubError: any) {
         console.error("[INVOICE_CREATE] Hub account setup failed:", hubError.message);
