@@ -63,6 +63,19 @@ export function ChatPanel({
     (sendMessage as any)({ text }, { body: extraBody });
   };
 
+  const handleDeleteMessage = async (messageId: string) => {
+    // Optimistic remove from UI
+    setMessages((prev: any[]) => prev.filter((m: any) => m.id !== messageId));
+    try {
+      const res = await fetch(`/api/dashboard/ai/messages/${messageId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        console.error('Failed to delete AI message', await res.text());
+      }
+    } catch (err) {
+      console.error('Delete error', err);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-background">
       {messages.length === 0 ? (
@@ -77,7 +90,7 @@ export function ChatPanel({
           />
         </div>
       ) : (
-        <MessageList messages={messages} isStreaming={isStreaming} />
+        <MessageList messages={messages} isStreaming={isStreaming} onDeleteMessage={handleDeleteMessage} />
       )}
       <Composer onSend={handleSend} disabled={isStreaming} />
     </div>

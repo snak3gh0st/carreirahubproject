@@ -4,7 +4,15 @@ import { ToolCallCard } from './ToolCallCard';
 import { useEffect, useRef } from 'react';
 
 // v6 message shape: { id, role, parts: [{type: 'text', text} | {type: 'tool-*', toolName, input, output}] }
-export function MessageList({ messages, isStreaming }: { messages: any[]; isStreaming: boolean }) {
+export function MessageList({
+  messages,
+  isStreaming,
+  onDeleteMessage,
+}: {
+  messages: any[];
+  isStreaming: boolean;
+  onDeleteMessage?: (messageId: string) => void;
+}) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
 
@@ -17,7 +25,14 @@ export function MessageList({ messages, isStreaming }: { messages: any[]; isStre
           <div key={m.id}>
             {parts.map((p: any, idx: number) => {
               if (p.type === 'text' && p.text) {
-                return <MessageBubble key={idx} role={m.role === 'assistant' ? 'assistant' : 'user'} content={p.text} />;
+                return (
+                  <MessageBubble
+                    key={idx}
+                    role={m.role === 'assistant' ? 'assistant' : 'user'}
+                    content={p.text}
+                    onDelete={onDeleteMessage ? () => onDeleteMessage(m.id) : undefined}
+                  />
+                );
               }
               if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
                 return <ToolCallCard key={idx} toolName={p.toolName ?? p.type} args={p.input ?? p.args} result={p.output ?? p.result} />;
