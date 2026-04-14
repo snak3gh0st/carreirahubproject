@@ -51,6 +51,18 @@
     {
       "path": "/api/cron/cfo-analysis",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/seller-digest",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/finance-digest",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/admin-digest",
+      "schedule": "0 8 * * 1"
     }
   ]
 }
