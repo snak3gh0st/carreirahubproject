@@ -135,6 +135,49 @@ export async function POST(request: NextRequest) {
 
           console.log(`[QuickBooks Webhook] ${operation} ${name} with ID: ${id}`);
 
+          // Handle Payment.Create / Payment.Update events - notify the SALES owner of the
+          // related invoice that payment was received. Best-effort, never fails the webhook.
+          if (name === "Payment" && (operation === "Create" || operation === "Update")) {
+            try {
+              const { emailService } = await import("@/lib/services/email.service");
+
+              const payment = await prisma.payment.findFirst({
+                where: { quickbooks_payment_id: id },
+                include: {
+                  invoice: {
+                    include: { customer: true, owner: true, deal: true },
+                  },
+                },
+              });
+
+              const invoice = payment?.invoice;
+              if (invoice && invoice.owner && invoice.owner.email && invoice.owner.role === "SALES") {
+                await emailService.sendSellerInvoicePaid(
+                  {
+                    id: invoice.id,
+                    invoiceNumber: invoice.invoiceNumber,
+                    amount: invoice.amount,
+                    dueDate: invoice.dueDate,
+                    status: invoice.status,
+                    customer: { id: invoice.customer.id, name: invoice.customer.name, email: invoice.customer.email },
+                    deal: invoice.deal ? { id: invoice.deal.id, title: invoice.deal.title } : null,
+                  },
+                  {
+                    id: invoice.owner.id,
+                    name: invoice.owner.name,
+                    email: invoice.owner.email,
+                    role: invoice.owner.role,
+                  }
+                );
+                console.log(`[SellerNotify] Payment ${id} -> notified seller ${invoice.owner.email}`);
+              } else {
+                console.log(`[SellerNotify] Payment ${id} - no SALES owner to notify (skipped)`);
+              }
+            } catch (notifyErr) {
+              console.error(`[SellerNotify] Failed to notify seller for payment ${id}:`, notifyErr);
+            }
+          }
+
           // Handle Customer.Update events - sync to DocuSign if customer has docusign_id
           if (name === "Customer" && operation === "Update") {
             try {

@@ -3,9 +3,88 @@ import { prisma } from '@/lib/db';
 import { contractWorkflowService } from '@/lib/services/contract-workflow.service';
 import { pipedriveService } from '@/lib/services/pipedrive.service';
 import { notificationService } from '@/lib/services/notification.service';
+import { emailService } from '@/lib/services/email.service';
 import { ContractStatus } from '@prisma/client';
 import { verifyHmacSignature } from '@/lib/utils/hmac';
 import { integrationLogger } from '@/lib/utils/logger';
+
+/**
+ * Resolve the SALES seller for a contract:
+ *   1) Deal.owner (preferred — Deal.ownerId is the assigned seller)
+ *   2) Invoice.owner (fallback — when contract has no deal but does have invoices)
+ * Returns null if no SALES-role user can be found.
+ */
+async function resolveSellerForContract(contract: {
+  id: string;
+  dealId?: string | null;
+  invoices?: Array<{ id: string }> | null;
+}): Promise<{ seller: { id: string; name: string | null; email: string; role: string } | null; dealTitle: string | null }> {
+  let dealTitle: string | null = null;
+
+  if (contract.dealId) {
+    const deal = await prisma.deal.findUnique({
+      where: { id: contract.dealId },
+      include: { owner: true },
+    });
+    if (deal) {
+      dealTitle = deal.title;
+      if (deal.owner && deal.owner.email && deal.owner.role === 'SALES') {
+        return { seller: deal.owner, dealTitle };
+      }
+    }
+  }
+
+  if (contract.invoices && contract.invoices.length > 0) {
+    const inv = await prisma.invoice.findUnique({
+      where: { id: contract.invoices[0].id },
+      include: { owner: true },
+    });
+    if (inv && inv.owner && inv.owner.email && inv.owner.role === 'SALES') {
+      return { seller: inv.owner, dealTitle };
+    }
+  }
+
+  return { seller: null, dealTitle };
+}
+
+/**
+ * Notify the SALES seller that a contract is unsigned (declined / voided / expired).
+ * Best-effort — never throws.
+ */
+async function notifySellerContractUnsigned(
+  contract: any,
+  reason: 'expired' | 'declined' | 'voided'
+): Promise<void> {
+  try {
+    const { seller } = await resolveSellerForContract({
+      id: contract.id,
+      dealId: contract.dealId,
+      invoices: contract.invoices,
+    });
+    if (!seller) {
+      console.log(`[SellerNotify] Contract ${contract.id} ${reason} - no SALES seller resolved`);
+      return;
+    }
+    await emailService.sendSellerContractUnsigned(
+      {
+        id: contract.id,
+        docusign_env_id: contract.docusign_env_id,
+        status: contract.status,
+        signedUrl: contract.signedS3Url || contract.signedUrl,
+        sentAt: contract.sentAt,
+        expiresAt: contract.expiresAt,
+        reminderCount: contract.reminderCount,
+        signerEmail: contract.signerEmail,
+        signerName: contract.signerName,
+      },
+      seller,
+      reason
+    );
+    console.log(`[SellerNotify] Contract ${contract.id} ${reason} -> ${seller.email}`);
+  } catch (notifyErr) {
+    console.error(`[SellerNotify] Failed to notify seller of ${reason} contract ${contract.id}:`, notifyErr);
+  }
+}
 
 /**
  * POST /api/webhooks/docusign
@@ -262,12 +341,44 @@ export async function POST(request: NextRequest) {
             console.error("[DOCUSIGN_WEBHOOK] Pipedrive sync failed (non-blocking):", error);
           }
         }
+
+        // Additive seller notification (does NOT replace finance routing)
+        try {
+          const { seller, dealTitle } = await resolveSellerForContract({
+            id: contract.id,
+            dealId: contract.dealId,
+            invoices: contract.invoices,
+          });
+          if (seller) {
+            await emailService.sendSellerContractSigned(
+              {
+                id: contract.id,
+                docusign_env_id: contract.docusign_env_id,
+                status: contract.status,
+                signedUrl: contract.signedS3Url || contract.signedUrl,
+                sentAt: contract.sentAt,
+                expiresAt: contract.expiresAt,
+                reminderCount: contract.reminderCount,
+                signerEmail: contract.signerEmail,
+                signerName: contract.signerName,
+              },
+              seller,
+              dealTitle || undefined
+            );
+            console.log(`[SellerNotify] Contract ${contract.id} signed -> ${seller.email}`);
+          } else {
+            console.log(`[SellerNotify] Contract ${contract.id} signed - no SALES seller resolved`);
+          }
+        } catch (notifyErr) {
+          console.error(`[SellerNotify] Failed to notify seller of signed contract ${contract.id}:`, notifyErr);
+        }
         break;
 
       case 'envelope-declined':
         // Client declined to sign
         console.log(`[DOCUSIGN_WEBHOOK] Envelope declined for contract ${contract.id}`);
         await contractWorkflowService.handleContractDeclined(contract.id);
+        await notifySellerContractUnsigned(contract, 'declined');
         break;
 
       case 'envelope-voided':
@@ -280,6 +391,7 @@ export async function POST(request: NextRequest) {
             voidedAt: new Date(),
           },
         });
+        await notifySellerContractUnsigned(contract, 'voided');
         break;
 
       default:
