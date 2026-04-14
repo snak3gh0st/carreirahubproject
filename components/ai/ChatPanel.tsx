@@ -8,6 +8,7 @@ import { MessageList } from './MessageList';
 import { Composer } from './Composer';
 import { Suggestions } from './Suggestions';
 import { getSuggestionsForRole } from '@/lib/ai/suggestions-by-role';
+import { ComplianceGate } from './ComplianceGate';
 
 export function ChatPanel({
   conversationId,
@@ -77,22 +78,24 @@ export function ChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background">
-      {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col justify-center">
-          <div className="text-center px-6">
-            <h2 className="text-lg font-semibold">Oi, {firstName}! Como posso ajudar?</h2>
-            <p className="text-sm text-muted-foreground mt-1">Pergunte sobre alunos, leads, faturas, contratos.</p>
+    <ComplianceGate>
+      <div className="flex flex-col h-full bg-background">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col justify-center">
+            <div className="text-center px-6">
+              <h2 className="text-lg font-semibold">Oi, {firstName}! Como posso ajudar?</h2>
+              <p className="text-sm text-muted-foreground mt-1">Pergunte sobre alunos, leads, faturas, contratos.</p>
+            </div>
+            <Suggestions
+              items={getSuggestionsForRole(role)}
+              onPick={(q) => (sendMessage as any)({ text: q }, { body: extraBody })}
+            />
           </div>
-          <Suggestions
-            items={getSuggestionsForRole(role)}
-            onPick={(q) => (sendMessage as any)({ text: q }, { body: extraBody })}
-          />
-        </div>
-      ) : (
-        <MessageList messages={messages} isStreaming={isStreaming} onDeleteMessage={handleDeleteMessage} />
-      )}
-      <Composer onSend={handleSend} disabled={isStreaming} />
-    </div>
+        ) : (
+          <MessageList messages={messages} isStreaming={isStreaming} onDeleteMessage={handleDeleteMessage} />
+        )}
+        <Composer onSend={handleSend} disabled={isStreaming} />
+      </div>
+    </ComplianceGate>
   );
 }
