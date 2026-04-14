@@ -367,10 +367,10 @@ Plans:
   6. Rate limiting (default 50 msg/hour/user, configurable via env) returns a friendly 429 instead of silently exceeding quota
   7. `AI_COPILOT_ENABLED=false` kill switch disables the endpoint immediately without a deploy
   8. An admin-only `/dashboard/ai/admin` page shows usage, estimated cost by model, top tools, and recent errors
-**Plans:** 5 plans
+**Plans:** 1/5 plans executed
 
 Plans:
-- [ ] 19-01-PLAN.md — Foundation: AI SDK v6 install + 3 Prisma tables + tool registry scaffold + PT-BR prompt + Wave 0 tests
+- [x] 19-01-PLAN.md — Foundation: AI SDK v6 install + 3 Prisma tables + tool registry scaffold + PT-BR prompt + Wave 0 tests
 - [ ] 19-02-PLAN.md — 20 predefined tools (Finance/Students/Leads/Contracts/Ops/Meta) + QB live + DocuSign live + RBAC defense-in-depth
 - [ ] 19-03-PLAN.md — API routes: streaming chat, conversations list/detail, admin usage (kill switch + rate limit + audit)
 - [ ] 19-04-PLAN.md — UI: ChatBubble (global), /dashboard/ai page, /dashboard/ai/admin page, PT-BR suggestions by role
@@ -445,6 +445,6 @@ v1.3 phases execute in numeric order: 19 → 20 → 21
 | 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-02 |
 | 17. Daily Action View + Coordinator Overview | v1.2 | 2/2 | Complete    | 2026-04-01 |
 | 18. Client Surveys - Intake and NPS Forms | v1.2 | 3/3 | Complete    | 2026-04-03 |
-| 19. CarreiraUSA AI — Q&A (read-only) | v1.3 | 0/TBD | Planned | - |
+| 19. CarreiraUSA AI — Q&A (read-only) | v1.3 | 1/5 | In Progress|  |
 | 20. CarreiraUSA AI — Actions with confirmation | v1.3 | 0/TBD | Planned | - |
 | 21. CarreiraUSA AI — Knowledge base (RAG) | v1.3 | 0/TBD | Planned | - |
