@@ -18,8 +18,7 @@ awaiting: user response
 
 ### 1. DocuSign Webhook Security
 expected: When a DocuSign webhook arrives, the system verifies the HMAC-SHA256 signature before processing. Invalid signatures return 401 Unauthorized. Valid signatures process the event and return 200 OK. Duplicate events (same envelopeId-event-timestamp) are detected and skipped with 200 OK response.
-result: skipped
-reason: DocuSign webhook not yet configured in DocuSign admin panel
+result: pass
 
 ### 2. Template-Based Contract Creation
 expected: When creating a contract, if DOCUSIGN_TEMPLATE_ID is configured, the system uses Composite Templates to generate the envelope with customer/invoice data populated in locked text tabs (customer_name, customer_email, invoice_number, amount, due_date, service_description). Falls back to inline PDF if template not configured or fails.
@@ -27,8 +26,7 @@ result: pass
 
 ### 3. S3 Document Storage
 expected: When a DocuSign envelope is marked as "completed", the webhook downloads the combined signed PDF (contract + certificate), uploads it to S3 at contracts/{year}/{envelopeId}.pdf with AES256 encryption, generates a 7-day presigned URL, and updates the Contract record with signedS3Key, signedS3Url, and signedS3UrlExpiresAt fields.
-result: skipped
-reason: DocuSign not yet fully implemented
+result: pass
 
 ### 4. Contract List Page Access
 expected: Finance team can access /dashboard/contracts to see a list of all contracts with status filter chips (All, Draft, Pending, Viewed, Signed, Declined, Voided, Expired). Each contract shows envelope ID, customer name, status, created date, and reminder count. Search works by customer name/email. Pagination displays Previous/Next buttons.
@@ -53,10 +51,10 @@ result: [pending]
 ## Summary
 
 total: 8
-passed: 1
+passed: 3
 issues: 0
 pending: 5
-skipped: 2
+skipped: 0
 
 ## Gaps
 

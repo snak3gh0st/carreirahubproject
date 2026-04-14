@@ -1,9 +1,9 @@
 ---
 phase: 18
 slug: client-surveys-intake-and-nps-forms
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: ready
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-04-03
 ---
 
@@ -38,7 +38,10 @@ created: 2026-04-03
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| TBD | TBD | TBD | TBD | TBD | TBD | TBD | ⬜ pending |
+| 18-01/T1 | 18-01 | 1 | SURV-01 | Automated + manual | `npx tsc --noEmit --pretty 2>&1 | head -30` | yes | ⬜ pending |
+| 18-02/T1 | 18-02 | 2 | SURV-02 | Automated + manual | `npx tsc --noEmit --pretty 2>&1 | head -30` | yes | ⬜ pending |
+| 18-02/T2 | 18-02 | 2 | SURV-03 | Automated + manual | `npx tsc --noEmit --pretty 2>&1 | head -30` | yes | ⬜ pending |
+| 18-03/T1 | 18-03 | 3 | SURV-03, SURV-04 | Automated + manual | `npx tsc --noEmit --pretty 2>&1 | head -30` | yes | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -46,7 +49,7 @@ created: 2026-04-03
 
 ## Wave 0 Requirements
 
-*Existing infrastructure covers all phase requirements — form system already built.*
+Existing infrastructure covers all phase requirements — form system, auth patterns, and hub submission flow already exist.
 
 ---
 
@@ -54,9 +57,9 @@ created: 2026-04-03
 
 | Behavior | Requirement | Why Manual | Test Instructions |
 |----------|-------------|------------|-------------------|
-| Intake form auto-assigned on enrollment | TBD | Requires enrollment flow | Create enrollment, verify FormAssignment created |
-| NPS survey rendering | TBD | Visual/UX | Open hub form page, verify fields render correctly |
-| Ops form panel on student profile | TBD | Cross-portal UX | Navigate ops student profile, verify form section |
+| Intake form auto-assigned on enrollment | SURV-02 | Requires enrollment flow | Create enrollment, verify the correct onboarding FormAssignment exists and no duplicate pending intake is created |
+| NPS survey rendering | SURV-01 | Visual/UX | Open hub form page for `nps-entry` or `nps-exit`, verify localized copy and 0-10 scale render correctly |
+| Ops form panel on student profile | SURV-03, SURV-04 | Cross-portal UX | Navigate ops student profile, assign a form, then submit NPS from Hub and verify the profile shows the assignment state and NPS badge |
 
 ---
 
@@ -67,6 +70,6 @@ created: 2026-04-03
 - [ ] Wave 0 covers all MISSING references
 - [ ] No watch-mode flags
 - [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** pending
