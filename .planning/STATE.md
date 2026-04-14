@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
 status: executing
-stopped_at: Completed 19-carreirausa-ai-internal-copilot-q-a-02-PLAN.md
-last_updated: "2026-04-14T19:26:52.579Z"
+stopped_at: Completed 19-carreirausa-ai-internal-copilot-q-a-03-PLAN.md
+last_updated: "2026-04-14T19:34:45.927Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 22
   completed_phases: 21
   total_plans: 68
-  completed_plans: 67
+  completed_plans: 68
   percent: 80
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 19 (carreirausa-ai-internal-copilot-q-a) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -84,6 +84,7 @@ Progress: [████████░░] 80% (4/5 phases)
 | Phase 18-client-surveys-intake-and-nps-forms P03 | 4 | 2 tasks | 2 files |
 | Phase 19-carreirausa-ai-internal-copilot-q-a P01 | 4 | 2 tasks | 14 files |
 | Phase 19-carreirausa-ai-internal-copilot-q-a P02 | 7 | 2 tasks | 24 files |
+| Phase 19 P03 | 5 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,9 @@ Recent decisions affecting current work:
 - [Phase 19-carreirausa-ai-internal-copilot-q-a]: Wave 0 tests run via npx tsx --test — tsx handles @/ alias resolution via tsconfig.json; plain node:test cannot resolve path aliases
 - [Phase 19-carreirausa-ai-internal-copilot-q-a]: getStudentsByPhase filters via nested currentPhase: { key: phaseKey } — schema uses currentPhaseId FK not currentPhaseKey column
 - [Phase 19-carreirausa-ai-internal-copilot-q-a]: Tests require POSTGRES_PRISMA_URL at CLI level — ESM imports are hoisted past process.env assignments in tsx test files
+- [Phase 19]: Kill switch (AI_COPILOT_ENABLED) is first check in POST /ai/chat — before NextAuth getServerSession — so disabling the feature takes effect immediately even for unauthenticated probes
+- [Phase 19]: session.user.role IS populated by NextAuth JWT callback — no extra DB lookup needed at request time; TypeScript requires cast to { id?: string; role?: string } since it's not in the default Session type
+- [Phase 19]: estimateCostUSD in admin/usage uses AI_MODEL_DEFAULT env var (not hardcoded model) so cost estimates match deployed model configuration
 
 ### Roadmap Evolution
 
@@ -173,7 +177,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-14T19:26:52.576Z
-Stopped at: Completed 19-carreirausa-ai-internal-copilot-q-a-02-PLAN.md
+Last session: 2026-04-14T19:34:45.924Z
+Stopped at: Completed 19-carreirausa-ai-internal-copilot-q-a-03-PLAN.md
 Resume file: None
 Next action: Manually verify Phase 18 flows and write 18-01/18-02/18-03 summaries
