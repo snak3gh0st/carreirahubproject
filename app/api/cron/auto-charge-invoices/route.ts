@@ -76,6 +76,14 @@ export async function GET(request: NextRequest) {
     const dryRunLog: any[] = [];
 
     for (const invoice of invoices) {
+      // Declared outside the try so the catch block can still reference it
+      // when building the failure email (may be null if the lookup itself
+      // was what failed).
+      let methods: {
+        cards: any[];
+        bankAccounts: any[];
+        hasPaymentMethod: boolean;
+      } | null = null;
       try {
         const qbCustomerId = invoice.customer.quickbooks_id;
 
@@ -95,8 +103,7 @@ export async function GET(request: NextRequest) {
         }
 
         // Check for payment methods on file
-        const methods =
-          await quickbooksService.getCustomerPaymentMethods(qbCustomerId);
+        methods = await quickbooksService.getCustomerPaymentMethods(qbCustomerId);
 
         if (!methods.hasPaymentMethod) {
           console.log(
@@ -310,25 +317,22 @@ export async function GET(request: NextRequest) {
           try {
             const { emailService } = await import("@/lib/services/email.service");
             // Best-effort method description — may be null if the method
-            // was deleted after the attempt failed.
-            const methodSource =
-              methods?.cards?.length > 0
-                ? methods.cards[0]
-                : methods?.bankAccounts?.[0];
+            // lookup itself failed, or the method was deleted mid-attempt.
+            const cards = methods?.cards ?? [];
+            const banks = methods?.bankAccounts ?? [];
+            const hasCard = cards.length > 0;
+            const methodSource = hasCard ? cards[0] : banks[0];
             const methodInfo = methodSource
               ? {
-                  type: (methods.cards.length > 0 ? "card" : "ach") as
-                    | "card"
-                    | "ach",
+                  type: (hasCard ? "card" : "ach") as "card" | "ach",
                   last4: (
                     methodSource.number || methodSource.accountNumber || ""
                   ).slice(-4),
-                  brand:
-                    methods.cards.length > 0
-                      ? methodSource.cardType || undefined
-                      : methodSource.bankName ||
-                        methodSource.name ||
-                        "Conta bancária",
+                  brand: hasCard
+                    ? methodSource.cardType || undefined
+                    : methodSource.bankName ||
+                      methodSource.name ||
+                      "Conta bancária",
                 }
               : { type: "card" as const, last4: "????", brand: undefined };
 
