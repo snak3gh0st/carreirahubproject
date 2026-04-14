@@ -149,6 +149,7 @@ Recent decisions affecting current work:
 - Phase 13 added: CEFR English Proficiency Test Engine — scientifically validated placement test with randomized question bank (100-200+ questions, A1-C2), adaptive scoring, no-repeat guarantee
 - Phases 14-17 added: v1.2 Ops Hub — Student Journey Management (2026-04-01)
 - Phase 18 added: Client Surveys - Intake and NPS Forms (2026-04-03)
+- Phases 19-21 added: v1.3 CarreiraUSA AI — Internal Suite (2026-04-14). Phase 19 = Q&A read-only copilot (design approved, spec at docs/superpowers/specs/2026-04-14-carreirausa-ai-internal-design.md). Phases 20 (Actions) and 21 (RAG) queued as stubs dependent on Phase 19.
 
 ### Blockers/Concerns
 
