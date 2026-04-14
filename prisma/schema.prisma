@@ -32,6 +32,8 @@ model User {
   assignedEnrollments    MentorshipEnrollment[] @relation("AssignedEnrollments")
   conductedSessions      MentorshipSession[]    @relation("ConductedSessions")
   triggeredTransitions   PhaseTransition[]      @relation("TriggeredTransitions")
+  aiConversations        AiConversation[]
+  aiRateLimit            AiRateLimit?
 
   @@index([id])
   @@map("users")
@@ -962,4 +964,53 @@ model PhaseTransition {
   @@index([toPhaseId])
   @@index([triggeredById])
   @@map("phase_transitions")
+}
+
+enum AiMessageRole {
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model AiConversation {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  title     String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  messages  AiMessage[]
+
+  @@index([userId, updatedAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           AiMessageRole
+  content        String         @db.Text
+  toolName       String?
+  toolArgs       Json?
+  toolResult     Json?
+  tokensIn       Int?
+  tokensOut      Int?
+  modelUsed      String?
+  latencyMs      Int?
+  errorMessage   String?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("ai_messages")
+}
+
+model AiRateLimit {
+  userId      String   @id
+  user        User     @relation(fields: [userId], references: [id])
+  windowStart DateTime
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+
+  @@map("ai_rate_limits")
 }
