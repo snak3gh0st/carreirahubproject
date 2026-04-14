@@ -183,10 +183,11 @@ Recent decisions affecting current work:
 | 260414-dg2 | Rebrand emails + 5 internal notification streams | 2026-04-14 | 2b8b767 | Verified ✓ | [260414-dg2-rebrand-emails-5-internal-notification-s](./quick/260414-dg2-rebrand-emails-5-internal-notification-s/) |
 | 260414-mmm | Delete message button + AI compliance modal (termo de compromisso) | 2026-04-14 | 1b3f7f6 | — | [260414-mmm-preciso-ter-botao-de-delete-de-msg-e-com](./quick/260414-mmm-preciso-ter-botao-de-delete-de-msg-e-com/) |
 | 260414-mud | Enrich AI Copilot with business context + getProcessGuide tool | 2026-04-14 | 8a1ddb6 | — | [260414-mud-enriquecer-ai-copilot-com-contexto-de-ne](./quick/260414-mud-enriquecer-ai-copilot-com-contexto-de-ne/) |
+| 260414-ncs | Fix AI context overflow + rich UX loading states | 2026-04-14 | 9a0428f | — | [260414-ncs-fix-ai-context-overflow-ux-de-loading-re](./quick/260414-ncs-fix-ai-context-overflow-ux-de-loading-re/) |
 
 ## Session Continuity
 
-Last session: 2026-04-14T20:10:00Z
-Stopped at: Completed quick task 260414-mud: Enrich AI Copilot with business context
+Last session: 2026-04-14T20:30:00Z
+Stopped at: Completed quick task 260414-ncs: Fix AI context overflow + UX loading states
 Resume file: None
 Next action: Manually verify Phase 18 flows and write 18-01/18-02/18-03 summaries
