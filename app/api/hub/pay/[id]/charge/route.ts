@@ -189,14 +189,26 @@ export async function POST(
         );
       }
 
-      // Try to save card on file
+      // Try to save card on file. NOTE: /cards/createFromToken consumes the
+      // single-use token, so if save succeeds we MUST charge via the saved
+      // cardId. If save fails we re-tokenize before falling back to a token
+      // charge (the original token is dead at that point).
       let savedCard: any = null;
+      let savedCardId: string | undefined;
       try {
         savedCard = await quickbooksService.createCardFromToken(
           qbCustomerId,
           token
         );
-        paymentSaved = true;
+        savedCardId = savedCard?.id ?? savedCard?.entityId ?? savedCard?.cardId;
+        if (!savedCardId) {
+          console.warn(
+            "[Hub Charge] createCardFromToken returned no id, response:",
+            JSON.stringify(savedCard)
+          );
+        } else {
+          paymentSaved = true;
+        }
       } catch (err: any) {
         console.warn(
           "[Hub Charge] Could not save card on file, falling back to token charge:",
@@ -207,16 +219,26 @@ export async function POST(
       // Charge
       const description = `Invoice ${invoice.invoiceNumber || invoice.id}`;
       try {
-        if (savedCard?.id) {
+        if (savedCardId) {
           chargeResult = await quickbooksService.chargeCard({
-            cardId: savedCard.id,
+            cardId: savedCardId,
             amount: chargeAmount,
             description,
             requestId,
           });
         } else {
+          // Save failed AND the original token is consumed by the failed attempt,
+          // so re-tokenize with the same card data before charging.
+          const freshToken = await quickbooksService.tokenizeCard({
+            number: cardNumber,
+            expMonth,
+            expYear,
+            cvc,
+            name: cardholderName,
+            postalCode,
+          });
           chargeResult = await quickbooksService.chargeWithToken({
-            token,
+            token: freshToken,
             amount: chargeAmount,
             description,
             requestId,
@@ -270,14 +292,26 @@ export async function POST(
         );
       }
 
-      // Try to save bank account
+      // Try to save bank account. Same single-use token caveat as cards.
       let savedAccount: any = null;
+      let savedAccountId: string | undefined;
       try {
         savedAccount = await quickbooksService.createBankAccountFromToken(
           qbCustomerId,
           token
         );
-        paymentSaved = true;
+        savedAccountId =
+          savedAccount?.id ??
+          savedAccount?.entityId ??
+          savedAccount?.bankAccountId;
+        if (!savedAccountId) {
+          console.warn(
+            "[Hub Charge] createBankAccountFromToken returned no id, response:",
+            JSON.stringify(savedAccount)
+          );
+        } else {
+          paymentSaved = true;
+        }
       } catch (err: any) {
         console.warn(
           "[Hub Charge] Could not save bank account, falling back to token charge:",
@@ -288,16 +322,23 @@ export async function POST(
       // Charge
       const description = `Invoice ${invoice.invoiceNumber || invoice.id}`;
       try {
-        if (savedAccount?.id) {
+        if (savedAccountId) {
           chargeResult = await quickbooksService.chargeBankAccount({
-            bankAccountId: savedAccount.id,
+            bankAccountId: savedAccountId,
             amount: chargeAmount,
             description,
             requestId,
           });
         } else {
+          const freshToken = await quickbooksService.tokenizeBankAccount({
+            routingNumber,
+            accountNumber,
+            name: accountName,
+            accountType,
+            phone,
+          });
           chargeResult = await quickbooksService.chargeEcheckWithToken({
-            token,
+            token: freshToken,
             amount: chargeAmount,
             description,
             requestId,

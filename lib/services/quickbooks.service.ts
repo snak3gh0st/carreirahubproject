@@ -516,14 +516,30 @@ export class QuickbooksService {
   async createCardFromToken(qbCustomerId: string, token: string): Promise<any> {
     const requestId = `sav-${qbCustomerId.slice(0, 10)}-${Date.now()}`;
     // Intuit SDK shape: POST /customers/{id}/cards/createFromToken  { value: tokenId }
-    return this.paymentsRequest(
-      `/customers/${qbCustomerId}/cards/createFromToken`,
-      {
-        method: "POST",
-        body: JSON.stringify({ value: token }),
-      },
-      requestId
-    );
+    try {
+      return await this.paymentsRequest(
+        `/customers/${qbCustomerId}/cards/createFromToken`,
+        {
+          method: "POST",
+          body: JSON.stringify({ value: token }),
+        },
+        requestId
+      );
+    } catch (error: any) {
+      // 409 PMT-4009 "Card already exists" — QB includes the existing card id
+      // in the error detail. Extract it and return a card-shaped object so
+      // callers can charge the existing saved card.
+      if (error?.status === 409 && error.responseText) {
+        const match = error.responseText.match(/Existing Card id is (\S+?)[.\"]/);
+        if (match?.[1]) {
+          console.log(
+            `[QuickBooks Payments] Card already on file for customer ${qbCustomerId}, reusing id ${match[1]}`
+          );
+          return { id: match[1], alreadyExisted: true };
+        }
+      }
+      throw error;
+    }
   }
 
   /**
@@ -561,14 +577,30 @@ export class QuickbooksService {
   async createBankAccountFromToken(qbCustomerId: string, token: string): Promise<any> {
     const requestId = `sav-ach-${qbCustomerId.slice(0, 8)}-${Date.now()}`;
     // Intuit SDK shape: POST /customers/{id}/bank-accounts/createFromToken  { value: tokenId }
-    return this.paymentsRequest(
-      `/customers/${qbCustomerId}/bank-accounts/createFromToken`,
-      {
-        method: "POST",
-        body: JSON.stringify({ value: token }),
-      },
-      requestId
-    );
+    try {
+      return await this.paymentsRequest(
+        `/customers/${qbCustomerId}/bank-accounts/createFromToken`,
+        {
+          method: "POST",
+          body: JSON.stringify({ value: token }),
+        },
+        requestId
+      );
+    } catch (error: any) {
+      // 409 — bank account already on file. Extract existing id from error.
+      if (error?.status === 409 && error.responseText) {
+        const match = error.responseText.match(
+          /Existing (?:Bank Account|BankAccount) id is (\S+?)[.\"]/i
+        );
+        if (match?.[1]) {
+          console.log(
+            `[QuickBooks Payments] Bank account already on file for customer ${qbCustomerId}, reusing id ${match[1]}`
+          );
+          return { id: match[1], alreadyExisted: true };
+        }
+      }
+      throw error;
+    }
   }
 
   /**
