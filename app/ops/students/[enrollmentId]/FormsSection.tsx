@@ -210,6 +210,9 @@ export function FormsSection({
                           "dd/MM/yyyy"
                         )}`}
                     </p>
+                    {assignment.status === "IN_PROGRESS" && !assignment.submission && (
+                      <p className="text-xs text-blue-500 mt-1">Aluno iniciou o preenchimento.</p>
+                    )}
                     {nps && (
                       <p className="text-xs text-gray-500 mt-2">
                         NPS: <span className="font-semibold text-brand-verde">{nps.score}/10</span>
