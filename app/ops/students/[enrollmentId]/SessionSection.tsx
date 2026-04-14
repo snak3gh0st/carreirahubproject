@@ -5,20 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { ClipboardList, Plus } from "lucide-react";
-
-const SESSION_TYPES = [
-  { value: "passagem_de_bastao", label: "Passagem de Bastão" },
-  { value: "teste_de_ingles", label: "Teste de Inglês" },
-  { value: "onboarding", label: "Onboarding" },
-  { value: "bussola", label: "Bússola" },
-  { value: "raio_x", label: "Raio X" },
-  { value: "devolutiva", label: "Devolutiva" },
-  { value: "treinamento_de_entrevista", label: "Treinamento de Entrevista" },
-  { value: "mock_interview", label: "Mock Interview" },
-  { value: "check_in", label: "Check-in" },
-  { value: "renovacao", label: "Renovação" },
-  { value: "outro", label: "Outro" },
-] as const;
+import {
+  OPS_SESSION_TYPES,
+  OPS_SESSION_TYPE_LABELS,
+  type OpsSessionType,
+} from "@/lib/ops/workflow";
 
 type SessionItem = {
   id: string;
@@ -28,9 +19,10 @@ type SessionItem = {
   conductor: { name: string };
 };
 
-const SESSION_TYPE_LABELS: Record<string, string> = Object.fromEntries(
-  SESSION_TYPES.map(({ value, label }) => [value, label])
-);
+const SESSION_TYPE_OPTIONS = OPS_SESSION_TYPES.map((value) => ({
+  value,
+  label: OPS_SESSION_TYPE_LABELS[value],
+}));
 
 function useSessionsPage(enrollmentId: string, page: number) {
   return useQuery<{ sessions: SessionItem[]; total: number; page: number; pageSize: number }>({
@@ -162,7 +154,7 @@ export function SessionSection({
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-verde/30"
               >
                 <option value="">Selecionar...</option>
-                {SESSION_TYPES.map(({ value, label }) => (
+                {SESSION_TYPE_OPTIONS.map(({ value, label }) => (
                   <option key={value} value={value}>
                     {label}
                   </option>
@@ -236,7 +228,7 @@ export function SessionSection({
               <div key={s.id} className="py-3 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-sm font-medium text-gray-800">
-                    {SESSION_TYPE_LABELS[s.sessionType] ?? s.sessionType}
+                    {OPS_SESSION_TYPE_LABELS[s.sessionType as OpsSessionType] ?? s.sessionType}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {format(new Date(s.sessionDate), "dd/MM/yyyy")} · {s.conductor.name}

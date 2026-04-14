@@ -32,7 +32,7 @@ export async function GET() {
     },
     include: {
       customer: { select: { id: true, name: true, qbBalance: true } },
-      currentPhase: { select: { id: true, label: true, key: true } },
+      currentPhase: { select: { id: true, label: true, key: true, slaDays: true } },
       assignedTo: { select: { id: true, name: true } },
       transitions: {
         orderBy: { createdAt: "desc" },
@@ -64,7 +64,8 @@ export async function GET() {
       const latestTransitionDate =
         enrollment.transitions[0]?.createdAt ?? enrollment.startDate;
       const phaseAgeDays = daysBetween(latestTransitionDate, now);
-      const daysRemaining = SLA_DAYS_PER_PHASE - phaseAgeDays;
+      const phaseSlaDays = enrollment.currentPhase?.slaDays ?? SLA_DAYS_PER_PHASE;
+      const daysRemaining = phaseSlaDays - phaseAgeDays;
       const slaExpiring = daysRemaining <= SLA_WARNING_DAYS;
 
       const lastSessionDate = enrollment.sessions[0]?.sessionDate;

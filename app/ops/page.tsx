@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { KanbanSquare, GraduationCap, Users } from "lucide-react";
+import { BookOpen, KanbanSquare, GraduationCap, Users } from "lucide-react";
 
 export default async function OpsHomePage() {
   const session = await getServerSession(authOptions);
@@ -46,7 +46,7 @@ export default async function OpsHomePage() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-10">
         <Link
           href="/ops/pipeline"
           className="flex items-center gap-3 bg-brand-verde text-white rounded-xl px-5 py-4 hover:opacity-90 transition-opacity"
@@ -67,6 +67,13 @@ export default async function OpsHomePage() {
         >
           <Users className="h-5 w-5 flex-shrink-0" />
           <span className="font-display font-semibold text-sm">Ver Clientes</span>
+        </Link>
+        <Link
+          href="/ops/handbook"
+          className="flex items-center gap-3 bg-white border border-gray-200 text-brand-verde rounded-xl px-5 py-4 hover:border-brand-verde transition-colors"
+        >
+          <BookOpen className="h-5 w-5 flex-shrink-0" />
+          <span className="font-display font-semibold text-sm">Guia Operacional</span>
         </Link>
       </div>
 

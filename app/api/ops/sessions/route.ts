@@ -2,27 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { mentorshipService } from "@/lib/services/mentorship.service";
+import { OPS_SESSION_TYPES } from "@/lib/ops/workflow";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
-const SESSION_TYPES = [
-  "passagem_de_bastao",
-  "teste_de_ingles",
-  "onboarding",
-  "bussola",
-  "raio_x",
-  "devolutiva",
-  "treinamento_de_entrevista",
-  "mock_interview",
-  "check_in",
-  "renovacao",
-  "outro",
-] as const;
-
 const sessionSchema = z.object({
   enrollmentId: z.string().min(1),
-  sessionType: z.enum(SESSION_TYPES),
+  sessionType: z.enum(OPS_SESSION_TYPES),
   conductorId: z.string().min(1),
   sessionDate: z.string().min(1),
   notes: z.string().optional(),
