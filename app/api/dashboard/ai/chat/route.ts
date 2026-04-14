@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
-import { streamText, stepCountIs, tool } from 'ai';
+import { streamText, stepCountIs, tool, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { allowedToolsForRole } from '@/lib/ai/tools';
 import { checkRateLimit } from '@/lib/ai/rate-limit';
@@ -56,7 +56,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'messages é obrigatório' }, { status: 400 });
   }
   const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
-  const userText = typeof lastUserMsg?.content === 'string' ? lastUserMsg.content : JSON.stringify(lastUserMsg?.content ?? '');
+  // UI messages store text in `parts` (AI SDK v6), not `content`
+  const userText = (() => {
+    const textPart = lastUserMsg?.parts?.find((p: any) => p.type === 'text');
+    if (textPart) return textPart.text as string;
+    if (typeof lastUserMsg?.content === 'string') return lastUserMsg.content;
+    return JSON.stringify(lastUserMsg?.content ?? '');
+  })();
   if (userText.length > MAX_INPUT_CHARS) {
     return NextResponse.json({ error: `Mensagem muito longa (máximo ${MAX_INPUT_CHARS} caracteres)` }, { status: 400 });
   }
@@ -117,10 +123,11 @@ export async function POST(req: NextRequest) {
 
   // 9. streamText with onFinish persisting assistant + tool steps
   try {
+    const modelMessages = await convertToModelMessages(messages);
     const result = streamText({
       model,
       system: systemPrompt,
-      messages,
+      messages: modelMessages,
       tools: aiSdkTools,
       stopWhen: stepCountIs(8),
       onFinish: async ({ usage, text, finishReason, steps }) => {
