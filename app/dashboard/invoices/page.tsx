@@ -121,7 +121,7 @@ export default async function InvoicesPage({
   const totalPages = Math.ceil(totalInvoices / ITEMS_PER_PAGE);
 
   // Buscar invoices with pagination and sorting
-  const invoices = await prisma.invoice.findMany({
+  const invoicesRaw = await prisma.invoice.findMany({
     where: whereClause,
     skip: (currentPage - 1) * ITEMS_PER_PAGE,
     take: ITEMS_PER_PAGE,
@@ -142,6 +142,15 @@ export default async function InvoicesPage({
       },
     },
   });
+
+  // Serialize Prisma Decimal fields to plain numbers for the Client Component
+  // (Next.js rejects Decimal instances across the Server→Client boundary).
+  const invoices = invoicesRaw.map((inv) => ({
+    ...inv,
+    amount: Number(inv.amount),
+    amountPaid: Number(inv.amountPaid),
+    amountRefunded: Number(inv.amountRefunded),
+  }));
 
   // Statistics filtered by same whereClause (respects COMMERCIAL user filter)
   const globalStats = await prisma.invoice.groupBy({
