@@ -25,6 +25,7 @@ import { getCoordinatorOverview } from './ops/get-coordinator-overview';
 import { listCapabilities } from './meta/list-capabilities';
 import { explainDataModel } from './meta/explain-data-model';
 import { getCurrentDate } from './meta/get-current-date';
+import { getProcessGuide } from './meta/get-process-guide';
 // Utility
 import { searchCustomers } from './utility/search-customers';
 import { searchStudents } from './utility/search-students';
@@ -35,7 +36,7 @@ export const toolRegistry: AiToolDefinition<any, any>[] = [
   getLeadsByStatus, getLeadQualification, getLeadsBySource,
   getContracts, getDocumentStatus,
   getDailyActionView, getCoordinatorOverview,
-  listCapabilities, explainDataModel, getCurrentDate,
+  listCapabilities, explainDataModel, getCurrentDate, getProcessGuide,
   searchCustomers, searchStudents,
 ];
 
