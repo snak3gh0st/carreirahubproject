@@ -123,7 +123,8 @@ export async function POST(req: NextRequest) {
 
   // 9. streamText with onFinish persisting assistant + tool steps
   try {
-    const modelMessages = await convertToModelMessages(messages);
+    const recentMessages = messages.slice(-20);
+    const modelMessages = await convertToModelMessages(recentMessages);
     const result = streamText({
       model,
       system: systemPrompt,

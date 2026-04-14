@@ -8,6 +8,83 @@ import { truncateJson } from '../../dto';
 const REPORT_TYPES = ['profit_and_loss', 'cash_flow', 'balance_sheet', 'ar_aging'] as const;
 type ReportType = typeof REPORT_TYPES[number];
 
+type QbRow = {
+  type?: string;
+  group?: string;
+  ColData?: Array<{ value?: string }>;
+  Summary?: { ColData?: Array<{ value?: string }> };
+  Rows?: { Row?: QbRow[] };
+};
+
+function parseAmount(v?: string): number {
+  if (!v) return 0;
+  const n = Number(String(v).replace(/[,\s]/g, ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function flattenExpenseRows(rows: QbRow[] | undefined): Array<{ name: string; amount: number }> {
+  if (!rows) return [];
+  const out: Array<{ name: string; amount: number }> = [];
+  for (const r of rows) {
+    if (r.type === 'Data' && r.ColData && r.ColData.length >= 2) {
+      const name = r.ColData[0]?.value ?? '(sem nome)';
+      const amount = parseAmount(r.ColData[r.ColData.length - 1]?.value);
+      if (amount !== 0) out.push({ name, amount });
+    }
+    if (r.Rows?.Row) out.push(...flattenExpenseRows(r.Rows.Row));
+  }
+  return out;
+}
+
+function summarizeQbReport(report: unknown, reportType: ReportType): unknown {
+  if (reportType !== 'profit_and_loss') {
+    // For other report types, fall back to more aggressive truncation (~3KB)
+    return truncateJson(report, 3_000);
+  }
+  try {
+    const r = report as { Header?: { StartPeriod?: string; EndPeriod?: string; Currency?: string }; Rows?: { Row?: QbRow[] } };
+    const topRows = r?.Rows?.Row ?? [];
+    let incomeTotal = 0;
+    let expensesTotal = 0;
+    let netIncome = 0;
+    let topExpenses: Array<{ name: string; amount: number }> = [];
+
+    for (const section of topRows) {
+      if (section.type !== 'Section') continue;
+      const summaryAmount = parseAmount(section.Summary?.ColData?.[section.Summary.ColData.length - 1]?.value);
+      const group = (section.group ?? '').toLowerCase();
+      const headerLabel = section.Summary?.ColData?.[0]?.value?.toLowerCase() ?? '';
+      if (group === 'income' || headerLabel.includes('total income') || headerLabel.includes('total revenue')) {
+        incomeTotal = summaryAmount;
+      } else if (group === 'expenses' || headerLabel.includes('total expenses')) {
+        expensesTotal = summaryAmount;
+        topExpenses = flattenExpenseRows(section.Rows?.Row)
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 10);
+      } else if (group === 'netincome' || headerLabel.includes('net income')) {
+        netIncome = summaryAmount;
+      }
+    }
+    if (netIncome === 0 && (incomeTotal || expensesTotal)) {
+      netIncome = incomeTotal - expensesTotal;
+    }
+    return {
+      period: {
+        start: r?.Header?.StartPeriod ?? null,
+        end: r?.Header?.EndPeriod ?? null,
+      },
+      currency: r?.Header?.Currency ?? 'USD',
+      income_total: incomeTotal,
+      expenses_total: expensesTotal,
+      net_income: netIncome,
+      top_expenses: topExpenses,
+    };
+  } catch (err) {
+    // If parsing fails, fall back to conservative truncation
+    return { __parse_error: (err as Error).message, fallback: truncateJson(report, 3_000) };
+  }
+}
+
 function todayISO(): string { return new Date().toISOString().slice(0, 10); }
 function monthStartISO(): string {
   const d = new Date(); d.setDate(1);
@@ -56,7 +133,7 @@ export const getQuickBooksReport = defineAiTool({
         reportType,
         startDate,
         endDate,
-        report: truncateJson(report),
+        summary: summarizeQbReport(report, reportType),
         fetchedAt: new Date().toISOString(),
         latencyMs: Date.now() - started,
       };
