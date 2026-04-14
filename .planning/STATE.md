@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Brand Identity Reskin
 status: executing
-stopped_at: Completed 19-carreirausa-ai-internal-copilot-q-a-03-PLAN.md
-last_updated: "2026-04-14T19:34:45.927Z"
+stopped_at: Completed 19-carreirausa-ai-internal-copilot-q-a-04-PLAN.md
+last_updated: "2026-04-14T19:43:43.749Z"
 last_activity: 2026-04-14
 progress:
   total_phases: 22
   completed_phases: 21
   total_plans: 68
-  completed_plans: 68
+  completed_plans: 69
   percent: 80
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 19 (carreirausa-ai-internal-copilot-q-a) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-04-14
 
@@ -85,6 +85,7 @@ Progress: [████████░░] 80% (4/5 phases)
 | Phase 19-carreirausa-ai-internal-copilot-q-a P01 | 4 | 2 tasks | 14 files |
 | Phase 19-carreirausa-ai-internal-copilot-q-a P02 | 7 | 2 tasks | 24 files |
 | Phase 19 P03 | 5 | 2 tasks | 7 files |
+| Phase 19-carreirausa-ai-internal-copilot-q-a P04 | 5 | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Recent decisions affecting current work:
 - [Phase 19]: Kill switch (AI_COPILOT_ENABLED) is first check in POST /ai/chat — before NextAuth getServerSession — so disabling the feature takes effect immediately even for unauthenticated probes
 - [Phase 19]: session.user.role IS populated by NextAuth JWT callback — no extra DB lookup needed at request time; TypeScript requires cast to { id?: string; role?: string } since it's not in the default Session type
 - [Phase 19]: estimateCostUSD in admin/usage uses AI_MODEL_DEFAULT env var (not hardcoded model) so cost estimates match deployed model configuration
+- [Phase 19-carreirausa-ai-internal-copilot-q-a]: useChat body option + per-sendMessage options.body for dynamic context injection — avoids prepareSendMessagesRequest transport wrapper complexity in @ai-sdk/react v3
+- [Phase 19-carreirausa-ai-internal-copilot-q-a]: ChatBubble only rendered for isTeamRole users — non-team users already have SupportChatBubble; prevents AI bubble appearing for external-facing users
+- [Phase 19-carreirausa-ai-internal-copilot-q-a]: react-markdown@^10.1.0 + remark-gfm@^4.0.1 installed — were not in package.json; required for markdown rendering in MessageBubble
 
 ### Roadmap Evolution
 
@@ -177,7 +181,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-14T19:34:45.924Z
-Stopped at: Completed 19-carreirausa-ai-internal-copilot-q-a-03-PLAN.md
+Last session: 2026-04-14T19:43:43.745Z
+Stopped at: Completed 19-carreirausa-ai-internal-copilot-q-a-04-PLAN.md
 Resume file: None
 Next action: Manually verify Phase 18 flows and write 18-01/18-02/18-03 summaries
