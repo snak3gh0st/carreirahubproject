@@ -1,8 +1,9 @@
 'use client';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import { useSession } from 'next-auth/react';
 import { usePathname, useParams } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
 import { Suggestions } from './Suggestions';
@@ -19,11 +20,14 @@ export function ChatPanel({
   const pathname = usePathname() ?? '/dashboard';
   const params = useParams() as Record<string, any>;
 
-  const { messages, sendMessage, status, setMessages } = useChat({
-    api: '/api/dashboard/ai/chat',
-    // Static extra body fields merged with each request
-    body: { conversationId, pathname, params } as any,
-  } as any);
+  // AI SDK v6: api endpoint must be passed via DefaultChatTransport, not as a top-level prop.
+  // body is passed per-sendMessage so conversationId/pathname stay current.
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: '/api/dashboard/ai/chat' }),
+    []
+  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { messages, sendMessage, status, setMessages } = useChat({ transport } as any);
 
   // Load existing conversation messages when conversationId changes
   useEffect(() => {
@@ -52,8 +56,11 @@ export function ChatPanel({
   const role = (session?.user as any)?.role ?? 'ADMIN';
   const isStreaming = status === 'streaming' || status === 'submitted';
 
+  const extraBody = { conversationId, pathname, params };
+
   const handleSend = (text: string) => {
-    sendMessage({ text } as any, { body: { conversationId, pathname, params } } as any);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sendMessage as any)({ text }, { body: extraBody });
   };
 
   return (
@@ -66,7 +73,7 @@ export function ChatPanel({
           </div>
           <Suggestions
             items={getSuggestionsForRole(role)}
-            onPick={(q) => sendMessage({ text: q } as any, { body: { conversationId, pathname, params } } as any)}
+            onPick={(q) => (sendMessage as any)({ text: q }, { body: extraBody })}
           />
         </div>
       ) : (
