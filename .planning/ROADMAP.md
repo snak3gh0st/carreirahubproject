@@ -367,10 +367,14 @@ Plans:
   6. Rate limiting (default 50 msg/hour/user, configurable via env) returns a friendly 429 instead of silently exceeding quota
   7. `AI_COPILOT_ENABLED=false` kill switch disables the endpoint immediately without a deploy
   8. An admin-only `/dashboard/ai/admin` page shows usage, estimated cost by model, top tools, and recent errors
-**Plans:** 0/TBD plans
+**Plans:** 5 plans
 
 Plans:
-- [ ] TBD (run `/gsd:plan-phase 19` to break down)
+- [ ] 19-01-PLAN.md — Foundation: AI SDK v6 install + 3 Prisma tables + tool registry scaffold + PT-BR prompt + Wave 0 tests
+- [ ] 19-02-PLAN.md — 20 predefined tools (Finance/Students/Leads/Contracts/Ops/Meta) + QB live + DocuSign live + RBAC defense-in-depth
+- [ ] 19-03-PLAN.md — API routes: streaming chat, conversations list/detail, admin usage (kill switch + rate limit + audit)
+- [ ] 19-04-PLAN.md — UI: ChatBubble (global), /dashboard/ai page, /dashboard/ai/admin page, PT-BR suggestions by role
+- [ ] 19-05-PLAN.md — Hardening: security regression tests (rate-limit/kill-switch/prompt-injection/audit) + golden eval suite + OPERATIONS.md runbook
 **UI hint**: yes
 
 ### Phase 20: CarreiraUSA AI Internal Copilot — Actions with confirmation
