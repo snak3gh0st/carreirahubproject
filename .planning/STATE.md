@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 Phase: 19 (carreirausa-ai-internal-copilot-q-a) — EXECUTING
 Plan: 5 of 5
 Status: Phase complete — ready for verification
-Last activity: 2026-04-14 - Completed quick task 260414-mmm: Delete message button + AI compliance modal (termo de compromisso)
+Last activity: 2026-04-14 - Completed quick task 260414-oco: Wire the forms to the operacional hub correctly
 
 ```
 Progress: [████████░░] 80% (4/5 phases)
