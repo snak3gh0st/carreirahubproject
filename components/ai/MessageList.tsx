@@ -1,9 +1,33 @@
 'use client';
 import { MessageBubble } from './MessageBubble';
-import { ToolCallCard } from './ToolCallCard';
+import { ToolCallCard, resolveToolMeta } from './ToolCallCard';
 import { useEffect, useRef } from 'react';
+import { Loader2 } from 'lucide-react';
 
 // v6 message shape: { id, role, parts: [{type: 'text', text} | {type: 'tool-*', toolName, input, output}] }
+
+function detectInFlightTool(messages: any[]): string | null {
+  // Only inspect the last assistant message
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role !== 'assistant') continue;
+    const parts = m.parts ?? [];
+    // Find the last tool part without output/result (in-flight)
+    for (let j = parts.length - 1; j >= 0; j--) {
+      const p = parts[j];
+      const type = typeof p.type === 'string' ? p.type : '';
+      const isTool = type.startsWith('tool-') || type === 'tool-invocation' || type === 'tool-call';
+      if (!isTool) continue;
+      const hasResult = p.output !== undefined || p.result !== undefined || p.state === 'result';
+      if (!hasResult) {
+        return p.toolName ?? type.replace(/^tool-/, '');
+      }
+    }
+    break; // only check the last assistant message
+  }
+  return null;
+}
+
 export function MessageList({
   messages,
   isStreaming,
@@ -15,6 +39,11 @@ export function MessageList({
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
+
+  const inFlightTool = isStreaming ? detectInFlightTool(messages) : null;
+  const loadingLabel = inFlightTool
+    ? `Pesquisando ${resolveToolMeta(inFlightTool).label.toLowerCase()}...`
+    : 'Escrevendo resposta...';
 
   return (
     <div className="flex-1 overflow-y-auto p-4">
@@ -35,14 +64,26 @@ export function MessageList({
                 );
               }
               if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
-                return <ToolCallCard key={idx} toolName={p.toolName ?? p.type} args={p.input ?? p.args} result={p.output ?? p.result} />;
+                return (
+                  <ToolCallCard
+                    key={idx}
+                    toolName={p.toolName ?? p.type}
+                    args={p.input ?? p.args}
+                    result={p.output ?? p.result}
+                  />
+                );
               }
               return null;
             })}
           </div>
         );
       })}
-      {isStreaming && <div className="text-xs text-muted-foreground italic">Pensando...</div>}
+      {isStreaming && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground italic mt-2">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          <span>{loadingLabel}</span>
+        </div>
+      )}
       <div ref={endRef} />
     </div>
   );
