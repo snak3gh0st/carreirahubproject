@@ -159,10 +159,10 @@ Recent decisions affecting current work:
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260414-d0t | Add reusable email system using Resend | 2026-04-14 | 1437cb7 | [260414-d0t-add-reusable-email-system-using-resend](./quick/260414-d0t-add-reusable-email-system-using-resend/) |
-| 260414-dg2 | Rebrand emails + 5 internal notification streams | 2026-04-14 | ca357c9 | [260414-dg2-rebrand-emails-5-internal-notification-s](./quick/260414-dg2-rebrand-emails-5-internal-notification-s/) |
+| # | Description | Date | Commit | Status | Directory |
+|---|-------------|------|--------|--------|-----------|
+| 260414-d0t | Add reusable email system using Resend | 2026-04-14 | 1437cb7 | — | [260414-d0t-add-reusable-email-system-using-resend](./quick/260414-d0t-add-reusable-email-system-using-resend/) |
+| 260414-dg2 | Rebrand emails + 5 internal notification streams | 2026-04-14 | 2b8b767 | Verified (db:push pending) | [260414-dg2-rebrand-emails-5-internal-notification-s](./quick/260414-dg2-rebrand-emails-5-internal-notification-s/) |
 
 ## Session Continuity
 
