@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
               kind: "error",
               userId: user.id,
               conversationId: conversation.id,
-              errorMessage: `Failed to record persona cache read: ${err instanceof Error ? err.message : String(err)}`,
+              error: `Failed to record persona cache read: ${err instanceof Error ? err.message : String(err)}`,
             });
             // Non-fatal; don't abort response. Next read will just cache-miss and regenerate.
           }
