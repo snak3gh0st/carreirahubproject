@@ -240,8 +240,11 @@ export async function POST(req: NextRequest) {
     requestStartedAt: started,
   };
   const allowed = allowedToolsForRole(user.role);
+  const effectiveTools = persona
+    ? (await import("@/lib/ai/tools")).filterToolsByWhitelist(allowed, persona.toolWhitelist)
+    : allowed;
   const aiSdkTools: Record<string, ReturnType<typeof toAiSdkTool>> = {};
-  for (const t of allowed) {
+  for (const t of effectiveTools) {
     aiSdkTools[t.name] = toAiSdkTool(t, ctx);
   }
 
@@ -259,6 +262,20 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Persona: append persona-specific system rules. For delta mode, also prepend
+  // the cached analysis as context the model must compare against.
+  let effectiveSystemPrompt = systemPrompt;
+  let effectiveUserPrompt: string | null = null;
+  if (persona) {
+    effectiveSystemPrompt = `${systemPrompt}\n\n---\n${persona.systemAppend}`;
+    if (cachedForDelta) {
+      effectiveSystemPrompt += `\n\n---\nANÁLISE ANTERIOR (cache da rodada em vigor, gerada mais cedo hoje):\n${cachedForDelta}`;
+      effectiveUserPrompt = persona.deltaPrompt;
+    } else {
+      effectiveUserPrompt = persona.defaultPrompt;
+    }
+  }
+
   const modelId = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
   const model = openai(modelId);
 
@@ -267,10 +284,18 @@ export async function POST(req: NextRequest) {
   // 9. streamText with onFinish persisting assistant + tool steps
   try {
     const recentMessages = messages.slice(-20);
-    const modelMessages = await convertToModelMessages(recentMessages);
+    let modelMessages = await convertToModelMessages(recentMessages);
+    if (persona && effectiveUserPrompt) {
+      // Overwrite the last user turn with the persona's preset prompt so accidental
+      // text in the composer can't override output format.
+      modelMessages = [
+        ...modelMessages.slice(0, -1),
+        { role: "user", content: effectiveUserPrompt } as any,
+      ];
+    }
     const result = streamText({
       model,
-      system: systemPrompt,
+      system: effectiveSystemPrompt,
       messages: modelMessages,
       tools: aiSdkTools,
       stopWhen: stepCountIs(8),
@@ -309,6 +334,8 @@ export async function POST(req: NextRequest) {
               tokensOut,
               modelUsed: modelId,
               latencyMs,
+              personaSlug: persona?.slug ?? null,
+              fromCache: false,
             },
           });
           await prisma.aiConversation.update({
