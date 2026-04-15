@@ -46,7 +46,15 @@ export async function POST(req: NextRequest) {
   const user = { id: sessionUser.id!, email: sessionUser.email ?? '', name: sessionUser.name ?? null, role: sessionUser.role };
 
   // 3. Parse body
-  let body: { messages: any[]; conversationId?: string; pathname?: string; params?: Record<string, any>; hub?: string };
+  let body: {
+    messages: any[];
+    conversationId?: string;
+    pathname?: string;
+    params?: Record<string, any>;
+    hub?: string;
+    personaSlug?: string;
+    refresh?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
@@ -64,6 +72,22 @@ export async function POST(req: NextRequest) {
   const hubKey = getAiHubKeyBySlug(hub.slug);
   if (!hubKey) {
     return NextResponse.json({ error: 'hub inválido' }, { status: 400 });
+  }
+  // Persona validation — only if flag is on and personaSlug is provided.
+  // When the flag is off, personaSlug/refresh are silently ignored (feature-disabled no-op).
+  const personasEnabled = process.env.AI_PERSONAS_ENABLED === "true";
+  const personaSlug = personasEnabled ? body.personaSlug : undefined;
+  const refresh = personasEnabled ? Boolean(body.refresh) : false;
+  let persona: import("@/lib/ai/personas").PersonaDefinition | null = null;
+  if (personaSlug) {
+    const { getPersonaBySlug } = await import("@/lib/ai/personas");
+    persona = getPersonaBySlug(personaSlug);
+    if (!persona) {
+      return NextResponse.json({ error: "persona desconhecida" }, { status: 400 });
+    }
+    if (persona.hub !== hub.slug) {
+      return NextResponse.json({ error: "persona não pertence a este hub" }, { status: 400 });
+    }
   }
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'messages é obrigatório' }, { status: 400 });
