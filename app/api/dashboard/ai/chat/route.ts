@@ -15,6 +15,7 @@ import type { AiToolDefinition } from '@/lib/ai/tools/_base';
 import type { ToolContext } from '@/lib/ai/types';
 import { AiMessageRole } from '@prisma/client';
 import { getAiHubBySlug, getAiHubKeyBySlug, isRoleAllowedForHub } from '@/lib/ai/hub-config';
+import { getPersonaBySlug, type PersonaDefinition } from '@/lib/ai/personas';
 
 export const maxDuration = 300; // Fluid Compute — covers slow QB/DocuSign
 
@@ -75,12 +76,12 @@ export async function POST(req: NextRequest) {
   }
   // Persona validation — only if flag is on and personaSlug is provided.
   // When the flag is off, personaSlug/refresh are silently ignored (feature-disabled no-op).
+  // `persona` and `refresh` are consumed by T7-T9 (cache lookup, prompt injection, bypass).
   const personasEnabled = process.env.AI_PERSONAS_ENABLED === "true";
   const personaSlug = personasEnabled ? body.personaSlug : undefined;
   const refresh = personasEnabled ? Boolean(body.refresh) : false;
-  let persona: import("@/lib/ai/personas").PersonaDefinition | null = null;
+  let persona: PersonaDefinition | null = null;
   if (personaSlug) {
-    const { getPersonaBySlug } = await import("@/lib/ai/personas");
     persona = getPersonaBySlug(personaSlug);
     if (!persona) {
       return NextResponse.json({ error: "persona desconhecida" }, { status: 400 });
