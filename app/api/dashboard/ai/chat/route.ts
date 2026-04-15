@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 import { streamText, stepCountIs, tool, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { allowedToolsForRole, filterToolsByWhitelist } from '@/lib/ai/tools';
@@ -22,7 +23,7 @@ import { getPersonaBySlug, type PersonaDefinition } from '@/lib/ai/personas';
 // so the browser client renderer treats it identically to a live model response.
 function streamCachedResponse(text: string): Response {
   const encoder = new TextEncoder();
-  const id = `cache-${Date.now()}`;
+  const id = randomUUID();
   const events = [
     `data: ${JSON.stringify({ type: "start", messageId: id })}\n\n`,
     `data: ${JSON.stringify({ type: "text-start", id })}\n\n`,
@@ -48,6 +49,7 @@ function streamCachedResponse(text: string): Response {
 
 export const maxDuration = 300; // Fluid Compute — covers slow QB/DocuSign
 
+let warnedAboutPersonaFlagDrift = false;
 const RATE_LIMIT_PER_HOUR = Number(process.env.AI_RATE_LIMIT_PER_HOUR ?? 50);
 const MAX_INPUT_CHARS = 4000;
 function toAiSdkTool(def: AiToolDefinition<any, any>, ctx: ToolContext) {
@@ -109,15 +111,18 @@ export async function POST(req: NextRequest) {
   //
   // Drift guard: AI_PERSONAS_ENABLED (server) and NEXT_PUBLIC_AI_PERSONAS_ENABLED (client)
   // must stay in sync. Mismatch causes silent bad states (UI renders buttons that 400,
-  // or server accepts dispatches the UI never surfaces). Warn once per request.
+  // or server accepts dispatches the UI never surfaces). Warn once per server restart.
   if (
     (process.env.AI_PERSONAS_ENABLED ?? "false") !==
     (process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED ?? "false")
   ) {
-    console.warn(
-      `[ai-personas] flag drift: AI_PERSONAS_ENABLED=${process.env.AI_PERSONAS_ENABLED} ` +
-        `NEXT_PUBLIC_AI_PERSONAS_ENABLED=${process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED} — values must match`
-    );
+    if (!warnedAboutPersonaFlagDrift) {
+      console.warn(
+        `[ai-personas] flag drift: AI_PERSONAS_ENABLED=${process.env.AI_PERSONAS_ENABLED} ` +
+          `NEXT_PUBLIC_AI_PERSONAS_ENABLED=${process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED} — values must match`
+      );
+      warnedAboutPersonaFlagDrift = true;
+    }
   }
   const personasEnabled = process.env.AI_PERSONAS_ENABLED === "true";
   const personaSlug = personasEnabled ? body.personaSlug : undefined;
@@ -206,11 +211,7 @@ export async function POST(req: NextRequest) {
           // Intentionally no `recordPersonaCacheRead` — we want the next request to
           // retry the lookup-or-generate path, not to believe it has "been read".
         } else {
-          await recordPersonaCacheRead({
-            personaSlug: persona.slug,
-            dayBucket,
-            userId: user.id,
-          });
+          // Write message first; only record read-log after message succeeds to avoid orphaned reads
           await prisma.aiMessage.create({
             data: {
               conversationId: conversation.id,
@@ -226,6 +227,24 @@ export async function POST(req: NextRequest) {
             where: { id: conversation.id },
             data: { updatedAt: new Date() },
           });
+
+          // Record that this user has read this bucket's cached response
+          try {
+            await recordPersonaCacheRead({
+              personaSlug: persona.slug,
+              dayBucket,
+              userId: user.id,
+            });
+          } catch (err) {
+            logAiEvent({
+              kind: "error",
+              userId: user.id,
+              conversationId: conversation.id,
+              errorMessage: `Failed to record persona cache read: ${err instanceof Error ? err.message : String(err)}`,
+            });
+            // Non-fatal; don't abort response. Next read will just cache-miss and regenerate.
+          }
+
           logAiEvent({
             kind: "finish",
             userId: user.id,

@@ -39,20 +39,24 @@ export function MessageBubble({
         {isUser ? (
           <p className="whitespace-pre-wrap leading-7">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none prose-headings:mb-3 prose-headings:mt-6 prose-headings:font-semibold prose-p:leading-7 prose-p:text-[#24342d] prose-li:my-1 prose-strong:text-[#10251e] dark:prose-invert">
+          <>
             {personaSlug && (() => {
               const persona = getPersonaBySlug(personaSlug);
               if (!persona) return null;
               return (
-                <PersonaMessageMeta
-                  persona={persona}
-                  fromCache={Boolean(fromCache)}
-                  onRefresh={() => onRefreshPersona?.(persona.slug)}
-                />
+                <div className="mb-3">
+                  <PersonaMessageMeta
+                    persona={persona}
+                    fromCache={Boolean(fromCache)}
+                    onRefresh={() => onRefreshPersona?.(persona.slug)}
+                  />
+                </div>
               );
             })()}
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
-          </div>
+            <div className="prose prose-sm max-w-none prose-headings:mb-3 prose-headings:mt-6 prose-headings:font-semibold prose-p:leading-7 prose-p:text-[#24342d] prose-li:my-1 prose-strong:text-[#10251e] dark:prose-invert">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            </div>
+          </>
         )}
         {!isUser && content && (
           <div className="mt-3 flex items-center gap-2">
