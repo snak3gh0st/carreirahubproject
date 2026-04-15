@@ -3,15 +3,23 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Copy, Check, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { PersonaMessageMeta } from "./PersonaMessageMeta";
+import { getPersonaBySlug } from "@/lib/ai/personas";
 
 export function MessageBubble({
   role,
   content,
+  personaSlug,
+  fromCache,
   onDelete,
+  onRefreshPersona,
 }: {
   role: 'user' | 'assistant';
   content: string;
+  personaSlug?: string;
+  fromCache?: boolean;
   onDelete?: () => void;
+  onRefreshPersona?: (personaSlug: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -32,6 +40,17 @@ export function MessageBubble({
           <p className="whitespace-pre-wrap leading-7">{content}</p>
         ) : (
           <div className="prose prose-sm max-w-none prose-headings:mb-3 prose-headings:mt-6 prose-headings:font-semibold prose-p:leading-7 prose-p:text-[#24342d] prose-li:my-1 prose-strong:text-[#10251e] dark:prose-invert">
+            {personaSlug && (() => {
+              const persona = getPersonaBySlug(personaSlug);
+              if (!persona) return null;
+              return (
+                <PersonaMessageMeta
+                  persona={persona}
+                  fromCache={Boolean(fromCache)}
+                  onRefresh={() => onRefreshPersona?.(persona.slug)}
+                />
+              );
+            })()}
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
           </div>
         )}

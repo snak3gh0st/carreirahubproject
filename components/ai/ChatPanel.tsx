@@ -52,6 +52,8 @@ export function ChatPanel({
             id: m.id,
             role: m.role === 'USER' ? 'user' : 'assistant',
             parts: [{ type: 'text', text: m.content ?? '' }],
+            personaSlug: m.personaSlug ?? undefined,
+            fromCache: m.fromCache ?? false,
           }));
         setMessages(uiMessages);
       })
@@ -161,6 +163,10 @@ export function ChatPanel({
             messages={messages}
             isStreaming={isStreaming}
             onDeleteMessage={handleDeleteMessage}
+            onRefreshPersona={(slug) => {
+              const p = personas.find((x) => x.slug === slug);
+              if (p) void handleRunPersona(p, true);
+            }}
           />
         )}
         {messages.length > 0 && personas.length > 0 && (

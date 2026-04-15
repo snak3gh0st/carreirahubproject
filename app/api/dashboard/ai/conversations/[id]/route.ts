@@ -51,6 +51,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       tokensOut: m.tokensOut,
       latencyMs: m.latencyMs,
       errorMessage: m.errorMessage,
+      personaSlug: m.personaSlug,
+      fromCache: m.fromCache,
     })),
   });
 }

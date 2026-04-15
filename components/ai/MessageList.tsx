@@ -32,10 +32,12 @@ export function MessageList({
   messages,
   isStreaming,
   onDeleteMessage,
+  onRefreshPersona,
 }: {
   messages: any[];
   isStreaming: boolean;
   onDeleteMessage?: (messageId: string) => void;
+  onRefreshPersona?: (personaSlug: string) => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
@@ -60,7 +62,10 @@ export function MessageList({
                       key={idx}
                       role={m.role === 'assistant' ? 'assistant' : 'user'}
                       content={p.text}
+                      personaSlug={m.personaSlug}
+                      fromCache={m.fromCache}
                       onDelete={onDeleteMessage ? () => onDeleteMessage(m.id) : undefined}
+                      onRefreshPersona={onRefreshPersona}
                     />
                   );
                 }
