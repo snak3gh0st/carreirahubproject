@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { streamText, stepCountIs, tool, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { allowedToolsForRole } from '@/lib/ai/tools';
+import { allowedToolsForRole, filterToolsByWhitelist } from '@/lib/ai/tools';
 import { checkRateLimit } from '@/lib/ai/rate-limit';
 import { buildSystemPrompt } from '@/lib/ai/prompts/system.pt-br';
 import { currentDateInET, buildPageContext } from '@/lib/ai/prompts/context-builder';
@@ -241,7 +241,7 @@ export async function POST(req: NextRequest) {
   };
   const allowed = allowedToolsForRole(user.role);
   const effectiveTools = persona
-    ? (await import("@/lib/ai/tools")).filterToolsByWhitelist(allowed, persona.toolWhitelist)
+    ? filterToolsByWhitelist(allowed, persona.toolWhitelist)
     : allowed;
   const aiSdkTools: Record<string, ReturnType<typeof toAiSdkTool>> = {};
   for (const t of effectiveTools) {
@@ -254,7 +254,7 @@ export async function POST(req: NextRequest) {
     userRole: String(user.role),
     currentDate: currentDateInET(),
     pageContext: buildPageContext(pathname, params),
-    toolNames: allowed.map((t) => t.name),
+    toolNames: effectiveTools.map((t) => t.name),
     hub: {
       slug: hub.slug,
       label: hub.label,
