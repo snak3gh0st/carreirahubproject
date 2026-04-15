@@ -17,6 +17,35 @@ import { AiMessageRole } from '@prisma/client';
 import { getAiHubBySlug, getAiHubKeyBySlug, isRoleAllowedForHub } from '@/lib/ai/hub-config';
 import { getPersonaBySlug, type PersonaDefinition } from '@/lib/ai/personas';
 
+// Emit a cached string as a single-chunk AI SDK v6 UI message stream.
+// The frame shape matches what `result.toUIMessageStreamResponse()` produces,
+// so the browser client renderer treats it identically to a live model response.
+function streamCachedResponse(text: string): Response {
+  const encoder = new TextEncoder();
+  const id = `cache-${Date.now()}`;
+  const events = [
+    `data: ${JSON.stringify({ type: "start", messageId: id })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-start", id })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-delta", id, delta: text })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-end", id })}\n\n`,
+    `data: ${JSON.stringify({ type: "finish" })}\n\n`,
+    `data: [DONE]\n\n`,
+  ];
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const e of events) controller.enqueue(encoder.encode(e));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "x-vercel-ai-ui-message-stream": "v1",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
+
 export const maxDuration = 300; // Fluid Compute — covers slow QB/DocuSign
 
 const RATE_LIMIT_PER_HOUR = Number(process.env.AI_RATE_LIMIT_PER_HOUR ?? 50);
@@ -135,6 +164,63 @@ export async function POST(req: NextRequest) {
       content: userText,
     },
   });
+
+  // 6b. Persona cache branching
+  let cachedForDelta: string | null = null;
+  if (persona) {
+    const { computeDayBucket, lookupPersonaCache, recordPersonaCacheRead } = await import(
+      "@/lib/ai/persona-cache"
+    );
+    const dayBucket = computeDayBucket(new Date(), persona.cacheTtlMinutes);
+
+    if (!refresh) {
+      const lookup = await lookupPersonaCache({
+        personaSlug: persona.slug,
+        dayBucket,
+        userId: user.id,
+      });
+
+      if (lookup.status === "hit" && !lookup.alreadyRead) {
+        // First read → serve cached content as a normal assistant message, no model call.
+        await recordPersonaCacheRead({
+          personaSlug: persona.slug,
+          dayBucket,
+          userId: user.id,
+        });
+        const cached = lookup.entry.content;
+        await prisma.aiMessage.create({
+          data: {
+            conversationId: conversation.id,
+            role: AiMessageRole.ASSISTANT,
+            content: cached,
+            modelUsed: "cache",
+            latencyMs: Date.now() - started,
+            personaSlug: persona.slug,
+            fromCache: true,
+          },
+        });
+        await prisma.aiConversation.update({
+          where: { id: conversation.id },
+          data: { updatedAt: new Date() },
+        });
+        logAiEvent({
+          kind: "finish",
+          userId: user.id,
+          conversationId: conversation.id,
+          model: "cache",
+          tokensIn: 0,
+          tokensOut: 0,
+          latencyMs: Date.now() - started,
+        });
+        return streamCachedResponse(cached);
+      }
+
+      if (lookup.status === "hit" && lookup.alreadyRead) {
+        // Repeat read → signal delta mode to later blocks (T8 uses this).
+        cachedForDelta = lookup.entry.content;
+      }
+    }
+  }
 
   // 7. Build tool context + filtered tools
   const ctx: ToolContext = {
