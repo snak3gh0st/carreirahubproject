@@ -44,6 +44,34 @@ function getInvoiceServiceDescriptionValue(invoice: Invoice): string {
   return lineItem?.description || invoice.deal?.title || 'Professional Services';
 }
 
+// Per-tab dimension/position overrides. Prevents long values from overflowing
+// or overlapping adjacent static template characters.
+const TAB_OVERRIDES: Record<string, { width?: string; height?: string; xPosition?: string }> = {
+  client_address:  { width: '280' },
+  payment_plan:    { height: '30' },
+  invoice_numbers: { width: '425', height: '50' },
+};
+
+// Prefix-based overrides — applied when no exact match found.
+const TAB_PREFIX_OVERRIDES: Array<{
+  prefix: string;
+  overrides: { width?: string; height?: string; xPosition?: string };
+}> = [
+  // Shift installment date tabs 12px right to clear the "/" static char in the Anexo template.
+  { prefix: 'due_date_', overrides: { xPosition: '226' } },
+];
+
+function buildTextTab(label: string, value: string) {
+  const base: Record<string, string> = { tabLabel: label, value, locked: 'true' };
+  const exact = TAB_OVERRIDES[label];
+  const prefix = TAB_PREFIX_OVERRIDES.find((p) => label.startsWith(p.prefix))?.overrides;
+  const overrides = exact ?? prefix;
+  if (overrides?.width)     base.width     = overrides.width;
+  if (overrides?.height)    base.height    = overrides.height;
+  if (overrides?.xPosition) base.xPosition = overrides.xPosition;
+  return base;
+}
+
 async function buildDocuSignCustomFields(
   invoice: Invoice,
   customer: Customer
@@ -61,8 +89,10 @@ async function buildDocuSignCustomFields(
     customer.city,
     customer.state,
     customer.zipCode,
-    customer.country,
-  ].filter(Boolean).join(', ');
+  ]
+    .map((part) => (typeof part === 'string' ? part.trim() : part))
+    .filter(Boolean)
+    .join(', ');
   customFields.contract_date_day = new Date().getDate().toString();
   customFields.contract_date_month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
   customFields.contract_date_year = new Date().getFullYear().toString().slice(-2);
@@ -130,7 +160,7 @@ async function buildDocuSignCustomFields(
       const installmentAmount = Number(seriesInvoice.amount);
       const dueDateLong = new Date(seriesInvoice.dueDate).toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric',
       });
       const installmentMeta = seriesInvoice.installments as any;
@@ -140,14 +170,10 @@ async function buildDocuSignCustomFields(
       customFields[`due_date_short_${slot}`] = new Date(seriesInvoice.dueDate).toLocaleDateString('pt-BR');
       customFields[`invoice_number_${slot}`] = seriesInvoice.invoiceNumber || '';
 
-      if (installmentMeta?.isFirstInstallment) {
-        customFields[`installment_desc_${slot}`] = 'Entrada';
-      } else {
-        const installmentNumber = installmentMeta?.current
-          ? installmentMeta.current - (entryInvoice ? 1 : 0)
-          : index;
-        customFields[`installment_desc_${slot}`] = `Parcela ${installmentNumber}`;
-      }
+      // installment_desc_* intentionally left empty — the Anexo template
+      // already has static labels ("Down Payment / Entrada", "1st/1ª Parcela N")
+      // in the label column. Sending a value here causes text overlap.
+      customFields[`installment_desc_${slot}`] = '';
     });
 
     for (let slot = seriesInvoices.length + 1; slot <= 12; slot++) {
@@ -945,6 +971,23 @@ export class DocuSignService {
                 ],
               },
             },
+            {
+              email: 'thais.mei@carreirausa.com',
+              name: 'Thais Mei de Oliveira',
+              recipientId: '2',
+              routingOrder: '2',
+              tabs: {
+                signHereTabs: [
+                  {
+                    documentId: '1',
+                    pageNumber: '1',
+                    recipientId: '2',
+                    xPosition: '350',
+                    yPosition: '550',
+                  },
+                ],
+              },
+            },
           ],
         },
         notification: {
@@ -1043,13 +1086,19 @@ export class DocuSignService {
                       name: customer.name,
                       recipientId: '1',
                       roleName: 'Client', // Must match template role
+                      routingOrder: '1',
                       tabs: {
-                        textTabs: Object.entries(customFields).map(([label, value]) => ({
-                          tabLabel: label,
-                          value,
-                          locked: 'true',
-                        })),
+                        textTabs: Object.entries(customFields).map(([label, value]) =>
+                          buildTextTab(label, value)
+                        ),
                       },
+                    },
+                    {
+                      email: 'thais.mei@carreirausa.com',
+                      name: 'Thais Mei de Oliveira',
+                      recipientId: '2',
+                      roleName: 'CarreiraUSA', // Must match template role
+                      routingOrder: '2',
                     },
                   ],
                 },
@@ -1327,11 +1376,9 @@ export class DocuSignService {
                       recipientId: '1',
                       roleName: 'Client',
                       tabs: customFields ? {
-                        textTabs: Object.entries(customFields).map(([label, value]) => ({
-                          tabLabel: label,
-                          value: value,
-                          locked: 'true',
-                        })),
+                        textTabs: Object.entries(customFields).map(([label, value]) =>
+                          buildTextTab(label, value)
+                        ),
                       } : undefined,
                     },
                   ],
