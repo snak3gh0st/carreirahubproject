@@ -37,10 +37,19 @@ test("every persona has required fields", () => {
     assert.ok(p.label, `label missing on ${p.slug}`);
     assert.ok(p.tagline, `tagline missing on ${p.slug}`);
     assert.ok(p.icon, `icon missing on ${p.slug}`);
-    assert.ok(p.systemAppend.length > 100, `systemAppend too short on ${p.slug}`);
     assert.ok(p.defaultPrompt, `defaultPrompt missing on ${p.slug}`);
     assert.ok(p.deltaPrompt, `deltaPrompt missing on ${p.slug}`);
     assert.ok(Array.isArray(p.toolWhitelist), `toolWhitelist not array on ${p.slug}`);
     assert.ok(p.cacheTtlMinutes > 0, `cacheTtlMinutes must be >0 on ${p.slug}`);
+  }
+});
+
+test("every persona's systemAppend includes the BLUF contract sentinels", () => {
+  // Catches regressions where someone overrides systemAppend and forgets to
+  // concatenate BLUF_CONTRACT — length alone would not detect this.
+  for (const p of PERSONAS) {
+    assert.ok(p.systemAppend.includes("TL;DR"), `TL;DR missing in ${p.slug}`);
+    assert.ok(p.systemAppend.includes("Ação recomendada"), `"Ação recomendada" missing in ${p.slug}`);
+    assert.ok(p.systemAppend.includes("Nunca invente números"), `anti-hallucination rule missing in ${p.slug}`);
   }
 });

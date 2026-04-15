@@ -5,14 +5,17 @@ export type PersonaDefinition = Readonly<{
   label: string;
   tagline: string;
   hub: AiHubSlug;
-  icon: string;
+  icon: string; // lucide icon name; PersonaCard falls back to Sparkles if unresolved
   systemAppend: string;
   toolWhitelist: readonly string[];
   defaultPrompt: string;
   deltaPrompt: string;
   cacheTtlMinutes: number;
-  autoRefreshCron?: string;
+  autoRefreshCron?: string; // reserved for V1.5 scheduled cache pre-warm; unused in V1 runtime
 }>;
+
+// Default cache TTL — 3 hours balances freshness vs token spend for executive briefs.
+const DEFAULT_CACHE_TTL_MINUTES = 180;
 
 // Shared BLUF output contract appended to every persona's system prompt.
 const BLUF_CONTRACT = `
@@ -40,6 +43,8 @@ const CEO_BRIEF: PersonaDefinition = {
   icon: "sparkles",
   systemAppend:
     `Sua função é o Briefing Executivo do Dia para o CEO. Cubra finanças, pipeline comercial e operação de alunos em uma única leitura de 60 segundos. Priorize alertas e decisões pendentes sobre descrições neutras.\n${BLUF_CONTRACT}`,
+  // Intentionally the union of all hub tools — CEO needs cross-area visibility.
+  // Do NOT trim without re-scoping the persona; each tool maps to a KPI a daily brief covers.
   toolWhitelist: [
     "getQuickBooksReport",
     "getOverdueInvoices",
@@ -56,7 +61,7 @@ const CEO_BRIEF: PersonaDefinition = {
   defaultPrompt: "Gere o Briefing do Dia: saúde financeira, pulso do pipeline e status da base.",
   deltaPrompt:
     "Apenas liste o que mudou no negócio desde o último briefing exibido nesta conversa. Se nada relevante mudou, diga isso em uma linha.",
-  cacheTtlMinutes: 180,
+  cacheTtlMinutes: DEFAULT_CACHE_TTL_MINUTES,
 };
 
 const RAIO_X_FINANCEIRO: PersonaDefinition = {
@@ -77,7 +82,7 @@ const RAIO_X_FINANCEIRO: PersonaDefinition = {
   defaultPrompt: "Gere o Raio-X Financeiro do período atual.",
   deltaPrompt:
     "Apenas liste o que mudou nos números financeiros desde o último raio-x exibido nesta conversa.",
-  cacheTtlMinutes: 180,
+  cacheTtlMinutes: DEFAULT_CACHE_TTL_MINUTES,
 };
 
 const PULSO_PIPELINE: PersonaDefinition = {
@@ -97,7 +102,7 @@ const PULSO_PIPELINE: PersonaDefinition = {
   defaultPrompt: "Gere o Pulso do Pipeline do período atual.",
   deltaPrompt:
     "Apenas liste o que mudou no pipeline desde o último pulso exibido nesta conversa.",
-  cacheTtlMinutes: 180,
+  cacheTtlMinutes: DEFAULT_CACHE_TTL_MINUTES,
 };
 
 const STATUS_DA_BASE: PersonaDefinition = {
@@ -119,7 +124,7 @@ const STATUS_DA_BASE: PersonaDefinition = {
   defaultPrompt: "Gere o Status da Base do período atual.",
   deltaPrompt:
     "Apenas liste o que mudou na base de alunos desde o último status exibido nesta conversa.",
-  cacheTtlMinutes: 180,
+  cacheTtlMinutes: DEFAULT_CACHE_TTL_MINUTES,
 };
 
 export const PERSONAS: readonly PersonaDefinition[] = [
@@ -130,6 +135,14 @@ export const PERSONAS: readonly PersonaDefinition[] = [
 ];
 
 const BY_SLUG = new Map(PERSONAS.map((p) => [p.slug, p]));
+
+// Guard: catches copy-paste slug collisions at module load (dev) instead of
+// silently overwriting one persona with another at runtime.
+if (BY_SLUG.size !== PERSONAS.length) {
+  throw new Error(
+    `Duplicate persona slug detected. PERSONAS=${PERSONAS.length} unique=${BY_SLUG.size}`
+  );
+}
 
 export function getPersonasForHub(hub: AiHubSlug): PersonaDefinition[] {
   return PERSONAS.filter((p) => p.hub === hub);
