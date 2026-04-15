@@ -972,16 +972,24 @@ enum AiMessageRole {
   TOOL
 }
 
+enum AiHub {
+  FINANCIAL
+  COMMERCIAL
+  OPERATIONAL
+  ADMIN_EXECUTIVE
+}
+
 model AiConversation {
   id        String       @id @default(cuid())
   userId    String
   user      User         @relation(fields: [userId], references: [id])
+  hub       AiHub        @default(ADMIN_EXECUTIVE)
   title     String?
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
   messages  AiMessage[]
 
-  @@index([userId, updatedAt])
+  @@index([userId, hub, updatedAt])
   @@map("ai_conversations")
 }
 
