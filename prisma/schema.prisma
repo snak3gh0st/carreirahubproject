@@ -1028,22 +1028,24 @@ model AiRateLimit {
 model PersonaCacheEntry {
   id          String   @id @default(cuid())
   personaSlug String
-  dayBucket   String
+  dayBucket   String   // YYYY-MM-DD-HHmm aligned to persona.cacheTtlMinutes in UTC; see lib/ai/persona-cache.ts computeDayBucket
   content     String   @db.Text
   generatedAt DateTime @default(now())
-  generatedBy String?
+  generatedBy String?  // userId of first requester; no relation — kept independent of user lifecycle for audit
 
   @@unique([personaSlug, dayBucket])
   @@index([personaSlug, generatedAt])
+  @@map("persona_cache_entries")
 }
 
 model PersonaCacheRead {
   id          String   @id @default(cuid())
   personaSlug String
   dayBucket   String
-  userId      String
+  userId      String   // no relation — read log is audit-style, survives user deletion
   readAt      DateTime @default(now())
 
   @@unique([personaSlug, dayBucket, userId])
   @@index([userId, readAt])
+  @@map("persona_cache_reads")
 }
