@@ -344,7 +344,9 @@ export async function POST(req: NextRequest) {
           });
           // Persona cache miss → persist this fresh generation for the current bucket.
           // Delta-mode responses (cachedForDelta set) are ephemeral and NOT cached.
-          if (persona && !cachedForDelta) {
+          // Empty `text` (model error or empty completion) is skipped — writing an
+          // empty row would defeat the empty-cache fallthrough at the lookup site.
+          if (persona && !cachedForDelta && text && text.trim().length > 0) {
             const { computeDayBucket, writePersonaCache, recordPersonaCacheRead } = await import(
               "@/lib/ai/persona-cache"
             );
