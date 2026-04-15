@@ -27,7 +27,6 @@ export function ChatPanel({
     () => new DefaultChatTransport({ api: '/api/dashboard/ai/chat' }),
     []
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { messages, sendMessage, status, setMessages } = useChat({ transport } as any);
 
   // Load existing conversation messages when conversationId changes
@@ -60,7 +59,6 @@ export function ChatPanel({
   const extraBody = { conversationId, pathname, params };
 
   const handleSend = (text: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (sendMessage as any)({ text }, { body: extraBody });
   };
 
