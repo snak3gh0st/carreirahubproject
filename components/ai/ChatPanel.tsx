@@ -10,6 +10,7 @@ import { Suggestions } from './Suggestions';
 import { getSuggestionsForRole } from '@/lib/ai/suggestions-by-role';
 import { ComplianceGate } from './ComplianceGate';
 import { getPersonasForHub, type PersonaDefinition } from "@/lib/ai/personas";
+import type { AiHubSlug } from "@/lib/ai/hub-config";
 import { PersonaCard } from "./PersonaCard";
 import { PersonaChip } from "./PersonaChip";
 
@@ -18,7 +19,7 @@ export function ChatPanel({
   conversationId,
   onNewConversationId,
 }: {
-  hub: string;
+  hub: AiHubSlug;
   conversationId?: string;
   onNewConversationId?: (id: string) => void;
 }) {
@@ -93,7 +94,7 @@ export function ChatPanel({
   };
 
   const personasEnabled = process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED === "true";
-  const personas: PersonaDefinition[] = personasEnabled ? getPersonasForHub(hub as any) : [];
+  const personas: PersonaDefinition[] = personasEnabled ? getPersonasForHub(hub) : [];
 
   const handleRunPersona = async (persona: PersonaDefinition, refresh = false) => {
     const prompt = persona.defaultPrompt;
@@ -163,7 +164,7 @@ export function ChatPanel({
           />
         )}
         {messages.length > 0 && personas.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-t border-black/5 px-4 py-2 md:px-8">
+          <div className="flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-2 md:px-8">
             {personas.map((p) => (
               <PersonaChip
                 key={p.slug}

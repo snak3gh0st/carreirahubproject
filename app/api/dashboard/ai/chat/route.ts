@@ -106,6 +106,19 @@ export async function POST(req: NextRequest) {
   // Persona validation — only if flag is on and personaSlug is provided.
   // When the flag is off, personaSlug/refresh are silently ignored (feature-disabled no-op).
   // `persona` and `refresh` are consumed by T7-T9 (cache lookup, prompt injection, bypass).
+  //
+  // Drift guard: AI_PERSONAS_ENABLED (server) and NEXT_PUBLIC_AI_PERSONAS_ENABLED (client)
+  // must stay in sync. Mismatch causes silent bad states (UI renders buttons that 400,
+  // or server accepts dispatches the UI never surfaces). Warn once per request.
+  if (
+    (process.env.AI_PERSONAS_ENABLED ?? "false") !==
+    (process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED ?? "false")
+  ) {
+    console.warn(
+      `[ai-personas] flag drift: AI_PERSONAS_ENABLED=${process.env.AI_PERSONAS_ENABLED} ` +
+        `NEXT_PUBLIC_AI_PERSONAS_ENABLED=${process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED} — values must match`
+    );
+  }
   const personasEnabled = process.env.AI_PERSONAS_ENABLED === "true";
   const personaSlug = personasEnabled ? body.personaSlug : undefined;
   const refresh = personasEnabled ? Boolean(body.refresh) : false;
