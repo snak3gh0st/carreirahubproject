@@ -9,7 +9,7 @@ import { Composer } from './Composer';
 import { Suggestions } from './Suggestions';
 import { getSuggestionsForRole } from '@/lib/ai/suggestions-by-role';
 import { ComplianceGate } from './ComplianceGate';
-import { getPersonasForHub, type PersonaDefinition } from "@/lib/ai/personas";
+import { getPersonasForHub, getPersonaBySlug, type PersonaDefinition } from "@/lib/ai/personas";
 import type { AiHubSlug } from "@/lib/ai/hub-config";
 import { PersonaCard } from "./PersonaCard";
 import { PersonaChip } from "./PersonaChip";
@@ -164,7 +164,9 @@ export function ChatPanel({
             isStreaming={isStreaming}
             onDeleteMessage={handleDeleteMessage}
             onRefreshPersona={(slug) => {
-              const p = personas.find((x) => x.slug === slug);
+              // Fall back to the global registry so refresh still works if a loaded
+              // conversation carries a message from a persona not in the current hub.
+              const p = personas.find((x) => x.slug === slug) ?? getPersonaBySlug(slug);
               if (p) void handleRunPersona(p, true);
             }}
           />
