@@ -1006,6 +1006,8 @@ model AiMessage {
   tokensOut      Int?
   modelUsed      String?
   latencyMs      Int?
+  personaSlug    String?
+  fromCache      Boolean        @default(false)
   errorMessage   String?
   createdAt      DateTime       @default(now())
 
@@ -1021,4 +1023,27 @@ model AiRateLimit {
   updatedAt   DateTime @updatedAt
 
   @@map("ai_rate_limits")
+}
+
+model PersonaCacheEntry {
+  id          String   @id @default(cuid())
+  personaSlug String
+  dayBucket   String
+  content     String   @db.Text
+  generatedAt DateTime @default(now())
+  generatedBy String?
+
+  @@unique([personaSlug, dayBucket])
+  @@index([personaSlug, generatedAt])
+}
+
+model PersonaCacheRead {
+  id          String   @id @default(cuid())
+  personaSlug String
+  dayBucket   String
+  userId      String
+  readAt      DateTime @default(now())
+
+  @@unique([personaSlug, dayBucket, userId])
+  @@index([userId, readAt])
 }
