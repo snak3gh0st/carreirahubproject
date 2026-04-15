@@ -28,7 +28,7 @@ function streamCachedResponse(text: string): Response {
     `data: ${JSON.stringify({ type: "text-start", id })}\n\n`,
     `data: ${JSON.stringify({ type: "text-delta", id, delta: text })}\n\n`,
     `data: ${JSON.stringify({ type: "text-end", id })}\n\n`,
-    `data: ${JSON.stringify({ type: "finish" })}\n\n`,
+    `data: ${JSON.stringify({ type: "finish", messageId: id })}\n\n`,
     `data: [DONE]\n\n`,
   ];
   const stream = new ReadableStream({
@@ -182,37 +182,48 @@ export async function POST(req: NextRequest) {
 
       if (lookup.status === "hit" && !lookup.alreadyRead) {
         // First read → serve cached content as a normal assistant message, no model call.
-        await recordPersonaCacheRead({
-          personaSlug: persona.slug,
-          dayBucket,
-          userId: user.id,
-        });
+        // NOTE: this return intentionally bypasses the onFinish path below (no model
+        // inference = no tool steps = no usage row). The ASSISTANT row is written inline.
         const cached = lookup.entry.content;
-        await prisma.aiMessage.create({
-          data: {
-            conversationId: conversation.id,
-            role: AiMessageRole.ASSISTANT,
-            content: cached,
-            modelUsed: "cache",
-            latencyMs: Date.now() - started,
+        if (!cached) {
+          // Defensive: treat empty cache as miss and fall through to model generation.
+          // A cached empty string should not happen but if it did, serving it would
+          // render a blank bubble without fixing the underlying absence of content.
+          cachedForDelta = null;
+          // Intentionally no `recordPersonaCacheRead` — we want the next request to
+          // retry the lookup-or-generate path, not to believe it has "been read".
+        } else {
+          await recordPersonaCacheRead({
             personaSlug: persona.slug,
-            fromCache: true,
-          },
-        });
-        await prisma.aiConversation.update({
-          where: { id: conversation.id },
-          data: { updatedAt: new Date() },
-        });
-        logAiEvent({
-          kind: "finish",
-          userId: user.id,
-          conversationId: conversation.id,
-          model: "cache",
-          tokensIn: 0,
-          tokensOut: 0,
-          latencyMs: Date.now() - started,
-        });
-        return streamCachedResponse(cached);
+            dayBucket,
+            userId: user.id,
+          });
+          await prisma.aiMessage.create({
+            data: {
+              conversationId: conversation.id,
+              role: AiMessageRole.ASSISTANT,
+              content: cached,
+              modelUsed: "cache",
+              latencyMs: Date.now() - started,
+              personaSlug: persona.slug,
+              fromCache: true,
+            },
+          });
+          await prisma.aiConversation.update({
+            where: { id: conversation.id },
+            data: { updatedAt: new Date() },
+          });
+          logAiEvent({
+            kind: "finish",
+            userId: user.id,
+            conversationId: conversation.id,
+            model: "cache",
+            tokensIn: 0,
+            tokensOut: 0,
+            latencyMs: Date.now() - started,
+          });
+          return streamCachedResponse(cached);
+        }
       }
 
       if (lookup.status === "hit" && lookup.alreadyRead) {
