@@ -1,11 +1,6 @@
 "use client";
-import * as icons from "lucide-react";
 import type { PersonaDefinition } from "@/lib/ai/personas";
-
-function resolveIcon(name: string): React.ComponentType<{ className?: string }> {
-  const Icon = (icons as any)[name] ?? icons.Sparkles;
-  return Icon as any;
-}
+import { resolveIcon } from "@/lib/ai/persona-icons";
 
 export function PersonaChip({
   persona,
