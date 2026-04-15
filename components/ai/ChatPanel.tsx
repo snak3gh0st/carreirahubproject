@@ -9,6 +9,9 @@ import { Composer } from './Composer';
 import { Suggestions } from './Suggestions';
 import { getSuggestionsForRole } from '@/lib/ai/suggestions-by-role';
 import { ComplianceGate } from './ComplianceGate';
+import { getPersonasForHub, type PersonaDefinition } from "@/lib/ai/personas";
+import { PersonaCard } from "./PersonaCard";
+import { PersonaChip } from "./PersonaChip";
 
 export function ChatPanel({
   hub,
@@ -89,6 +92,25 @@ export function ChatPanel({
     (sendMessage as any)({ text }, { body: { ...extraBody, conversationId: resolvedConversationId } });
   };
 
+  const personasEnabled = process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED === "true";
+  const personas: PersonaDefinition[] = personasEnabled ? getPersonasForHub(hub as any) : [];
+
+  const handleRunPersona = async (persona: PersonaDefinition, refresh = false) => {
+    const prompt = persona.defaultPrompt;
+    const resolvedConversationId = await ensureConversationId(prompt);
+    (sendMessage as any)(
+      { text: prompt },
+      {
+        body: {
+          ...extraBody,
+          conversationId: resolvedConversationId,
+          personaSlug: persona.slug,
+          refresh,
+        },
+      }
+    );
+  };
+
   const handleDeleteMessage = async (messageId: string) => {
     // Optimistic remove from UI
     const previousMessages = messages;
@@ -109,18 +131,48 @@ export function ChatPanel({
     <ComplianceGate>
       <div className="flex flex-col h-full bg-background">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col justify-center">
-            <div className="text-center px-6">
+          <div className="flex-1 flex flex-col justify-center gap-6 px-6">
+            <div className="text-center">
               <h2 className="text-lg font-semibold">Oi, {firstName}! Como posso ajudar?</h2>
-              <p className="text-sm text-muted-foreground mt-1">Pergunte sobre alunos, leads, faturas, contratos.</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Pergunte sobre alunos, leads, faturas, contratos.
+              </p>
             </div>
+            {personas.length > 0 && (
+              <div className="flex flex-col items-center gap-3">
+                {personas.map((p) => (
+                  <PersonaCard
+                    key={p.slug}
+                    persona={p}
+                    onRun={() => void handleRunPersona(p)}
+                    disabled={isStreaming}
+                  />
+                ))}
+              </div>
+            )}
             <Suggestions
               items={getSuggestionsForRole(role, hub)}
               onPick={(q) => void handleSend(q)}
             />
           </div>
         ) : (
-          <MessageList messages={messages} isStreaming={isStreaming} onDeleteMessage={handleDeleteMessage} />
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            onDeleteMessage={handleDeleteMessage}
+          />
+        )}
+        {messages.length > 0 && personas.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-black/5 px-4 py-2 md:px-8">
+            {personas.map((p) => (
+              <PersonaChip
+                key={p.slug}
+                persona={p}
+                onRun={() => void handleRunPersona(p)}
+                disabled={isStreaming}
+              />
+            ))}
+          </div>
         )}
         <Composer onSend={handleSend} disabled={isStreaming} />
       </div>
