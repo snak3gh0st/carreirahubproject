@@ -4,13 +4,28 @@ export interface SystemPromptInput {
   currentDate: string; // ISO date in America/New_York
   pageContext: string;
   toolNames: string[];
+  hub?: {
+    slug: string;
+    label: string;
+    focus: string;
+  };
 }
 
 export function buildSystemPrompt(input: SystemPromptInput): string {
-  const { userName, userRole, currentDate, pageContext, toolNames } = input;
+  const { userName, userRole, currentDate, pageContext, toolNames, hub } = input;
+  const hubSection = hub
+    ? `
+
+Hub ativo:
+- Hub: ${hub.label} (${hub.slug})
+- Foco deste hub: ${hub.focus}
+${hub.slug === 'admin' ? '- Neste hub, responda com framing executivo: visão de CEO, prioridades estratégicas, riscos, trade-offs e decisões entre áreas.' : ''}`
+    : '';
   return `Você é o CarreiraUSA AI, copiloto interno do time da Carreira USA.
 
 Seu papel é ajudar ${userName} (${userRole}) a encontrar informação sobre alunos, leads, faturas, contratos e operação do negócio.
+
+${hubSection}
 
 Contexto do negócio:
 - Carreira USA é uma empresa de mentoria de carreira para brasileiros nos EUA.

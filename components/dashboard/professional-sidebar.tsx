@@ -15,11 +15,13 @@ import {
   LogOut,
   HeadphonesIcon,
   GraduationCap,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { APP_VERSION } from "@/lib/changelog";
 import { NewsNotification } from "./news-notification";
 import { Logo } from "@/components/brand/Logo";
+import { getAiHubForRole } from "@/lib/ai/hub-config";
 
 interface NavItem {
   href: string;
@@ -108,6 +110,14 @@ export function ProfessionalSidebar({
   const visibleNavItems = mainNavItems.filter((item) =>
     item.roles.includes(userRole)
   );
+  const aiHub = getAiHubForRole(userRole);
+  const aiNavItem = aiHub
+    ? {
+        href: aiHub.routePath,
+        label: aiHub.label,
+        icon: Sparkles,
+      }
+    : null;
 
   const getInitials = (name: string) => {
     const parts = name.split(" ");
@@ -155,6 +165,29 @@ export function ProfessionalSidebar({
             </Link>
           );
         })}
+        {aiNavItem && (
+          (() => {
+            const AiIcon = aiNavItem.icon;
+
+            return (
+              <Link
+                href={aiNavItem.href}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
+                  isActive(aiNavItem.href)
+                    ? "bg-brand-tangerina text-white font-semibold shadow-lg"
+                    : "text-white font-normal hover:bg-white/10"
+                )}
+              >
+                <AiIcon className={cn(
+                  "h-5 w-5 transition-colors",
+                  isActive(aiNavItem.href) ? "text-white" : "text-white/70 group-hover:text-white"
+                )} />
+                <span>{aiNavItem.label}</span>
+              </Link>
+            );
+          })()
+        )}
       </nav>
 
       {/* Bottom Section */}

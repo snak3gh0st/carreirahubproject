@@ -1,21 +1,17 @@
-'use client';
-import { useState } from 'react';
-import { ConversationSidebar } from '@/components/ai/ConversationSidebar';
-import { ChatPanel } from '@/components/ai/ChatPanel';
+import { getServerSession } from 'next-auth';
+import { redirect } from 'next/navigation';
+import { authOptions } from '@/lib/auth';
+import { getAiRouteForRole } from '@/lib/ai/hub-config';
 
-export default function AiPage() {
-  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
-  // Changing selectedId forces ChatPanel remount so it loads that conversation
-  return (
-    <div className="flex h-full">
-      <ConversationSidebar
-        selectedId={selectedId}
-        onSelect={(id) => setSelectedId(id)}
-        onNew={() => setSelectedId(undefined)}
-      />
-      <main className="flex-1 min-w-0">
-        <ChatPanel key={selectedId ?? 'new'} conversationId={selectedId} />
-      </main>
-    </div>
-  );
+export default async function AiPage() {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect('/auth/signin');
+  }
+
+  const role = String((session.user as any)?.role ?? '');
+  const route = getAiRouteForRole(role);
+
+  redirect(route ?? '/dashboard');
 }

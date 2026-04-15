@@ -43,14 +43,14 @@ export function ToolCallCard({
   const clean = toolName.replace(/^tool-/, '');
 
   return (
-    <div className="my-2 text-xs border border-border rounded-lg bg-muted/30">
+    <div className="my-3 rounded-[22px] border border-black/5 bg-white text-xs shadow-[0_10px_30px_rgba(23,53,44,0.06)]">
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full px-3 py-2 flex items-center gap-2 hover:bg-muted/50 text-left"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-[#f5f8f5]"
       >
         <Icon className="w-4 h-4 flex-shrink-0" />
         <div className="flex flex-col min-w-0 flex-1">
-          <span className="font-medium truncate">{label}</span>
+          <span className="truncate font-medium text-[#17352c]">{label}</span>
           <span className="font-mono text-[10px] text-muted-foreground truncate">{clean}</span>
         </div>
         {inFlight ? (
@@ -64,15 +64,15 @@ export function ToolCallCard({
         <ChevronRight className={`w-3 h-3 ml-1 transition flex-shrink-0 ${open ? 'rotate-90' : ''}`} />
       </button>
       {open && (
-        <div className="px-3 py-2 border-t border-border space-y-2">
+        <div className="space-y-3 border-t border-border px-4 py-3">
           <div>
-            <div className="text-muted-foreground mb-1">Argumentos:</div>
-            <pre className="whitespace-pre-wrap bg-background p-2 rounded">{JSON.stringify(args ?? {}, null, 2)}</pre>
+            <div className="mb-1 text-muted-foreground">Argumentos:</div>
+            <pre className="whitespace-pre-wrap rounded-xl bg-[#f7faf7] p-3">{JSON.stringify(args ?? {}, null, 2)}</pre>
           </div>
           {result !== undefined && (
             <div>
-              <div className="text-muted-foreground mb-1">Resultado:</div>
-              <pre className="whitespace-pre-wrap bg-background p-2 rounded max-h-60 overflow-auto">{JSON.stringify(result, null, 2)}</pre>
+              <div className="mb-1 text-muted-foreground">Resultado:</div>
+              <pre className="max-h-60 overflow-auto whitespace-pre-wrap rounded-xl bg-[#f7faf7] p-3">{JSON.stringify(result, null, 2)}</pre>
             </div>
           )}
         </div>

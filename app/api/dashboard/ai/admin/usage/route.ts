@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { estimateCostUSD } from '@/lib/ai/pricing';
+import { resolveDashboardAiModel } from '@/lib/ai/model-selection';
 import { UserRole } from '@prisma/client';
 
 export async function GET(_req: NextRequest) {
@@ -52,7 +53,7 @@ export async function GET(_req: NextRequest) {
     }),
   ]);
 
-  const modelDefault = process.env.AI_MODEL_DEFAULT ?? 'gpt-4o-mini';
+  const modelDefault = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
   const todayCost = estimateCostUSD(todayAgg._sum.tokensIn ?? 0, todayAgg._sum.tokensOut ?? 0, modelDefault);
   const last30Cost = estimateCostUSD(last30Agg._sum.tokensIn ?? 0, last30Agg._sum.tokensOut ?? 0, modelDefault);
 

@@ -11,9 +11,11 @@ import { getSuggestionsForRole } from '@/lib/ai/suggestions-by-role';
 import { ComplianceGate } from './ComplianceGate';
 
 export function ChatPanel({
+  hub,
   conversationId,
   onNewConversationId,
 }: {
+  hub: string;
   conversationId?: string;
   onNewConversationId?: (id: string) => void;
 }) {
@@ -27,7 +29,6 @@ export function ChatPanel({
     () => new DefaultChatTransport({ api: '/api/dashboard/ai/chat' }),
     []
   );
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { messages, sendMessage, status, setMessages } = useChat({ transport } as any);
 
   // Load existing conversation messages when conversationId changes
@@ -36,7 +37,7 @@ export function ChatPanel({
       setMessages([]);
       return;
     }
-    fetch(`/api/dashboard/ai/conversations/${conversationId}`)
+    fetch(`/api/dashboard/ai/conversations/${conversationId}?hub=${hub}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (!data?.messages) return;
@@ -51,29 +52,56 @@ export function ChatPanel({
         setMessages(uiMessages);
       })
       .catch(() => null);
-  }, [conversationId, setMessages]);
+  }, [conversationId, hub, setMessages]);
 
   const firstName = session?.user?.name?.split(' ')[0] ?? 'time';
   const role = (session?.user as any)?.role ?? 'ADMIN';
   const isStreaming = status === 'streaming' || status === 'submitted';
 
-  const extraBody = { conversationId, pathname, params };
+  const extraBody = { conversationId, pathname, params, hub };
 
-  const handleSend = (text: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (sendMessage as any)({ text }, { body: extraBody });
+  const ensureConversationId = async (text: string) => {
+    if (conversationId) {
+      return conversationId;
+    }
+
+    const res = await fetch('/api/dashboard/ai/conversations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hub, title: text.slice(0, 80) }),
+    });
+    if (!res.ok) {
+      throw new Error('Falha ao criar conversa');
+    }
+
+    const data = await res.json();
+    const newConversationId = data?.conversation?.id as string | undefined;
+    if (!newConversationId) {
+      throw new Error('Conversa criada sem id');
+    }
+
+    onNewConversationId?.(newConversationId);
+    return newConversationId;
+  };
+
+  const handleSend = async (text: string) => {
+    const resolvedConversationId = await ensureConversationId(text);
+    (sendMessage as any)({ text }, { body: { ...extraBody, conversationId: resolvedConversationId } });
   };
 
   const handleDeleteMessage = async (messageId: string) => {
     // Optimistic remove from UI
+    const previousMessages = messages;
     setMessages((prev: any[]) => prev.filter((m: any) => m.id !== messageId));
     try {
       const res = await fetch(`/api/dashboard/ai/messages/${messageId}`, { method: 'DELETE' });
       if (!res.ok) {
         console.error('Failed to delete AI message', await res.text());
+        setMessages(previousMessages as any);
       }
     } catch (err) {
       console.error('Delete error', err);
+      setMessages(previousMessages as any);
     }
   };
 
@@ -87,8 +115,8 @@ export function ChatPanel({
               <p className="text-sm text-muted-foreground mt-1">Pergunte sobre alunos, leads, faturas, contratos.</p>
             </div>
             <Suggestions
-              items={getSuggestionsForRole(role)}
-              onPick={(q) => (sendMessage as any)({ text: q }, { body: extraBody })}
+              items={getSuggestionsForRole(role, hub)}
+              onPick={(q) => void handleSend(q)}
             />
           </div>
         ) : (

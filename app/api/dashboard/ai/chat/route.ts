@@ -10,15 +10,16 @@ import { currentDateInET, buildPageContext } from '@/lib/ai/prompts/context-buil
 import { prisma } from '@/lib/db';
 import { logAiEvent } from '@/lib/ai/logger';
 import { truncateJson } from '@/lib/ai/dto';
+import { resolveDashboardAiModel } from '@/lib/ai/model-selection';
 import type { AiToolDefinition } from '@/lib/ai/tools/_base';
 import type { ToolContext } from '@/lib/ai/types';
 import { AiMessageRole } from '@prisma/client';
+import { getAiHubBySlug, getAiHubKeyBySlug, isRoleAllowedForHub } from '@/lib/ai/hub-config';
 
 export const maxDuration = 300; // Fluid Compute — covers slow QB/DocuSign
 
 const RATE_LIMIT_PER_HOUR = Number(process.env.AI_RATE_LIMIT_PER_HOUR ?? 50);
 const MAX_INPUT_CHARS = 4000;
-
 function toAiSdkTool(def: AiToolDefinition<any, any>, ctx: ToolContext) {
   return tool({
     description: def.description,
@@ -45,13 +46,25 @@ export async function POST(req: NextRequest) {
   const user = { id: sessionUser.id!, email: sessionUser.email ?? '', name: sessionUser.name ?? null, role: sessionUser.role };
 
   // 3. Parse body
-  let body: { messages: any[]; conversationId?: string; pathname?: string; params?: Record<string, any> };
+  let body: { messages: any[]; conversationId?: string; pathname?: string; params?: Record<string, any>; hub?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
   const { messages, conversationId: bodyConvId, pathname = '/dashboard', params = {} } = body;
+  const hubSlug = body.hub;
+  const hub = typeof hubSlug === 'string' ? getAiHubBySlug(hubSlug) : null;
+  if (!hubSlug || !hub) {
+    return NextResponse.json({ error: 'hub inválido' }, { status: 400 });
+  }
+  if (!isRoleAllowedForHub(String(user.role), hubSlug)) {
+    return NextResponse.json({ error: 'Acesso negado para este hub' }, { status: 403 });
+  }
+  const hubKey = getAiHubKeyBySlug(hub.slug);
+  if (!hubKey) {
+    return NextResponse.json({ error: 'hub inválido' }, { status: 400 });
+  }
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'messages é obrigatório' }, { status: 400 });
   }
@@ -77,12 +90,15 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Conversation — create or load
-  let conversation = bodyConvId
-    ? await prisma.aiConversation.findFirst({ where: { id: bodyConvId, userId: user.id } })
-    : null;
-  if (!conversation) {
+  let conversation = null;
+  if (bodyConvId) {
+    conversation = await prisma.aiConversation.findFirst({ where: { id: bodyConvId, userId: user.id, hub: hubKey } });
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversa não encontrada para este hub' }, { status: 404 });
+    }
+  } else {
     conversation = await prisma.aiConversation.create({
-      data: { userId: user.id, title: userText.slice(0, 80) },
+      data: { userId: user.id, title: userText.slice(0, 80), hub: hubKey },
     });
   }
 
@@ -114,10 +130,15 @@ export async function POST(req: NextRequest) {
     currentDate: currentDateInET(),
     pageContext: buildPageContext(pathname, params),
     toolNames: allowed.map((t) => t.name),
+    hub: {
+      slug: hub.slug,
+      label: hub.label,
+      focus: hub.focus,
+    },
   });
 
-  const model = openai(process.env.AI_MODEL_DEFAULT ?? 'gpt-4o-mini');
-  const modelId = process.env.AI_MODEL_DEFAULT ?? 'gpt-4o-mini';
+  const modelId = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
+  const model = openai(modelId);
 
   logAiEvent({ kind: 'request', userId: user.id, conversationId: conversation.id, model: modelId });
 
