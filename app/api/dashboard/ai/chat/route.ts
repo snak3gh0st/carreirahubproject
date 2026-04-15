@@ -342,6 +342,25 @@ export async function POST(req: NextRequest) {
             where: { id: conversation!.id },
             data: { updatedAt: new Date() },
           });
+          // Persona cache miss → persist this fresh generation for the current bucket.
+          // Delta-mode responses (cachedForDelta set) are ephemeral and NOT cached.
+          if (persona && !cachedForDelta) {
+            const { computeDayBucket, writePersonaCache, recordPersonaCacheRead } = await import(
+              "@/lib/ai/persona-cache"
+            );
+            const dayBucket = computeDayBucket(new Date(), persona.cacheTtlMinutes);
+            await writePersonaCache({
+              personaSlug: persona.slug,
+              dayBucket,
+              content: text ?? "",
+              generatedBy: user.id,
+            });
+            await recordPersonaCacheRead({
+              personaSlug: persona.slug,
+              dayBucket,
+              userId: user.id,
+            });
+          }
           logAiEvent({ kind: 'finish', userId: user.id, conversationId: conversation!.id, model: modelId, tokensIn, tokensOut, latencyMs });
         } catch (err) {
           logAiEvent({ kind: 'error', userId: user.id, conversationId: conversation!.id, error: (err as Error).message });
