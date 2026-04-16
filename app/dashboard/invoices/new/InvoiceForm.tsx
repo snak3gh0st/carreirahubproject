@@ -593,30 +593,6 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Negócio <span className="text-gray-400 text-xs">(Opcional)</span>
-              </label>
-              <select
-                value={form.dealId}
-                onChange={(e) => handleChange("dealId", e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                disabled={!form.customerId || filteredDeals.length === 0}
-              >
-                <option value="">
-                  {form.customerId
-                    ? filteredDeals.length === 0
-                      ? "Nenhum deal disponível (pode continuar sem deal)"
-                      : "Selecione um deal (opcional)"
-                    : "Selecione um cliente primeiro"}
-                </option>
-                {filteredDeals.map((deal) => (
-                  <option key={deal.id} value={deal.id}>
-                    {deal.title}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 

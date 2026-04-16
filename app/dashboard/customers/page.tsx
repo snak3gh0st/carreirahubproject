@@ -367,40 +367,6 @@ export default async function CustomersPage({
             </div>
           </form>
 
-          {/* Source Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-display font-medium text-gray-700">Fonte:</span>
-            <Link
-              href={`/dashboard/customers${search ? `?search=${search}` : ""}`}
-              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
-                !source
-                  ? "bg-primary-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Todos
-            </Link>
-            <Link
-              href={`/dashboard/customers?source=quickbooks${search ? `&search=${search}` : ""}`}
-              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
-                source === "quickbooks"
-                  ? "bg-primary-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              QuickBooks ({qbCustomers})
-            </Link>
-            <Link
-              href={`/dashboard/customers?source=pipedrive${search ? `&search=${search}` : ""}`}
-              className={`px-4 py-2 rounded-lg text-sm font-display font-medium transition-colors ${
-                source === "pipedrive"
-                  ? "bg-primary-600 text-white"
-                  : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              Pipedrive ({pipedriveCustomers})
-            </Link>
-          </div>
         </div>
 
         {/* Advanced Filters */}
