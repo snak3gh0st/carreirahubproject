@@ -53,7 +53,7 @@ export function MessageBubble({
                 </div>
               );
             })()}
-            <div className="prose prose-sm max-w-none prose-headings:mb-3 prose-headings:mt-6 prose-headings:font-semibold prose-p:leading-7 prose-p:text-[#24342d] prose-li:my-1 prose-strong:text-[#10251e] dark:prose-invert">
+            <div className="prose prose-xs max-w-none prose-headings:mb-1 prose-headings:mt-2 prose-headings:font-semibold prose-h1:text-sm prose-h2:text-sm prose-h3:text-xs prose-p:leading-5 prose-p:text-sm prose-p:text-[#24342d] prose-li:my-0 prose-li:text-sm prose-strong:text-[#10251e] dark:prose-invert">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
             </div>
           </>
