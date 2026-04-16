@@ -7,7 +7,7 @@ export interface CreateLeadData {
   name: string;
   phone?: string;
   source?: LeadSource;
-  pipedrive_person_id?: number;
+  clint_contact_id?: string;
   metadata?: any;
   createdById?: string;
 }
@@ -38,7 +38,7 @@ export class LeadService {
         name: data.name,
         phone: data.phone,
         source: data.source || LeadSource.WEBSITE,
-        pipedrive_person_id: data.pipedrive_person_id,
+        clint_contact_id: data.clint_contact_id,
         status: LeadStatus.NEW,
         metadata: data.metadata || {},
         createdById: data.createdById,
@@ -81,7 +81,7 @@ export class LeadService {
    */
   async getLeadByPipedriveId(pipedrivePersonId: number): Promise<Lead | null> {
     return prisma.lead.findUnique({
-      where: { pipedrive_person_id: pipedrivePersonId },
+      where: { clint_contact_id: String(pipedrivePersonId) },
     });
   }
 

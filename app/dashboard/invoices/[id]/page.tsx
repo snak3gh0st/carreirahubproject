@@ -469,12 +469,12 @@ export default async function InvoiceDetailPage({
                       QuickBooks
                     </span>
                   )}
-                  {invoice.customer.pipedrive_id && (
+                  {invoice.customer.clint_contact_id && (
                     <span className="px-3 py-1.5 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
                       Pipedrive
                     </span>
                   )}
-                  {!invoice.customer.quickbooks_id && !invoice.customer.pipedrive_id && (
+                  {!invoice.customer.quickbooks_id && !invoice.customer.clint_contact_id && (
                     <span className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
                       Entrada Manual
                     </span>

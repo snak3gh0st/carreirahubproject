@@ -31,7 +31,7 @@ export interface SafeCustomerDto {
   email: string;
   phone: string | null;
   quickbooksId: string | null;
-  pipedriveId: number | null;
+  clintContactId: string | null;
 }
 
 export interface SafeStudentDto {

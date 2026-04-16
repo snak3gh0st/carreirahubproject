@@ -60,10 +60,10 @@ export async function GET() {
     const pipedriveStatus: any = {
       configured: !!process.env.PIPEDRIVE_API_TOKEN,
       webhookSecretConfigured: !!(
-        systemConfig?.pipedrive_webhook_secret ||
+        systemConfig?.cron_secret ||
         process.env.PIPEDRIVE_WEBHOOK_SECRET
       ),
-      lastSync: systemConfig?.last_pipedrive_sync || null,
+      lastSync: systemConfig?.last_clint_sync || null,
     };
 
     // Get last webhook received for each service
@@ -94,7 +94,7 @@ export async function GET() {
     ] = await Promise.all([
       prisma.customer.count(),
       prisma.customer.count({ where: { quickbooks_id: { not: null } } }),
-      prisma.customer.count({ where: { pipedrive_id: { not: null } } }),
+      prisma.customer.count({ where: { clint_contact_id: { not: null } } }),
       prisma.invoice.count(),
       prisma.invoice.count({ where: { quickbooks_invoice_id: { not: null } } }),
       prisma.payment.count(),

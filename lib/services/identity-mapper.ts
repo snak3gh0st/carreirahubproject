@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { Customer } from "@prisma/client";
 
 export interface ExternalIds {
-  pipedrive_id?: number;
+  clint_contact_id?: string;
   quickbooks_id?: string;
   docusign_id?: string;
   trello_id?: string;
@@ -68,8 +68,8 @@ export class IdentityMapperService {
       if (country && !customer.country) updates.country = country;
 
       // Atualizar IDs externos que não existem
-      if (externalIds.pipedrive_id && !customer.pipedrive_id) {
-        updates.pipedrive_id = externalIds.pipedrive_id;
+      if (externalIds.clint_contact_id && !customer.clint_contact_id) {
+        updates.clint_contact_id = externalIds.clint_contact_id;
       }
       if (externalIds.quickbooks_id && !customer.quickbooks_id) {
         updates.quickbooks_id = externalIds.quickbooks_id;
@@ -116,7 +116,7 @@ export class IdentityMapperService {
           state,
           zipCode,
           country,
-          pipedrive_id: externalIds.pipedrive_id,
+          clint_contact_id: externalIds.clint_contact_id,
           quickbooks_id: externalIds.quickbooks_id,
           docusign_id: externalIds.docusign_id,
           trello_id: externalIds.trello_id,
@@ -134,14 +134,14 @@ export class IdentityMapperService {
    * Buscar Customer por ID externo
    */
   async findByExternalId(
-    service: "pipedrive" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
+    service: "clint" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer | null> {
     const where: any = {};
 
     switch (service) {
-      case "pipedrive":
-        where.pipedrive_id = Number(externalId);
+      case "clint":
+        where.clint_contact_id = String(externalId);
         break;
       case "quickbooks":
         where.quickbooks_id = String(externalId);
@@ -168,14 +168,14 @@ export class IdentityMapperService {
    */
   async addExternalId(
     customerId: string,
-    service: "pipedrive" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
+    service: "clint" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer> {
     const updates: any = {};
 
     switch (service) {
-      case "pipedrive":
-        updates.pipedrive_id = Number(externalId);
+      case "clint":
+        updates.clint_contact_id = String(externalId);
         break;
       case "quickbooks":
         updates.quickbooks_id = String(externalId);

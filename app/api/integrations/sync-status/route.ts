@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       where: { id: "system" },
       select: {
         last_qb_sync: true,
-        last_pipedrive_sync: true,
+        last_clint_sync: true,
         quickbooks_is_authenticated: true,
       },
     });
@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
       success: true,
       syncStatus: {
         pipedrive: {
-          lastSync: systemConfig?.last_pipedrive_sync,
+          lastSync: systemConfig?.last_clint_sync,
           successRate: pipedriveSuccessRate,
           successCount: pipedriveSuccessCount,
           errorCount: pipedriveErrorCount,

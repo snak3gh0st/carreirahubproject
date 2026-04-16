@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       quickbooks: quickbooksAuthStatus,
-      pipedrive: pipedriveStatus,
+      // pipedrive removed
       secrets: {
         quickbooks: !!config?.quickbooks_webhook_secret,
-        pipedrive: !!config?.pipedrive_webhook_secret,
+        // pipedrive removed
         cron: !!config?.cron_secret,
       },
       lastSync: {
         quickbooks: config?.last_qb_sync?.toISOString() || null,
-        pipedrive: config?.last_pipedrive_sync?.toISOString() || null,
+        // pipedrive removed
       },
       timestamp: new Date().toISOString(),
     });

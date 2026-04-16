@@ -242,7 +242,7 @@ export async function POST(request: NextRequest) {
           title: 'Manual Contracts',
           value: invoice ? parseFloat(invoice.amount.toString()) : 0,
           status: 'WON',
-          pipedrive_deal_id: Math.floor(Math.random() * 1000000000), // Temporary ID for manual deals
+          // clint_deal_id is nullable — left null for manual deals until Clint sync assigns it
           customer: {
             connect: { id: customerId },
           },

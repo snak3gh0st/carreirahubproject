@@ -40,7 +40,7 @@ export default async function IntegrationHubPage() {
   ] = await Promise.all([
     prisma.customer.count(),
     prisma.customer.count({ where: { quickbooks_id: { not: null } } }),
-    prisma.customer.count({ where: { pipedrive_id: { not: null } } }),
+    prisma.customer.count({ where: { clint_contact_id: { not: null } } }),
     prisma.invoice.count(),
     prisma.invoice.count({ where: { quickbooks_invoice_id: { not: null } } }),
     prisma.payment.count(),
@@ -203,7 +203,7 @@ export default async function IntegrationHubPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">Segredo do Webhook:</span>
               <span className="font-medium">
-                {systemConfig?.pipedrive_webhook_secret ||
+                {systemConfig?.cron_secret ||
                 process.env.PIPEDRIVE_WEBHOOK_SECRET
                   ? "Configurado"
                   : "Ausente"}
@@ -212,8 +212,8 @@ export default async function IntegrationHubPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">Última Sincronização:</span>
               <span className="font-medium">
-                {systemConfig?.last_pipedrive_sync
-                  ? new Date(systemConfig.last_pipedrive_sync).toLocaleString()
+                {systemConfig?.last_clint_sync
+                  ? new Date(systemConfig.last_clint_sync).toLocaleString()
                   : "Nunca"}
               </span>
             </div>

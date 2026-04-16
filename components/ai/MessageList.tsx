@@ -1,8 +1,8 @@
 'use client';
 import { MessageBubble } from './MessageBubble';
 import { ToolCallCard, resolveToolMeta } from './ToolCallCard';
+import { ThinkingIndicator } from './ThinkingIndicator';
 import { useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
 
 // v6 message shape: { id, role, parts: [{type: 'text', text} | {type: 'tool-*', toolName, input, output}] }
 
@@ -84,12 +84,7 @@ export function MessageList({
             </div>
           );
         })}
-        {isStreaming && (
-          <div className="mt-2 flex items-center gap-2 text-xs italic text-muted-foreground">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            <span>{loadingLabel}</span>
-          </div>
-        )}
+        {isStreaming && <ThinkingIndicator label={loadingLabel} />}
         <div ref={endRef} />
       </div>
     </div>

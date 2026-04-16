@@ -44,10 +44,6 @@ export async function POST(request: NextRequest) {
       ? randomBytes(32).toString("hex")
       : config?.quickbooks_webhook_secret || randomBytes(32).toString("hex");
 
-    const pipedriveSecret = generateNew
-      ? randomBytes(32).toString("hex")
-      : config?.pipedrive_webhook_secret || randomBytes(32).toString("hex");
-
     const cronSecret = generateNew
       ? randomBytes(32).toString("hex")
       : config?.cron_secret || randomBytes(32).toString("hex");
@@ -57,14 +53,12 @@ export async function POST(request: NextRequest) {
       where: { id: "system" },
       update: {
         quickbooks_webhook_secret: quickbooksSecret,
-        pipedrive_webhook_secret: pipedriveSecret,
         cron_secret: cronSecret,
         updatedAt: new Date(),
       },
       create: {
         id: "system",
         quickbooks_webhook_secret: quickbooksSecret,
-        pipedrive_webhook_secret: pipedriveSecret,
         cron_secret: cronSecret,
       },
     });
@@ -75,14 +69,12 @@ export async function POST(request: NextRequest) {
       message: "Secrets gerados com sucesso",
       secrets: {
         quickbooksWebhookSecret: quickbooksSecret,
-        pipedriveWebhookSecret: pipedriveSecret,
+        // pipedrive removed
         cronSecret: cronSecret,
       },
       instructions: {
         quickbooks:
           "Adicione este secret no Intuit Developer Portal > webhooks > Webhook Verification Token",
-        pipedrive:
-          "Salve este secret no Pipedrive para validar assinaturas de webhook (se necessário)",
         cron: "Use este secret no header Authorization: Bearer <secret> para chamar endpoints de cron",
       },
       generated: new Date().toISOString(),
@@ -114,7 +106,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       secretsConfigured: {
         quickbooks: !!config?.quickbooks_webhook_secret,
-        pipedrive: !!config?.pipedrive_webhook_secret,
+        // pipedrive removed
         cron: !!config?.cron_secret,
       },
       message: "Todos os secrets estão configurados",

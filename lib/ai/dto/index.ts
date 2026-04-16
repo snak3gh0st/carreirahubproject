@@ -28,11 +28,11 @@ export function toInvoiceSafeDto(inv: {
 
 export function toCustomerSafeDto(c: {
   id: string; name: string; email: string; phone?: string | null;
-  quickbooks_id?: string | null; pipedrive_id?: number | null;
+  quickbooks_id?: string | null; clint_contact_id?: string | null;
 }): SafeCustomerDto {
   return {
     id: c.id, name: c.name, email: c.email, phone: c.phone ?? null,
-    quickbooksId: c.quickbooks_id ?? null, pipedriveId: c.pipedrive_id ?? null,
+    quickbooksId: c.quickbooks_id ?? null, clintContactId: c.clint_contact_id ?? null,
   };
 }
 

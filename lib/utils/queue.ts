@@ -99,8 +99,6 @@ function initQueues() {
   _queues = {
     leadQualification: new Queue("lead-qualification", { connection: connectionOptions }),
     whatsappMessages: new Queue("whatsapp-messages", { connection: connectionOptions }),
-    pipedriveSync: new Queue("pipedrive-sync", { connection: connectionOptions }),
-    pipedriveReverseSync: new Queue("pipedrive-reverse-sync", { connection: connectionOptions }),
     invoiceGeneration: new Queue("invoice-generation", { connection: connectionOptions }),
     invoiceApproval: new Queue("invoice-approval", { connection: connectionOptions }),
     contractGeneration: new Queue("contract-generation", { connection: connectionOptions }),
@@ -119,8 +117,6 @@ function initQueueEvents() {
   _queueEvents = {
     leadQualification: new QueueEvents("lead-qualification", { connection: connectionOptions }),
     whatsappMessages: new QueueEvents("whatsapp-messages", { connection: connectionOptions }),
-    pipedriveSync: new QueueEvents("pipedrive-sync", { connection: connectionOptions }),
-    pipedriveReverseSync: new QueueEvents("pipedrive-reverse-sync", { connection: connectionOptions }),
     invoiceGeneration: new QueueEvents("invoice-generation", { connection: connectionOptions }),
     invoiceApproval: new QueueEvents("invoice-approval", { connection: connectionOptions }),
     contractGeneration: new QueueEvents("contract-generation", { connection: connectionOptions }),
@@ -184,26 +180,6 @@ export async function addWhatsAppMessageJob(data: {
       backoff: {
         type: "exponential",
         delay: 5000,
-      },
-    }
-  );
-}
-
-/**
- * Adicionar job à fila de sincronização Pipedrive
- */
-export async function addPipedriveSyncJob(data: {
-  type: "person" | "deal";
-  id: number;
-}): Promise<void> {
-  await queues.pipedriveSync.add(
-    "sync-pipedrive",
-    data,
-    {
-      attempts: 3,
-      backoff: {
-        type: "exponential",
-        delay: 3000,
       },
     }
   );
@@ -285,30 +261,6 @@ export async function addQuickBooksSyncJob(data: {
 }
 
 /**
- * Add job to Pipedrive reverse sync queue (Hub → Pipedrive)
- */
-export async function addPipedriveReverseSyncJob(data: {
-  type: 'customer' | 'deal' | 'invoice';
-  entityId: string;
-}): Promise<void> {
-  await queues.pipedriveReverseSync.add(
-    "pipedrive-reverse-sync",
-    data,
-    {
-      attempts: 3,
-      backoff: {
-        type: "exponential",
-        delay: 3000,
-      },
-      removeOnComplete: {
-        age: 24 * 3600,
-        count: 1000,
-      },
-    }
-  );
-}
-
-/**
  * Add job to invoice approval queue
  */
 export async function addInvoiceApprovalJob(data: {
@@ -335,7 +287,7 @@ export async function addInvoiceApprovalJob(data: {
  */
 export async function addBulkImportJob(data: {
   importId: string;
-  source: 'PIPEDRIVE' | 'QUICKBOOKS';
+  source: 'QUICKBOOKS';
   type: string;
   options?: any;
 }): Promise<void> {
@@ -397,22 +349,6 @@ export function initializeWorkers() {
     { connection: connectionOptions }
   );
 
-  // Worker para sincronização Pipedrive
-  new Worker(
-    "pipedrive-sync",
-    async (job) => {
-      const { type, id } = job.data;
-      const { pipedriveService } = await import("@/lib/services/pipedrive.service");
-      
-      if (type === "person") {
-        await pipedriveService.getPerson(id);
-      } else if (type === "deal") {
-        await pipedriveService.getDeal(id);
-      }
-    },
-    { connection: connectionOptions }
-  );
-
   // Worker para geração de invoices
   new Worker(
     "invoice-generation",
@@ -445,26 +381,6 @@ export function initializeWorkers() {
     { connection: connectionOptions }
   );
 
-  // Worker for Pipedrive reverse sync (Hub → Pipedrive)
-  new Worker(
-    "pipedrive-reverse-sync",
-    async (job) => {
-      const { type, entityId } = job.data;
-      const { pipedriveSyncService } = await import("@/lib/services/pipedrive-sync.service");
-
-      if (type === "customer") {
-        await pipedriveSyncService.syncCustomerToPipedrive(entityId);
-      } else if (type === "deal") {
-        await pipedriveSyncService.syncDealToPipedrive(entityId);
-      } else if (type === "invoice") {
-        await pipedriveSyncService.syncInvoiceToPipedrive(entityId);
-      }
-    },
-    {
-      connection: connectionOptions,
-    }
-  );
-
   // Worker for invoice approval workflow
   new Worker(
     "invoice-approval",
@@ -483,17 +399,7 @@ export function initializeWorkers() {
     async (job) => {
       const { importId, source, type } = job.data;
 
-      if (source === "PIPEDRIVE") {
-        const { pipedriveSyncService } = await import("@/lib/services/pipedrive-sync.service");
-
-        if (type === "PERSONS" || type === "PERSONS_AND_DEALS") {
-          await pipedriveSyncService.importAllPersons(importId);
-        }
-
-        if (type === "DEALS" || type === "PERSONS_AND_DEALS") {
-          await pipedriveSyncService.importAllDeals(importId);
-        }
-      } else if (source === "QUICKBOOKS") {
+      if (source === "QUICKBOOKS") {
         const { quickbooksSyncService } = await import("@/lib/services/quickbooks-sync.service");
 
         // Parse type string to determine what to import

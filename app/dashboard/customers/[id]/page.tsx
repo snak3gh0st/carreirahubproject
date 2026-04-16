@@ -204,7 +204,7 @@ export default async function CustomerDetailPage({
                     {customer.quickbooks_id && (
                       <Badge variant="success">QuickBooks</Badge>
                     )}
-                    {customer.pipedrive_id && (
+                    {customer.clint_contact_id && (
                       <Badge variant="info">Pipedrive</Badge>
                     )}
                     {latestTest ? (

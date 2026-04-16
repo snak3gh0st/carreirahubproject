@@ -171,11 +171,9 @@ interface QueueConfig {
 const QUEUE_CONFIG: QueueConfig = {
   leadQualification: { maxJobs: 2, timeoutMs: 5000 },
   whatsappMessages: { maxJobs: 5, timeoutMs: 5000 },
-  pipedriveSync: { maxJobs: 3, timeoutMs: 5000 },
   invoiceGeneration: { maxJobs: 2, timeoutMs: 5000 },
   contractGeneration: { maxJobs: 2, timeoutMs: 5000 },
   quickbooksSync: { maxJobs: 1, timeoutMs: 5000 },
-  pipedriveReverseSync: { maxJobs: 2, timeoutMs: 5000 },
   invoiceApproval: { maxJobs: 3, timeoutMs: 5000 },
   bulkImport: { maxJobs: 1, timeoutMs: 5000 },
 };
@@ -228,19 +226,6 @@ const queueHandlers: {
     await whatsappService.sendMessage(phone, message);
   },
 
-  pipedriveSync: async (job: any) => {
-    const { type, id } = job.data;
-    const { pipedriveService } = await import(
-      "@/lib/services/pipedrive.service"
-    );
-
-    if (type === "person") {
-      await pipedriveService.getPerson(id);
-    } else if (type === "deal") {
-      await pipedriveService.getDeal(id);
-    }
-  },
-
   invoiceGeneration: async (job: any) => {
     const { dealId, customerId, amount, currency } = job.data;
     // Invoice generation logic: reserved for service implementation
@@ -266,21 +251,6 @@ const queueHandlers: {
     await quickbooksSyncService.sync(job.data);
   },
 
-  pipedriveReverseSync: async (job: any) => {
-    const { type, entityId } = job.data;
-    const { pipedriveSyncService } = await import(
-      "@/lib/services/pipedrive-sync.service"
-    );
-
-    if (type === "customer") {
-      await pipedriveSyncService.syncCustomerToPipedrive(entityId);
-    } else if (type === "deal") {
-      await pipedriveSyncService.syncDealToPipedrive(entityId);
-    } else if (type === "invoice") {
-      await pipedriveSyncService.syncInvoiceToPipedrive(entityId);
-    }
-  },
-
   invoiceApproval: async (job: any) => {
     const { invoiceId, action, userId, reason} = job.data;
     // Note: Approval workflow removed in quick-012, this queue processor is deprecated
@@ -290,18 +260,8 @@ const queueHandlers: {
   bulkImport: async (job: any) => {
     const { importId, source, type } = job.data;
 
-    if (source === "PIPEDRIVE") {
-      const { pipedriveSyncService } = await import(
-        "@/lib/services/pipedrive-sync.service"
-      );
-
-      if (type === "PERSONS" || type === "PERSONS_AND_DEALS") {
-        await pipedriveSyncService.importAllPersons(importId);
-      }
-
-      if (type === "DEALS" || type === "PERSONS_AND_DEALS") {
-        await pipedriveSyncService.importAllDeals(importId);
-      }
+    if (false) {
+      // Pipedrive removed
     } else if (source === "QUICKBOOKS") {
       const { quickbooksSyncService } = await import(
         "@/lib/services/quickbooks-sync.service"

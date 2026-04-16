@@ -3,7 +3,6 @@ import { prisma } from "@/lib/db";
 import { identityMapper } from "@/lib/services/identity-mapper";
 import { createUserFallbackResponse, categorizeByStatusCode } from "@/lib/utils/error-fallback";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
-import { pipedriveService } from "@/lib/services/pipedrive.service";
 import { integrationLogger } from "@/lib/utils/logger";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -24,7 +23,7 @@ const createCustomerSchema = z.object({
   state: z.string().optional(),
   zipCode: z.string().optional(),
   country: z.string().optional(),
-  pipedrive_id: z.number().optional(),
+  clint_contact_id: z.number().optional(),
   quickbooks_id: z.string().optional(),
   metadata: z.any().optional(),
 });
@@ -116,7 +115,7 @@ export async function POST(request: NextRequest) {
       zipCode: data.zipCode,
       country: data.country,
       externalIds: {
-        pipedrive_id: data.pipedrive_id,
+        clint_contact_id: data.clint_contact_id ? String(data.clint_contact_id) : undefined,
         quickbooks_id: data.quickbooks_id,
       },
       metadata: data.metadata,
@@ -203,62 +202,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Sync to Pipedrive if not already synced
-    let pipedrivePerson = null;
-    let pipedrivePersonId: number | undefined;
-    if (!customer.pipedrive_id) {
-      try {
-        console.log(`[CUSTOMER_CREATE] Syncing customer ${customer.id} to Pipedrive...`);
-        
-        pipedrivePerson = await pipedriveService.createPerson({
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone || undefined
-        });
-        pipedrivePersonId = pipedrivePerson.id;
-
-        // Update customer with Pipedrive ID
-        await prisma.customer.update({
-          where: { id: customer.id },
-          data: { 
-            pipedrive_id: pipedrivePersonId,
-            lastPipedriveSyncAt: new Date()
-          }
-        });
-
-        // Log success
-        await integrationLogger.logSuccess("PIPEDRIVE", "PERSON_CREATED", {
-          customerId: customer.id,
-          pipedrive_id: pipedrivePersonId,
-          email: customer.email
-        });
-
-        console.log(`[CUSTOMER_CREATE] ✓ Customer synced to Pipedrive: ${pipedrivePersonId}`);
-      } catch (pdError: any) {
-        console.error(`[CUSTOMER_CREATE] ✗ Failed to sync to Pipedrive:`, pdError);
-
-        // Log error
-        await integrationLogger.logError(
-          "PIPEDRIVE",
-          "PERSON_CREATION_FAILED",
-          pdError instanceof Error ? pdError : new Error(String(pdError)),
-          {
-            customerId: customer.id,
-            customerEmail: customer.email,
-            customerName: customer.name
-          }
-        );
-
-        // Don't fail customer creation if Pipedrive sync fails
-        // Customer will have pipedrive_id = null, can be synced later
-      }
-    }
-
     return NextResponse.json({
       customer,
       syncedSystems: {
         quickbooks: qbCustomer ? true : false,
-        pipedrive: !!pipedrivePersonId
       },
       quickbooksSync: qbCustomer ? {
         synced: true,

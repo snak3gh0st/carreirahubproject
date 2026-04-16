@@ -44,7 +44,7 @@ model Customer {
   email                String           @unique
   name                 String
   phone                String?
-  pipedrive_id         Int?             @unique
+  clint_contact_id     String?          @unique
   quickbooks_id        String?          @unique
   trello_id            String?          @unique
   cloudtalk_id         String?
@@ -52,7 +52,7 @@ model Customer {
   metadata             Json?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
-  lastPipedriveSyncAt  DateTime?
+  lastClintSyncAt      DateTime?
   lastQuickbooksSyncAt DateTime?
   phoneVerified        Boolean          @default(false)
   preferredLanguage    String?          @default("pt-BR")
@@ -87,7 +87,7 @@ model Customer {
   mentorshipEnrollments MentorshipEnrollment[]
 
   @@index([email])
-  @@index([pipedrive_id])
+  @@index([clint_contact_id])
   @@index([createdById])
   @@map("customers")
 }
@@ -182,7 +182,7 @@ model Lead {
   phone               String?
   source              LeadSource          @default(WEBSITE)
   status              LeadStatus          @default(NEW)
-  pipedrive_person_id Int?                @unique
+  clint_contact_id    String?             @unique
   qualificationScore  Int?                @default(0)
   qualificationData   Json?
   qualifiedAt         DateTime?
@@ -202,7 +202,7 @@ model Lead {
 
   @@index([email])
   @@index([status])
-  @@index([pipedrive_person_id])
+  @@index([clint_contact_id])
   @@index([createdById])
   @@map("leads")
 }
@@ -263,13 +263,13 @@ model Deal {
   value               Decimal    @db.Decimal(10, 2)
   currency            String     @default("USD")
   status              DealStatus @default(OPEN)
-  pipedrive_deal_id   Int        @unique
+  clint_deal_id       String?    @unique
   customerId          String?
   ownerId             String?
   convertedFromLeadId String?    @unique
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
-  lastPipedriveSyncAt DateTime?
+  lastClintSyncAt     DateTime?
   contractSentAt      DateTime?
   invoiceCreatedAt    DateTime?
   workflowCompletedAt DateTime?
@@ -440,10 +440,9 @@ model SystemConfig {
   quickbooks_company_id       String?
   quickbooks_is_authenticated Boolean   @default(false)
   quickbooks_webhook_secret   String?
-  pipedrive_webhook_secret    String?
   cron_secret                 String?
   last_qb_sync                DateTime?
-  last_pipedrive_sync         DateTime?
+  last_clint_sync             DateTime?
   metadata                    Json?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime  @updatedAt
@@ -746,7 +745,7 @@ enum LeadSource {
   REFERRAL
   SOCIAL_MEDIA
   OTHER
-  PIPEDRIVE
+  CLINT
 }
 
 enum ConversationStatus {

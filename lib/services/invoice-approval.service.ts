@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Invoice } from "@prisma/client";
 import { quickbooksService } from "./quickbooks.service";
-import { pipedriveSyncService } from "./pipedrive-sync.service";
 import { contractWorkflowService } from "./contract-workflow.service";
 import { notificationService } from "./notification.service";
 
@@ -144,14 +143,6 @@ export class InvoiceApprovalService {
       }
     }
 
-    // Sync to Pipedrive
-    if (invoice.deal && (invoice.deal as any).pipedrive_deal_id) {
-      try {
-        await pipedriveSyncService.syncInvoiceToPipedrive(invoiceId);
-      } catch (error) {
-        console.error(`[INVOICE_APPROVAL] Error syncing invoice to Pipedrive:`, error);
-      }
-    }
   }
 }
 

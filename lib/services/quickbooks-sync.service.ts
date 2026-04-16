@@ -283,7 +283,7 @@ export class QuickBooksSyncService {
 
       if (!deal) {
         // Generate a unique negative ID for QB-only deals using customer's QB ID
-        // This avoids conflicts while keeping pipedrive_deal_id unique
+        // This avoids conflicts while keeping clint_deal_id unique
         const qbDealId = -Math.abs(parseInt(customerRef));
 
         deal = await prisma.deal.create({
@@ -293,7 +293,7 @@ export class QuickBooksSyncService {
             value: totalAmt,
             currency: "USD",
             status: "OPEN",
-            pipedrive_deal_id: qbDealId, // Unique negative ID for QB-only deals
+            clint_deal_id: String(qbDealId), // Unique negative ID for QB-only deals
           },
         });
       }
@@ -903,7 +903,7 @@ export class QuickBooksSyncService {
                 value: totalAmount,
                 currency: "USD",
                 status: "OPEN",
-                pipedrive_deal_id: qbDealId, // Unique negative ID for QB-only deals
+                clint_deal_id: String(qbDealId), // Unique negative ID for QB-only deals
               },
             });
             console.log(`[QuickBooks Sync] Created default deal for customer ${customer.id}: ${latestDeal.id}`);
@@ -1617,7 +1617,7 @@ export class QuickBooksSyncService {
                   value: 0,
                   currency: "USD",
                   status: "OPEN",
-                  pipedrive_deal_id: qbDealId, // Unique negative ID for QB-only deals
+                  clint_deal_id: String(qbDealId), // Unique negative ID for QB-only deals
                 },
               });
             }

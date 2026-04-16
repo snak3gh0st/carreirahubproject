@@ -106,7 +106,7 @@ export default async function CustomersPage({
   if (source === "quickbooks") {
     whereClause.quickbooks_id = { not: null };
   } else if (source === "pipedrive") {
-    whereClause.pipedrive_id = { not: null };
+    whereClause.clint_contact_id = { not: null };
   }
 
   // Advanced filters
@@ -216,7 +216,7 @@ export default async function CustomersPage({
   });
 
   const pipedriveCustomers = await prisma.customer.count({
-    where: { ...statsFilter, pipedrive_id: { not: null } },
+    where: { ...statsFilter, clint_contact_id: { not: null } },
   });
 
   const customersWithInvoices = await prisma.customer.count({
