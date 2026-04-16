@@ -42,16 +42,16 @@ function buildConnectionUrl(): string | undefined {
   }
 }
 
+const connectionUrl = buildConnectionUrl();
+
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     // Reduzir verbosidade em desenvolvimento para melhorar desempenho percebido
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-    datasources: {
-      db: {
-        url: buildConnectionUrl(),
-      },
-    },
+    ...(connectionUrl
+      ? { datasources: { db: { url: connectionUrl } } }
+      : {}),
     // Otimizacoes de performance
     errorFormat: "minimal",
   });
