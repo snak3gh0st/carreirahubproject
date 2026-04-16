@@ -3,7 +3,6 @@ import { useState } from 'react';
 import { MessageCircle, X, Maximize2 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { ChatPanel } from './ChatPanel';
 
 export function ChatBubble() {
   const [open, setOpen] = useState(false);
@@ -27,7 +26,7 @@ export function ChatBubble() {
         </button>
       )}
       {open && (
-        <div className="fixed bottom-4 right-4 w-[400px] h-[600px] max-h-[80vh] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-background shadow-2xl flex flex-col z-50 overflow-hidden">
+        <div className="fixed bottom-4 right-4 w-[400px] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-background shadow-2xl flex flex-col z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-card">
             <div className="text-sm font-semibold">CarreiraUSA AI</div>
             <div className="flex items-center gap-1">
@@ -39,8 +38,13 @@ export function ChatBubble() {
               </button>
             </div>
           </div>
-          <div className="flex-1 min-h-0">
-            <ChatPanel />
+          <div className="p-4 text-sm text-muted-foreground">
+            O acesso rápido agora acontece pelos AIs segmentados de cada hub.
+            <div className="mt-3">
+              <Link href="/dashboard/ai" className="text-primary hover:underline">
+                Abrir AI do seu hub
+              </Link>
+            </div>
           </div>
         </div>
       )}

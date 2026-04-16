@@ -22,6 +22,7 @@ import {
   CheckCircle,
   FileSignature,
   FilePlus,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils/cn"
 
@@ -49,6 +50,42 @@ const navigationSections: NavSection[] = [
         label: "Dashboard",
         icon: LayoutDashboard,
         roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
+      },
+      {
+        href: "/dashboard/ai",
+        label: "IA",
+        icon: Sparkles,
+        roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
+      },
+    ],
+  },
+  {
+    title: "IA & Análises",
+    roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"],
+    items: [
+      {
+        href: "/dashboard/admin/ai",
+        label: "Briefing (Admin)",
+        icon: Sparkles,
+        roles: ["ADMIN"],
+      },
+      {
+        href: "/dashboard/financial/ai",
+        label: "Raio-X Financeiro",
+        icon: Sparkles,
+        roles: ["ADMIN", "FINANCE"],
+      },
+      {
+        href: "/dashboard/commercial/ai",
+        label: "Pulso do Pipeline",
+        icon: Sparkles,
+        roles: ["ADMIN", "SALES", "SDR", "COMMERCIAL"],
+      },
+      {
+        href: "/dashboard/operational/ai",
+        label: "Status da Base",
+        icon: Sparkles,
+        roles: ["ADMIN", "OPERATIONAL", "SUPPORT"],
       },
     ],
   },

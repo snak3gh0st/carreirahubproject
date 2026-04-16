@@ -1,4 +1,11 @@
-export function getSuggestionsForRole(role: string): string[] {
+import { getAiHubBySlug, getAiHubForRole } from '@/lib/ai/hub-config';
+
+export function getSuggestionsForRole(role: string, hubSlug?: string): string[] {
+  const hub = hubSlug ? getAiHubBySlug(hubSlug) : getAiHubForRole(role);
+  if (hub) {
+    return [...hub.starterPrompts];
+  }
+
   switch (role) {
     case 'ADMIN':
       return [

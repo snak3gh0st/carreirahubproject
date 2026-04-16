@@ -8,7 +8,7 @@
 |----------|---------|---------|-------|
 | `AI_COPILOT_ENABLED` | Master kill switch for `/api/dashboard/ai/*` routes | `false` | Set to `true` to enable. Change takes effect on next request — no redeploy needed if env is updated via Vercel dashboard |
 | `AI_RATE_LIMIT_PER_HOUR` | Per-user rolling-window message cap | `50` | Increase cautiously — cost scales linearly |
-| `AI_MODEL_DEFAULT` | Default LLM | `gpt-4o-mini` | Switching to `gpt-4o` raises cost ~16x |
+| `AI_MODEL_DEFAULT` | Default LLM | `gpt-5.2-chat-latest` | Use a project-accessible chat model; legacy `gpt-4o-mini` / `gpt-4-turbo` may return `model_not_found` |
 | `OPENAI_API_KEY` | OpenAI API key | required | Shared with existing chatbot service |
 | `NEXT_PUBLIC_AI_COPILOT_VISIBLE` | Hide UI without disabling backend | `true` | For testing deployment without exposing to users |
 

@@ -43,3 +43,11 @@ export const toolRegistry: AiToolDefinition<any, any>[] = [
 export function allowedToolsForRole(role: UserRole): AiToolDefinition<any, any>[] {
   return toolRegistry.filter((t) => t.allowedRoles.includes(role));
 }
+
+export function filterToolsByWhitelist(
+  tools: AiToolDefinition<any, any>[],
+  whitelist: readonly string[]
+): AiToolDefinition<any, any>[] {
+  const allow = new Set(whitelist);
+  return tools.filter((t) => allow.has(t.name));
+}

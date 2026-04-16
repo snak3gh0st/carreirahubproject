@@ -19,13 +19,48 @@ function groupByDate(convs: Conversation[]) {
   return groups;
 }
 
-export function ConversationSidebar({ selectedId, onSelect, onNew }: { selectedId?: string; onSelect: (id: string) => void; onNew: () => void }) {
+export function ConversationSidebar({
+  hub,
+  selectedId,
+  onSelect,
+  onNew,
+}: {
+  hub: string;
+  selectedId?: string;
+  onSelect: (id: string) => void;
+  onNew: () => void;
+}) {
   const [data, setData] = useState<{ conversations: Conversation[] } | null>(null);
   const refresh = async () => {
-    const res = await fetch('/api/dashboard/ai/conversations');
+    const res = await fetch(`/api/dashboard/ai/conversations?hub=${hub}`);
     if (res.ok) setData(await res.json());
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => { refresh(); }, [hub, selectedId]);
+
+  const handleDelete = async (conversationId: string) => {
+    const previous = data;
+    setData((current) => ({
+      conversations: (current?.conversations ?? []).filter((conversation) => conversation.id !== conversationId),
+    }));
+
+    try {
+      const res = await fetch(`/api/dashboard/ai/conversations?id=${conversationId}&hub=${hub}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        setData(previous);
+        return;
+      }
+
+      await refresh();
+      if (selectedId === conversationId) {
+        onNew();
+      }
+    } catch {
+      setData(previous);
+    }
+  };
 
   const convs = data?.conversations ?? [];
   const groups = groupByDate(convs);
@@ -44,12 +79,26 @@ export function ConversationSidebar({ selectedId, onSelect, onNew }: { selectedI
             <ul>
               {items.map(c => (
                 <li key={c.id}>
-                  <button
-                    onClick={() => onSelect(c.id)}
-                    className={`w-full text-left px-2 py-1.5 rounded text-sm truncate ${selectedId === c.id ? 'bg-muted font-medium' : 'hover:bg-muted/50'}`}
-                  >
-                    {c.title}
-                  </button>
+                  <div className={`group flex items-center gap-1 rounded ${selectedId === c.id ? 'bg-muted' : 'hover:bg-muted/50'}`}>
+                    <button
+                      onClick={() => onSelect(c.id)}
+                      className={`min-w-0 flex-1 truncate px-2 py-1.5 text-left text-sm ${selectedId === c.id ? 'font-medium' : ''}`}
+                    >
+                      {c.title}
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Excluir conversa ${c.title}`}
+                      onClick={() => {
+                        if (window.confirm('Excluir esta conversa permanentemente?')) {
+                          void handleDelete(c.id);
+                        }
+                      }}
+                      className="mr-1 rounded px-2 py-1 text-xs text-muted-foreground opacity-70 transition hover:bg-background md:opacity-0 md:group-hover:opacity-100"
+                    >
+                      Excluir
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

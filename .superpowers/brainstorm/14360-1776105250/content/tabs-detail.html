@@ -1,0 +1,143 @@
+<h2>Financial BI — Tab Contents Detail</h2>
+<p class="subtitle">Review each tab's charts and tables. Click to flag any tab that needs changes.</p>
+
+<!-- TAB 1: Revenue & Growth -->
+<div style="margin-bottom: 24px;">
+  <div style="background: #e67e22; color: white; padding: 8px 16px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 14px;">Tab 1: Revenue & Growth</div>
+  <div style="border: 2px solid #e67e22; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px; background: white;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Invoiced vs Collected</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Area chart — two overlapping series per month. Shows the gap between what was billed and what was actually received.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Area chart (Recharts AreaChart)<br>📐 <strong>X-axis:</strong> Month<br>📏 <strong>Y-axis:</strong> Dollar amount<br>🎨 <strong>Series:</strong> Invoiced (light green fill) + Collected (solid green fill)</div>
+      </div>
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Revenue by Service</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Horizontal bar chart — breakdown from invoice lineItems JSON. Shows which services generate the most revenue.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Bar chart (horizontal)<br>📐 <strong>X-axis:</strong> Dollar amount<br>📏 <strong>Y-axis:</strong> Service name<br>🔢 <strong>Source:</strong> Parsed from Invoice.lineItems JSON</div>
+      </div>
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">MRR / ARR Trend</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Line chart — monthly recurring revenue calculated from recurring invoices. ARR = MRR x 12 shown as secondary axis or annotation.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Line chart<br>📐 <strong>X-axis:</strong> Month<br>📏 <strong>Y-axis:</strong> MRR ($)<br>📎 <strong>Note:</strong> ARR shown as annotation label</div>
+      </div>
+      <div style="background: #f9f9f9; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Month-over-Month Growth</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Bar chart — percentage growth vs previous month. Green bars for positive, red for negative.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Bar chart (vertical)<br>📐 <strong>X-axis:</strong> Month<br>📏 <strong>Y-axis:</strong> % change<br>🎨 <strong>Colors:</strong> Green (+) / Red (-)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 2: AR & Collections -->
+<div style="margin-bottom: 24px;">
+  <div style="background: #2980b9; color: white; padding: 8px 16px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 14px;">Tab 2: AR & Collections</div>
+  <div style="border: 2px solid #2980b9; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px; background: white;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div style="background: #f0f7ff; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">AR Aging Breakdown</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Stacked bar chart + summary table. Five buckets: Current, 1-30, 31-60, 61-90, 90+ days.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Stacked bar + data table<br>🪣 <strong>Buckets:</strong> Current | 1-30 | 31-60 | 61-90 | 90+<br>📏 <strong>Values:</strong> Count + Total $ per bucket<br>🎨 <strong>Colors:</strong> Green → Yellow → Orange → Red → Dark Red</div>
+      </div>
+      <div style="background: #f0f7ff; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Collection Performance</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Dual metric: Average days-to-payment trend (line) + collection rate trend (line). Shows if collections are improving over time.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Dual-axis line chart<br>📐 <strong>Left Y:</strong> Avg days to payment<br>📏 <strong>Right Y:</strong> Collection rate %<br>📎 <strong>Goal:</strong> Days ↓ and Rate ↑ = healthy</div>
+      </div>
+      <div style="background: #f0f7ff; border-radius: 8px; padding: 14px; grid-column: span 2;">
+        <div style="font-size: 13px; font-weight: 700;">Overdue Invoices Table</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Sortable table of all OVERDUE invoices. Actionable — finance team's primary working list.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">
+          📋 <strong>Columns:</strong> Customer | Invoice # | Amount | Due Date | Days Overdue | Reminders Sent | Collection Calls | Auto-Charge Status | Owner<br>
+          🔽 <strong>Default sort:</strong> Days overdue (descending)<br>
+          🔍 <strong>Filter:</strong> By owner, by aging bucket<br>
+          📎 <strong>Actions:</strong> Click row → opens invoice detail
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 3: Cash Flow -->
+<div style="margin-bottom: 24px;">
+  <div style="background: #27ae60; color: white; padding: 8px 16px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 14px;">Tab 3: Cash Flow</div>
+  <div style="border: 2px solid #27ae60; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px; background: white;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div style="background: #f0fff4; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Cash Flow Forecast (90 days)</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Area chart showing projected inflows based on invoice due dates and customer payment patterns. Three scenarios: optimistic, expected, conservative.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Area chart (3 bands)<br>📐 <strong>X-axis:</strong> Date (next 90 days)<br>📏 <strong>Y-axis:</strong> Cumulative $ expected<br>🎨 <strong>Bands:</strong> Optimistic (light) / Expected (medium) / Conservative (dark)<br>📎 <strong>Source:</strong> Existing receivables-forecast API</div>
+      </div>
+      <div style="background: #f0fff4; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Payment Probability Breakdown</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Donut chart showing outstanding AR split by collection probability. How much of our money is likely vs unlikely to come in?</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Donut chart<br>🥧 <strong>Segments:</strong> High (>80%) | Medium (50-80%) | Low (20-50%) | Bad debt (<20%)<br>🎨 <strong>Colors:</strong> Green | Yellow | Orange | Red<br>💰 <strong>Values:</strong> $ amount per segment</div>
+      </div>
+      <div style="background: #f0fff4; border-radius: 8px; padding: 14px; grid-column: span 2;">
+        <div style="font-size: 13px; font-weight: 700;">At-Risk Invoices</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Table of invoices with low collection probability — the ones that need attention NOW.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">
+          📋 <strong>Columns:</strong> Customer | Invoice # | Amount | Due Date | Days Overdue | Probability % | Risk Level | Last Action<br>
+          🔽 <strong>Default sort:</strong> Probability ascending (worst first)<br>
+          🚨 <strong>Highlight:</strong> CRITICAL risk in red row background
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TAB 4: Customer Analysis -->
+<div style="margin-bottom: 24px;">
+  <div style="background: #8e44ad; color: white; padding: 8px 16px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 14px;">Tab 4: Customer Analysis</div>
+  <div style="border: 2px solid #8e44ad; border-top: 0; border-radius: 0 0 8px 8px; padding: 16px; background: white;">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+      <div style="background: #f8f0ff; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Revenue Concentration</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Pareto chart — what % of customers generate 80% of revenue? High concentration = business risk.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Combo (bar + cumulative line)<br>📐 <strong>X-axis:</strong> Customers (ranked by revenue)<br>📏 <strong>Left Y:</strong> Revenue ($)<br>📏 <strong>Right Y:</strong> Cumulative %<br>📎 <strong>Insight:</strong> "Top 5 clients = X% of revenue"</div>
+      </div>
+      <div style="background: #f8f0ff; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Top 10 Customers</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Horizontal bar — top 10 by total paid amount. Shows who the biggest accounts are.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Horizontal bar chart<br>📐 <strong>X-axis:</strong> Revenue ($)<br>📏 <strong>Y-axis:</strong> Customer name<br>📎 <strong>Reuse:</strong> Existing TopCustomersChart component</div>
+      </div>
+      <div style="background: #f8f0ff; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Customer Segments</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">Donut chart — active vs inactive vs churned customers with revenue per segment.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Donut chart<br>🥧 <strong>Segments:</strong> Active (invoice in 90d) | Inactive (90-180d) | Churned (>180d)<br>💰 <strong>Inner label:</strong> Total revenue per segment</div>
+      </div>
+      <div style="background: #f8f0ff; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 13px; font-weight: 700;">Avg Customer Lifetime Value</div>
+        <div style="font-size: 11px; color: #888; margin-top: 4px;">KPI card with trend — average total paid per customer. Useful for understanding unit economics.</div>
+        <div style="font-size: 11px; color: #555; margin-top: 8px;">📊 <strong>Type:</strong> Large KPI + sparkline trend<br>💰 <strong>Value:</strong> Avg total paid per customer<br>📈 <strong>Trend:</strong> 6-month rolling average<br>📎 <strong>Secondary:</strong> Median LTV (to counter outlier skew)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="padding: 16px; background: #f0f0f0; border-radius: 8px;">
+  <h3 style="margin-top: 0;">Summary: 4 Tabs, 14 Visualizations</h3>
+  <table style="width: 100%; font-size: 13px; border-collapse: collapse;">
+    <tr style="border-bottom: 1px solid #ddd;">
+      <td style="padding: 6px; font-weight: 600;">Revenue & Growth</td>
+      <td style="padding: 6px;">Invoiced vs Collected, Revenue by Service, MRR/ARR, MoM Growth</td>
+      <td style="padding: 6px; color: #888;">4 charts</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #ddd;">
+      <td style="padding: 6px; font-weight: 600;">AR & Collections</td>
+      <td style="padding: 6px;">Aging Breakdown, Collection Performance, Overdue Table</td>
+      <td style="padding: 6px; color: #888;">2 charts + 1 table</td>
+    </tr>
+    <tr style="border-bottom: 1px solid #ddd;">
+      <td style="padding: 6px; font-weight: 600;">Cash Flow</td>
+      <td style="padding: 6px;">90-day Forecast, Probability Donut, At-Risk Table</td>
+      <td style="padding: 6px; color: #888;">2 charts + 1 table</td>
+    </tr>
+    <tr>
+      <td style="padding: 6px; font-weight: 600;">Customer Analysis</td>
+      <td style="padding: 6px;">Concentration Pareto, Top 10, Segments Donut, LTV KPI</td>
+      <td style="padding: 6px; color: #888;">3 charts + 1 KPI</td>
+    </tr>
+  </table>
+</div>

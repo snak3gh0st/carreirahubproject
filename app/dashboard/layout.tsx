@@ -3,7 +3,6 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ProfessionalSidebar } from "@/components/dashboard/professional-sidebar";
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
-import { ChatBubble } from "@/components/ai/ChatBubble";
 
 /**
  * Professional Dashboard Layout
@@ -43,8 +42,7 @@ export default async function DashboardLayout({
   const userId = (session.user as any).id;
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
-  const isTeamRole = ["ADMIN", "SUPPORT", "OPERATIONAL", "SALES", "SDR", "FINANCE"].includes(userRole);
-  
+  const isTeamRole = ["ADMIN", "SUPPORT", "OPERATIONAL", "SALES", "SDR", "FINANCE", "COMMERCIAL"].includes(userRole);
   console.log("[DashboardLayout] User role:", userRole);
 
   return (
@@ -65,9 +63,6 @@ export default async function DashboardLayout({
       {!isTeamRole && (
         <SupportChatBubble userId={userId} userName={userName} />
       )}
-
-      {/* CarreiraUSA AI Copilot — team operators only */}
-      {isTeamRole && <ChatBubble />}
     </div>
   );
 }

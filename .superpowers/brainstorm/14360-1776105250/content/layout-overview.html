@@ -1,0 +1,185 @@
+<h2>Financial BI Dashboard — Page Layout</h2>
+<p class="subtitle">Single page, dual audience: Executive summary on top, detailed tabs below</p>
+
+<div class="mockup">
+  <div class="mockup-header">
+    /dashboard/financial
+  </div>
+  <div class="mockup-body" style="padding: 16px; background: #f8f9fa; font-family: system-ui, sans-serif;">
+
+    <!-- Header bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <div style="font-size: 20px; font-weight: 700; color: #1a1a1a;">Financial Overview</div>
+        <div style="font-size: 12px; color: #888;">Last synced with QuickBooks: 2 hours ago</div>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <div style="padding: 6px 12px; background: white; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">📅 Last 30 days ▾</div>
+        <div style="padding: 6px 12px; background: white; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">📄 Export PDF</div>
+        <div style="padding: 6px 12px; background: white; border: 1px solid #ddd; border-radius: 6px; font-size: 12px; cursor: pointer;">📊 Export CSV</div>
+      </div>
+    </div>
+
+    <!-- ZONE 1: Executive Summary -->
+    <div style="background: #fff; border: 2px solid #e67e22; border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #e67e22; font-weight: 700; margin-bottom: 12px;">Executive Summary</div>
+
+      <!-- KPI Row -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px;">
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-size: 10px; color: #888; text-transform: uppercase;">Revenue (Collected)</div>
+          <div style="font-size: 22px; font-weight: 800; color: #27ae60;">$124.5k</div>
+          <div style="font-size: 11px; color: #27ae60;">▲ 12% vs prev</div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-size: 10px; color: #888; text-transform: uppercase;">Collection Rate</div>
+          <div style="font-size: 22px; font-weight: 800; color: #2980b9;">87%</div>
+          <div style="font-size: 11px; color: #27ae60;">▲ 3% vs prev</div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-size: 10px; color: #888; text-transform: uppercase;">Outstanding AR</div>
+          <div style="font-size: 22px; font-weight: 800; color: #e67e22;">$32.1k</div>
+          <div style="font-size: 11px; color: #e74c3c;">▲ 5% vs prev</div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-size: 10px; color: #888; text-transform: uppercase;">MRR</div>
+          <div style="font-size: 22px; font-weight: 800; color: #8e44ad;">$18.2k</div>
+          <div style="font-size: 11px; color: #27ae60;">▲ 8% vs prev</div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px; text-align: center;">
+          <div style="font-size: 10px; color: #888; text-transform: uppercase;">Top Client %</div>
+          <div style="font-size: 22px; font-weight: 800; color: #c0392b;">34%</div>
+          <div style="font-size: 11px; color: #888;">of total revenue</div>
+        </div>
+      </div>
+
+      <!-- Mini charts row -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px;">
+          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px;">Revenue Trend (12 months)</div>
+          <div style="display: flex; align-items: end; gap: 4px; height: 50px;">
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 30%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 40%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 35%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 50%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 55%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 45%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 60%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 65%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 70%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 75%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 80%;"></div>
+            <div style="flex:1; background: #27ae60; border-radius: 2px; height: 90%;"></div>
+          </div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 12px;">
+          <div style="font-size: 11px; font-weight: 600; margin-bottom: 8px;">AR Aging Snapshot</div>
+          <div style="display: flex; gap: 2px; height: 50px; align-items: end;">
+            <div style="flex: 3; display: flex; flex-direction: column; align-items: center;">
+              <div style="font-size: 9px; color: #888;">Current</div>
+              <div style="width: 100%; background: #27ae60; border-radius: 2px; height: 80%;"></div>
+            </div>
+            <div style="flex: 2; display: flex; flex-direction: column; align-items: center;">
+              <div style="font-size: 9px; color: #888;">1-30</div>
+              <div style="width: 100%; background: #f39c12; border-radius: 2px; height: 50%;"></div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+              <div style="font-size: 9px; color: #888;">31-60</div>
+              <div style="width: 100%; background: #e67e22; border-radius: 2px; height: 30%;"></div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+              <div style="font-size: 9px; color: #888;">61-90</div>
+              <div style="width: 100%; background: #e74c3c; border-radius: 2px; height: 15%;"></div>
+            </div>
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+              <div style="font-size: 9px; color: #888;">90+</div>
+              <div style="width: 100%; background: #c0392b; border-radius: 2px; height: 10%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ZONE 2: Detailed Tabs -->
+    <div style="background: #fff; border: 2px solid #ddd; border-radius: 10px; padding: 16px;">
+      <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 700; margin-bottom: 12px;">Detailed Analysis</div>
+
+      <!-- Tab bar -->
+      <div style="display: flex; gap: 0; margin-bottom: 16px; border-bottom: 2px solid #eee;">
+        <div style="padding: 8px 16px; font-size: 13px; font-weight: 600; color: #e67e22; border-bottom: 2px solid #e67e22; margin-bottom: -2px;">Revenue & Growth</div>
+        <div style="padding: 8px 16px; font-size: 13px; color: #888;">AR & Collections</div>
+        <div style="padding: 8px 16px; font-size: 13px; color: #888;">Cash Flow</div>
+        <div style="padding: 8px 16px; font-size: 13px; color: #888;">Customer Analysis</div>
+      </div>
+
+      <!-- Tab content placeholder -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 16px; min-height: 180px;">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Invoiced vs Collected (Monthly)</div>
+          <div style="color: #aaa; font-size: 11px;">Area chart — dual series showing gap between invoiced amount and actual collections</div>
+          <div style="display: flex; align-items: end; gap: 3px; height: 100px; margin-top: 12px;">
+            <div style="flex:1; display: flex; flex-direction: column; gap: 2px; height: 100%; justify-content: end;">
+              <div style="background: rgba(39,174,96,0.3); height: 60%; border-radius: 2px;"></div>
+              <div style="background: #27ae60; height: 45%; border-radius: 2px; margin-top: -45%;"></div>
+            </div>
+            <div style="flex:1; display: flex; flex-direction: column; gap: 2px; height: 100%; justify-content: end;">
+              <div style="background: rgba(39,174,96,0.3); height: 70%; border-radius: 2px;"></div>
+              <div style="background: #27ae60; height: 55%; border-radius: 2px; margin-top: -55%;"></div>
+            </div>
+            <div style="flex:1; display: flex; flex-direction: column; gap: 2px; height: 100%; justify-content: end;">
+              <div style="background: rgba(39,174,96,0.3); height: 65%; border-radius: 2px;"></div>
+              <div style="background: #27ae60; height: 60%; border-radius: 2px; margin-top: -60%;"></div>
+            </div>
+            <div style="flex:1; display: flex; flex-direction: column; gap: 2px; height: 100%; justify-content: end;">
+              <div style="background: rgba(39,174,96,0.3); height: 80%; border-radius: 2px;"></div>
+              <div style="background: #27ae60; height: 65%; border-radius: 2px; margin-top: -65%;"></div>
+            </div>
+            <div style="flex:1; display: flex; flex-direction: column; gap: 2px; height: 100%; justify-content: end;">
+              <div style="background: rgba(39,174,96,0.3); height: 85%; border-radius: 2px;"></div>
+              <div style="background: #27ae60; height: 70%; border-radius: 2px; margin-top: -70%;"></div>
+            </div>
+            <div style="flex:1; display: flex; flex-direction: column; gap: 2px; height: 100%; justify-content: end;">
+              <div style="background: rgba(39,174,96,0.3); height: 90%; border-radius: 2px;"></div>
+              <div style="background: #27ae60; height: 80%; border-radius: 2px; margin-top: -80%;"></div>
+            </div>
+          </div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 16px; min-height: 180px;">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Revenue by Service</div>
+          <div style="color: #aaa; font-size: 11px;">Horizontal bar chart — top services by revenue from invoice lineItems</div>
+          <div style="display: flex; flex-direction: column; gap: 6px; margin-top: 12px;">
+            <div><div style="font-size: 10px; color: #555;">Mentorship Program</div><div style="background: #e67e22; height: 14px; border-radius: 3px; width: 90%;"></div></div>
+            <div><div style="font-size: 10px; color: #555;">Resume Review</div><div style="background: #f39c12; height: 14px; border-radius: 3px; width: 60%;"></div></div>
+            <div><div style="font-size: 10px; color: #555;">Interview Prep</div><div style="background: #f1c40f; height: 14px; border-radius: 3px; width: 40%;"></div></div>
+            <div><div style="font-size: 10px; color: #555;">Visa Consulting</div><div style="background: #e8d5a3; height: 14px; border-radius: 3px; width: 25%;"></div></div>
+          </div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 16px; min-height: 120px;">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">MRR/ARR Trend</div>
+          <div style="color: #aaa; font-size: 11px;">Line chart — monthly recurring revenue + annualized projection</div>
+        </div>
+        <div style="background: #f9f9f9; border-radius: 8px; padding: 16px; min-height: 120px;">
+          <div style="font-size: 12px; font-weight: 600; margin-bottom: 8px;">Revenue Growth Rate</div>
+          <div style="color: #aaa; font-size: 11px;">Bar chart — month-over-month % growth with trend line</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="margin-top: 20px; padding: 16px; background: #f0f0f0; border-radius: 8px;">
+  <h3 style="margin-top: 0;">Page Structure Summary</h3>
+  <ul style="font-size: 14px; line-height: 1.8;">
+    <li><strong>Header:</strong> Title + QB sync status + Date picker + Export buttons (PDF/CSV)</li>
+    <li><strong>Zone 1 — Executive Summary</strong> (orange border): 5 KPI cards + 2 mini charts (Revenue Trend + AR Aging)</li>
+    <li><strong>Zone 2 — Detailed Tabs:</strong>
+      <ul>
+        <li><strong>Revenue & Growth:</strong> Invoiced vs Collected, Revenue by Service, MRR/ARR, Growth Rate</li>
+        <li><strong>AR & Collections:</strong> Aging breakdown table, Overdue invoices list, Collection call outcomes, Days-to-payment</li>
+        <li><strong>Cash Flow:</strong> 30/60/90-day forecast, At-risk invoices, Payment probability</li>
+        <li><strong>Customer Analysis:</strong> Concentration chart, Top 10 by revenue, Segment breakdown, Churn risk</li>
+      </ul>
+    </li>
+  </ul>
+</div>

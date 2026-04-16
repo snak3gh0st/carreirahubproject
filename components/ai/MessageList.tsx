@@ -32,10 +32,12 @@ export function MessageList({
   messages,
   isStreaming,
   onDeleteMessage,
+  onRefreshPersona,
 }: {
   messages: any[];
   isStreaming: boolean;
   onDeleteMessage?: (messageId: string) => void;
+  onRefreshPersona?: (personaSlug: string) => void;
 }) {
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isStreaming]);
@@ -46,45 +48,50 @@ export function MessageList({
     : 'Escrevendo resposta...';
 
   return (
-    <div className="flex-1 overflow-y-auto p-4">
-      {messages.map(m => {
-        // v6: message has parts array
-        const parts = m.parts ?? [{ type: 'text', text: typeof m.content === 'string' ? m.content : '' }];
-        return (
-          <div key={m.id}>
-            {parts.map((p: any, idx: number) => {
-              if (p.type === 'text' && p.text) {
-                return (
-                  <MessageBubble
-                    key={idx}
-                    role={m.role === 'assistant' ? 'assistant' : 'user'}
-                    content={p.text}
-                    onDelete={onDeleteMessage ? () => onDeleteMessage(m.id) : undefined}
-                  />
-                );
-              }
-              if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
-                return (
-                  <ToolCallCard
-                    key={idx}
-                    toolName={p.toolName ?? p.type}
-                    args={p.input ?? p.args}
-                    result={p.output ?? p.result}
-                  />
-                );
-              }
-              return null;
-            })}
+    <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8">
+      <div className="mx-auto flex max-w-[1100px] flex-col gap-4">
+        {messages.map(m => {
+          // v6: message has parts array
+          const parts = m.parts ?? [{ type: 'text', text: typeof m.content === 'string' ? m.content : '' }];
+          return (
+            <div key={m.id}>
+              {parts.map((p: any, idx: number) => {
+                if (p.type === 'text' && p.text) {
+                  return (
+                    <MessageBubble
+                      key={idx}
+                      role={m.role === 'assistant' ? 'assistant' : 'user'}
+                      content={p.text}
+                      personaSlug={m.personaSlug}
+                      fromCache={m.fromCache}
+                      onDelete={onDeleteMessage ? () => onDeleteMessage(m.id) : undefined}
+                      onRefreshPersona={onRefreshPersona}
+                    />
+                  );
+                }
+                if (typeof p.type === 'string' && p.type.startsWith('tool-')) {
+                  return (
+                    <ToolCallCard
+                      key={idx}
+                      toolName={p.toolName ?? p.type}
+                      args={p.input ?? p.args}
+                      result={p.output ?? p.result}
+                    />
+                  );
+                }
+                return null;
+              })}
+            </div>
+          );
+        })}
+        {isStreaming && (
+          <div className="mt-2 flex items-center gap-2 text-xs italic text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span>{loadingLabel}</span>
           </div>
-        );
-      })}
-      {isStreaming && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground italic mt-2">
-          <Loader2 className="w-3 h-3 animate-spin" />
-          <span>{loadingLabel}</span>
-        </div>
-      )}
-      <div ref={endRef} />
+        )}
+        <div ref={endRef} />
+      </div>
     </div>
   );
 }

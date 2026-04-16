@@ -1,24 +1,57 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { randomUUID } from 'crypto';
 import { streamText, stepCountIs, tool, convertToModelMessages } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import { allowedToolsForRole } from '@/lib/ai/tools';
+import { allowedToolsForRole, filterToolsByWhitelist } from '@/lib/ai/tools';
 import { checkRateLimit } from '@/lib/ai/rate-limit';
 import { buildSystemPrompt } from '@/lib/ai/prompts/system.pt-br';
 import { currentDateInET, buildPageContext } from '@/lib/ai/prompts/context-builder';
 import { prisma } from '@/lib/db';
 import { logAiEvent } from '@/lib/ai/logger';
 import { truncateJson } from '@/lib/ai/dto';
+import { resolveDashboardAiModel } from '@/lib/ai/model-selection';
 import type { AiToolDefinition } from '@/lib/ai/tools/_base';
 import type { ToolContext } from '@/lib/ai/types';
 import { AiMessageRole } from '@prisma/client';
+import { getAiHubBySlug, getAiHubKeyBySlug, isRoleAllowedForHub } from '@/lib/ai/hub-config';
+import { getPersonaBySlug, type PersonaDefinition } from '@/lib/ai/personas';
+
+// Emit a cached string as a single-chunk AI SDK v6 UI message stream.
+// The frame shape matches what `result.toUIMessageStreamResponse()` produces,
+// so the browser client renderer treats it identically to a live model response.
+function streamCachedResponse(text: string): Response {
+  const encoder = new TextEncoder();
+  const id = randomUUID();
+  const events = [
+    `data: ${JSON.stringify({ type: "start", messageId: id })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-start", id })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-delta", id, delta: text })}\n\n`,
+    `data: ${JSON.stringify({ type: "text-end", id })}\n\n`,
+    `data: ${JSON.stringify({ type: "finish", messageId: id })}\n\n`,
+    `data: [DONE]\n\n`,
+  ];
+  const stream = new ReadableStream({
+    start(controller) {
+      for (const e of events) controller.enqueue(encoder.encode(e));
+      controller.close();
+    },
+  });
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "x-vercel-ai-ui-message-stream": "v1",
+      "Cache-Control": "no-cache, no-transform",
+    },
+  });
+}
 
 export const maxDuration = 300; // Fluid Compute — covers slow QB/DocuSign
 
+let warnedAboutPersonaFlagDrift = false;
 const RATE_LIMIT_PER_HOUR = Number(process.env.AI_RATE_LIMIT_PER_HOUR ?? 50);
 const MAX_INPUT_CHARS = 4000;
-
 function toAiSdkTool(def: AiToolDefinition<any, any>, ctx: ToolContext) {
   return tool({
     description: def.description,
@@ -45,13 +78,65 @@ export async function POST(req: NextRequest) {
   const user = { id: sessionUser.id!, email: sessionUser.email ?? '', name: sessionUser.name ?? null, role: sessionUser.role };
 
   // 3. Parse body
-  let body: { messages: any[]; conversationId?: string; pathname?: string; params?: Record<string, any> };
+  let body: {
+    messages: any[];
+    conversationId?: string;
+    pathname?: string;
+    params?: Record<string, any>;
+    hub?: string;
+    personaSlug?: string;
+    refresh?: boolean;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
   const { messages, conversationId: bodyConvId, pathname = '/dashboard', params = {} } = body;
+  const hubSlug = body.hub;
+  const hub = typeof hubSlug === 'string' ? getAiHubBySlug(hubSlug) : null;
+  if (!hubSlug || !hub) {
+    return NextResponse.json({ error: 'hub inválido' }, { status: 400 });
+  }
+  if (!isRoleAllowedForHub(String(user.role), hubSlug)) {
+    return NextResponse.json({ error: 'Acesso negado para este hub' }, { status: 403 });
+  }
+  const hubKey = getAiHubKeyBySlug(hub.slug);
+  if (!hubKey) {
+    return NextResponse.json({ error: 'hub inválido' }, { status: 400 });
+  }
+  // Persona validation — only if flag is on and personaSlug is provided.
+  // When the flag is off, personaSlug/refresh are silently ignored (feature-disabled no-op).
+  // `persona` and `refresh` are consumed by T7-T9 (cache lookup, prompt injection, bypass).
+  //
+  // Drift guard: AI_PERSONAS_ENABLED (server) and NEXT_PUBLIC_AI_PERSONAS_ENABLED (client)
+  // must stay in sync. Mismatch causes silent bad states (UI renders buttons that 400,
+  // or server accepts dispatches the UI never surfaces). Warn once per server restart.
+  if (
+    (process.env.AI_PERSONAS_ENABLED ?? "false") !==
+    (process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED ?? "false")
+  ) {
+    if (!warnedAboutPersonaFlagDrift) {
+      console.warn(
+        `[ai-personas] flag drift: AI_PERSONAS_ENABLED=${process.env.AI_PERSONAS_ENABLED} ` +
+          `NEXT_PUBLIC_AI_PERSONAS_ENABLED=${process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED} — values must match`
+      );
+      warnedAboutPersonaFlagDrift = true;
+    }
+  }
+  const personasEnabled = process.env.AI_PERSONAS_ENABLED === "true";
+  const personaSlug = personasEnabled ? body.personaSlug : undefined;
+  const refresh = personasEnabled ? Boolean(body.refresh) : false;
+  let persona: PersonaDefinition | null = null;
+  if (personaSlug) {
+    persona = getPersonaBySlug(personaSlug);
+    if (!persona) {
+      return NextResponse.json({ error: "persona desconhecida" }, { status: 400 });
+    }
+    if (persona.hub !== hub.slug) {
+      return NextResponse.json({ error: "persona não pertence a este hub" }, { status: 400 });
+    }
+  }
   if (!Array.isArray(messages) || messages.length === 0) {
     return NextResponse.json({ error: 'messages é obrigatório' }, { status: 400 });
   }
@@ -77,12 +162,15 @@ export async function POST(req: NextRequest) {
   }
 
   // 5. Conversation — create or load
-  let conversation = bodyConvId
-    ? await prisma.aiConversation.findFirst({ where: { id: bodyConvId, userId: user.id } })
-    : null;
-  if (!conversation) {
+  let conversation = null;
+  if (bodyConvId) {
+    conversation = await prisma.aiConversation.findFirst({ where: { id: bodyConvId, userId: user.id, hub: hubKey } });
+    if (!conversation) {
+      return NextResponse.json({ error: 'Conversa não encontrada para este hub' }, { status: 404 });
+    }
+  } else {
     conversation = await prisma.aiConversation.create({
-      data: { userId: user.id, title: userText.slice(0, 80) },
+      data: { userId: user.id, title: userText.slice(0, 80), hub: hubKey },
     });
   }
 
@@ -95,6 +183,88 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // 6b. Persona cache branching
+  let cachedForDelta: string | null = null;
+  if (persona) {
+    const { computeDayBucket, lookupPersonaCache, recordPersonaCacheRead } = await import(
+      "@/lib/ai/persona-cache"
+    );
+    const dayBucket = computeDayBucket(new Date(), persona.cacheTtlMinutes);
+
+    if (!refresh) {
+      const lookup = await lookupPersonaCache({
+        personaSlug: persona.slug,
+        dayBucket,
+        userId: user.id,
+      });
+
+      if (lookup.status === "hit" && !lookup.alreadyRead) {
+        // First read → serve cached content as a normal assistant message, no model call.
+        // NOTE: this return intentionally bypasses the onFinish path below (no model
+        // inference = no tool steps = no usage row). The ASSISTANT row is written inline.
+        const cached = lookup.entry.content;
+        if (!cached) {
+          // Defensive: treat empty cache as miss and fall through to model generation.
+          // A cached empty string should not happen but if it did, serving it would
+          // render a blank bubble without fixing the underlying absence of content.
+          cachedForDelta = null;
+          // Intentionally no `recordPersonaCacheRead` — we want the next request to
+          // retry the lookup-or-generate path, not to believe it has "been read".
+        } else {
+          // Write message first; only record read-log after message succeeds to avoid orphaned reads
+          await prisma.aiMessage.create({
+            data: {
+              conversationId: conversation.id,
+              role: AiMessageRole.ASSISTANT,
+              content: cached,
+              modelUsed: "cache",
+              latencyMs: Date.now() - started,
+              personaSlug: persona.slug,
+              fromCache: true,
+            },
+          });
+          await prisma.aiConversation.update({
+            where: { id: conversation.id },
+            data: { updatedAt: new Date() },
+          });
+
+          // Record that this user has read this bucket's cached response
+          try {
+            await recordPersonaCacheRead({
+              personaSlug: persona.slug,
+              dayBucket,
+              userId: user.id,
+            });
+          } catch (err) {
+            logAiEvent({
+              kind: "error",
+              userId: user.id,
+              conversationId: conversation.id,
+              error: `Failed to record persona cache read: ${err instanceof Error ? err.message : String(err)}`,
+            });
+            // Non-fatal; don't abort response. Next read will just cache-miss and regenerate.
+          }
+
+          logAiEvent({
+            kind: "finish",
+            userId: user.id,
+            conversationId: conversation.id,
+            model: "cache",
+            tokensIn: 0,
+            tokensOut: 0,
+            latencyMs: Date.now() - started,
+          });
+          return streamCachedResponse(cached);
+        }
+      }
+
+      if (lookup.status === "hit" && lookup.alreadyRead) {
+        // Repeat read → signal delta mode to later blocks (T8 uses this).
+        cachedForDelta = lookup.entry.content;
+      }
+    }
+  }
+
   // 7. Build tool context + filtered tools
   const ctx: ToolContext = {
     user: { id: user.id, email: user.email, name: user.name ?? null, role: user.role },
@@ -102,8 +272,11 @@ export async function POST(req: NextRequest) {
     requestStartedAt: started,
   };
   const allowed = allowedToolsForRole(user.role);
+  const effectiveTools = persona
+    ? filterToolsByWhitelist(allowed, persona.toolWhitelist)
+    : allowed;
   const aiSdkTools: Record<string, ReturnType<typeof toAiSdkTool>> = {};
-  for (const t of allowed) {
+  for (const t of effectiveTools) {
     aiSdkTools[t.name] = toAiSdkTool(t, ctx);
   }
 
@@ -113,21 +286,48 @@ export async function POST(req: NextRequest) {
     userRole: String(user.role),
     currentDate: currentDateInET(),
     pageContext: buildPageContext(pathname, params),
-    toolNames: allowed.map((t) => t.name),
+    toolNames: effectiveTools.map((t) => t.name),
+    hub: {
+      slug: hub.slug,
+      label: hub.label,
+      focus: hub.focus,
+    },
   });
 
-  const model = openai(process.env.AI_MODEL_DEFAULT ?? 'gpt-4o-mini');
-  const modelId = process.env.AI_MODEL_DEFAULT ?? 'gpt-4o-mini';
+  // Persona: append persona-specific system rules. For delta mode, also prepend
+  // the cached analysis as context the model must compare against.
+  let effectiveSystemPrompt = systemPrompt;
+  let effectiveUserPrompt: string | null = null;
+  if (persona) {
+    effectiveSystemPrompt = `${systemPrompt}\n\n---\n${persona.systemAppend}`;
+    if (cachedForDelta) {
+      effectiveSystemPrompt += `\n\n---\nANÁLISE ANTERIOR (cache da rodada em vigor, gerada mais cedo hoje):\n${cachedForDelta}`;
+      effectiveUserPrompt = persona.deltaPrompt;
+    } else {
+      effectiveUserPrompt = persona.defaultPrompt;
+    }
+  }
+
+  const modelId = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
+  const model = openai(modelId);
 
   logAiEvent({ kind: 'request', userId: user.id, conversationId: conversation.id, model: modelId });
 
   // 9. streamText with onFinish persisting assistant + tool steps
   try {
     const recentMessages = messages.slice(-20);
-    const modelMessages = await convertToModelMessages(recentMessages);
+    let modelMessages = await convertToModelMessages(recentMessages);
+    if (persona && effectiveUserPrompt) {
+      // Overwrite the last user turn with the persona's preset prompt so accidental
+      // text in the composer can't override output format.
+      modelMessages = [
+        ...modelMessages.slice(0, -1),
+        { role: "user", content: effectiveUserPrompt } as any,
+      ];
+    }
     const result = streamText({
       model,
-      system: systemPrompt,
+      system: effectiveSystemPrompt,
       messages: modelMessages,
       tools: aiSdkTools,
       stopWhen: stepCountIs(8),
@@ -166,12 +366,35 @@ export async function POST(req: NextRequest) {
               tokensOut,
               modelUsed: modelId,
               latencyMs,
+              personaSlug: persona?.slug ?? null,
+              fromCache: false,
             },
           });
           await prisma.aiConversation.update({
             where: { id: conversation!.id },
             data: { updatedAt: new Date() },
           });
+          // Persona cache miss → persist this fresh generation for the current bucket.
+          // Delta-mode responses (cachedForDelta set) are ephemeral and NOT cached.
+          // Empty `text` (model error or empty completion) is skipped — writing an
+          // empty row would defeat the empty-cache fallthrough at the lookup site.
+          if (persona && !cachedForDelta && text && text.trim().length > 0) {
+            const { computeDayBucket, writePersonaCache, recordPersonaCacheRead } = await import(
+              "@/lib/ai/persona-cache"
+            );
+            const dayBucket = computeDayBucket(new Date(), persona.cacheTtlMinutes);
+            await writePersonaCache({
+              personaSlug: persona.slug,
+              dayBucket,
+              content: text ?? "",
+              generatedBy: user.id,
+            });
+            await recordPersonaCacheRead({
+              personaSlug: persona.slug,
+              dayBucket,
+              userId: user.id,
+            });
+          }
           logAiEvent({ kind: 'finish', userId: user.id, conversationId: conversation!.id, model: modelId, tokensIn, tokensOut, latencyMs });
         } catch (err) {
           logAiEvent({ kind: 'error', userId: user.id, conversationId: conversation!.id, error: (err as Error).message });
