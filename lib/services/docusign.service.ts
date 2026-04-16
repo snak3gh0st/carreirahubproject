@@ -286,6 +286,7 @@ export function validateCustomerForContract(customer: Customer): { field: string
  *   DOCUSIGN_TEMPLATE_UPGRADE=<template-id>          → Anexo F
  *   DOCUSIGN_TEMPLATE_NEW_PASS=<template-id>         → Anexo G
  *   DOCUSIGN_TEMPLATE_TREINAMENTO=<template-id>      → Anexo H
+ *   DOCUSIGN_TEMPLATE_EARLY_CAREER=<template-id>     → Anexo I
  *   DOCUSIGN_TEMPLATE_ID=<template-id>               → Fallback (template genérico)
  *
  * Alternative: Map specific QB Item IDs directly via:
@@ -338,6 +339,11 @@ export const PROGRAM_TEMPLATE_MAP: ProgramMapping[] = [
     annex: 'H',
     envVar: 'DOCUSIGN_TEMPLATE_TREINAMENTO',
     keywords: ['treinamento', 'training'],
+  },
+  {
+    annex: 'I',
+    envVar: 'DOCUSIGN_TEMPLATE_EARLY_CAREER',
+    keywords: ['early career', 'early-career'],
   },
 ];
 
