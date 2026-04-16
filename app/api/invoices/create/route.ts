@@ -6,7 +6,6 @@ import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
-import { contractWorkflowService } from "@/lib/services/contract-workflow.service";
 import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
 import { addMonths, parseLocalDate } from "@/lib/utils/date";
 
@@ -603,60 +602,6 @@ export async function POST(request: NextRequest) {
               installmentNumber: i,
               totalInstallments: invoiceCountToCreate,
               seriesId,
-            } as any,
-          },
-        });
-      }
-    }
-
-    // Schedule DocuSign contract for first invoice in series (7-minute delay)
-    // This gives QuickBooks email time to deliver before contract arrives
-    if (invoiceCountToCreate > 0) {
-      try {
-        // Only schedule contract for first invoice in series
-        const firstInvoice = invoices[0];
-
-        // Trigger contract workflow with 7-minute delay (fire-and-forget)
-        // First-invoice detection and duplicate prevention happen in the service
-        contractWorkflowService.triggerContractAfterDelay(firstInvoice.id, 7).catch(err => {
-          console.error('[INVOICE_CREATE] Failed to schedule contract generation:', err);
-          // Don't fail invoice creation if contract scheduling fails
-          // Finance team can manually trigger contract via UI if needed
-        });
-
-        console.log(`[INVOICE_CREATE] ✓ Contract generation scheduled for invoice ${firstInvoice.id} (7 min delay)`);
-
-        // Log contract scheduling
-        await prisma.integrationLog.create({
-          data: {
-            service: "CONTRACT_WORKFLOW",
-            action: "CONTRACT_SCHEDULED",
-            status: "SUCCESS",
-            payload: {
-              invoiceId: firstInvoice.id,
-              userRole: role,
-              qbInvoiceId: firstInvoice.quickbooks_invoice_id,
-              delayMinutes: 7,
-              isInstallmentSeries: invoiceCountToCreate > 1,
-              installmentPosition: 1,
-              totalInstallments: invoiceCountToCreate,
-            } as any,
-          },
-        });
-      } catch (contractError: any) {
-        console.error(`[INVOICE_CREATE] ✗ DocuSign contract generation failed:`, contractError);
-
-        // Log error but don't fail invoice creation (non-blocking)
-        await prisma.integrationLog.create({
-          data: {
-            service: "CONTRACT_WORKFLOW",
-            action: "CONTRACT_SEND_FAILED",
-            status: "ERROR",
-            error: contractError.message || "Unknown error",
-            payload: {
-              invoiceId: invoices[0].id,
-              userRole: role,
-              errorType: contractError.constructor.name,
             } as any,
           },
         });

@@ -314,15 +314,6 @@ export class InvoiceWorkflowService {
     // Enviar invoice por email
     if (customer.email) {
       await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
-
-      // Trigger contract workflow with delay (fire-and-forget)
-      // This spawns async work, doesn't block response
-      const { contractWorkflowService } = await import('@/lib/services/contract-workflow.service');
-      contractWorkflowService.triggerContractAfterDelay(invoice.id, 7).catch(err => {
-        console.error('[INVOICE_WORKFLOW] Failed to schedule contract generation:', err);
-        // Don't fail invoice send if contract scheduling fails
-        // Finance team can manually trigger contract via UI if needed
-      });
     }
 
 
