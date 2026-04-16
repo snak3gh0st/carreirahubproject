@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { contractWorkflowService } from '@/lib/services/contract-workflow.service';
+import { clintEventProcessor } from '@/lib/services/clint-event-processor.service';
 
 import { notificationService } from '@/lib/services/notification.service';
 import { emailService } from '@/lib/services/email.service';
@@ -223,6 +224,23 @@ export async function POST(request: NextRequest) {
 
         // Handle signed contract
         await contractWorkflowService.handleContractSigned(contract.id);
+
+        // Onboarding gate: trigger if invoice is already PAID
+        if (contract.dealId && contract.customer) {
+          try {
+            const linkedInvoice = await prisma.invoice.findFirst({
+              where: { dealId: contract.dealId, status: "PAID" },
+            });
+            if (linkedInvoice) {
+              console.log(`[DOCUSIGN_WEBHOOK] Invoice already PAID — triggering onboarding for deal ${contract.dealId}`);
+              await clintEventProcessor.triggerOnboarding(contract.dealId, contract.customer);
+            } else {
+              console.log(`[DOCUSIGN_WEBHOOK] Invoice not yet PAID — onboarding pending`);
+            }
+          } catch (onboardingErr) {
+            console.error("[DOCUSIGN_WEBHOOK] Onboarding gate failed (non-blocking):", onboardingErr);
+          }
+        }
 
         // Download and store signed document in S3
         try {
