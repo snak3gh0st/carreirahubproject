@@ -14,6 +14,7 @@ const PROGRAM_LABEL_MAP: Record<string, string> = {
   upgrade: 'Upgrade',
   new_pass: 'New Pass',
   treinamento: 'Treinamento',
+  early_career: 'Early Career',
 };
 
 function getPreferredCustomerIdentification(customer: {
@@ -321,6 +322,7 @@ export async function POST(request: NextRequest) {
           upgrade: 'DOCUSIGN_TEMPLATE_UPGRADE',
           new_pass: 'DOCUSIGN_TEMPLATE_NEW_PASS',
           treinamento: 'DOCUSIGN_TEMPLATE_TREINAMENTO',
+          early_career: 'DOCUSIGN_TEMPLATE_EARLY_CAREER',
         };
 
         const envVar = PROGRAM_ENV_MAP[program];
