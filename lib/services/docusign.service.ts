@@ -1375,11 +1375,19 @@ export class DocuSignService {
                       name: signerName,
                       recipientId: '1',
                       roleName: 'Client',
+                      routingOrder: '1',
                       tabs: customFields ? {
                         textTabs: Object.entries(customFields).map(([label, value]) =>
                           buildTextTab(label, value)
                         ),
                       } : undefined,
+                    },
+                    {
+                      email: 'thais.mei@carreirausa.com',
+                      name: 'Thais Mei de Oliveira',
+                      recipientId: '2',
+                      roleName: 'CarreiraUSA',
+                      routingOrder: '2',
                     },
                   ],
                 },
