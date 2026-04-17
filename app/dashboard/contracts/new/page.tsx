@@ -69,6 +69,7 @@ const PROGRAM_OPTIONS = [
   { value: 'upgrade', label: 'Upgrade', annex: 'F', description: 'Upgrade / Downgrade / Migração' },
   { value: 'new_pass', label: 'New Pass', annex: 'G', description: 'New Pass' },
   { value: 'treinamento', label: 'Treinamento', annex: 'H', description: 'Treinamento' },
+  { value: 'early_career', label: 'Early Career', annex: 'I', description: 'Early Career' },
 ] as const;
 
 export default function CreateContractPage() {

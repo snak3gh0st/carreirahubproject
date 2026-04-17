@@ -10,9 +10,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
-import { InvoiceStatus } from "@prisma/client";
+import { InvoiceStatus, ContractStatus } from "@prisma/client";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { integrationLogger } from "@/lib/utils/logger";
+import { clintEventProcessor } from "@/lib/services/clint-event-processor.service";
 import { getPaymentSecurityHeaders } from "@/lib/hub/security-headers";
 
 export const dynamic = "force-dynamic";
@@ -408,6 +409,22 @@ export async function POST(
         autoChargePaymentRef: chargeId,
       },
     });
+
+    // Onboarding gate: trigger if contract is already SIGNED
+    if (invoice.dealId) {
+      try {
+        const signedContract = await prisma.contract.findFirst({
+          where: { dealId: invoice.dealId, status: ContractStatus.SIGNED },
+          include: { customer: true },
+        });
+        if (signedContract?.customer) {
+          console.log(`[PAY] Contract SIGNED — triggering onboarding for deal ${invoice.dealId}`);
+          await clintEventProcessor.triggerOnboarding(invoice.dealId, signedContract.customer);
+        }
+      } catch (onboardingErr) {
+        console.error("[PAY] Onboarding gate failed (non-blocking):", onboardingErr);
+      }
+    }
 
     // ----------------------------------------------------------------
     // Post-charge: update customer balance
