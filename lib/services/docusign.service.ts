@@ -978,7 +978,7 @@ export class DocuSignService {
               },
             },
             {
-              email: 'thais.mei@carreirausa.com',
+              email: 'people@carreirausa.com',
               name: 'Thais Mei de Oliveira',
               recipientId: '2',
               routingOrder: '2',
@@ -1100,7 +1100,7 @@ export class DocuSignService {
                       },
                     },
                     {
-                      email: 'thais.mei@carreirausa.com',
+                      email: 'people@carreirausa.com',
                       name: 'Thais Mei de Oliveira',
                       recipientId: '2',
                       roleName: 'CarreiraUSA', // Must match template role
@@ -1389,7 +1389,7 @@ export class DocuSignService {
                       } : undefined,
                     },
                     {
-                      email: 'thais.mei@carreirausa.com',
+                      email: 'people@carreirausa.com',
                       name: 'Thais Mei de Oliveira',
                       recipientId: '2',
                       roleName: 'CarreiraUSA',
