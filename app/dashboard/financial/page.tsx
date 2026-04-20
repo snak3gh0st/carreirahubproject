@@ -75,19 +75,28 @@ export default function FinancialDashboardPage() {
   const customerData = activeTab === "customers" ? activeTabData?.customerAnalysis : undefined;
   const pnl = data?.pnl;
 
-  const handleExport = async (format: "pdf" | "excel") => {
-    const endpoint = format === "pdf"
-      ? `/api/analytics/financial-bi/export/pdf?${buildParams(dateRange, from, to)}`
-      : `/api/analytics/financial-bi/export/excel?${buildParams(dateRange, from, to)}`;
+  const handleExport = async (format: "pdf" | "excel" | "pptx") => {
+    const base = `/api/analytics/financial-bi/export`;
+    const qs = buildParams(dateRange, from, to);
+    const endpointMap = {
+      pdf: `${base}/pdf?${qs}`,
+      excel: `${base}/excel?${qs}`,
+      pptx: `${base}/presentation?${qs}`,
+    };
+    const filenameMap = {
+      pdf: "financial-report.pdf",
+      excel: "financial-report.xlsx",
+      pptx: "financial-presentation.pptx",
+    };
 
-    const res = await fetch(endpoint);
+    const res = await fetch(endpointMap[format]);
     if (!res.ok) return;
 
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = format === "pdf" ? "financial-report.pdf" : "financial-report.xlsx";
+    a.download = filenameMap[format];
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -136,6 +145,9 @@ export default function FinancialDashboardPage() {
           </button>
           <button onClick={() => handleExport("excel")} className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs hover:bg-gray-50">
             Export Excel
+          </button>
+          <button onClick={() => handleExport("pptx")} className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs hover:bg-gray-50">
+            Export PPTX
           </button>
         </div>
       </div>

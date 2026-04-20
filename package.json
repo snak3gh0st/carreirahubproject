@@ -80,6 +80,7 @@
     "p-retry": "^7.1.1",
     "papaparse": "^5.5.3",
     "pdf-lib": "^1.17.1",
+    "pptxgenjs": "^4.0.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
     "react-markdown": "^10.1.0",
