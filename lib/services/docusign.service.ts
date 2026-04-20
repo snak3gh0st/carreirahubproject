@@ -72,6 +72,63 @@ function buildTextTab(label: string, value: string) {
   return base;
 }
 
+function getTrimmedEnv(name: string, fallback = ''): string {
+  const value = process.env[name];
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
+function sanitizeTemplateId(templateId?: string | null): string | null {
+  if (typeof templateId !== 'string') {
+    return null;
+  }
+  const trimmed = templateId.trim();
+  return trimmed || null;
+}
+
+type DocuSignTextTab = Record<string, string>;
+
+type TemplateEnvelopeSigner = {
+  email: string;
+  name: string;
+  recipientId: string;
+  routingOrder: string;
+  roleName?: string;
+  tabs?: {
+    textTabs: DocuSignTextTab[];
+  };
+};
+
+export function buildTemplateEnvelopeSigners(params: {
+  clientEmail: string;
+  clientName: string;
+  clientRoleName: string;
+  clientTextTabs: DocuSignTextTab[];
+}): TemplateEnvelopeSigner[] {
+  const thaisName = getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_NAME', 'Thais');
+  const thaisEmail = getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_EMAIL', 'people@carreirausa.com');
+  const witnessOneName = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS1_NAME', 'Nadya');
+  const witnessOneEmail = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS1_EMAIL', 'people@carreirausa.com');
+  const witnessTwoName = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_NAME', 'Diego Milan');
+  const witnessTwoEmail = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_EMAIL', 'juridico@carreirausa.com');
+
+  return [
+    {
+      email: params.clientEmail,
+      name: params.clientName,
+      recipientId: '1',
+      roleName: params.clientRoleName,
+      routingOrder: '3',
+      tabs: {
+        textTabs: params.clientTextTabs,
+      },
+    },
+  ];
+}
+
 async function buildDocuSignCustomFields(
   invoice: Invoice,
   customer: Customer
@@ -377,8 +434,9 @@ export function resolveTemplateForProgram(params: {
       try {
         const map = JSON.parse(directMap) as Record<string, string>;
         if (map[serviceItemId]) {
-          console.log(`[DOCUSIGN] Direct map: QB Item ${serviceItemId} → template ${map[serviceItemId]}`);
-          return { templateId: map[serviceItemId], annex: null, program: serviceItemName || null };
+          const templateId = sanitizeTemplateId(map[serviceItemId]);
+          console.log(`[DOCUSIGN] Direct map: QB Item ${serviceItemId} → template ${templateId}`);
+          return { templateId, annex: null, program: serviceItemName || null };
         }
       } catch {
         console.warn('[DOCUSIGN] Failed to parse DOCUSIGN_TEMPLATE_MAP env var');
@@ -394,7 +452,7 @@ export function resolveTemplateForProgram(params: {
     for (const mapping of PROGRAM_TEMPLATE_MAP) {
       const matched = mapping.keywords.some(kw => normalized.includes(kw));
       if (matched) {
-        const templateId = process.env[mapping.envVar] || null;
+        const templateId = sanitizeTemplateId(process.env[mapping.envVar]);
         if (templateId) {
           console.log(`[DOCUSIGN] "${textToMatch}" matched Annex ${mapping.annex} → template ${templateId}`);
           return { templateId, annex: mapping.annex, program: mapping.keywords[0] };
@@ -406,7 +464,7 @@ export function resolveTemplateForProgram(params: {
   }
 
   // 3. Fallback to generic template
-  const fallback = process.env.DOCUSIGN_TEMPLATE_ID || null;
+  const fallback = sanitizeTemplateId(process.env.DOCUSIGN_TEMPLATE_ID);
   if (fallback) {
     console.log(`[DOCUSIGN] Using fallback template for "${textToMatch || 'unknown program'}"`);
   } else {
@@ -521,6 +579,39 @@ export class DocuSignService {
    */
   private async getAccessToken(): Promise<string> {
     return await this.authenticateWithJWT();
+  }
+
+  private async getPrimaryTemplateSignerRoleName(
+    templateId: string,
+    token?: string
+  ): Promise<string> {
+    const sanitizedTemplateId = sanitizeTemplateId(templateId);
+    if (!sanitizedTemplateId) {
+      return 'Client';
+    }
+
+    const accessToken = token || await this.getAccessToken();
+    const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}/templates/${sanitizedTemplateId}/recipients`;
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.warn(`[DOCUSIGN] Failed to inspect template recipients for ${sanitizedTemplateId}; defaulting to Client role`);
+      return 'Client';
+    }
+
+    const data = await response.json();
+    const clientSigner = data.signers?.find((s: any) =>
+      !s.name || s.name.trim() === '' || !s.email || s.email.trim() === ''
+    );
+    const roleName = clientSigner?.roleName;
+    return typeof roleName === 'string' && roleName.trim() !== ''
+      ? roleName.trim()
+      : 'Client';
   }
 
   /**
@@ -958,39 +1049,43 @@ export class DocuSignService {
               routingOrder: '1',
               tabs: {
                 signHereTabs: [
-                  {
-                    documentId: '1',
-                    pageNumber: '1',
-                    recipientId: '1',
-                    xPosition: '100',
-                    yPosition: '550',
-                  },
+                  { documentId: '1', pageNumber: '1', recipientId: '1', xPosition: '50', yPosition: '520' },
                 ],
                 dateSignedTabs: [
-                  {
-                    documentId: '1',
-                    pageNumber: '1',
-                    recipientId: '1',
-                    xPosition: '300',
-                    yPosition: '550',
-                  },
+                  { documentId: '1', pageNumber: '1', recipientId: '1', xPosition: '200', yPosition: '520' },
                 ],
               },
             },
             {
-              email: 'people@carreirausa.com',
-              name: 'Thais Mei de Oliveira',
+              email: getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_EMAIL', 'people@carreirausa.com'),
+              name: getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_NAME', 'Thais'),
               recipientId: '2',
               routingOrder: '2',
               tabs: {
                 signHereTabs: [
-                  {
-                    documentId: '1',
-                    pageNumber: '1',
-                    recipientId: '2',
-                    xPosition: '350',
-                    yPosition: '550',
-                  },
+                  { documentId: '1', pageNumber: '1', recipientId: '2', xPosition: '350', yPosition: '520' },
+                ],
+              },
+            },
+            {
+              email: getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS1_EMAIL', 'people@carreirausa.com'),
+              name: getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS1_NAME', 'Nadya'),
+              recipientId: '3',
+              routingOrder: '3',
+              tabs: {
+                signHereTabs: [
+                  { documentId: '1', pageNumber: '1', recipientId: '3', xPosition: '50', yPosition: '620' },
+                ],
+              },
+            },
+            {
+              email: getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_EMAIL', 'juridico@carreirausa.com'),
+              name: getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_NAME', 'Diego Milan'),
+              recipientId: '4',
+              routingOrder: '4',
+              tabs: {
+                signHereTabs: [
+                  { documentId: '1', pageNumber: '1', recipientId: '4', xPosition: '350', yPosition: '620' },
                 ],
               },
             },
@@ -1067,6 +1162,7 @@ export class DocuSignService {
       const annexLabel = resolved.annex ? ` (Anexo ${resolved.annex})` : '';
       const programLabel = resolved.program || lineItem?.description || invoice.deal?.title || 'unknown';
       const customFields = await buildDocuSignCustomFields(invoice, customer);
+      const clientRoleName = await this.getPrimaryTemplateSignerRoleName(templateId);
       console.log(`[DOCUSIGN] Creating envelope from template ${templateId}${annexLabel} for program "${programLabel}"`);
 
       // Build envelope definition using Composite Templates
@@ -1086,27 +1182,14 @@ export class DocuSignService {
               {
                 sequence: '2',
                 recipients: {
-                  signers: [
-                    {
-                      email: customer.email,
-                      name: customer.name,
-                      recipientId: '1',
-                      roleName: 'Client', // Must match template role
-                      routingOrder: '1',
-                      tabs: {
-                        textTabs: Object.entries(customFields).map(([label, value]) =>
-                          buildTextTab(label, value)
-                        ),
-                      },
-                    },
-                    {
-                      email: 'people@carreirausa.com',
-                      name: 'Thais Mei de Oliveira',
-                      recipientId: '2',
-                      roleName: 'CarreiraUSA', // Must match template role
-                      routingOrder: '2',
-                    },
-                  ],
+                  signers: buildTemplateEnvelopeSigners({
+                    clientEmail: customer.email,
+                    clientName: customer.name,
+                    clientRoleName,
+                    clientTextTabs: Object.entries(customFields).map(([label, value]) =>
+                      buildTextTab(label, value)
+                    ),
+                  }),
                 },
               },
             ],
@@ -1359,7 +1442,12 @@ export class DocuSignService {
   ): Promise<string> {
     try {
       const token = await this.getAccessToken();
-      console.log(`[DOCUSIGN] Creating envelope from template ${templateId}`);
+      const sanitizedTemplateId = sanitizeTemplateId(templateId);
+      if (!sanitizedTemplateId) {
+        throw new Error('Template ID is required to create a DocuSign envelope');
+      }
+      const clientRoleName = await this.getPrimaryTemplateSignerRoleName(sanitizedTemplateId, token);
+      console.log(`[DOCUSIGN] Creating envelope from template ${sanitizedTemplateId}`);
 
       const envelopeDefinition: any = {
         status: 'sent',
@@ -1369,33 +1457,20 @@ export class DocuSignService {
           {
             compositeTemplateId: '1',
             serverTemplates: [
-              { sequence: '1', templateId },
+              { sequence: '1', templateId: sanitizedTemplateId },
             ],
             inlineTemplates: [
               {
                 sequence: '2',
                 recipients: {
-                  signers: [
-                    {
-                      email: signerEmail,
-                      name: signerName,
-                      recipientId: '1',
-                      roleName: 'Client',
-                      routingOrder: '1',
-                      tabs: customFields ? {
-                        textTabs: Object.entries(customFields).map(([label, value]) =>
-                          buildTextTab(label, value)
-                        ),
-                      } : undefined,
-                    },
-                    {
-                      email: 'people@carreirausa.com',
-                      name: 'Thais Mei de Oliveira',
-                      recipientId: '2',
-                      roleName: 'CarreiraUSA',
-                      routingOrder: '2',
-                    },
-                  ],
+                  signers: buildTemplateEnvelopeSigners({
+                    clientEmail: signerEmail,
+                    clientName: signerName,
+                    clientRoleName,
+                    clientTextTabs: customFields
+                      ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
+                      : [],
+                  }),
                 },
               },
             ],

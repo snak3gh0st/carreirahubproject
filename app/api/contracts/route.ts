@@ -327,7 +327,7 @@ export async function POST(request: NextRequest) {
 
         const envVar = PROGRAM_ENV_MAP[program];
         if (envVar) {
-          resolvedTemplateId = process.env[envVar] || null;
+          resolvedTemplateId = process.env[envVar]?.trim() || null;
           if (!resolvedTemplateId) {
             console.warn(`[API_CONTRACTS] No template configured for program "${program}" (${envVar})`);
           } else {
