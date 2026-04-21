@@ -62,7 +62,7 @@ const TAB_PREFIX_OVERRIDES: Array<{
 ];
 
 function buildTextTab(label: string, value: string) {
-  const base: Record<string, string> = { tabLabel: label, value, locked: 'true' };
+  const base: Record<string, string> = { tabLabel: label, value, locked: 'true', shared: 'true' };
   const exact = TAB_OVERRIDES[label];
   const prefix = TAB_PREFIX_OVERRIDES.find((p) => label.startsWith(p.prefix))?.overrides;
   const overrides = exact ?? prefix;
@@ -115,13 +115,36 @@ export function buildTemplateEnvelopeSigners(params: {
   const witnessTwoName = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_NAME', 'Diego Milan');
   const witnessTwoEmail = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_EMAIL', 'juridico@carreirausa.com');
 
+  // recipientIds MUST match template definitions (consistent across all 9 templates):
+  //   1 = Client, 2 = CarreiraUSA, 3 = Testemunha 1, 4 = Testemunha 2
   return [
+    {
+      email: thaisEmail,
+      name: thaisName,
+      recipientId: '2',
+      roleName: 'CarreiraUSA',
+      routingOrder: '1',
+    },
+    {
+      email: witnessOneEmail,
+      name: witnessOneName,
+      recipientId: '3',
+      roleName: 'Testemunha 1',
+      routingOrder: '2',
+    },
+    {
+      email: witnessTwoEmail,
+      name: witnessTwoName,
+      recipientId: '4',
+      roleName: 'Testemunha 2',
+      routingOrder: '3',
+    },
     {
       email: params.clientEmail,
       name: params.clientName,
       recipientId: '1',
       roleName: params.clientRoleName,
-      routingOrder: '3',
+      routingOrder: '4',
       tabs: {
         textTabs: params.clientTextTabs,
       },
@@ -1165,34 +1188,21 @@ export class DocuSignService {
       const clientRoleName = await this.getPrimaryTemplateSignerRoleName(templateId);
       console.log(`[DOCUSIGN] Creating envelope from template ${templateId}${annexLabel} for program "${programLabel}"`);
 
-      // Build envelope definition using Composite Templates
       const envelopeDefinition = {
         status: 'sent',
         emailSubject: `CarreiraUSA - Contract for Signature (Invoice ${invoice.invoiceNumber || invoice.id})`,
         emailBlurb: 'Please review and sign the attached service agreement to proceed.',
-        compositeTemplates: [
+        templateId: templateId,
+        templateRoles: [
           {
-            serverTemplates: [
-              {
-                templateId: templateId,
-                sequence: '1',
-              },
-            ],
-            inlineTemplates: [
-              {
-                sequence: '2',
-                recipients: {
-                  signers: buildTemplateEnvelopeSigners({
-                    clientEmail: customer.email,
-                    clientName: customer.name,
-                    clientRoleName,
-                    clientTextTabs: Object.entries(customFields).map(([label, value]) =>
-                      buildTextTab(label, value)
-                    ),
-                  }),
-                },
-              },
-            ],
+            email: customer.email,
+            name: customer.name,
+            roleName: clientRoleName,
+            tabs: {
+              textTabs: Object.entries(customFields).map(([label, value]) =>
+                buildTextTab(label, value)
+              ),
+            },
           },
         ],
         notification: {
@@ -1441,39 +1451,28 @@ export class DocuSignService {
     customFields?: Record<string, string>
   ): Promise<string> {
     try {
-      const token = await this.getAccessToken();
       const sanitizedTemplateId = sanitizeTemplateId(templateId);
       if (!sanitizedTemplateId) {
         throw new Error('Template ID is required to create a DocuSign envelope');
       }
-      const clientRoleName = await this.getPrimaryTemplateSignerRoleName(sanitizedTemplateId, token);
+      const clientRoleName = await this.getPrimaryTemplateSignerRoleName(sanitizedTemplateId);
       console.log(`[DOCUSIGN] Creating envelope from template ${sanitizedTemplateId}`);
 
       const envelopeDefinition: any = {
         status: 'sent',
         emailSubject: 'CarreiraUSA - Contrato para Assinatura',
         emailBlurb: 'Por favor, revise e assine o contrato de prestação de serviços anexo.',
-        compositeTemplates: [
+        templateId: sanitizedTemplateId,
+        templateRoles: [
           {
-            compositeTemplateId: '1',
-            serverTemplates: [
-              { sequence: '1', templateId: sanitizedTemplateId },
-            ],
-            inlineTemplates: [
-              {
-                sequence: '2',
-                recipients: {
-                  signers: buildTemplateEnvelopeSigners({
-                    clientEmail: signerEmail,
-                    clientName: signerName,
-                    clientRoleName,
-                    clientTextTabs: customFields
-                      ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
-                      : [],
-                  }),
-                },
-              },
-            ],
+            email: signerEmail,
+            name: signerName,
+            roleName: clientRoleName,
+            tabs: {
+              textTabs: customFields
+                ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
+                : [],
+            },
           },
         ],
         notification: {
@@ -1491,25 +1490,16 @@ export class DocuSignService {
         },
       };
 
-      const url = `${this.baseUrl}/restapi/v2.1/accounts/${this.accountId}/envelopes`;
-      const response = await fetch(url, {
+      const result = await this.apiRequest('/envelopes', {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
         body: JSON.stringify(envelopeDefinition),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[DOCUSIGN] Failed to create envelope:', response.status, errorText);
-        throw new Error(`Failed to create envelope: ${response.statusText}`);
+      if (!result || !result.envelopeId) {
+        throw new Error('Failed to create envelope - no envelope ID returned');
       }
 
-      const result = await response.json();
       console.log(`[DOCUSIGN] Envelope created: ${result.envelopeId}`);
-
       return result.envelopeId;
 
     } catch (error) {
