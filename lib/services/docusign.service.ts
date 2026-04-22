@@ -1193,18 +1193,14 @@ export class DocuSignService {
         emailSubject: `CarreiraUSA - Contract for Signature (Invoice ${invoice.invoiceNumber || invoice.id})`,
         emailBlurb: 'Please review and sign the attached service agreement to proceed.',
         templateId: templateId,
-        templateRoles: [
-          {
-            email: customer.email,
-            name: customer.name,
-            roleName: clientRoleName,
-            tabs: {
-              textTabs: Object.entries(customFields).map(([label, value]) =>
-                buildTextTab(label, value)
-              ),
-            },
-          },
-        ],
+        templateRoles: buildTemplateEnvelopeSigners({
+          clientEmail: customer.email,
+          clientName: customer.name,
+          clientRoleName,
+          clientTextTabs: Object.entries(customFields).map(([label, value]) =>
+            buildTextTab(label, value)
+          ),
+        }),
         notification: {
           useAccountDefaults: 'false',
           reminders: {
@@ -1473,18 +1469,14 @@ export class DocuSignService {
         emailSubject: 'CarreiraUSA - Contrato para Assinatura',
         emailBlurb: 'Por favor, revise e assine o contrato de prestação de serviços anexo.',
         templateId: sanitizedTemplateId,
-        templateRoles: [
-          {
-            email: signerEmail,
-            name: signerName,
-            roleName: clientRoleName,
-            tabs: {
-              textTabs: customFields
-                ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
-                : [],
-            },
-          },
-        ],
+        templateRoles: buildTemplateEnvelopeSigners({
+          clientEmail: signerEmail,
+          clientName: signerName,
+          clientRoleName,
+          clientTextTabs: customFields
+            ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
+            : [],
+        }),
         notification: {
           useAccountDefaults: 'false',
           reminders: {
