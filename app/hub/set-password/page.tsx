@@ -4,6 +4,14 @@ import { useState, FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
+import { t, Language } from "@/lib/i18n/hub";
+
+function detectLang(): Language {
+  if (typeof window !== "undefined" && navigator.language.startsWith("pt")) {
+    return "pt-BR";
+  }
+  return "en";
+}
 
 export default function HubSetPasswordPage() {
   const router = useRouter();
@@ -11,6 +19,7 @@ export default function HubSetPasswordPage() {
   const token = searchParams.get("token");
   const nextUrl = searchParams.get("next") || "/hub";
 
+  const [lang] = useState<Language>(() => detectLang());
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +30,11 @@ export default function HubSetPasswordPage() {
     setError(null);
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+      setError(t(lang, "password.passwordTooShort"));
       return;
     }
     if (password !== confirm) {
-      setError("Passwords don't match.");
+      setError(t(lang, "password.passwordMismatch"));
       return;
     }
 
@@ -44,14 +53,14 @@ export default function HubSetPasswordPage() {
           window.location.href = "/hub/login";
           return;
         }
-        setError(data.error || "Failed to set password. The link may have expired.");
+        setError(data.error || t(lang, "password.setPasswordFailed"));
         return;
       }
 
       // Auto-login: the API sets the cookie, go straight to destination
       window.location.href = nextUrl;
     } catch {
-      setError("Connection error. Please try again.");
+      setError(t(lang, "errors.connectionError"));
     } finally {
       setLoading(false);
     }
@@ -61,9 +70,9 @@ export default function HubSetPasswordPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-brand-verde">
         <div className="bg-brand-creme rounded-2xl shadow-sm p-8 text-center max-w-sm">
-          <p className="text-brand-verde mb-4">Invalid or missing token.</p>
+          <p className="text-brand-verde mb-4">{t(lang, "password.invalidToken")}</p>
           <Link href="/hub/login" className="text-sm hover:underline text-brand-verde hover:text-brand-verde/80">
-            Back to login
+            {t(lang, "password.backToLogin")}
           </Link>
         </div>
       </div>
@@ -75,14 +84,14 @@ export default function HubSetPasswordPage() {
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
           <Logo className="w-16 h-16 mx-auto mb-5" />
-          <h1 className="font-display text-3xl font-bold text-white">Set Your Password</h1>
-          <p className="text-white/60 text-sm mt-2">Choose a secure password for your account</p>
+          <h1 className="font-display text-3xl font-bold text-white">{t(lang, "password.setPasswordTitle")}</h1>
+          <p className="text-white/60 text-sm mt-2">{t(lang, "password.setPasswordSubtitle")}</p>
         </div>
 
         <div className="bg-brand-creme rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-brand-verde mb-1.5">New Password</label>
+              <label className="block text-sm font-medium text-brand-verde mb-1.5">{t(lang, "password.newPassword")}</label>
               <input
                 type="password"
                 value={password}
@@ -95,7 +104,7 @@ export default function HubSetPasswordPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-brand-verde mb-1.5">Confirm Password</label>
+              <label className="block text-sm font-medium text-brand-verde mb-1.5">{t(lang, "password.confirmPassword")}</label>
               <input
                 type="password"
                 value={confirm}
@@ -116,7 +125,7 @@ export default function HubSetPasswordPage() {
               disabled={loading}
               className="w-full py-3.5 rounded-xl text-center text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
             >
-              {loading ? "Saving..." : "Set Password"}
+              {loading ? t(lang, "password.saving") : t(lang, "password.setPassword")}
             </button>
           </form>
         </div>

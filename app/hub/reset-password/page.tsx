@@ -3,8 +3,17 @@
 import { useState, FormEvent } from "react";
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
+import { t, Language } from "@/lib/i18n/hub";
+
+function detectLang(): Language {
+  if (typeof window !== "undefined" && navigator.language.startsWith("pt")) {
+    return "pt-BR";
+  }
+  return "en";
+}
 
 export default function HubResetPasswordPage() {
+  const [lang] = useState<Language>(() => detectLang());
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -31,8 +40,8 @@ export default function HubResetPasswordPage() {
       <div className="max-w-sm w-full">
         <div className="text-center mb-8">
           <Logo className="w-16 h-16 mx-auto mb-5" />
-          <h1 className="font-display text-3xl font-bold text-white">Reset Password</h1>
-          <p className="text-white/60 text-sm mt-2">Enter your email to receive a reset link</p>
+          <h1 className="font-display text-3xl font-bold text-white">{t(lang, "password.resetPasswordTitle")}</h1>
+          <p className="text-white/60 text-sm mt-2">{t(lang, "password.resetPasswordSubtitle")}</p>
         </div>
 
         <div className="bg-brand-creme rounded-2xl shadow-sm p-6">
@@ -43,16 +52,16 @@ export default function HubResetPasswordPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
               </div>
-              <p className="text-gray-700 font-medium mb-2">Check your email</p>
-              <p className="text-gray-500 text-sm">If an account exists, a reset link has been sent.</p>
+              <p className="text-gray-700 font-medium mb-2">{t(lang, "password.checkYourEmail")}</p>
+              <p className="text-gray-500 text-sm">{t(lang, "password.resetLinkSent")}</p>
               <Link href="/hub/login" className="inline-block mt-4 text-sm hover:underline text-brand-verde hover:text-brand-verde/80">
-                Back to login
+                {t(lang, "password.backToLogin")}
               </Link>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-brand-verde mb-1.5">Email</label>
+                <label className="block text-sm font-medium text-brand-verde mb-1.5">{t(lang, "login.email")}</label>
                 <input
                   type="email"
                   value={email}
@@ -67,11 +76,11 @@ export default function HubResetPasswordPage() {
                 disabled={loading}
                 className="w-full py-3.5 rounded-xl text-center text-white font-semibold transition disabled:opacity-60 bg-brand-tangerina hover:bg-brand-tangerina/90"
               >
-                {loading ? "Sending..." : "Send Reset Link"}
+                {loading ? t(lang, "password.sending") : t(lang, "password.sendResetLink")}
               </button>
               <div className="text-center">
                 <Link href="/hub/login" className="text-sm text-gray-500 hover:underline">
-                  Back to login
+                  {t(lang, "password.backToLogin")}
                 </Link>
               </div>
             </form>

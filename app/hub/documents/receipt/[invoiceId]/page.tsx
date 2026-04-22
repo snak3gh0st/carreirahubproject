@@ -63,7 +63,7 @@ export default async function ReceiptPage({ params }: Props) {
         </div>
 
         {/* Details */}
-        <div className="grid grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 mb-8">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-2">{t(lang, "receipt.billTo")}</p>
             <p className="font-medium text-gray-900">{invoice.customer.name}</p>
@@ -72,7 +72,7 @@ export default async function ReceiptPage({ params }: Props) {
               <p className="text-sm text-gray-500 mt-1">{invoice.customer.address}</p>
             )}
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-2">{t(lang, "receipt.invoiceDetails")}</p>
             <p className="text-sm text-gray-700">
               <span className="text-gray-400">{t(lang, "receipt.number")}:</span>{" "}
