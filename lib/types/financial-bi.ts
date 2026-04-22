@@ -118,12 +118,46 @@ export interface PnLData {
   lastFetchedAt: string;
 }
 
+export interface MonthlyReceivable {
+  month: string;
+  monthLabel: string;
+  totalDue: number;
+  collectionExpected: number;
+  optimistic: number;
+  conservative: number;
+  invoiceCount: number;
+  delinquentAmount: number;
+}
+
+export interface DelinquencySummary {
+  totalDelinquent: number;
+  totalAR: number;
+  delinquencyRate: number;
+  current: number;
+  days1to30: number;
+  days31to60: number;
+  days61to90: number;
+  days90plus: number;
+  estimatedRecovery: number;
+  estimatedLoss: number;
+}
+
+export interface ReceivablesProjectionData {
+  monthlyProjection: MonthlyReceivable[];
+  delinquency: DelinquencySummary;
+  overdueTotal: number;
+  upcomingNext7Days: number;
+  upcomingNext30Days: number;
+  monthlyBreakeven: number;
+}
+
 export interface FinancialBIResponse {
   summary: FinancialBISummary;
   cfoInsight: CfoInsightData;
   revenueGrowth?: RevenueGrowthData;
   arCollections?: ArCollectionsData;
   cashFlow?: CashFlowData;
+  receivablesProjection?: ReceivablesProjectionData;
   customerAnalysis?: CustomerAnalysisData;
   pnl?: PnLData;
   meta: {

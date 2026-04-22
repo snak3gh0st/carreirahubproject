@@ -72,8 +72,21 @@ export default function FinancialDashboardPage() {
   const revenueData = activeTab === "revenue" ? activeTabData?.revenueGrowth : undefined;
   const arData = activeTab === "ar" ? activeTabData?.arCollections : undefined;
   const cashFlowData = activeTab === "cashflow" ? activeTabData?.cashFlow : undefined;
+  const receivablesProjection = activeTab === "cashflow" ? activeTabData?.receivablesProjection : undefined;
   const customerData = activeTab === "customers" ? activeTabData?.customerAnalysis : undefined;
   const pnl = data?.pnl;
+
+  const [qbRefreshing, setQbRefreshing] = useState(false);
+
+  const handleRefreshQb = async () => {
+    setQbRefreshing(true);
+    try {
+      await fetch("/api/analytics/financial-bi/refresh-qb", { method: "POST" });
+      window.location.reload();
+    } finally {
+      setQbRefreshing(false);
+    }
+  };
 
   const handleExport = async (format: "pdf" | "excel" | "pptx") => {
     const base = `/api/analytics/financial-bi/export`;
@@ -140,6 +153,13 @@ export default function FinancialDashboardPage() {
             <option value="thisYear">This Year</option>
             <option value="allTime">All Time</option>
           </select>
+          <button
+            onClick={handleRefreshQb}
+            disabled={qbRefreshing}
+            className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+          >
+            {qbRefreshing ? "Refreshing..." : "Refresh QB Reports"}
+          </button>
           <button onClick={() => handleExport("pdf")} className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs hover:bg-gray-50">
             Export PDF
           </button>
@@ -175,6 +195,7 @@ export default function FinancialDashboardPage() {
             totalExpenses={pnl?.totalExpenses}
             netIncome={pnl?.netIncome}
             cashOnHand={pnl?.cashOnHand}
+            burnRate={pnl?.burnRate}
           />
           <MiniChartRow
             revenueTrend={data.summary.revenueTrendMini}
@@ -200,7 +221,7 @@ export default function FinancialDashboardPage() {
 
             {activeTab === "revenue" && revenueData && <RevenueGrowthTab data={revenueData} />}
             {activeTab === "ar" && arData && <ArCollectionsTab data={arData} />}
-            {activeTab === "cashflow" && cashFlowData && <CashFlowTab data={cashFlowData} />}
+            {activeTab === "cashflow" && cashFlowData && <CashFlowTab data={cashFlowData} receivablesProjection={receivablesProjection} />}
             {activeTab === "customers" && customerData && <CustomerAnalysisTab data={customerData} />}
             {activeTab === "pnl" && data.pnl && <PnlExpensesTab data={data.pnl} />}
 

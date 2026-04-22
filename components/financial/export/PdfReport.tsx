@@ -114,6 +114,100 @@ export function PdfReport({ data, dateRange }: PdfReportProps) {
           </>
         )}
 
+        {data.receivablesProjection && (
+          <>
+            <Text style={styles.sectionTitle}>Inadimplência & Projeção de Recebíveis</Text>
+            {/* Delinquency summary row */}
+            <View style={{ ...styles.kpiRow, marginBottom: 10 }}>
+              {[
+                { label: "Total AR", value: formatCurrency(data.receivablesProjection.delinquency.totalAR) },
+                { label: "Em Atraso", value: formatCurrency(data.receivablesProjection.delinquency.totalDelinquent) },
+                { label: "Taxa Inadimpl.", value: `${data.receivablesProjection.delinquency.delinquencyRate.toFixed(1)}%` },
+                { label: "Rec. Estimada", value: formatCurrency(data.receivablesProjection.delinquency.estimatedRecovery) },
+                { label: "Perda Estimada", value: formatCurrency(data.receivablesProjection.delinquency.estimatedLoss) },
+              ].map((item) => (
+                <View key={item.label} style={styles.kpiCard}>
+                  <Text style={styles.kpiLabel}>{item.label}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: "bold" }}>{item.value}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Breakeven note */}
+            {data.receivablesProjection.monthlyBreakeven > 0 && (
+              <View style={{ backgroundColor: "#f3e8ff", padding: 6, borderRadius: 4, marginBottom: 8, flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ fontSize: 9, color: "#7c3aed", fontWeight: "bold" }}>
+                  Breakeven Mensal: {formatCurrency(data.receivablesProjection.monthlyBreakeven)}
+                </Text>
+                <Text style={{ fontSize: 9, color: "#6b7280", marginLeft: 8 }}>
+                  — comparar com coluna "Esperado" para avaliar cobertura de caixa
+                </Text>
+              </View>
+            )}
+
+            {/* Monthly projection table */}
+            <Text style={{ fontSize: 10, fontWeight: "bold", marginBottom: 5 }}>Projeção Mensal (6 meses)</Text>
+            <View>
+              <View style={styles.tableHeader}>
+                <Text style={{ ...styles.tableHeaderCell, flex: 1.5 }}>Mês</Text>
+                <Text style={styles.tableHeaderCell}>Fat.</Text>
+                <Text style={styles.tableHeaderCell}>Total a Rec.</Text>
+                <Text style={styles.tableHeaderCell}>Em Atraso</Text>
+                <Text style={styles.tableHeaderCell}>Esperado</Text>
+                <Text style={styles.tableHeaderCell}>Conservador</Text>
+                {data.receivablesProjection.monthlyBreakeven > 0 && (
+                  <Text style={styles.tableHeaderCell}>vs BEP</Text>
+                )}
+              </View>
+              {data.receivablesProjection.monthlyProjection.map((row) => {
+                const bep = data.receivablesProjection!.monthlyBreakeven;
+                const gap = row.collectionExpected - bep;
+                return (
+                  <View key={row.month} style={styles.tableRow}>
+                    <Text style={{ ...styles.tableCell, flex: 1.5 }}>{row.monthLabel}</Text>
+                    <Text style={styles.tableCell}>{row.invoiceCount}</Text>
+                    <Text style={styles.tableCell}>{formatCurrency(row.totalDue)}</Text>
+                    <Text style={{ ...styles.tableCell, color: row.delinquentAmount > 0 ? "#dc2626" : "#999" }}>
+                      {row.delinquentAmount > 0 ? formatCurrency(row.delinquentAmount) : "—"}
+                    </Text>
+                    <Text style={{ ...styles.tableCell, color: "#16a34a" }}>{formatCurrency(row.collectionExpected)}</Text>
+                    <Text style={{ ...styles.tableCell, color: "#d97706" }}>{formatCurrency(row.conservative)}</Text>
+                    {bep > 0 && (
+                      <Text style={{ ...styles.tableCell, color: gap >= 0 ? "#16a34a" : "#dc2626", fontWeight: "bold" }}>
+                        {gap >= 0 ? `+${formatCurrency(gap)}` : `-${formatCurrency(Math.abs(gap))}`}
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
+              {/* Totals row */}
+              <View style={{ ...styles.tableRow, backgroundColor: "#f3f4f6" }}>
+                <Text style={{ ...styles.tableCell, flex: 1.5, fontWeight: "bold" }}>Total</Text>
+                <Text style={{ ...styles.tableCell, fontWeight: "bold" }}>
+                  {data.receivablesProjection.monthlyProjection.reduce((s, r) => s + r.invoiceCount, 0)}
+                </Text>
+                <Text style={{ ...styles.tableCell, fontWeight: "bold" }}>
+                  {formatCurrency(data.receivablesProjection.monthlyProjection.reduce((s, r) => s + r.totalDue, 0))}
+                </Text>
+                <Text style={{ ...styles.tableCell, fontWeight: "bold", color: "#dc2626" }}>
+                  {formatCurrency(data.receivablesProjection.monthlyProjection.reduce((s, r) => s + r.delinquentAmount, 0))}
+                </Text>
+                <Text style={{ ...styles.tableCell, fontWeight: "bold", color: "#16a34a" }}>
+                  {formatCurrency(data.receivablesProjection.monthlyProjection.reduce((s, r) => s + r.collectionExpected, 0))}
+                </Text>
+                <Text style={{ ...styles.tableCell, fontWeight: "bold", color: "#d97706" }}>
+                  {formatCurrency(data.receivablesProjection.monthlyProjection.reduce((s, r) => s + r.conservative, 0))}
+                </Text>
+                {data.receivablesProjection.monthlyBreakeven > 0 && (
+                  <Text style={{ ...styles.tableCell, fontWeight: "bold", color: "#7c3aed" }}>
+                    BEP: {formatCurrency(data.receivablesProjection.monthlyBreakeven)}/mês
+                  </Text>
+                )}
+              </View>
+            </View>
+          </>
+        )}
+
         {data.pnl && (
           <>
             <Text style={styles.sectionTitle}>Profit & Loss Summary</Text>

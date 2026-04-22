@@ -1,7 +1,7 @@
 // lib/services/financial-bi.ts
 import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
-import { startOfMonth, subMonths, subDays, startOfYear, format, differenceInDays } from "date-fns";
+import { startOfMonth, addMonths, subMonths, subDays, startOfYear, format, differenceInDays } from "date-fns";
 import { evaluateCfoRules, CfoFacts } from "@/lib/services/cfo-rules";
 import { getCachedCfoInsight, CfoAnalysisInput } from "@/lib/services/cfo-analysis";
 import { parseProfitAndLoss, parseBalanceSheet } from "@/lib/services/qb-report-parser";
@@ -15,6 +15,7 @@ import {
   RevenueGrowthData,
   ArCollectionsData,
   CashFlowData,
+  ReceivablesProjectionData,
   CustomerAnalysisData,
   PnLData,
 } from "@/lib/types/financial-bi";
@@ -370,6 +371,151 @@ async function queryCashFlow(): Promise<CashFlowData> {
   };
 }
 
+async function queryReceivablesProjection(): Promise<ReceivablesProjectionData> {
+  const now = new Date();
+  // 2025-01-01 baseline: exclude legacy pre-2025 invoices from delinquency/projection
+  const BASE_DATE = new Date("2025-01-01");
+
+  const [outstandingInvoices, pnlCache] = await Promise.all([
+    prisma.invoice.findMany({
+      where: {
+        status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
+        dueDate: { gte: BASE_DATE },
+      },
+      select: { id: true, amount: true, amountPaid: true, dueDate: true, status: true },
+    }),
+    prisma.qbReportCache.findUnique({ where: { reportType: "ProfitAndLoss" }, select: { data: true } }),
+  ]);
+
+  // Monthly breakeven from QB burn rate — count only months with real expense or COGS data
+  let monthlyBreakeven = 0;
+  try {
+    if (pnlCache) {
+      const pnl = JSON.parse(pnlCache.data);
+      const expByMonth: number[] = pnl.expenses?.byMonth || [];
+      const cogsbyMonth: number[] = pnl.cogs?.byMonth || [];
+      const maxLen = Math.max(expByMonth.length, cogsbyMonth.length);
+      const activeMonths = Array.from({ length: maxLen }, (_, i) =>
+        (expByMonth[i] || 0) + (cogsbyMonth[i] || 0)
+      ).filter((v) => v > 0).length || 1;
+      monthlyBreakeven = ((pnl.expenses?.total || 0) + (pnl.cogs?.total || 0)) / activeMonths;
+    }
+  } catch {
+    // QB cache not available — breakeven will be 0 (hidden in UI)
+  }
+
+  function calcProbability(daysOverdue: number): number {
+    if (daysOverdue <= 0) return 95;
+    if (daysOverdue <= 30) return 80;
+    if (daysOverdue <= 60) return 55;
+    if (daysOverdue <= 90) return 30;
+    if (daysOverdue <= 180) return 15;
+    return 5;
+  }
+
+  // 6-month projection: current month shows only this month's invoices +
+  // overdue invoices (2025+), NOT a dump of all historical overdue.
+  // Overdue 2025+ are shown in month 0 as "delinquent carry-over".
+  const overdueCarryOver = outstandingInvoices.filter(
+    (inv) => differenceInDays(now, inv.dueDate) > 0 && format(inv.dueDate, "yyyy-MM") !== format(now, "yyyy-MM")
+  );
+
+  const monthlyProjection: ReceivablesProjectionData["monthlyProjection"] = [];
+  for (let i = 0; i < 6; i++) {
+    const targetMonthStart = startOfMonth(addMonths(now, i));
+    const monthKey = format(targetMonthStart, "yyyy-MM");
+    const monthLabel = format(targetMonthStart, "MMM yyyy");
+
+    // Invoices whose dueDate falls in this calendar month
+    const calendarMonthInvoices = outstandingInvoices.filter(
+      (inv) => format(inv.dueDate, "yyyy-MM") === monthKey
+    );
+
+    // Month 0: also include all overdue carry-over (past months 2025+)
+    const monthInvoices = i === 0
+      ? [...calendarMonthInvoices, ...overdueCarryOver]
+      : calendarMonthInvoices;
+
+    let totalDue = 0;
+    let collectionExpected = 0;
+    let delinquentAmount = 0;
+
+    for (const inv of monthInvoices) {
+      const remaining = Number(inv.amount) - Number(inv.amountPaid || 0);
+      if (remaining <= 0) continue;
+      const daysOverdue = differenceInDays(now, inv.dueDate);
+      const prob = calcProbability(daysOverdue) / 100;
+      totalDue += remaining;
+      collectionExpected += remaining * prob;
+      if (daysOverdue > 0) delinquentAmount += remaining;
+    }
+
+    monthlyProjection.push({
+      month: monthKey,
+      monthLabel,
+      totalDue: Math.round(totalDue),
+      collectionExpected: Math.round(collectionExpected),
+      optimistic: Math.round(totalDue),
+      conservative: Math.round(collectionExpected * 0.7),
+      invoiceCount: monthInvoices.length,
+      delinquentAmount: Math.round(delinquentAmount),
+    });
+  }
+
+  // Delinquency breakdown (2025+ only)
+  let current = 0, days1to30 = 0, days31to60 = 0, days61to90 = 0, days90plus = 0;
+  let estimatedRecovery = 0;
+  let totalAR = 0;
+
+  for (const inv of outstandingInvoices) {
+    const remaining = Number(inv.amount) - Number(inv.amountPaid || 0);
+    if (remaining <= 0) continue;
+    totalAR += remaining;
+    const daysOverdue = differenceInDays(now, inv.dueDate);
+    const prob = calcProbability(daysOverdue) / 100;
+    estimatedRecovery += remaining * prob;
+
+    if (daysOverdue <= 0) current += remaining;
+    else if (daysOverdue <= 30) days1to30 += remaining;
+    else if (daysOverdue <= 60) days31to60 += remaining;
+    else if (daysOverdue <= 90) days61to90 += remaining;
+    else days90plus += remaining;
+  }
+
+  const totalDelinquent = days1to30 + days31to60 + days61to90 + days90plus;
+
+  const next7 = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const next30 = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const upcomingNext7Days = outstandingInvoices
+    .filter((inv) => inv.dueDate >= now && inv.dueDate <= next7)
+    .reduce((sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0), 0);
+
+  const upcomingNext30Days = outstandingInvoices
+    .filter((inv) => inv.dueDate >= now && inv.dueDate <= next30)
+    .reduce((sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0), 0);
+
+  return {
+    monthlyProjection,
+    delinquency: {
+      totalDelinquent: Math.round(totalDelinquent),
+      totalAR: Math.round(totalAR),
+      delinquencyRate: totalAR > 0 ? (totalDelinquent / totalAR) * 100 : 0,
+      current: Math.round(current),
+      days1to30: Math.round(days1to30),
+      days31to60: Math.round(days31to60),
+      days61to90: Math.round(days61to90),
+      days90plus: Math.round(days90plus),
+      estimatedRecovery: Math.round(estimatedRecovery),
+      estimatedLoss: Math.round(totalDelinquent - Math.min(estimatedRecovery, totalDelinquent)),
+    },
+    overdueTotal: Math.round(totalDelinquent),
+    upcomingNext7Days: Math.round(upcomingNext7Days),
+    upcomingNext30Days: Math.round(upcomingNext30Days),
+    monthlyBreakeven: Math.round(monthlyBreakeven),
+  };
+}
+
 async function queryCustomerAnalysis(): Promise<CustomerAnalysisData> {
   const now = new Date();
   const [customerPayments, allCustomers] = await Promise.all([
@@ -579,14 +725,20 @@ export async function getFinancialKPIs(dateRange: string): Promise<CfoAnalysisIn
       const pnl = JSON.parse(pnlCache.data);
       const bs = bsCache ? JSON.parse(bsCache.data) : null;
       const totalExp = (pnl.expenses?.total || 0) + (pnl.cogs?.total || 0);
+      const expByMonth: number[] = pnl.expenses?.byMonth || [];
+      const cogsByMonth: number[] = pnl.cogs?.byMonth || [];
+      const maxLen = Math.max(expByMonth.length, cogsByMonth.length);
+      const activeMonths = Array.from({ length: maxLen }, (_, i) =>
+        (expByMonth[i] || 0) + (cogsByMonth[i] || 0)
+      ).filter((v) => v > 0).length || 1;
       const topCat = pnl.expenses?.byCategory?.[0];
       Object.assign(result, {
         totalExpenses: totalExp,
         netIncome: pnl.netIncome?.total || 0,
         marginPct: pnl.income?.total > 0 ? ((pnl.netIncome?.total || 0) / pnl.income.total) * 100 : 0,
-        burnRate: totalExp / Math.max(pnl.months?.length || 1, 1),
+        burnRate: totalExp / activeMonths,
         cashOnHand: bs?.bankAccounts?.total || 0,
-        runwayMonths: totalExp > 0 ? (bs?.bankAccounts?.total || 0) / (totalExp / Math.max(pnl.months?.length || 1, 1)) : 0,
+        runwayMonths: totalExp > 0 ? (bs?.bankAccounts?.total || 0) / (totalExp / activeMonths) : 0,
         topExpenseCategory: topCat?.category || "",
         topExpenseAmount: topCat?.amount || 0,
       });
@@ -609,6 +761,7 @@ export async function getFinancialBIData(
   if (tab === "all" || tab === "revenue") { tabQueries.push(queryRevenueGrowth(startDate, endDate)); tabKeys.push("revenueGrowth"); }
   if (tab === "all" || tab === "ar") { tabQueries.push(queryArCollections(startDate, endDate)); tabKeys.push("arCollections"); }
   if (tab === "all" || tab === "cashflow") { tabQueries.push(queryCashFlow()); tabKeys.push("cashFlow"); }
+  if (tab === "all" || tab === "cashflow") { tabQueries.push(queryReceivablesProjection()); tabKeys.push("receivablesProjection"); }
   if (tab === "all" || tab === "customers") { tabQueries.push(queryCustomerAnalysis()); tabKeys.push("customerAnalysis"); }
   if (tab === "all" || tab === "pnl") { tabQueries.push(queryPnL(startDate, endDate)); tabKeys.push("pnl"); }
 

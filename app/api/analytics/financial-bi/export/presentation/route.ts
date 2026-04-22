@@ -240,6 +240,114 @@ function addArAgingSlide(pptx: PptxGenJS, data: FinancialBIResponse) {
   }
 }
 
+function addReceivablesProjectionSlide(pptx: PptxGenJS, data: FinancialBIResponse) {
+  if (!data.receivablesProjection) return;
+
+  const rp = data.receivablesProjection;
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.white };
+
+  slide.addText("Inadimplência & Projeção de Recebíveis", {
+    x: 0.6, y: 0.3, w: 8.8, h: 0.5,
+    fontSize: 22, color: COLORS.dark, fontFace: "Helvetica", bold: true,
+  });
+
+  // Delinquency KPI boxes
+  const cards = [
+    { label: "Total AR", value: fmt(rp.delinquency.totalAR), color: COLORS.dark },
+    { label: "Em Atraso", value: fmt(rp.delinquency.totalDelinquent), color: COLORS.red },
+    { label: "Inadimplência", value: `${rp.delinquency.delinquencyRate.toFixed(1)}%`, color: COLORS.red },
+    { label: "Recuperação Est.", value: fmt(rp.delinquency.estimatedRecovery), color: COLORS.green },
+    { label: "Perda Estimada", value: fmt(rp.delinquency.estimatedLoss), color: COLORS.yellow },
+  ];
+
+  const cardW = 1.75;
+  const cardH = 0.8;
+  const cardY = 0.9;
+  cards.forEach((card, idx) => {
+    const x = 0.4 + idx * (cardW + 0.2);
+    slide.addShape(pptx.ShapeType.rect, {
+      x, y: cardY, w: cardW, h: cardH,
+      fill: { color: COLORS.lightGray }, line: { color: "DDDDDD", pt: 0.5 },
+    });
+    slide.addText(card.label, {
+      x, y: cardY + 0.08, w: cardW, h: 0.25,
+      fontSize: 8, color: COLORS.gray, fontFace: "Helvetica", align: "center",
+    });
+    slide.addText(card.value, {
+      x, y: cardY + 0.3, w: cardW, h: 0.4,
+      fontSize: 16, color: card.color, fontFace: "Helvetica", bold: true, align: "center",
+    });
+  });
+
+  const hasBep = rp.monthlyBreakeven > 0;
+
+  // Monthly projection table title + optional breakeven badge
+  slide.addText("Projeção Mensal de Recebíveis (6 meses)", {
+    x: 0.6, y: 1.9, w: hasBep ? 6.5 : 9.0, h: 0.3,
+    fontSize: 12, color: COLORS.dark, fontFace: "Helvetica", bold: true,
+  });
+  if (hasBep) {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 7.2, y: 1.87, w: 2.4, h: 0.35,
+      fill: { color: "EDE9FE" }, line: { color: "7C3AED", pt: 0.5 },
+    });
+    slide.addText(`Breakeven: ${fmt(rp.monthlyBreakeven)}/mês`, {
+      x: 7.2, y: 1.87, w: 2.4, h: 0.35,
+      fontSize: 9, color: "7C3AED", fontFace: "Helvetica", bold: true, align: "center", valign: "middle",
+    });
+  }
+
+  const bepCol = hasBep
+    ? [{ text: "vs BEP", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9, align: "right" as const } }]
+    : [];
+
+  const projRows: PptxGenJS.TableRow[] = [
+    [
+      { text: "Mês", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9 } },
+      { text: "Fat.", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9, align: "center" } },
+      { text: "Total a Rec.", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9, align: "right" } },
+      { text: "Em Atraso", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9, align: "right" } },
+      { text: "Esperado", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9, align: "right" } },
+      { text: "Conservador", options: { bold: true, color: COLORS.white, fill: { color: COLORS.tangerina }, fontSize: 9, align: "right" } },
+      ...bepCol,
+    ],
+    ...rp.monthlyProjection.map((row) => {
+      const gap = row.collectionExpected - rp.monthlyBreakeven;
+      const bepCell = hasBep
+        ? [{ text: gap >= 0 ? `+${fmt(gap)}` : `-${fmt(Math.abs(gap))}`, options: { fontSize: 9, align: "right" as const, color: gap >= 0 ? COLORS.green : COLORS.red, bold: true } }]
+        : [];
+      return [
+        { text: row.monthLabel, options: { fontSize: 9 } },
+        { text: String(row.invoiceCount), options: { fontSize: 9, align: "center" as const } },
+        { text: fmt(row.totalDue), options: { fontSize: 9, align: "right" as const } },
+        { text: row.delinquentAmount > 0 ? fmt(row.delinquentAmount) : "—", options: { fontSize: 9, align: "right" as const, color: row.delinquentAmount > 0 ? COLORS.red : COLORS.gray } },
+        { text: fmt(row.collectionExpected), options: { fontSize: 9, align: "right" as const, color: COLORS.green } },
+        { text: fmt(row.conservative), options: { fontSize: 9, align: "right" as const, color: COLORS.yellow } },
+        ...bepCell,
+      ];
+    }),
+    // Totals row
+    [
+      { text: "TOTAL", options: { bold: true, fontSize: 9, fill: { color: "E8E8E8" } } },
+      { text: String(rp.monthlyProjection.reduce((s, r) => s + r.invoiceCount, 0)), options: { bold: true, fontSize: 9, align: "center" as const, fill: { color: "E8E8E8" } } },
+      { text: fmt(rp.monthlyProjection.reduce((s, r) => s + r.totalDue, 0)), options: { bold: true, fontSize: 9, align: "right" as const, fill: { color: "E8E8E8" } } },
+      { text: fmt(rp.monthlyProjection.reduce((s, r) => s + r.delinquentAmount, 0)), options: { bold: true, fontSize: 9, align: "right" as const, color: COLORS.red, fill: { color: "E8E8E8" } } },
+      { text: fmt(rp.monthlyProjection.reduce((s, r) => s + r.collectionExpected, 0)), options: { bold: true, fontSize: 9, align: "right" as const, color: COLORS.green, fill: { color: "E8E8E8" } } },
+      { text: fmt(rp.monthlyProjection.reduce((s, r) => s + r.conservative, 0)), options: { bold: true, fontSize: 9, align: "right" as const, color: COLORS.yellow, fill: { color: "E8E8E8" } } },
+      ...(hasBep ? [{ text: `BEP: ${fmt(rp.monthlyBreakeven)}/mês`, options: { bold: true, fontSize: 9, align: "right" as const, color: "7C3AED", fill: { color: "E8E8E8" } } }] : []),
+    ],
+  ];
+
+  const colW = hasBep ? [1.3, 0.7, 1.4, 1.3, 1.5, 1.5, 1.3] : [1.5, 0.9, 1.6, 1.5, 1.7, 1.8];
+  slide.addTable(projRows, {
+    x: 0.6, y: 2.2, w: 9.0,
+    border: { type: "solid", pt: 0.5, color: "DDDDDD" },
+    colW,
+    rowH: 0.32,
+  });
+}
+
 function addExpensesSlide(pptx: PptxGenJS, data: FinancialBIResponse) {
   if (!data.pnl?.expensesByCategory?.length) return;
 
@@ -314,6 +422,7 @@ export async function GET(request: NextRequest) {
     addTitleSlide(pptx, dateRange);
     addCfoBriefingSlide(pptx, data);
     addKpiSlide(pptx, data);
+    addReceivablesProjectionSlide(pptx, data);
     addArAgingSlide(pptx, data);
     addExpensesSlide(pptx, data);
 

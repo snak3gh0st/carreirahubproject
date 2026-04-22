@@ -8,7 +8,7 @@ import {
   parseEntitySummaryReport,
 } from "@/lib/services/qb-report-parser";
 import { buildQbCfoReportPacket, QbCfoReportPacket } from "@/lib/financial/qb-cfo-report-packet";
-import { format, startOfYear, subMonths } from "date-fns";
+import { format } from "date-fns";
 
 const QB_CFO_REPORT_TYPES = [
   "ProfitAndLoss",
@@ -24,11 +24,9 @@ export type QbCfoReportType = (typeof QB_CFO_REPORT_TYPES)[number];
 
 function buildReportWindow() {
   const now = new Date();
-  const startDate = subMonths(now, 6);
-  const yearStart = startOfYear(now);
   return {
     now,
-    startDate: startDate > yearStart ? startDate : yearStart,
+    startDate: new Date("2025-01-01"),
   };
 }
 
