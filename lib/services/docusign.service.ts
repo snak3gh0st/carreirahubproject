@@ -1423,14 +1423,24 @@ export class DocuSignService {
       const data = await response.json();
       const templates = data.envelopeTemplates || [];
 
-      return templates.map((template: any) => ({
-        templateId: template.templateId,
-        name: template.name,
-        description: template.description || '',
-        created: template.created,
-        lastModified: template.lastModified,
-        shared: template.shared === 'true' || template.shared === true,
-      }));
+      const configuredIds = new Set(
+        PROGRAM_TEMPLATE_MAP
+          .map(m => sanitizeTemplateId(process.env[m.envVar]))
+          .filter(Boolean)
+      );
+      const fallbackId = sanitizeTemplateId(process.env.DOCUSIGN_TEMPLATE_ID);
+      if (fallbackId) configuredIds.add(fallbackId);
+
+      return templates
+        .filter((t: any) => configuredIds.has(t.templateId))
+        .map((template: any) => ({
+          templateId: template.templateId,
+          name: template.name,
+          description: template.description || '',
+          created: template.created,
+          lastModified: template.lastModified,
+          shared: template.shared === 'true' || template.shared === true,
+        }));
 
     } catch (error) {
       console.error('[DOCUSIGN] Error listing templates:', error);
