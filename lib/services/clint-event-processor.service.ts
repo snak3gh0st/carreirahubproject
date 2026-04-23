@@ -62,7 +62,11 @@ export class ClintEventProcessor {
     });
 
     // Trigger AI qualification async (fire-and-forget)
-    sdrService.autoQualifyLead(lead.id).catch((err: unknown) =>
+    sdrService.autoQualifyLead(lead.id).then(async (result) => {
+      if (result.qualified) {
+        await slackService.notifyLeadQualified(lead, result.score).catch(() => {});
+      }
+    }).catch((err: unknown) =>
       console.error("[ClintEvent] autoQualifyLead failed:", err)
     );
 

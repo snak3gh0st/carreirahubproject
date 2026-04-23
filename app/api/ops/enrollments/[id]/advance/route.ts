@@ -5,6 +5,8 @@ import {
   mentorshipService,
   MentorshipError,
 } from "@/lib/services/mentorship.service";
+import { prisma } from "@/lib/db";
+import { slackService } from "@/lib/services/slack.service";
 
 export async function POST(
   req: NextRequest,
@@ -36,6 +38,27 @@ export async function POST(
       triggeredById: userId,
       triggeredByRole: role,
     });
+
+    // Notify Slack — phase advance (fire-and-forget)
+    prisma.mentorshipEnrollment.findUnique({
+      where: { id: params.id },
+      include: { customer: true },
+    }).then(async (enrollment) => {
+      if (!enrollment?.customer) return;
+      const [fromPhase, toPhase] = await Promise.all([
+        result.transition.fromPhaseId
+          ? prisma.mentorshipPhase.findUnique({ where: { id: result.transition.fromPhaseId } })
+          : null,
+        prisma.mentorshipPhase.findUnique({ where: { id: toPhaseId } }),
+      ]);
+      await slackService.notifyEnrollmentPhaseChanged(
+        { id: enrollment.customer.id, name: enrollment.customer.name, email: enrollment.customer.email, phone: enrollment.customer.phone },
+        enrollment.programType,
+        fromPhase?.label ?? "—",
+        toPhase?.label ?? toPhaseId
+      );
+    }).catch(() => {});
+
     return NextResponse.json(result, { status: 200 });
   } catch (err) {
     if (err instanceof MentorshipError) {

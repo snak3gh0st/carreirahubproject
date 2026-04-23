@@ -20,6 +20,7 @@ type Lead = { id: string; name?: string | null; email: string; source?: string }
 type Customer = { id: string; name?: string | null; email: string; phone?: string | null };
 type Deal = { id: string; title: string; value?: number | string | null; clint_deal_id?: string | null };
 type Enrollment = { id: string; programType: string };
+type Invoice = { id: string; amount: number | null; invoiceNumber?: string | null };
 
 export class SlackService {
   private token: string;
@@ -131,6 +132,49 @@ export class SlackService {
         },
       },
     ], `Deal ${deal.title}: ${fromStage} → ${toStage}`);
+  }
+
+  async notifyPaymentReceived(invoice: Invoice, customer: Customer): Promise<void> {
+    const amount = invoice.amount ? `$${Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}` : "—";
+    const ref = invoice.invoiceNumber ?? invoice.id;
+    await this.post(CHANNELS.commercial, [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "💰 Pagamento Recebido" },
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Cliente:*\n${customer.name ?? customer.email}` },
+          { type: "mrkdwn", text: `*Valor:*\n${amount}` },
+          { type: "mrkdwn", text: `*Invoice:*\n${ref}` },
+          { type: "mrkdwn", text: `*E-mail:*\n${customer.email}` },
+        ],
+      },
+    ], `Pagamento recebido: ${customer.name ?? customer.email} — ${amount}`);
+  }
+
+  async notifyEnrollmentPhaseChanged(
+    customer: Customer,
+    programType: string,
+    fromPhaseLabel: string,
+    toPhaseLabel: string
+  ): Promise<void> {
+    await this.post(CHANNELS.bastao, [
+      {
+        type: "header",
+        text: { type: "plain_text", text: "📍 Aluno Avançou de Fase" },
+      },
+      {
+        type: "section",
+        fields: [
+          { type: "mrkdwn", text: `*Aluno:*\n${customer.name ?? customer.email}` },
+          { type: "mrkdwn", text: `*Programa:*\n${programType}` },
+          { type: "mrkdwn", text: `*De:*\n${fromPhaseLabel}` },
+          { type: "mrkdwn", text: `*Para:*\n${toPhaseLabel}` },
+        ],
+      },
+    ], `${customer.name ?? customer.email}: ${fromPhaseLabel} → ${toPhaseLabel}`);
   }
 
   async notifyOnboardingReady(enrollment: Enrollment, customer: Customer): Promise<void> {

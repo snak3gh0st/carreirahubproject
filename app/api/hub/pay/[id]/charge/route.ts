@@ -14,6 +14,7 @@ import { InvoiceStatus, ContractStatus } from "@prisma/client";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { integrationLogger } from "@/lib/utils/logger";
 import { clintEventProcessor } from "@/lib/services/clint-event-processor.service";
+import { slackService } from "@/lib/services/slack.service";
 import { getPaymentSecurityHeaders } from "@/lib/hub/security-headers";
 
 export const dynamic = "force-dynamic";
@@ -409,6 +410,12 @@ export async function POST(
         autoChargePaymentRef: chargeId,
       },
     });
+
+    // Notify Slack — payment received (fire-and-forget)
+    slackService.notifyPaymentReceived(
+      { id: invoice.id, amount: Number(invoice.amount), invoiceNumber: invoice.invoiceNumber },
+      { id: invoice.customer.id, name: invoice.customer.name, email: invoice.customer.email, phone: invoice.customer.phone }
+    ).catch(() => {});
 
     // Onboarding gate: trigger if contract is already SIGNED
     if (invoice.dealId) {

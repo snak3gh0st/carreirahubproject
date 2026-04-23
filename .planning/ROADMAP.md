@@ -86,10 +86,6 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [x] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [x] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
-
-Plans:
 - [x] 03-01: End-to-end workflow orchestration with retry logic (completed 2026-01-15)
 - [x] 03-02: Customer data consistency and Finance dashboard (completed 2026-01-15)
 
@@ -115,10 +111,6 @@ Plans:
 **Status**: ✅ Complete (2026-01-29)
 **Depends on**: Phase 2
 **Plans**: 2 plans
-
-Plans:
-- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 
 Plans:
 - [x] 05-01: Production credentials setup and configuration (completed 2026-01-28)
@@ -166,7 +158,7 @@ Plans:
 
 - [x] **Phase 10: Token & Font Foundation** - Design system with Carreira USA brand tokens, Blaak/Neue Montreal fonts, and CSS custom property architecture (completed 2026-03-25)
 - [x] **Phase 11: Portal Shell Reskin** - Admin Dashboard sidebar/components and Client Hub layout/pages migrated to brand tokens, with logo replacement (completed 2026-03-25)
-- [ ] **Phase 12: Chart Rebrand & Brand Polish** - All Recharts charts updated to brand palette, focus rings/badges updated, WCAG AA validated
+- 🔄 **Phase 12: Chart Rebrand & Brand Polish** - Focus rings & badges done (1/2 plans complete); Recharts chart palette pending
 
 ---
 
@@ -193,10 +185,6 @@ Plans:
   4. Tangerina used on a white or Creme background anywhere in the app produces a lint/audit warning — contrast rules are codified before any component work begins
   5. A JS constant file exports all brand hex values so Recharts and other non-CSS consumers can use them without hardcoding
 **Plans**: 2 plans
-
-Plans:
-- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
 **UI hint**: yes
 
 Plans:
@@ -236,8 +224,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
+- [x] 12-01-PLAN.md — Focus rings & status badge WCAG polish (completed 2026-03-25, via Phase 11 extended scope)
+- [ ] 12-02-PLAN.md — Recharts brand palette + custom tooltip typography
 **UI hint**: yes
 
 ### Phase 13: CEFR English Proficiency Test Engine
@@ -285,9 +273,9 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 15-01-PLAN.md — Pipeline API (GET /api/ops/pipeline) + Advance API (POST /api/ops/enrollments/[id]/advance)
-- [ ] 15-02-PLAN.md — Kanban board UI: columns, draggable cards, DragOverlay, overdue indicators, debtor badges, advance dialog
-- [ ] 15-03-PLAN.md — "My students" URL filter verification + human-verify checkpoint
+- [x] 15-01-PLAN.md — Pipeline API (GET /api/ops/pipeline) + Advance API (POST /api/ops/enrollments/[id]/advance) (completed 2026-04-01)
+- [x] 15-02-PLAN.md — Kanban board UI: columns, draggable cards, DragOverlay, overdue indicators, debtor badges, advance dialog (completed 2026-04-01)
+- [x] 15-03-PLAN.md — "My students" URL filter verification + human-verify checkpoint (completed 2026-04-01)
 
 ### Phase 16: Student Profile
 **Goal**: An ops team member clicking on any student in the system sees a complete, chronological record of that student's journey — who they are, where they are in the program, every phase change, and every session
@@ -298,12 +286,13 @@ Plans:
   2. A phase timeline section shows every PhaseTransition in chronological order with the date, from-phase label, to-phase label, and the name of the user who triggered each transition
   3. A session log section shows all sessions for the student in reverse-chronological order — paginated at 20 per page — with session type, conductor name, date, and notes visible per row
   4. The log session form on the profile page accepts a controlled session type, conductor selection, date, and optional notes and adds the new session to the log without a full page reload
-**Plans**: 2 plans
+**Plans**: 3 plans
+**UI hint**: yes
 
 Plans:
-- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
-**UI hint**: yes
+- [x] 16-01-PLAN.md — Enrollment detail API + student profile page (header + timeline) (completed 2026-04-01)
+- [x] 16-02-PLAN.md — Session log + log session form + pipeline card links (completed 2026-04-01)
+- [x] 16-03-PLAN.md — Human verification checkpoint (completed 2026-04-01)
 
 ### Phase 17: Daily Action View + Coordinator Overview
 **Goal**: Each ops team member starts the day knowing exactly which students need attention, and the coordinator can see the state of the entire program in one view
@@ -318,8 +307,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03)
-- [ ] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04)
+- [x] 17-01-PLAN.md — SLA constants, sidebar nav, daily action API + page (DAILY-01/02/03) (completed 2026-04-01)
+- [x] 17-02-PLAN.md — Coordinator API + page with React Query polling (COORD-01/02/03/04) (completed 2026-04-01)
 **UI hint**: yes
 
 ### Phase 18: Client Surveys - Intake and NPS Forms
