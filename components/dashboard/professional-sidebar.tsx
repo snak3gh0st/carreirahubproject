@@ -16,6 +16,7 @@ import {
   HeadphonesIcon,
   GraduationCap,
   Sparkles,
+  PieChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { APP_VERSION } from "@/lib/changelog";
@@ -28,6 +29,7 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   roles: string[];
+  sectionBefore?: string;
 }
 
 const mainNavItems: NavItem[] = [
@@ -66,6 +68,13 @@ const mainNavItems: NavItem[] = [
     label: "Insights",
     icon: BarChart3,
     roles: ["ADMIN", "OPERATIONAL", "FINANCE"],
+  },
+  {
+    href: "/dashboard/bi",
+    label: "BI",
+    icon: PieChart,
+    roles: ["ADMIN"],
+    sectionBefore: "Intelligence",
   },
   {
     href: "/dashboard/financial",
@@ -147,22 +156,30 @@ export function ProfessionalSidebar({
           const active = isActive(item.href);
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
-                active
-                  ? "bg-brand-tangerina text-white font-semibold shadow-lg"
-                  : "text-white font-normal hover:bg-white/10"
+            <React.Fragment key={item.href}>
+              {item.sectionBefore && (
+                <div className="pt-3 pb-1 px-4">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">
+                    {item.sectionBefore}
+                  </p>
+                </div>
               )}
-            >
-              <Icon className={cn(
-                "h-5 w-5 transition-colors",
-                active ? "text-white" : "text-white/70 group-hover:text-white"
-              )} />
-              <span>{item.label}</span>
-            </Link>
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
+                  active
+                    ? "bg-brand-tangerina text-white font-semibold shadow-lg"
+                    : "text-white font-normal hover:bg-white/10"
+                )}
+              >
+                <Icon className={cn(
+                  "h-5 w-5 transition-colors",
+                  active ? "text-white" : "text-white/70 group-hover:text-white"
+                )} />
+                <span>{item.label}</span>
+              </Link>
+            </React.Fragment>
           );
         })}
         {aiNavItem && (
