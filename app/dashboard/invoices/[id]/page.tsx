@@ -347,7 +347,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
             />
 
             <PaymentStatusCard
-              invoice={{ id: invoice.id, invoiceNumber: invoice.invoiceNumber, status: invoice.status, amount: invoice.amount, dueDate: invoice.dueDate, paidAt: invoice.paidAt, amountPaid: invoice.amountPaid, paymentMethod: invoice.paymentMethod, lastPaymentReminderAt: invoice.lastPaymentReminderAt, paymentReminderCount: invoice.paymentReminderCount }}
+              invoice={{ id: invoice.id, invoiceNumber: invoice.invoiceNumber, status: invoice.status, amount: Number(invoice.amount), dueDate: invoice.dueDate, paidAt: invoice.paidAt, amountPaid: Number(invoice.amountPaid || 0), paymentMethod: invoice.paymentMethod, lastPaymentReminderAt: invoice.lastPaymentReminderAt, paymentReminderCount: invoice.paymentReminderCount }}
               contractStatus={invoice.contract?.status || null}
             />
 
