@@ -182,9 +182,9 @@ export default async function HubDashboardPage() {
       <FormsAndTestCards customerId={payload.customerId} lang={lang} />
 
       {/* Invoice List */}
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-gray-900">{t(lang, "dashboard.invoices")}</h2>
-        <span className="text-sm text-gray-400">{invoices.length} {t(lang, "dashboard.total")}</span>
+        <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">{invoices.length} {t(lang, "dashboard.total")}</span>
       </div>
 
       {invoices.length === 0 ? (
@@ -197,71 +197,142 @@ export default async function HubDashboardPage() {
           <p className="text-gray-500">{t(lang, "dashboard.noInvoicesYet")}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="divide-y divide-gray-50">
-            {invoices.map((inv) => {
-              const remaining = Number(inv.amount) - Number(inv.amountPaid || 0);
-              return (
-                <div
-                  key={inv.id}
-                  className="px-6 py-5 flex items-center justify-between hover:bg-gray-50/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4 min-w-0">
-                    {/* Status dot */}
-                    <div
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{
-                        backgroundColor:
-                          inv.status === "PAID"
-                            ? "#059669"
-                            : inv.status === "OVERDUE"
-                            ? "#DC2626"
-                            : inv.status === "SENT"
-                            ? BRAND_COLORS.TANGERINA
-                            : "#9CA3AF",
-                      }}
-                    />
-                    <div className="min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">
-                        #{inv.invoiceNumber || inv.id.slice(0, 8)}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {inv.status === InvoiceStatus.PAID && inv.paidAt
-                          ? `${t(lang, "dashboard.paid")} ${new Date(inv.paidAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}`
-                          : `${t(lang, "dashboard.nextDue")} ${new Date(inv.dueDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}`}
-                      </p>
-                    </div>
-                  </div>
+        <div className="space-y-3">
+          {/* Unpaid invoices first — prominent cards */}
+          {unpaid.length > 0 && (
+            <div className="space-y-3">
+              {unpaid.map((inv) => {
+                const remaining = Number(inv.amount) - Number(inv.amountPaid || 0);
+                const isOverdue = inv.status === InvoiceStatus.OVERDUE;
+                const daysUntilDue = Math.ceil((new Date(inv.dueDate).getTime() - Date.now()) / 86400000);
 
-                  <div className="flex items-center gap-5 flex-shrink-0">
-                    <StatusBadge status={inv.status} lang={lang} />
+                return (
+                  <div
+                    key={inv.id}
+                    className={`bg-white rounded-2xl shadow-sm border p-5 transition-all ${
+                      isOverdue ? 'border-red-200 bg-red-50/30' : 'border-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2.5 mb-1">
+                          <div
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: isOverdue ? '#DC2626' : BRAND_COLORS.TANGERINA }}
+                          />
+                          <p className="font-semibold text-gray-900 text-sm">
+                            #{inv.invoiceNumber || inv.id.slice(0, 8)}
+                          </p>
+                          <StatusBadge status={inv.status} lang={lang} />
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            {new Date(inv.dueDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                          {isOverdue && (
+                            <span className="text-red-600 font-semibold">
+                              {Math.abs(daysUntilDue)} {lang === "pt-BR" ? "dias atrasado" : "days overdue"}
+                            </span>
+                          )}
+                          {!isOverdue && daysUntilDue <= 7 && daysUntilDue > 0 && (
+                            <span className="text-amber-600 font-medium">
+                              {daysUntilDue} {lang === "pt-BR" ? "dias restantes" : "days left"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="text-right w-24">
-                      <p className="font-semibold text-gray-900 text-sm">
-                        ${Number(inv.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                      </p>
-                      {inv.status === InvoiceStatus.PARTIALLY_PAID && (
-                        <p className="text-xs text-orange-500 mt-0.5">
-                          ${remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })} {t(lang, "dashboard.left")}
+                      <div className="flex flex-col items-end gap-2.5 flex-shrink-0">
+                        <p className="text-lg font-bold text-gray-900">
+                          ${remaining.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </p>
-                      )}
+                        <Link
+                          href={`/hub/pay/${inv.id}`}
+                          className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 hover:shadow-md bg-brand-tangerina shadow-sm"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          {t(lang, "dashboard.payNow")}
+                        </Link>
+                      </div>
                     </div>
 
-                    {canPay(inv.status) ? (
-                      <Link
-                        href={`/hub/pay/${inv.id}`}
-                        className="px-4 py-2 rounded-lg text-center text-white text-xs font-semibold transition hover:opacity-90 whitespace-nowrap bg-brand-tangerina"
-                      >
-                        {t(lang, "dashboard.payNow")}
-                      </Link>
-                    ) : (
-                      <div className="w-[76px]" /> /* spacer to align columns */
+                    {/* Payment progress for partially paid */}
+                    {inv.status === InvoiceStatus.PARTIALLY_PAID && (
+                      <div className="mt-3 pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
+                          <span>{lang === "pt-BR" ? "Progresso do pagamento" : "Payment progress"}</span>
+                          <span className="font-medium">{Math.round((Number(inv.amountPaid || 0) / Number(inv.amount)) * 100)}%</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-brand-verde transition-all"
+                            style={{ width: `${(Number(inv.amountPaid || 0) / Number(inv.amount)) * 100}%` }}
+                          />
+                        </div>
+                      </div>
                     )}
                   </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Paid & other invoices — compact list */}
+          {invoices.filter(i => !payableStatuses.includes(i.status)).length > 0 && (
+            <>
+              {unpaid.length > 0 && (
+                <div className="flex items-center gap-3 pt-3">
+                  <div className="h-px flex-1 bg-gray-200" />
+                  <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                    {lang === "pt-BR" ? "Histórico" : "History"}
+                  </span>
+                  <div className="h-px flex-1 bg-gray-200" />
                 </div>
-              );
-            })}
-          </div>
+              )}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="divide-y divide-gray-50">
+                  {invoices.filter(i => !payableStatuses.includes(i.status)).map((inv) => (
+                    <div key={inv.id} className="px-5 py-4 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-emerald-50">
+                          <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-700 text-sm truncate">#{inv.invoiceNumber || inv.id.slice(0, 8)}</p>
+                          <p className="text-xs text-gray-400">
+                            {inv.paidAt
+                              ? `${t(lang, "dashboard.paid")} ${new Date(inv.paidAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric" })}`
+                              : new Date(inv.dueDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <StatusBadge status={inv.status} lang={lang} />
+                        <p className="font-semibold text-gray-700 text-sm tabular-nums w-20 text-right">
+                          ${Number(inv.amount).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                        </p>
+                        {inv.status === InvoiceStatus.PAID && (
+                          <Link
+                            href={`/hub/documents/receipt/${inv.id}`}
+                            className="text-xs font-medium text-brand-verde hover:underline"
+                          >
+                            {lang === "pt-BR" ? "Recibo" : "Receipt"} &rarr;
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
