@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { OpsSidebar } from "@/components/ops/ops-sidebar";
 
 export default async function OpsLayout({
@@ -8,15 +9,22 @@ export default async function OpsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const headersList = await headers();
+  const pathname = headersList.get("x-next-url") || headersList.get("x-invoke-path") || "";
+  const isLoginPage = pathname.includes("/ops/login");
+
   let session;
   try {
     session = await getServerSession(authOptions);
   } catch (error) {
     console.error("[OpsLayout] Session error:", error);
-    redirect("/ops/login");
+    if (!isLoginPage) redirect("/ops/login");
   }
 
   if (!session) {
+    if (isLoginPage) {
+      return <>{children}</>;
+    }
     redirect("/ops/login");
   }
 
@@ -24,7 +32,6 @@ export default async function OpsLayout({
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
 
-  // Double-check role at layout level (middleware also checks)
   if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
     redirect("/");
   }
