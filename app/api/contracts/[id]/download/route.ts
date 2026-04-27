@@ -80,7 +80,42 @@ export async function GET(
       });
     }
 
-    // Fallback to DocuSign URI
+    // Fallback: download directly from DocuSign API
+    if (contract.docusign_env_id) {
+      try {
+        const { docusignService } = await import('@/lib/services/docusign.service');
+        const pdfBuffer = await docusignService.downloadDocument(contract.docusign_env_id, 'combined');
+
+        // If S3 is configured, store for future requests
+        if (documentStorageService.isConfigured()) {
+          const s3Key = await documentStorageService.uploadSignedContract(
+            contract.docusign_env_id,
+            pdfBuffer,
+            { contractId: contract.id }
+          );
+          const presignedUrl = await documentStorageService.getPresignedUrl(s3Key);
+          const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+          await prisma.contract.update({
+            where: { id: contract.id },
+            data: { signedS3Key: s3Key, signedS3Url: presignedUrl, signedS3UrlExpiresAt: expiresAt },
+          });
+
+          return NextResponse.json({ downloadUrl: presignedUrl, expiresAt, source: 's3' });
+        }
+
+        // No S3 — return PDF directly
+        return new NextResponse(pdfBuffer, {
+          headers: {
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': `attachment; filename="contract-${contract.id.slice(0, 8)}.pdf"`,
+          },
+        });
+      } catch (dsError) {
+        console.error('[API_CONTRACT_DOWNLOAD] DocuSign download failed:', dsError);
+      }
+    }
+
     if (contract.signedUrl) {
       return NextResponse.json({
         downloadUrl: contract.signedUrl,
