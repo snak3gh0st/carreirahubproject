@@ -1188,19 +1188,29 @@ export class DocuSignService {
       const clientRoleName = await this.getPrimaryTemplateSignerRoleName(templateId);
       console.log(`[DOCUSIGN] Creating envelope from template ${templateId}${annexLabel} for program "${programLabel}"`);
 
+      // Use templateRoles to fill in ONLY the client placeholder.
+      // The template already has CarreiraUSA (Thais), Testemunha 1 (Nadya),
+      // and Testemunha 2 (Diego) pre-configured with correct names/emails.
+      // Sending all 4 signers via templateRoles or compositeTemplates creates
+      // DUPLICATE recipients because DocuSign adds them alongside the existing
+      // template recipients instead of merging.
       const envelopeDefinition = {
         status: 'sent',
         emailSubject: `CarreiraUSA - Contract for Signature (Invoice ${invoice.invoiceNumber || invoice.id})`,
         emailBlurb: 'Please review and sign the attached service agreement to proceed.',
         templateId: templateId,
-        templateRoles: buildTemplateEnvelopeSigners({
-          clientEmail: customer.email,
-          clientName: customer.name,
-          clientRoleName,
-          clientTextTabs: Object.entries(customFields).map(([label, value]) =>
-            buildTextTab(label, value)
-          ),
-        }),
+        templateRoles: [
+          {
+            email: customer.email,
+            name: customer.name,
+            roleName: clientRoleName,
+            tabs: {
+              textTabs: Object.entries(customFields).map(([label, value]) =>
+                buildTextTab(label, value)
+              ),
+            },
+          },
+        ],
         notification: {
           useAccountDefaults: 'false',
           reminders: {
@@ -1464,19 +1474,25 @@ export class DocuSignService {
       const clientRoleName = await this.getPrimaryTemplateSignerRoleName(sanitizedTemplateId);
       console.log(`[DOCUSIGN] Creating envelope from template ${sanitizedTemplateId}`);
 
+      // Use templateRoles to fill in ONLY the client placeholder.
+      // Template already has CarreiraUSA, Testemunha 1, Testemunha 2 pre-configured.
       const envelopeDefinition: any = {
         status: 'sent',
         emailSubject: 'CarreiraUSA - Contrato para Assinatura',
         emailBlurb: 'Por favor, revise e assine o contrato de prestação de serviços anexo.',
         templateId: sanitizedTemplateId,
-        templateRoles: buildTemplateEnvelopeSigners({
-          clientEmail: signerEmail,
-          clientName: signerName,
-          clientRoleName,
-          clientTextTabs: customFields
-            ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
-            : [],
-        }),
+        templateRoles: [
+          {
+            email: signerEmail,
+            name: signerName,
+            roleName: clientRoleName,
+            tabs: {
+              textTabs: customFields
+                ? Object.entries(customFields).map(([label, value]) => buildTextTab(label, value))
+                : [],
+            },
+          },
+        ],
         notification: {
           useAccountDefaults: 'false',
           reminders: {
