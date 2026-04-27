@@ -1,7 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
 import { OpsSidebar } from "@/components/ops/ops-sidebar";
 
 export default async function OpsLayout({
@@ -9,23 +8,12 @@ export default async function OpsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const headersList = await headers();
-  const pathname = headersList.get("x-next-url") || headersList.get("x-invoke-path") || "";
-  const isLoginPage = pathname.includes("/ops/login");
+  const session = await getServerSession(authOptions);
 
-  let session;
-  try {
-    session = await getServerSession(authOptions);
-  } catch (error) {
-    console.error("[OpsLayout] Session error:", error);
-    if (!isLoginPage) redirect("/ops/login");
-  }
-
+  // No session → middleware already redirects to /ops/login except for the login page itself.
+  // Render children without sidebar so the login page renders correctly.
   if (!session) {
-    if (isLoginPage) {
-      return <>{children}</>;
-    }
-    redirect("/ops/login");
+    return <>{children}</>;
   }
 
   const userRole = (session.user as any).role;
@@ -33,7 +21,7 @@ export default async function OpsLayout({
   const userEmail = (session.user as any).email || "";
 
   if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
-    redirect("/");
+    redirect("/?error=access_denied");
   }
 
   return (

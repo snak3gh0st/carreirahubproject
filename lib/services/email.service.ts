@@ -1921,6 +1921,62 @@ export class EmailService {
       {}
     );
   }
+
+  // =========================================================================
+  // Hub — Form assigned notification
+  // =========================================================================
+
+  async sendHubFormAssigned(
+    customer: { id: string; email: string; name: string },
+    formTitle: string,
+    tempPassword?: string
+  ): Promise<void> {
+    const portalUrl = `${APP_URL}/hub/login`;
+    const firstName = esc(customer.name.split(' ')[0]);
+
+    const credentialsBlock = tempPassword
+      ? `
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:8px; padding:18px; margin:18px 0;">
+        <div style="font-size:12px; color:${BRAND_COLORS.textMuted}; text-transform:uppercase; font-weight:bold; letter-spacing:0.5px; margin-bottom:10px;">Seu acesso ao portal</div>
+        <div style="font-size:15px; margin-bottom:6px;"><strong>Portal:</strong> <a href="${esc(portalUrl)}" style="color:${BRAND_COLORS.verde};">${esc(portalUrl)}</a></div>
+        <div style="font-size:15px; margin-bottom:6px;"><strong>E-mail:</strong> ${esc(customer.email)}</div>
+        <div style="font-size:15px;"><strong>Senha temporária:</strong> <span style="font-family:monospace; background:${BRAND_COLORS.white}; padding:3px 8px; border-radius:4px; border:1px solid ${BRAND_COLORS.cafeLeite};">${esc(tempPassword)}</span></div>
+      </div>
+      <p style="font-size:13px; color:${BRAND_COLORS.textMuted};">Você será solicitado(a) a criar uma senha definitiva no primeiro acesso.</p>`
+      : '';
+
+    const bodyHtml = `
+      <p>Olá, ${firstName}!</p>
+      <p>Um novo formulário foi atribuído à sua conta e está aguardando seu preenchimento:</p>
+      <div style="background:${BRAND_COLORS.creme}; border-left:4px solid ${BRAND_COLORS.tangerina}; border-radius:0 8px 8px 0; padding:14px 18px; margin:18px 0;">
+        <div style="font-size:16px; font-weight:bold; color:${BRAND_COLORS.verde};">${esc(formTitle)}</div>
+        <div style="font-size:13px; color:${BRAND_COLORS.textMuted}; margin-top:4px;">Acesse o hub para preencher</div>
+      </div>
+      ${credentialsBlock}
+      <p style="font-size:13px; color:${BRAND_COLORS.textMuted};">Dúvidas? Entre em contato com nossa equipe.</p>
+    `;
+
+    const subject = tempPassword
+      ? `Carreira U.S.A. — Sua conta está pronta e há um formulário aguardando`
+      : `Carreira U.S.A. — Novo formulário para preencher`;
+
+    const html = renderBaseLayout({
+      title: 'Formulário aguardando preenchimento',
+      preheader: subject,
+      bodyHtml,
+      ctaLabel: 'Acessar portal',
+      ctaUrl: portalUrl,
+      footerNote: 'Não responda este e-mail',
+    });
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      html,
+      NotificationType.HUB_WELCOME,
+      { customerId: customer.id }
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

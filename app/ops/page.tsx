@@ -34,7 +34,9 @@ export default async function OpsHomePage() {
     prisma.mentorshipEnrollment.count({
       where: {
         status: "ACTIVE",
-        slaDeadline: { lte: new Date(Date.now() + 3 * 86400000) },
+        sessions: {
+          none: { sessionDate: { gte: new Date(Date.now() - 14 * 86400000) } },
+        },
       },
     }),
     prisma.mentorshipEnrollment.findMany({
@@ -75,7 +77,7 @@ export default async function OpsHomePage() {
               <p className="font-display font-semibold text-red-700">
                 {dailyFlags} aluno{dailyFlags > 1 ? "s" : ""} precisa{dailyFlags > 1 ? "m" : ""} de atenção
               </p>
-              <p className="text-xs text-red-600">SLA próximo do vencimento ou sem sessão recente</p>
+              <p className="text-xs text-red-600">Sem sessão nos últimos 14 dias</p>
             </div>
             <ArrowRight className="h-5 w-5 text-red-400" />
           </div>

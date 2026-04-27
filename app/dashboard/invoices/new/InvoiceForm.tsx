@@ -1004,14 +1004,36 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   <p className="text-xs text-red-600 mt-2">Parcelamento indisponível — parcela mínima $300 (valor total: ${total.toFixed(2)})</p>
                 )}
               </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Entrada (USD)</label>
+                  <input
+                    type="number" step="0.01" min="0" max={total}
+                    value={form.entryAmount}
+                    onChange={(e) => handleChange("entryAmount", e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas <span className="text-gray-400 font-normal">(máx. 2)</span></label>
+                  <input
+                    type="number" min="1" max="2"
+                    value={form.installments}
+                    onChange={(e) => handleChange("installments", e.target.value)}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="1"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
-          {/* MENTORIA_PRESET — 3 preset options */}
+          {/* MENTORIA_PRESET — 3 preset options + manual fields always visible */}
           {activePaymentRule === "MENTORIA_PRESET" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Opção de pagamento</label>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Atalhos de pagamento</label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {(
                     [
@@ -1044,28 +1066,28 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   ))}
                 </div>
               </div>
-              {mentoriaPreset && mentoriaPreset !== "avista" && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Entrada (USD)</label>
-                    <input
-                      type="number" step="0.01" min="0" max={total}
-                      value={form.entryAmount}
-                      onChange={(e) => { setMentoriaPreset(null); handleChange("entryAmount", e.target.value); }}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas</label>
-                    <input
-                      type="number" min="1" max="6"
-                      value={form.installments}
-                      onChange={(e) => { setMentoriaPreset(null); handleChange("installments", e.target.value); }}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Entrada (USD)</label>
+                  <input
+                    type="number" step="0.01" min="0" max={total}
+                    value={form.entryAmount}
+                    onChange={(e) => { setMentoriaPreset(null); handleChange("entryAmount", e.target.value); }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00 (opcional)"
+                  />
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas <span className="text-gray-400 font-normal">(máx. 6)</span></label>
+                  <input
+                    type="number" min="1" max="6"
+                    value={form.installments}
+                    onChange={(e) => { setMentoriaPreset(null); handleChange("installments", e.target.value); }}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex: 3"
+                  />
+                </div>
+              </div>
             </div>
           )}
 

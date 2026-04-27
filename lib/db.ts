@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaExitHandlerRegistered?: boolean;
 };
 
 /**
@@ -61,8 +62,9 @@ if (!globalForPrisma.prisma) {
   globalForPrisma.prisma = prisma;
 }
 
-// Cleanup ao encerrar
-if (typeof window === "undefined") {
+// Register the disconnect handler only once across hot reloads
+if (typeof window === "undefined" && !globalForPrisma.prismaExitHandlerRegistered) {
+  globalForPrisma.prismaExitHandlerRegistered = true;
   process.on("beforeExit", async () => {
     await prisma.$disconnect();
   });

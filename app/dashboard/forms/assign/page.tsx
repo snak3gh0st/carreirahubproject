@@ -18,7 +18,6 @@ export default async function AssignFormPage({
   const customers = await prisma.customer.findMany({
     select: { id: true, name: true, email: true },
     orderBy: { name: "asc" },
-    take: 500,
   });
 
   const templateOptions = Object.entries(FORM_TEMPLATES).map(
