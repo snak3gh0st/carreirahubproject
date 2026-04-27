@@ -1437,9 +1437,10 @@ export class QuickBooksSyncService {
 
       const sinceDate = lastSyncRow?.createdAt
         ? lastSyncRow.createdAt
-        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        : new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
-      const maxPast = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000);
+      // Cap at 3 days for cron reliability — catches up over multiple runs
+      const maxPast = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
       const changedSince = sinceDate < maxPast ? maxPast : sinceDate;
 
       const sinceIso = changedSince.toISOString();
@@ -1535,8 +1536,9 @@ export class QuickBooksSyncService {
       }
       result.customers = custResult;
 
-      // --- Process changed invoices ---
+      // --- Process changed invoices (skip no-op updates) ---
       const invResult = { total: changedInvoices.length, synced: 0, updated: 0, errors: 0 };
+      let invSkipped = 0;
       for (const qbInvoice of changedInvoices) {
         try {
           const existing = invoiceByQbId.get(qbInvoice.Id);
@@ -1545,6 +1547,10 @@ export class QuickBooksSyncService {
           const totalAmount = qbInvoice.TotalAmt || 0;
           const balance = qbInvoice.Balance ?? totalAmount;
           const qbStatus = balance === 0 ? "PAID" : balance === totalAmount ? "SENT" : "OVERDUE";
+
+          // Skip if status hasn't changed — most CDC entries are metadata-only updates
+          if (existing.status === qbStatus) { invSkipped++; continue; }
+
           const amountPaid = balance === 0 ? totalAmount : totalAmount - balance;
           const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
 
@@ -1570,6 +1576,7 @@ export class QuickBooksSyncService {
           invResult.updated++;
         } catch { invResult.errors++; }
       }
+      if (invSkipped > 0) console.log(`[QB CDC Sync] Skipped ${invSkipped} invoices (status unchanged)`);
       result.invoices = invResult;
 
       // --- Void deleted invoices ---
