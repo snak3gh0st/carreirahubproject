@@ -150,6 +150,36 @@ export interface FinanceDigestData {
   staleInvoices: { count: number; amount: number };
 }
 
+export interface AdminDailyDigestData {
+  date: string;
+  today: { revenueToday: number; dealsWonToday: number; leadsToday: number };
+  week: { dealsWonWeek: number; leadsWeek: number };
+  financial: {
+    mrr: number;
+    totalAR: number;
+    delinquencyRate: number;
+    overdueAmount: number;
+    overdueCount: number;
+    monthlyTrend: Array<{ label: string; revenue: number; invoiced: number; newInvoices: number; collectionRate: number }>;
+    annualTrend: Array<{ label: string; revenue: number; invoiced: number; dealsWon: number; newLeads: number }>;
+    arAging: Array<{ label: string; count: number; amount: number }>;
+    topOverdue: Array<{ customer: string; invoiceNumber: string; amount: number; daysOverdue: number }>;
+    paymentMethods: Array<{ method: string; amount: number }>;
+  };
+  commercial: {
+    monthlyTrend: Array<{ label: string; dealsWon: number; wonValue: number; newLeads: number; qualified: number }>;
+    topClosers: Array<{ name: string; won: number; value: number }>;
+    leadFunnel: Array<{ status: string; count: number }>;
+    leadSources: Array<{ source: string; count: number }>;
+    avgQualificationScore: number;
+  };
+  operations: {
+    activeStudents: number;
+    avgNegotiationDays: number;
+    monthlyEnrollments: Array<{ label: string; total: number; pass: number; advanced: number }>;
+  };
+}
+
 export interface AdminDigestData {
   weekRange: string;
   mrr: { current: number; deltaWeek: number; deltaPercent: number };
@@ -209,6 +239,19 @@ function tableHead(headers: string[]): string {
 
 function dataTable(headers: string[], rows: string[]): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; margin:16px 0; background:${BRAND_COLORS.white}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:6px; overflow:hidden;">${tableHead(headers)}<tbody>${rows.join('')}</tbody></table>`;
+}
+
+function tableHeadRaw(headers: string[]): string {
+  return `<thead><tr>${headers
+    .map(
+      (h) =>
+        `<th align="left" style="padding:10px 12px; background:${BRAND_COLORS.creme}; border-bottom:2px solid ${BRAND_COLORS.cafeLeite}; font-size:13px; color:${BRAND_COLORS.verde}; text-transform:uppercase; letter-spacing:0.5px;">${h}</th>`
+    )
+    .join('')}</tr></thead>`;
+}
+
+function dataTableRaw(headers: string[], rows: string[]): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse; margin:16px 0; background:${BRAND_COLORS.white}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:6px; overflow:hidden;">${tableHeadRaw(headers)}<tbody>${rows.join('')}</tbody></table>`;
 }
 
 function calloutBox(content: string, tone: 'info' | 'warn' | 'error' = 'info'): string {
@@ -1658,6 +1701,225 @@ export class EmailService {
       ctaUrl: resetUrl,
       footerNote: 'Do not reply to this email',
     });
+  }
+
+  async sendAdminDailyDigest(user: { name?: string | null; email: string }, data: AdminDailyDigestData): Promise<void> {
+    const subject = `Daily BI Drop — ${data.date}`;
+
+    const $$ = (n: number) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const pct = (n: number) => `${Number(n || 0).toFixed(1)}%`;
+
+    // Only show trend arrows if current month >= day 25 (month is near complete)
+    const today = new Date();
+    const monthIsComplete = today.getDate() >= 25;
+    const trend = (curr: number, prev: number) => {
+      if (!prev || !monthIsComplete) return '';
+      const d = ((curr - prev) / prev) * 100;
+      const color = d >= 0 ? BRAND_COLORS.verde : ERROR_RED;
+      const arrow = d >= 0 ? '▲' : '▼';
+      return `<span style="font-size:11px;color:${color};margin-left:6px;">${arrow} ${Math.abs(d).toFixed(1)}%</span>`;
+    };
+
+    const m = data.financial.monthlyTrend; // [M-2, M-1, M0]
+    const cm = data.commercial.monthlyTrend;
+    // Current month label shows MTD note when partial
+    const currLabel = monthIsComplete
+      ? `<strong>${m[2].label}</strong>`
+      : `<strong>${m[2].label} <span style="font-size:10px;font-weight:normal;">(MTD)</span></strong>`;
+
+    // ── Today snapshot strip ──────────────────────────────────────────────────
+    const todayStrip = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
+        <tr>
+          ${[
+            { label: 'Revenue today', val: $$(data.today.revenueToday), color: BRAND_COLORS.verde },
+            { label: 'Deals won today', val: String(data.today.dealsWonToday), color: data.today.dealsWonToday > 0 ? BRAND_COLORS.verde : BRAND_COLORS.textMuted },
+            { label: 'New leads today', val: String(data.today.leadsToday), color: BRAND_COLORS.textDark },
+            { label: 'MRR', val: $$(data.financial.mrr), color: BRAND_COLORS.textDark },
+          ].map(({ label, val, color }) => `
+            <td width="25%" style="padding:0 6px 0 0;">
+              <div style="background:${BRAND_COLORS.creme};border:1px solid ${BRAND_COLORS.cafeLeite};border-radius:6px;padding:10px;text-align:center;">
+                <div style="font-size:11px;color:${BRAND_COLORS.textMuted};margin-bottom:4px;">${label}</div>
+                <div style="font-size:18px;font-weight:bold;color:${color};">${val}</div>
+              </div>
+            </td>
+          `).join('')}
+        </tr>
+      </table>`;
+
+    // ── Financial monthly trend table ─────────────────────────────────────────
+    const finTrend = `
+      ${sectionTitle('Financial — Monthly Trend')}
+      ${dataTableRaw(
+        ['', m[0].label, m[1].label, currLabel],
+        [
+          tableRow(['Revenue collected', $$(m[0].revenue), $$(m[1].revenue), `<strong>${$$(m[2].revenue)}</strong>${trend(m[2].revenue, m[1].revenue)}`]),
+          tableRow(['Invoiced', $$(m[0].invoiced), $$(m[1].invoiced), `<strong>${$$(m[2].invoiced)}</strong>${trend(m[2].invoiced, m[1].invoiced)}`]),
+          tableRow(['# New invoices', String(m[0].newInvoices), String(m[1].newInvoices), `<strong>${m[2].newInvoices}</strong>`]),
+          tableRow(['Collection Rate', pct(m[0].collectionRate), pct(m[1].collectionRate), `<strong>${pct(m[2].collectionRate)}</strong>${trend(m[2].collectionRate, m[1].collectionRate)}`]),
+        ]
+      )}`;
+
+    // ── Annual trend (trailing 12 months) ────────────────────────────────────
+    const annTrend = `
+      ${sectionTitle('Annual Trend — Trailing 12 Months')}
+      ${dataTableRaw(
+        ['Month', 'Revenue Collected', 'Invoiced', 'Deals Won', 'New Leads'],
+        data.financial.annualTrend.map((row, i) => {
+          const isCurrentMonth = i === data.financial.annualTrend.length - 1;
+          const label = isCurrentMonth && !monthIsComplete
+            ? `<strong>${row.label} <span style="font-size:10px;font-weight:normal;">(MTD)</span></strong>`
+            : isCurrentMonth ? `<strong>${row.label}</strong>` : row.label;
+          return tableRow([
+            label,
+            isCurrentMonth ? `<strong>${$$(row.revenue)}</strong>` : $$(row.revenue),
+            isCurrentMonth ? `<strong>${$$(row.invoiced)}</strong>` : $$(row.invoiced),
+            isCurrentMonth ? `<strong>${row.dealsWon}</strong>` : String(row.dealsWon),
+            isCurrentMonth ? `<strong>${row.newLeads}</strong>` : String(row.newLeads),
+          ]);
+        })
+      )}`;
+
+    // ── AR Aging ──────────────────────────────────────────────────────────────
+    const deliqColor = data.financial.delinquencyRate > 25 ? ERROR_RED : data.financial.delinquencyRate > 12 ? '#B45309' : BRAND_COLORS.verde;
+    const arAging = `
+      ${sectionTitle('AR Aging (Current Open Invoices)')}
+      <p style="font-size:13px;margin:0 0 8px 0;">
+        Total AR: <strong>${$$(data.financial.totalAR)}</strong> &nbsp;|&nbsp;
+        Delinquency Rate: <strong style="color:${deliqColor};">${pct(data.financial.delinquencyRate)}</strong> &nbsp;|&nbsp;
+        Overdue: <strong style="color:${ERROR_RED};">${$$(data.financial.overdueAmount)}</strong>
+      </p>
+      ${dataTable(
+        ['Aging Bucket', 'Invoices', 'Amount'],
+        data.financial.arAging.map(b => {
+          const pctOfTotal = data.financial.totalAR > 0 ? ((b.amount / data.financial.totalAR) * 100).toFixed(0) : '0';
+          const amtColor = b.label.includes('Current') ? BRAND_COLORS.verde : b.label.includes('90+') ? ERROR_RED : BRAND_COLORS.textDark;
+          return tableRow([esc(b.label), String(b.count), `<span style="color:${amtColor};font-weight:bold;">${$$(b.amount)}</span> <span style="font-size:11px;color:${BRAND_COLORS.textMuted};">(${pctOfTotal}%)</span>`]);
+        })
+      )}`;
+
+    // ── Top overdue ───────────────────────────────────────────────────────────
+    const topOverdueBlock = data.financial.topOverdue.length > 0 ? `
+      ${sectionTitle('Top Overdue Invoices')}
+      ${dataTable(
+        ['Customer', 'Invoice #', 'Amount', 'Days overdue'],
+        data.financial.topOverdue.map(o =>
+          tableRow([esc(o.customer), esc(o.invoiceNumber), `<strong style="color:${ERROR_RED};">${$$(o.amount)}</strong>`, `${o.daysOverdue}d`])
+        )
+      )}` : '';
+
+    // ── Payment methods ───────────────────────────────────────────────────────
+    const pmBlock = data.financial.paymentMethods.length > 0 ? `
+      ${sectionTitle('Payment Methods (This Month)')}
+      ${dataTable(
+        ['Method', 'Amount'],
+        data.financial.paymentMethods.map(pm =>
+          tableRow([esc(pm.method || 'Other'), $$(pm.amount)])
+        )
+      )}` : '';
+
+    // ── Commercial monthly trend ──────────────────────────────────────────────
+    const commTrend = `
+      ${sectionTitle('Commercial — Monthly Trend')}
+      ${dataTableRaw(
+        ['', cm[0].label, cm[1].label, currLabel],
+        [
+          tableRow(['Deals WON', String(cm[0].dealsWon), String(cm[1].dealsWon), `<strong>${cm[2].dealsWon}</strong>${trend(cm[2].dealsWon, cm[1].dealsWon)}`]),
+          tableRow(['Revenue won', $$(cm[0].wonValue), $$(cm[1].wonValue), `<strong>${$$(cm[2].wonValue)}</strong>${trend(cm[2].wonValue, cm[1].wonValue)}`]),
+          tableRow(['New leads', String(cm[0].newLeads), String(cm[1].newLeads), `<strong>${cm[2].newLeads}</strong>${trend(cm[2].newLeads, cm[1].newLeads)}`]),
+          tableRow(['Qualified leads', String(cm[0].qualified), String(cm[1].qualified), `<strong>${cm[2].qualified}</strong>${trend(cm[2].qualified, cm[1].qualified)}`]),
+        ]
+      )}
+      <p style="font-size:12px;margin:4px 0 0;color:${BRAND_COLORS.textMuted};">
+        This week: ${data.week.dealsWonWeek} deals won · ${data.week.leadsWeek} new leads
+      </p>`;
+
+    // ── Top closers ───────────────────────────────────────────────────────────
+    const closersBlock = data.commercial.topClosers.length > 0 ? `
+      ${sectionTitle(`Top Closers — ${data.financial.monthlyTrend[2].label}`)}
+      ${dataTable(
+        ['#', 'Closer', 'Deals', 'Revenue'],
+        data.commercial.topClosers.map((c, i) =>
+          tableRow([`${i + 1}`, esc(c.name), String(c.won), `<strong>${$$(c.value)}</strong>`])
+        )
+      )}` : '';
+
+    // ── Lead funnel ───────────────────────────────────────────────────────────
+    const funnelColors: Record<string, string> = {
+      NEW: '#93c5fd', QUALIFYING: '#60a5fa', QUALIFIED: BRAND_COLORS.verde,
+      UNQUALIFIED: '#f97316', CONVERTED: '#16a34a', LOST: ERROR_RED,
+    };
+    const funnelTotal = data.commercial.leadFunnel.find(f => f.status === 'NEW')?.count || 1;
+    const funnelBlock = `
+      ${sectionTitle(`Lead Funnel — ${data.financial.monthlyTrend[2].label} · Avg score ${data.commercial.avgQualificationScore}`)}
+      ${dataTable(
+        ['Stage', 'Count', '% of new'],
+        data.commercial.leadFunnel.map(f => {
+          const color = funnelColors[f.status] ?? BRAND_COLORS.textMuted;
+          return tableRow([
+            `<span style="color:${color};font-weight:bold;">${f.status}</span>`,
+            String(f.count),
+            `${((f.count / funnelTotal) * 100).toFixed(0)}%`,
+          ]);
+        })
+      )}`;
+
+    // ── Lead sources ──────────────────────────────────────────────────────────
+    const sourcesBlock = data.commercial.leadSources.length > 0 ? `
+      ${sectionTitle('Leads by Source (This Month)')}
+      ${dataTable(
+        ['Source', 'Leads'],
+        data.commercial.leadSources.map(s => tableRow([esc(s.source), String(s.count)]))
+      )}` : '';
+
+    // ── Operations ────────────────────────────────────────────────────────────
+    const em = data.operations.monthlyEnrollments;
+    const opsBlock = `
+      ${sectionTitle('Operations — Enrollments by Month')}
+      ${dataTable(
+        ['', em[0].label, em[1].label, `<strong>${em[2].label}</strong>`],
+        [
+          tableRow(['Total enrolled', String(em[0].total), String(em[1].total), `<strong>${em[2].total}</strong>${trend(em[2].total, em[1].total)}`]),
+          tableRow(['PASS', String(em[0].pass), String(em[1].pass), `<strong>${em[2].pass}</strong>`]),
+          tableRow(['ADVANCED', String(em[0].advanced), String(em[1].advanced), `<strong>${em[2].advanced}</strong>`]),
+        ]
+      )}
+      <p style="font-size:13px;margin:8px 0 0;color:${BRAND_COLORS.textMuted};">
+        Active students: <strong style="color:${BRAND_COLORS.verde};">${data.operations.activeStudents}</strong> &nbsp;|&nbsp;
+        Avg negotiation: <strong>${data.operations.avgNegotiationDays} days</strong>
+      </p>`;
+
+    const bodyHtml = `
+      <p style="margin:0 0 16px;">Hi <strong>${esc(user.name || 'Admin')}</strong>, here is your end-of-day snapshot for <strong>${esc(data.date)}</strong>.</p>
+      ${todayStrip}
+      ${finTrend}
+      ${annTrend}
+      ${arAging}
+      ${topOverdueBlock}
+      ${pmBlock}
+      ${commTrend}
+      ${closersBlock}
+      ${funnelBlock}
+      ${sourcesBlock}
+      ${opsBlock}
+    `;
+
+    const html = renderBaseLayout({
+      title: 'Daily BI & Financial Drop',
+      preheader: `${data.date} · MRR ${$$(data.financial.mrr)} · Delinq. ${pct(data.financial.delinquencyRate)} · Deals this week: ${data.week.dealsWonWeek}`,
+      bodyHtml,
+      ctaLabel: 'Open BI Dashboard',
+      ctaUrl: `${APP_URL}/dashboard/bi`,
+      footerNote: `Automated daily digest · ${data.date}`,
+    });
+
+    await this.sendEmailWithTracking(
+      user.email,
+      subject,
+      html,
+      NotificationType.ADMIN_WEEKLY_DIGEST,
+      {}
+    );
   }
 }
 

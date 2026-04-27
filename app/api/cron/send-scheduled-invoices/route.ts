@@ -66,12 +66,17 @@ export async function GET(request: NextRequest) {
       console.log(`[CRON] Auto-voided ${autoVoidedGhostInvoices.count} ghost invoices previously confirmed by QuickBooks as Object Not Found`);
     }
 
+    // Find invoices that need sending: either already in QB (SENT, no email) or
+    // DRAFT installments that need to be created in QB first.
     const pendingInvoices = await prisma.invoice.findMany({
       where: {
-        quickbooks_invoice_id: { not: null }, // Already in QuickBooks
-        emailSentAt: null,                    // Not yet emailed to customer
-        status: { notIn: ['PAID', 'VOID'] },  // Skip already-closed invoices
-        emailSendAttempts: { lt: MAX_SEND_ATTEMPTS }, // Skip ghost invoices that keep failing
+        emailSentAt: null,
+        status: { notIn: ['PAID', 'VOID'] },
+        emailSendAttempts: { lt: MAX_SEND_ATTEMPTS },
+        OR: [
+          { quickbooks_invoice_id: { not: null } }, // Already in QB, just needs email
+          { status: 'DRAFT', quickbooks_invoice_id: null }, // DRAFT installment, needs QB creation + email
+        ],
       },
       include: {
         customer: true,
@@ -79,7 +84,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[CRON] Found ${pendingInvoices.length} QB-synced invoices not yet emailed (excluding invoices with ${MAX_SEND_ATTEMPTS}+ failed attempts)`);
+    console.log(`[CRON] Found ${pendingInvoices.length} invoices pending (QB-synced or DRAFT installments)`);
 
     let sent = 0;
     let skipped = 0;
@@ -110,8 +115,84 @@ export async function GET(request: NextRequest) {
         const installmentMeta = invoice.installments as any;
         const isInstallment = !!installmentMeta?.seriesId;
 
-        // Only send if within 5 days of due date (or already past due)
-        if (daysUntilDue <= 5) {
+        // Only process if within 7 days of due date (or already past due)
+        if (daysUntilDue <= 7) {
+          // If DRAFT with no QB invoice, create it in QB first (7 days before due)
+          if (!invoice.quickbooks_invoice_id && invoice.status === 'DRAFT') {
+            if (daysUntilDue > 5) {
+              // 7-6 days out: create in QB but don't send email yet
+              console.log(`[CRON] Creating QB invoice for DRAFT installment ${invoice.id} (due in ${daysUntilDue} days)`);
+              await quickbooksService.initialize();
+
+              const qbCustomer = await quickbooksService.getOrCreateCustomer({
+                email: invoice.customer.email,
+                name: invoice.customer.name,
+                phone: invoice.customer.phone || undefined,
+              });
+
+              const lineItems = (invoice.lineItems as any[]) || [];
+              const qbInvoice = await quickbooksService.createInvoiceWithBillEmail({
+                customerId: qbCustomer.Id,
+                customerEmail: invoice.customer.email,
+                dueDate: invoice.dueDate,
+                docNumber: invoice.invoiceNumber || undefined,
+                emailStatus: "NotSet",
+                lineItems: lineItems.map((item: any) => ({
+                  description: item.description || "Installment",
+                  amount: item.amount || Number(invoice.amount),
+                  itemRef: item.serviceItemId,
+                })),
+              });
+
+              await prisma.invoice.update({
+                where: { id: invoice.id },
+                data: {
+                  quickbooks_invoice_id: qbInvoice.Id,
+                  status: 'SENT',
+                },
+              });
+
+              console.log(`[CRON] ✓ DRAFT invoice ${invoice.id} created in QB as ${qbInvoice.Id}`);
+              skipped++; // will send email on next run (≤5 days)
+              continue;
+            }
+            // ≤5 days: create in QB AND send immediately below
+            console.log(`[CRON] Creating QB invoice + sending for DRAFT installment ${invoice.id} (due in ${daysUntilDue} days)`);
+            await quickbooksService.initialize();
+
+            const qbCustomer = await quickbooksService.getOrCreateCustomer({
+              email: invoice.customer.email,
+              name: invoice.customer.name,
+              phone: invoice.customer.phone || undefined,
+            });
+
+            const lineItems = (invoice.lineItems as any[]) || [];
+            const qbInvoice = await quickbooksService.createInvoiceWithBillEmail({
+              customerId: qbCustomer.Id,
+              customerEmail: invoice.customer.email,
+              dueDate: invoice.dueDate,
+              docNumber: invoice.invoiceNumber || undefined,
+              emailStatus: "NeedToSend",
+              lineItems: lineItems.map((item: any) => ({
+                description: item.description || "Installment",
+                amount: item.amount || Number(invoice.amount),
+                itemRef: item.serviceItemId,
+              })),
+            });
+
+            await prisma.invoice.update({
+              where: { id: invoice.id },
+              data: {
+                quickbooks_invoice_id: qbInvoice.Id,
+                status: 'SENT',
+              },
+            });
+
+            // Update local reference for the send step below
+            (invoice as any).quickbooks_invoice_id = qbInvoice.Id;
+            console.log(`[CRON] ✓ DRAFT invoice ${invoice.id} created in QB as ${qbInvoice.Id}, proceeding to send`);
+          }
+
           console.log(`[CRON] Sending email for invoice ${invoice.id} (QB: ${invoice.quickbooks_invoice_id}, due in ${daysUntilDue} days, isInstallment: ${isInstallment})`);
 
           // Initialize QB service

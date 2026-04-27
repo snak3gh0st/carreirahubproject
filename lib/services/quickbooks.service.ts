@@ -1142,6 +1142,109 @@ export class QuickbooksService {
   }
 
   /**
+   * Create a RecurringTransaction (automated invoice schedule) in QuickBooks.
+   * QB auto-creates each invoice on the scheduled date — only then does it hit AR
+   * and become visible to the customer in the payment portal.
+   */
+  async createRecurringInvoice(data: {
+    templateName: string;
+    customerId: string;
+    customerEmail: string;
+    installmentAmount: number;
+    installmentCount: number;
+    startDate: Date;       // due date of the FIRST recurring invoice
+    itemRef: string;
+    serviceName: string;
+    billingAddress?: {
+      line1?: string;
+      city?: string;
+      state?: string;
+      postalCode?: string;
+      country?: string;
+    };
+  }): Promise<any> {
+    const startStr = data.startDate.toISOString().split("T")[0];
+    const endDate = new Date(data.startDate);
+    endDate.setMonth(endDate.getMonth() + data.installmentCount - 1);
+    const endStr = endDate.toISOString().split("T")[0];
+
+    // QB RecurringTransaction: { Invoice: { RecurringInfo: {...}, ...invoiceFields } }
+    // No outer "RecurringTransaction" wrapper — the endpoint path identifies it.
+    const invoiceTemplate: any = {
+      RecurringInfo: {
+        Active: true,
+        Name: data.templateName,
+        RecurType: "Automated",
+        ScheduleInfo: {
+          StartDate: startStr,
+          NextDate: startStr,
+          IntervalType: "Monthly",
+          NumInterval: 1,
+          DayOfMonth: data.startDate.getDate(),
+          MaxOccurrences: data.installmentCount,
+        },
+      },
+      AutoDocNumber: true,
+      CustomerRef: { value: data.customerId },
+      BillEmail: { Address: data.customerEmail },
+      AllowOnlineCreditCardPayment: true,
+      AllowOnlineACHPayment: true,
+      Line: [
+        {
+          Amount: data.installmentAmount,
+          DetailType: "SalesItemLineDetail",
+          SalesItemLineDetail: {
+            ItemRef: { value: data.itemRef },
+          },
+          Description: `${data.serviceName} - Installment`,
+        },
+      ],
+    };
+
+    if (data.billingAddress) {
+      invoiceTemplate.BillAddr = {
+        Line1: data.billingAddress.line1 || "",
+        City: data.billingAddress.city || "",
+        CountrySubDivisionCode: data.billingAddress.state || "",
+        PostalCode: data.billingAddress.postalCode || "",
+        Country: data.billingAddress.country || "USA",
+      };
+    }
+
+    console.log(`[QuickBooks] Creating RecurringTransaction: ${data.templateName}`, {
+      installments: data.installmentCount,
+      amount: data.installmentAmount,
+      start: startStr,
+      end: endStr,
+    });
+
+    const recurringData = { Invoice: invoiceTemplate };
+
+    try {
+      const result = await this.request("/recurringtransaction", {
+        method: "POST",
+        body: JSON.stringify(recurringData),
+      });
+
+      const recurring = result.RecurringTransaction || result.Invoice || result;
+      const templateId = recurring?.Id || recurring?.Invoice?.Id;
+      console.log(`[QuickBooks] ✓ RecurringTransaction created: ${templateId}`);
+      return { ...recurring, Id: templateId };
+    } catch (error: any) {
+      console.error(`[QuickBooks] RecurringTransaction creation failed:`, error.message);
+      if (error.responseText) {
+        try {
+          const errorBody = JSON.parse(error.responseText);
+          console.error(`[QuickBooks] QB Error:`, JSON.stringify(errorBody, null, 2));
+        } catch {
+          console.error(`[QuickBooks] Raw error:`, error.responseText);
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Update invoice to set/change BillEmail
    * Requires fetching invoice first to get SyncToken
    */
@@ -1935,14 +2038,15 @@ export class QuickbooksService {
       throw new Error(`Customer ${customerId} not found in QuickBooks`);
     }
 
-    // Update customer with new email
-    const updateData = {
+    // QB requires at least one name field on every customer write — include existing DisplayName
+    const updateData: Record<string, unknown> = {
       Id: customer.Customer.Id,
       SyncToken: customer.Customer.SyncToken,
-      PrimaryEmailAddr: {
-        Address: email,
-      },
+      DisplayName: customer.Customer.DisplayName,
+      PrimaryEmailAddr: { Address: email },
     };
+    if (customer.Customer.GivenName) updateData.GivenName = customer.Customer.GivenName;
+    if (customer.Customer.FamilyName) updateData.FamilyName = customer.Customer.FamilyName;
 
     const result = await this.request("/customer", {
       method: "POST",

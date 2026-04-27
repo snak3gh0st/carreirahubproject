@@ -4,6 +4,12 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addMonths, parseLocalDate } from "@/lib/utils/date";
+import {
+  CARREIRA_CATALOG,
+  getProductsByCategory,
+  type CarreiraProduct,
+  type PaymentRule,
+} from "@/lib/constants/carreira-products";
 
 interface Customer {
   id: string;
@@ -17,18 +23,10 @@ interface Deal {
   customerId: string | null;
 }
 
-interface ServiceItem {
-  id: string;
-  name: string;
-  description?: string;
-  unitPrice?: number;
-  type?: string;
-  qbType?: string;
-}
-
 interface InvoiceItemForm {
   id: string;
-  serviceItemId: string;
+  catalogProductId: string; // catalog product id (used for rule lookup)
+  serviceItemId: string;    // QB item id sent to API
   quantity: number;
   unitPrice: string;
   serviceSearch: string;
@@ -72,10 +70,11 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     dueDate: "",
     description: "",
   });
-  const [serviceItems, setServiceItems] = useState<ServiceItem[]>([]);
+  const [qbConnected, setQbConnected] = useState(false);
   const [items, setItems] = useState<InvoiceItemForm[]>([
-    { id: `item-${Date.now()}`, serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
+    { id: `item-${Date.now()}`, catalogProductId: "", serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
   ]);
+  const [mentoriaPreset, setMentoriaPreset] = useState<"avista" | "entry30_6x" | "6x" | null>(null);
   const [filteredDeals, setFilteredDeals] = useState<Deal[]>(deals);
   const [submitting, setSubmitting] = useState(false);
   const [createdInvoiceData, setCreatedInvoiceData] = useState<{
@@ -90,27 +89,24 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
   const searchParams = useSearchParams();
 
-  // Buscar service items do QuickBooks
+  // Check QuickBooks connectivity (catalog items are hardcoded; QB needed to create invoices)
   useEffect(() => {
-    async function fetchServiceItems() {
+    async function checkQbConnectivity() {
       try {
         const res = await fetch("/api/quickbooks/items");
         if (res.ok) {
           const data = await res.json();
-          setServiceItems(Array.isArray(data) ? data : []);
-        } else {
-          // Se não conseguir buscar, usar itens vazios (será mostrado mensagem)
-          console.warn("Failed to fetch QuickBooks items:", res.status);
-          setServiceItems([]);
+          const demoIds = new Set(["demo-service-1", "demo-service-2", "no-items-found", "wrong-item-types"]);
+          const connected = Array.isArray(data) && data.some((d: { id: string }) => !demoIds.has(d.id));
+          setQbConnected(connected);
         }
-      } catch (err) {
-        console.error("Error fetching service items:", err);
-        setServiceItems([]);
+      } catch {
+        setQbConnected(false);
       } finally {
         setLoadingItems(false);
       }
     }
-    fetchServiceItems();
+    checkQbConnectivity();
   }, []);
 
 
@@ -188,7 +184,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const addItem = () => {
     setItems((prev) => [
       ...prev,
-      { id: `item-${Date.now()}-${prev.length}`, serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
+      { id: `item-${Date.now()}-${prev.length}`, catalogProductId: "", serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
     ]);
   };
 
@@ -208,13 +204,28 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     );
   };
 
-  const getFilteredServices = (searchTerm: string) => {
-    if (!searchTerm) return serviceItems;
-    return serviceItems
-      .filter((svc) =>
-        svc.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      .sort((a, b) => a.name.localeCompare(b.name));
+  // Derive the active payment rule from selected catalog products
+  const activePaymentRule: PaymentRule | null = (() => {
+    const selected = items
+      .map((item) => CARREIRA_CATALOG.find((p) => p.id === item.catalogProductId))
+      .filter(Boolean) as CarreiraProduct[];
+    if (selected.length === 0) return null;
+    if (selected.some((p) => p.paymentRule === "MENTORIA_PRESET")) return "MENTORIA_PRESET";
+    if (selected.some((p) => p.paymentRule === "MAX_2X_MIN_300")) return "MAX_2X_MIN_300";
+    return "AVISTA_ONLY";
+  })();
+
+  const applyMentoriaPreset = (preset: "avista" | "entry30_6x" | "6x") => {
+    setMentoriaPreset(preset);
+    const currentTotal = calculateTotal();
+    if (preset === "avista") {
+      setForm((f) => ({ ...f, entryAmount: "", installments: "" }));
+    } else if (preset === "entry30_6x") {
+      const entry = Math.round(currentTotal * 0.3 * 100) / 100;
+      setForm((f) => ({ ...f, entryAmount: String(entry), installments: "6" }));
+    } else {
+      setForm((f) => ({ ...f, entryAmount: "", installments: "6" }));
+    }
   };
 
   const updateItem = (
@@ -228,11 +239,15 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
         const nextItem = { ...item, [field]: value } as InvoiceItemForm;
 
-        if (field === "serviceItemId") {
-          const selected = serviceItems.find((svc) => svc.id === value);
-          if (selected?.unitPrice != null) {
-            nextItem.unitPrice = String(selected.unitPrice);
+        if (field === "catalogProductId") {
+          const product = CARREIRA_CATALOG.find((p) => p.id === value);
+          if (product) {
+            nextItem.serviceItemId = product.qbItemId;
+            nextItem.unitPrice = String(product.officialPrice);
           }
+          // Reset payment preset when product changes
+          setMentoriaPreset(null);
+          setForm((f) => ({ ...f, entryAmount: "", installments: "" }));
         }
 
         return nextItem;
@@ -346,17 +361,43 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       const itemsPayload = items
         .filter((item) => item.serviceItemId)
         .map((item) => {
-          const itemData = serviceItems.find((svc) => svc.id === item.serviceItemId);
+          const product = CARREIRA_CATALOG.find((p) => p.id === item.catalogProductId);
           return {
             serviceItemId: item.serviceItemId,
             quantity: item.quantity,
             unitPrice: getNumericValue(item.unitPrice),
-            description: itemData?.name || "Item de serviço",
+            description: product?.name || "Item de serviço",
           };
         });
 
       if (!form.customerId || itemsPayload.length === 0) {
         throw new Error("Preencha todos os campos obrigatórios (Cliente e Itens)");
+      }
+
+      // Enforce payment rules
+      const entryNum = getNumericValue(form.entryAmount);
+      const installmentsNum = getNumericValue(form.installments);
+      const totalNum = calculateTotal();
+
+      if (activePaymentRule === "AVISTA_ONLY") {
+        if (entryNum > 0 || installmentsNum > 0) {
+          throw new Error("Este produto é somente à vista — não é permitido parcelamento.");
+        }
+      } else if (activePaymentRule === "MAX_2X_MIN_300") {
+        if (installmentsNum > 2) {
+          throw new Error("Combo: máximo de 2 parcelas.");
+        }
+        if (installmentsNum > 0) {
+          const remaining = Math.max(0, totalNum - entryNum);
+          const perInstallmentCheck = remaining / installmentsNum;
+          if (perInstallmentCheck < 300) {
+            throw new Error(`Parcela mínima de $300 (atual: $${perInstallmentCheck.toFixed(2)}).`);
+          }
+        }
+      } else if (activePaymentRule === "MENTORIA_PRESET") {
+        if (installmentsNum > 6) {
+          throw new Error("Mentoria: máximo de 6 parcelas.");
+        }
       }
 
       // Convert discount to dollar amount (handles both "amount" and "percentage" types)
@@ -631,174 +672,165 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
 
           {loadingItems ? (
             <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-blue-900">
-              <p className="font-medium">Carregando itens do QuickBooks...</p>
-            </div>
-          ) : serviceItems.length === 0 ? (
-            <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4">
-              <p className="text-yellow-800 font-medium">Nenhum item de serviço disponível. Verifique a configuração do QuickBooks.</p>
-            </div>
-          ) : serviceItems.some((item) => item.id === "no-items-found") ? (
-            <div className="bg-yellow-50 border-l-4 border-yellow-500 rounded-lg p-4">
-              <p className="text-yellow-800 font-medium">Nenhum item encontrado no QuickBooks. Crie itens de serviço em Produtos e Serviços no QuickBooks.</p>
+              <p className="font-medium">Verificando conexão com QuickBooks...</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {items.map((item, index) => {
-                const selectedItem = serviceItems.find((svc) => svc.id === item.serviceItemId);
-                const itemTotal = getNumericValue(item.unitPrice) * item.quantity;
+            <>
+              {!qbConnected && (
+                <div className="bg-yellow-50 border border-yellow-300 rounded-lg px-4 py-3 mb-4 flex items-start gap-2">
+                  <span className="text-yellow-600 mt-0.5">⚠</span>
+                  <p className="text-yellow-800 text-sm font-medium">
+                    QuickBooks não conectado — os produtos estão disponíveis para preencher, mas a fatura não poderá ser criada até reconectar.
+                  </p>
+                </div>
+              )}
+              <div className="space-y-4">
+                {items.map((item, index) => {
+                  const selectedProduct = CARREIRA_CATALOG.find((p) => p.id === item.catalogProductId);
+                  const itemTotal = getNumericValue(item.unitPrice) * item.quantity;
+                  const catalogGroups = getProductsByCategory(item.serviceSearch);
 
-                return (
-                  <div key={item.id} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold text-gray-900">Item {index + 1}</p>
-                      {items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeItem(item.id)}
-                          className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50"
-                        >
-                          Remover
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className={`relative service-search-container-${item.id}`}>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Serviço <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={item.serviceSearch}
-                            onChange={(e) => {
-                              updateItemSearch(item.id, "serviceSearch", e.target.value);
-                              updateItemSearch(item.id, "showServiceDropdown", true);
-                            }}
-                            onFocus={() => updateItemSearch(item.id, "showServiceDropdown", true)}
-                            placeholder="Buscar serviço por nome..."
-                            className="w-full border border-gray-300 rounded-md pl-10 pr-10 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            required={!item.serviceItemId}
-                          />
-                          {/* Search icon */}
-                          <svg
-                            className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
-                            fill="none"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                  return (
+                    <div key={item.id} className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-gray-900">Item {index + 1}</p>
+                        {items.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(item.id)}
+                            className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50"
                           >
-                            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                          </svg>
-                          {/* Clear button */}
-                          {item.serviceItemId && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                updateItem(item.id, "serviceItemId", "");
-                                updateItemSearch(item.id, "serviceSearch", "");
-                                updateItemSearch(item.id, "showServiceDropdown", false);
-                              }}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            >
-                              <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
-                                <path d="M6 18L18 6M6 6l12 12"></path>
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-                        
-                        {/* Dropdown */}
-                        {item.showServiceDropdown && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-                            {getFilteredServices(item.serviceSearch).length === 0 ? (
-                              <div className="px-3 py-2 text-sm text-gray-500">
-                                Nenhum serviço encontrado
-                              </div>
-                            ) : (
-                              getFilteredServices(item.serviceSearch).map((svc) => (
-                                <button
-                                  key={svc.id}
-                                  type="button"
-                                  onClick={() => {
-                                    updateItem(item.id, "serviceItemId", svc.id);
-                                    updateItemSearch(item.id, "serviceSearch", svc.name);
-                                    updateItemSearch(item.id, "showServiceDropdown", false);
-                                    // Auto-populate unitPrice
-                                    if (svc.unitPrice != null) {
-                                      updateItem(item.id, "unitPrice", String(svc.unitPrice));
-                                    }
-                                  }}
-                                  className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors ${
-                                    item.serviceItemId === svc.id ? 'bg-blue-100' : ''
-                                  }`}
-                                >
-                                  <div className="text-sm font-bold text-gray-900">
-                                    {svc.name}
-                                  </div>
-                                  <div className="text-xs text-gray-500">
-                                    R$ {svc.unitPrice?.toFixed(2) || "0.00"}
-                                  </div>
-                                </button>
-                              ))
-                            )}
-                          </div>
+                            Remover
+                          </button>
                         )}
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Quantidade
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) =>
-                            updateItem(item.id, "quantity", parseInt(e.target.value) || 1)
-                          }
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`relative service-search-container-${item.id}`}>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Serviço <span className="text-red-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="text"
+                              value={item.serviceSearch}
+                              onChange={(e) => {
+                                updateItemSearch(item.id, "serviceSearch", e.target.value);
+                                updateItemSearch(item.id, "showServiceDropdown", true);
+                              }}
+                              onFocus={() => updateItemSearch(item.id, "showServiceDropdown", true)}
+                              placeholder="Buscar produto por nome..."
+                              className="w-full border border-gray-300 rounded-md pl-10 pr-10 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                              required={!item.catalogProductId}
+                            />
+                            <svg
+                              className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+                              fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                              viewBox="0 0 24 24" stroke="currentColor"
+                            >
+                              <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                            {item.catalogProductId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateItem(item.id, "catalogProductId", "");
+                                  updateItemSearch(item.id, "serviceSearch", "");
+                                  updateItemSearch(item.id, "showServiceDropdown", false);
+                                }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                              >
+                                <svg className="h-5 w-5" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Preço unitário (USD)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={item.unitPrice}
-                          onChange={(e) => updateItem(item.id, "unitPrice", e.target.value)}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
+                          {/* Grouped catalog dropdown */}
+                          {item.showServiceDropdown && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-72 overflow-auto">
+                              {catalogGroups.length === 0 ? (
+                                <div className="px-3 py-2 text-sm text-gray-500">Nenhum produto encontrado</div>
+                              ) : (
+                                catalogGroups.map((group) => (
+                                  <div key={group.category}>
+                                    <div className="px-3 py-1.5 bg-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wide sticky top-0">
+                                      {group.label}
+                                    </div>
+                                    {group.products.map((product) => (
+                                      <button
+                                        key={product.id}
+                                        type="button"
+                                        onClick={() => {
+                                          updateItem(item.id, "catalogProductId", product.id);
+                                          updateItemSearch(item.id, "serviceSearch", product.name);
+                                          updateItemSearch(item.id, "showServiceDropdown", false);
+                                        }}
+                                        className={`w-full text-left px-4 py-2 hover:bg-blue-50 transition-colors ${
+                                          item.catalogProductId === product.id ? "bg-blue-100" : ""
+                                        }`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-sm font-medium text-gray-900">{product.name}</span>
+                                          <span className="text-sm font-semibold text-blue-700 ml-2 shrink-0">
+                                            ${product.officialPrice.toLocaleString()}
+                                          </span>
+                                        </div>
+                                        {product.description && (
+                                          <div className="text-xs text-gray-500 mt-0.5">{product.description}</div>
+                                        )}
+                                      </button>
+                                    ))}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
 
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Total do item
-                        </label>
-                        <div className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 font-mono text-lg font-semibold text-gray-900">
-                          ${itemTotal.toFixed(2)}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={item.quantity}
+                            onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 1)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
                         </div>
                       </div>
-                    </div>
 
-                    {selectedItem?.description && (
-                      <div className="pt-2 border-t border-gray-300">
-                        <p className="text-sm font-medium text-gray-700">Descrição:</p>
-                        <p className="text-sm text-gray-600 mt-1">{selectedItem.description}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Preço unitário (USD)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.unitPrice}
+                            onChange={(e) => updateItem(item.id, "unitPrice", e.target.value)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Total do item</label>
+                          <div className="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-100 font-mono text-lg font-semibold text-gray-900">
+                            ${itemTotal.toFixed(2)}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+
+                      {selectedProduct?.description && (
+                        <div className="pt-2 border-t border-gray-200">
+                          <p className="text-xs text-gray-500">{selectedProduct.description}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
 
@@ -869,7 +901,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               <p className="text-sm font-semibold text-gray-900 mb-2">Detalhamento por item</p>
               <div className="space-y-2">
                 {items.map((item, index) => {
-                  const itemData = serviceItems.find((svc) => svc.id === item.serviceItemId);
+                  const itemData = CARREIRA_CATALOG.find((p) => p.id === item.catalogProductId);
                   const itemTotal = getNumericValue(item.unitPrice) * item.quantity;
 
                   return (
@@ -919,52 +951,126 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Condições de Pagamento</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Entrada (USD)
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max={total}
-                value={form.entryAmount}
-                onChange={(e) => handleChange("entryAmount", e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0.00"
-              />
-            </div>
+          {/* No product selected yet */}
+          {!activePaymentRule && (
+            <p className="text-sm text-gray-400 italic">Selecione um produto acima para ver as condições de pagamento disponíveis.</p>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número de Parcelas
-              </label>
-              <input
-                type="number"
-                min="0"
-                value={form.installments}
-                onChange={(e) => handleChange("installments", e.target.value)}
-                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                placeholder="0"
-              />
-              {getNumericValue(form.installments) > 0 && remaining > 0 && (
-                <p className="text-sm text-green-600 mt-2 font-medium">
-                  Valor por parcela: ${perInstallment.toFixed(2)}
-                </p>
-              )}
-              {getNumericValue(form.installments) > 0 && (
-                <p className="text-sm text-gray-600 mt-1">
-                  Total de pagamentos: {getNumericValue(form.entryAmount) > 0 ? '1 entrada + ' : ''}{getNumericValue(form.installments)} parcela{getNumericValue(form.installments) > 1 ? 's' : ''} = {getNumericValue(form.entryAmount) > 0 ? getNumericValue(form.installments) + 1 : getNumericValue(form.installments)} pagamento{(getNumericValue(form.entryAmount) > 0 ? getNumericValue(form.installments) + 1 : getNumericValue(form.installments)) > 1 ? 's' : ''}
-                </p>
+          {/* AVISTA_ONLY — lock installments */}
+          {activePaymentRule === "AVISTA_ONLY" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-3">
+              <svg className="h-5 w-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-6V9m0 0V7m0 2h2m-2 0H10m10 5a10 10 0 11-20 0 10 10 0 0120 0z" />
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Somente à vista</p>
+                <p className="text-xs text-amber-700">Este produto não permite parcelamento (valor ≤ $600).</p>
+              </div>
+            </div>
+          )}
+
+          {/* MAX_2X_MIN_300 — combo rules */}
+          {activePaymentRule === "MAX_2X_MIN_300" && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Opção de pagamento</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {([
+                    { key: "avista", label: "À vista", sub: `$${total.toFixed(2)}`, inst: "", entry: "" },
+                    { key: "2x", label: "2x sem entrada", sub: `2x de $${(total / 2).toFixed(2)}`, inst: "2", entry: "" },
+                  ] as const).map(({ key, label, sub, inst, entry }) => {
+                    const isSelected = (key === "avista" && !form.installments && !form.entryAmount) ||
+                      (key === "2x" && form.installments === "2");
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          setForm((f) => ({ ...f, entryAmount: entry, installments: inst }));
+                        }}
+                        className={`rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                          isSelected
+                            ? "border-blue-600 bg-blue-50"
+                            : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <p className={`text-sm font-semibold ${isSelected ? "text-blue-800" : "text-gray-900"}`}>{label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                {total > 0 && total / 2 < 300 && (
+                  <p className="text-xs text-red-600 mt-2">Parcelamento indisponível — parcela mínima $300 (valor total: ${total.toFixed(2)})</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* MENTORIA_PRESET — 3 preset options */}
+          {activePaymentRule === "MENTORIA_PRESET" && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">Opção de pagamento</label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {(
+                    [
+                      { key: "avista", label: "À vista", sub: `$${total.toFixed(2)}` },
+                      {
+                        key: "entry30_6x",
+                        label: "30% entrada + 6x",
+                        sub: `Entrada $${(Math.round(total * 0.3 * 100) / 100).toFixed(2)} + 6x $${((total - Math.round(total * 0.3 * 100) / 100) / 6).toFixed(2)}`,
+                      },
+                      {
+                        key: "6x",
+                        label: "6x sem entrada",
+                        sub: `6x de $${(total / 6).toFixed(2)}`,
+                      },
+                    ] as const
+                  ).map(({ key, label, sub }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => applyMentoriaPreset(key)}
+                      className={`rounded-lg border-2 px-4 py-3 text-left transition-colors ${
+                        mentoriaPreset === key
+                          ? "border-blue-600 bg-blue-50"
+                          : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <p className={`text-sm font-semibold ${mentoriaPreset === key ? "text-blue-800" : "text-gray-900"}`}>{label}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {mentoriaPreset && mentoriaPreset !== "avista" && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Entrada (USD)</label>
+                    <input
+                      type="number" step="0.01" min="0" max={total}
+                      value={form.entryAmount}
+                      onChange={(e) => { setMentoriaPreset(null); handleChange("entryAmount", e.target.value); }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas</label>
+                    <input
+                      type="number" min="1" max="6"
+                      value={form.installments}
+                      onChange={(e) => { setMentoriaPreset(null); handleChange("installments", e.target.value); }}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
               )}
             </div>
-          </div>
+          )}
 
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Data de Vencimento
-            </label>
+          <div className="mt-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Data de Vencimento</label>
             <input
               type="date"
               value={form.dueDate}

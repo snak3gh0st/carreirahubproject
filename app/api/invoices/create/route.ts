@@ -32,7 +32,7 @@ const createInvoiceSchema = z.object({
     .min(1),
   discount: z.number().min(0).optional(),
   entryAmount: z.number().min(0).optional(),
-  installments: z.number().min(0).max(12).optional(),
+  installments: z.number().min(0).max(6).optional(),
   dueDate: z.string().optional(), // Aceita string de data simples (YYYY-MM-DD)
   description: z.string().optional(),
 });
@@ -279,333 +279,213 @@ export async function POST(request: NextRequest) {
     // ============================================
     // PHASE 2: CREATE INVOICES USING PRE-GENERATED METADATA
     // ============================================
-    // Create multiple invoices (one per installment)
-    for (let i = 1; i <= invoiceCountToCreate; i++) {
-      // Use pre-generated metadata
-      const metadata = invoiceMetadata[i - 1];
-      const invoiceNumber = metadata.number;
-      const invoiceDueDate = metadata.dueDate;
-      const invoiceAmount = metadata.amount;
-      const invoiceDescription = metadata.description;
-      const lineItems = metadata.lineItems;
 
-      let qbInvoiceId: string | undefined;
-      
-      // Email tracking variables (will be set during invoice creation)
-      let emailSentAt: Date | undefined;
-      let emailSendAttempts = 0;
-      let lastEmailSendError: string | undefined;
+    // Resolve QB customer once before the loop — avoids N redundant API round-trips
+    await quickbooksService.initialize();
 
-      // Auto-approve and sync to QuickBooks immediately for all roles
-      await quickbooksService.initialize();
+    const qbCustomer = await quickbooksService.getOrCreateCustomer({
+      email: customer.email,
+      name: customer.name,
+      phone: customer.phone || undefined,
+    });
 
-      // Create customer in QuickBooks if necessary
-      const qbCustomer = await quickbooksService.getOrCreateCustomer({
-        email: customer.email,
-        name: customer.name,
-        phone: customer.phone || undefined,
-      });
-
-      // Ensure QB customer has correct email before sending invoice
-      if (customer.email) {
-        const emailVerified = await quickbooksService.ensureCustomerEmail(qbCustomer.Id, customer.email);
-
-        // Log email verification result
-        await prisma.integrationLog.create({
-          data: {
-            service: "quickbooks",
-            action: emailVerified ? "customer_email_verified" : "customer_email_verification_failed",
-            status: emailVerified ? "SUCCESS" : "ERROR",
-            payload: {
-              qbCustomerId: qbCustomer.Id,
-              customerEmail: customer.email,
-              emailVerified,
-            } as any,
-          },
-        });
-      }
-
-      // Determine email status BEFORE creating in QB so future installments stay invisible
-      const isInstallmentSeries = invoiceCountToCreate > 1;
-      const isEntryInvoice = entryAmount > 0 && i === 1;
-      const isFirstInstallment = i === 1;
-      const isSingleInvoice = invoiceCountToCreate === 1 && !isInstallmentSeries;
-      const shouldSendEmail = isSingleInvoice || isEntryInvoice || isFirstInstallment;
-
-      // Prepare QB invoice data with BillEmail - QB requires email on invoice for sending
-      const qbInvoiceData: any = {
-        customerId: qbCustomer.Id,
-        customerEmail: customer.email, // REQUIRED - set email on invoice itself
-        dueDate: invoiceDueDate,
-        docNumber: invoiceNumber, // Custom professional invoice number
-        emailStatus: shouldSendEmail ? "NeedToSend" as const : "NotSet" as const,
-        lineItems: (() => {
-          // For installment invoices with discount: line item amounts are already post-discount.
-          // We need to inflate them back to pre-discount values so QB can show Subtotal - Discount = Total.
-          const needsInflation = invoiceCountToCreate > 1 && discount > 0 && totalAmount > 0;
-          const inflationFactor = needsInflation ? baseAmount / totalAmount : 1;
-
-          return lineItems.map((item) => ({
-            description: item.description,
-            amount: Math.max(0.01, Number((item.amount * inflationFactor).toFixed(2))),
-            itemRef: item.serviceItemId,
-          }));
-        })(),
-        // Calculate proportional discount for this invoice
-        discount: (() => {
-          if (discount <= 0) return undefined;
-          if (invoiceCountToCreate === 1) {
-            // Single invoice gets the full discount
-            return discount;
-          }
-          // For installments: proportional discount based on this invoice's share of the total
-          if (totalAmount > 0) {
-            const proportionalDiscount = Number((discount * (invoiceAmount / totalAmount)).toFixed(2));
-            return proportionalDiscount > 0 ? proportionalDiscount : undefined;
-          }
-          return undefined;
-        })(),
-        // Add billing address from customer record
-        billingAddress: {
-          line1: customer.address || undefined,
-          city: customer.city || undefined,
-          state: customer.state || undefined,
-          postalCode: customer.zipCode || undefined,
-          country: customer.country || "USA",
+    if (customer.email) {
+      const emailVerified = await quickbooksService.ensureCustomerEmail(qbCustomer.Id, customer.email);
+      await prisma.integrationLog.create({
+        data: {
+          service: "quickbooks",
+          action: emailVerified ? "customer_email_verified" : "customer_email_verification_failed",
+          status: emailVerified ? "SUCCESS" : "ERROR",
+          payload: {
+            qbCustomerId: qbCustomer.Id,
+            customerEmail: customer.email,
+            emailVerified,
+          } as any,
         },
-      };
-
-      console.log('[INVOICE_CREATE] QB Invoice data with discount and billing address:', {
-        invoiceNumber,
-        discount: qbInvoiceData.discount,
-        billingAddress: qbInvoiceData.billingAddress,
       });
+    }
 
-      // Validate QB invoice data before API call
-      if (!qbInvoiceData.lineItems || qbInvoiceData.lineItems.length === 0) {
-        throw new Error('Invoice must have at least one line item');
+    // ── STEP A: Create the FIRST invoice in QB (entry or first installment) ──
+    const firstMeta = invoiceMetadata[0];
+    const firstLineItems = firstMeta.lineItems.map((item) => ({
+      description: item.description,
+      amount: Math.max(0.01, Number(item.amount.toFixed(2))),
+      itemRef: item.serviceItemId,
+    }));
+
+    for (const item of firstLineItems) {
+      if (!item.itemRef || item.itemRef === "demo-service-1" || item.itemRef === "demo-service-2") {
+        throw new Error(`Invalid service item ID: ${item.itemRef}. Please select a valid QuickBooks service item.`);
       }
+    }
 
-      for (const item of qbInvoiceData.lineItems) {
-        if (!item.itemRef || item.itemRef === 'demo-service-1' || item.itemRef === 'demo-service-2') {
-          console.error('[INVOICE_CREATE] Invalid itemRef:', item.itemRef);
-          throw new Error(`Invalid service item ID: ${item.itemRef}. Please select a valid QuickBooks service item.`);
-        }
-        if (!item.amount || item.amount <= 0) {
-          throw new Error(`Invalid amount for line item: ${item.amount}`);
-        }
-      }
+    const qbInvoice = await quickbooksService.createInvoiceWithBillEmail({
+      customerId: qbCustomer.Id,
+      customerEmail: customer.email,
+      dueDate: firstMeta.dueDate,
+      docNumber: firstMeta.number,
+      emailStatus: "NeedToSend",
+      lineItems: firstLineItems,
+      discount: discount > 0 ? (invoiceCountToCreate === 1 ? discount : Number((discount * (firstMeta.amount / totalAmount)).toFixed(2)) || undefined) : undefined,
+      billingAddress: {
+        line1: customer.address || undefined,
+        city: customer.city || undefined,
+        state: customer.state || undefined,
+        postalCode: customer.zipCode || undefined,
+        country: customer.country || "USA",
+      },
+    });
 
-      console.log('[INVOICE_CREATE] QB Invoice payload:', JSON.stringify(qbInvoiceData, null, 2));
+    console.log(`[INVOICE_CREATE] First invoice ${qbInvoice.Id} created in QB`);
 
-      // Create invoice in QuickBooks WITH BillEmail set during creation
-      const qbInvoice = await quickbooksService.createInvoiceWithBillEmail(qbInvoiceData);
-      qbInvoiceId = qbInvoice.Id;
-      // invoiceNumber already set above with professional format
+    // Send first invoice email
+    let firstEmailSentAt: Date | undefined;
+    let firstEmailAttempts = 0;
+    let firstEmailError: string | undefined;
 
-      console.log(`[INVOICE_CREATE] Invoice ${qbInvoice.Id} created in QB with status: ${qbInvoice.EmailStatus}`);
-
-      console.log(`[INVOICE_CREATE] Email decision for invoice ${i}/${invoiceCountToCreate}:`, {
-        isInstallmentSeries,
-        isSingleInvoice,
-        isSinglePayment,
-        isEntryInvoice,
-        shouldSendEmail,
-        dueDate: invoiceDueDate.toISOString().split('T')[0],
-        description: invoiceDescription,
-      });
-
-      // QB does NOT auto-send with EmailStatus: "NeedToSend" - must call /send explicitly
-      if (customer.email && shouldSendEmail) {
-        // Wait longer for QB to fully process the invoice before sending (increased from 500ms to 1000ms)
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        try {
-          console.log(`[INVOICE_CREATE] Calling QB /send endpoint for invoice ${qbInvoice.Id} to ${customer.email}...`);
-          console.log(`[INVOICE_CREATE] Invoice BillEmail check before send - QB Invoice ID: ${qbInvoice.Id}, Email: ${qbInvoice.BillEmail?.Address || 'NOT SET'}`);
-
-          // Call sendInvoice which calls QB's /send endpoint with retry logic
-          // Note: sendInvoice now returns graceful failure instead of throwing
-          // This allows invoice creation to complete even if /send fails
-          const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
-
-          console.log(`[INVOICE_CREATE] QB /send result:`, JSON.stringify(sendResult, null, 2));
-
-          // Log send result (success or graceful failure)
-          if (sendResult.success && sendResult.sent) {
-            console.log(`[INVOICE_CREATE] ✓ Invoice email sent immediately via QB API (attempt ${sendResult.attempt})`);
-            await prisma.integrationLog.create({
-              data: {
-                service: "quickbooks",
-                action: "invoice_email_sent",
-                status: "SUCCESS",
-                payload: {
-                  qbInvoiceId: qbInvoice.Id,
-                  invoiceNumber,
-                  recipientEmail: customer.email,
-                  deliveryInfo: sendResult.deliveryInfo,
-                  emailStatus: sendResult.emailStatus,
-                  sendAttempts: sendResult.attempt,
-                  isInstallment: isInstallmentSeries,
-                  isEntryInvoice,
-                  isSinglePayment,
-                } as any,
-              },
-            });
-
-            // Set email tracking variables for invoice creation
-            emailSentAt = new Date();
-            emailSendAttempts = 1;
-          } else {
-            // Send failed after retries - create NEEDS_MANUAL_SEND log entry
-            console.log(`[INVOICE_CREATE] ⚠️  Invoice email send failed after ${sendResult.attempts} attempts`);
-            await prisma.integrationLog.create({
-              data: {
-                service: "quickbooks",
-                action: "invoice_needs_manual_send",
-                status: "NEEDS_MANUAL_SEND",
-                error: sendResult.error,
-                payload: {
-                  qbInvoiceId: qbInvoice.Id,
-                  invoiceNumber,
-                  recipientEmail: customer.email,
-                  emailStatus: sendResult.emailStatus,
-                  sendAttempts: sendResult.attempts,
-                  note: "Invoice created but email send failed after retries. Manual send required via QuickBooks UI.",
-                  qbInvoiceUrl: `https://app.qbo.intuit.com/app/invoice?txnId=${qbInvoice.Id}`,
-                  isInstallment: isInstallmentSeries,
-                  isEntryInvoice,
-                  isSinglePayment,
-                } as any,
-              },
-            });
-
-            // Set email tracking variables for invoice creation
-            emailSendAttempts = sendResult.attempts || 1;
-            lastEmailSendError = sendResult.error || "Unknown error";
-          }
-        } catch (sendError: any) {
-          // Shouldn't happen since sendInvoice is now non-throwing, but keep as safety net
-          console.error(`[INVOICE_CREATE] QB send error (non-critical):`, sendError.message || String(sendError));
-
+    if (customer.email) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      try {
+        const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
+        if (sendResult.success && sendResult.sent) {
+          console.log(`[INVOICE_CREATE] ✓ First invoice emailed to ${customer.email}`);
+          firstEmailSentAt = new Date();
+          firstEmailAttempts = 1;
           await prisma.integrationLog.create({
-            data: {
-              service: "quickbooks",
-              action: "invoice_needs_manual_send",
-              status: "NEEDS_MANUAL_SEND",
-              error: sendError.message || "Send error",
-              payload: {
-                qbInvoiceId: qbInvoice.Id,
-                invoiceNumber,
-                recipientEmail: customer.email,
-                note: "Invoice created but email send failed. Manual send required via QuickBooks UI.",
-                qbInvoiceUrl: `https://app.qbo.intuit.com/app/invoice?txnId=${qbInvoice.Id}`,
-                isInstallment: isInstallmentSeries,
-                isEntryInvoice,
-                isSinglePayment,
-              } as any,
-            },
+            data: { service: "quickbooks", action: "invoice_email_sent", status: "SUCCESS", payload: { qbInvoiceId: qbInvoice.Id, invoiceNumber: firstMeta.number, recipientEmail: customer.email } as any },
+          });
+        } else {
+          firstEmailAttempts = sendResult.attempts || 1;
+          firstEmailError = sendResult.error || "QB send failed";
+          await prisma.integrationLog.create({
+            data: { service: "quickbooks", action: "invoice_needs_manual_send", status: "NEEDS_MANUAL_SEND", error: firstEmailError, payload: { qbInvoiceId: qbInvoice.Id, invoiceNumber: firstMeta.number, recipientEmail: customer.email } as any },
           });
         }
-      } else if (customer.email && !shouldSendEmail) {
-        // Installment invoice - schedule for cron to send 5 days before due date
-        const sendDate = new Date(invoiceDueDate.getTime() - 5 * 24 * 60 * 60 * 1000);
-        console.log(`[INVOICE_CREATE] Scheduled installment invoice ${i}/${invoiceCountToCreate} for ${sendDate.toISOString().split('T')[0]} (5 days before due: ${invoiceDueDate.toISOString().split('T')[0]})`);
+      } catch (sendError: any) {
+        firstEmailError = sendError.message || "Send error";
+        await prisma.integrationLog.create({
+          data: { service: "quickbooks", action: "invoice_needs_manual_send", status: "NEEDS_MANUAL_SEND", error: firstEmailError, payload: { qbInvoiceId: qbInvoice.Id, invoiceNumber: firstMeta.number } as any },
+        });
+      }
+    }
+
+    // Save first invoice locally
+    const firstInvoice = await prisma.invoice.create({
+      data: {
+        invoiceNumber: firstMeta.number,
+        amount: firstMeta.amount,
+        dueDate: firstMeta.dueDate,
+        status: InvoiceStatus.SENT,
+        quickbooks_invoice_id: qbInvoice.Id,
+        ownerId: userId,
+        dealId,
+        customerId,
+        lineItems: firstMeta.lineItems as any,
+        emailSentAt: firstEmailSentAt,
+        emailSendAttempts: firstEmailAttempts,
+        lastEmailSendError: firstEmailError,
+        ...(invoiceCountToCreate > 1 && {
+          installments: { seriesId, current: 1, total: invoiceCountToCreate, isFirstInstallment: true } as any,
+        }),
+      },
+    });
+    invoices.push(firstInvoice);
+
+    // Sync first invoice from QB
+    try {
+      const { quickbooksSyncService } = await import("@/lib/services/quickbooks-sync.service");
+      await quickbooksSyncService.syncSingleInvoice(qbInvoice.Id);
+    } catch {
+      // non-critical
+    }
+
+    // ── STEP B: Create RecurringTransaction for installments 2-N ──
+    if (invoiceCountToCreate > 1) {
+      const installmentAmount = Number((remaining / installmentCount).toFixed(2));
+      const firstInstallmentDueDate = invoiceMetadata[1].dueDate;
+      let recurringTemplateId: string | undefined;
+
+      // Create RecurringTransaction so QB auto-creates each installment on schedule.
+      // Finance sees the template in Sales → Recurring Transactions for AR planning.
+      // Customer only sees each invoice when QB creates it on the scheduled date.
+      try {
+        const recurring = await quickbooksService.createRecurringInvoice({
+          templateName: `${serviceName} - ${customer.name} (${new Date().toISOString().slice(0, 10)})`.slice(0, 100),
+          customerId: qbCustomer.Id,
+          customerEmail: customer.email,
+          installmentAmount,
+          installmentCount: invoiceCountToCreate - 1,
+          startDate: firstInstallmentDueDate,
+          itemRef: data.items[0].serviceItemId,
+          serviceName,
+          billingAddress: {
+            line1: customer.address || undefined,
+            city: customer.city || undefined,
+            state: customer.state || undefined,
+            postalCode: customer.zipCode || undefined,
+            country: customer.country || "USA",
+          },
+        });
+
+        recurringTemplateId = recurring.Id;
+        console.log(`[INVOICE_CREATE] ✓ RecurringTransaction ${recurringTemplateId} created for ${invoiceCountToCreate - 1} installments`);
 
         await prisma.integrationLog.create({
           data: {
             service: "quickbooks",
-            action: "installment_invoice_scheduled",
+            action: "recurring_invoice_template_created",
             status: "SUCCESS",
             payload: {
-              qbInvoiceId: qbInvoice.Id,
-              recipientEmail: customer.email,
-              dueDate: invoiceDueDate.toISOString(),
-              installmentNumber: i,
-              totalInstallments: invoiceCountToCreate,
-              scheduledSendDate: sendDate.toISOString(),
+              recurringTemplateId,
+              seriesId,
+              installmentCount: invoiceCountToCreate - 1,
+              installmentAmount,
+              startDate: firstInstallmentDueDate.toISOString(),
+              customerName: customer.name,
             } as any,
           },
         });
-      } else {
-        console.warn(`[INVOICE_CREATE] ⚠️  Customer ${customer.name} has no email, invoice created but NOT sent`);
-
+      } catch (recurError: any) {
+        console.error(`[INVOICE_CREATE] RecurringTransaction failed, installments saved as DRAFT:`, recurError.message);
         await prisma.integrationLog.create({
           data: {
             service: "quickbooks",
-            action: "invoice_created_without_email",
-            status: "WARNING",
-            payload: {
-              qbInvoiceId: qbInvoice.Id,
-              customerId: customer.id,
-              customerName: customer.name,
-              isInstallment: isInstallmentSeries,
-              isEntryInvoice,
-              isSinglePayment,
-            } as any,
+            action: "recurring_invoice_template_failed",
+            status: "ERROR",
+            error: recurError.message,
+            payload: { seriesId, customerName: customer.name } as any,
           },
         });
       }
 
-      // Save invoice to local database
-      const invoice = await prisma.invoice.create({
-        data: {
-          invoiceNumber,
-          amount: invoiceAmount,
-          dueDate: invoiceDueDate,
-          status: InvoiceStatus.SENT,
-          quickbooks_invoice_id: qbInvoiceId,
-          ownerId: userId,
-          dealId,
-          customerId,
-          lineItems: lineItems as any,
-          // Email tracking fields
-          emailSentAt,
-          emailSendAttempts,
-          lastEmailSendError,
-          ...(invoiceCountToCreate > 1 && {
+      // Save future installments locally as DRAFT for dashboard visibility.
+      // QB auto-creates the real invoices via the recurring template.
+      for (let i = 1; i < invoiceCountToCreate; i++) {
+        const meta = invoiceMetadata[i];
+        const draftInvoice = await prisma.invoice.create({
+          data: {
+            invoiceNumber: meta.number,
+            amount: meta.amount,
+            dueDate: meta.dueDate,
+            status: InvoiceStatus.DRAFT,
+            quickbooks_invoice_id: null,
+            ownerId: userId,
+            dealId,
+            customerId,
+            lineItems: meta.lineItems as any,
             installments: {
               seriesId,
-              current: i,
+              current: i + 1,
               total: invoiceCountToCreate,
-              isFirstInstallment: i === 1,
-            } as any,
-          }),
-        },
-      });
-
-      // **REALTIME SYNC**: Immediately sync invoice back from QuickBooks to get latest status
-      if (qbInvoiceId) {
-        try {
-          const { quickbooksSyncService } = await import('@/lib/services/quickbooks-sync.service');
-          await quickbooksSyncService.syncSingleInvoice(qbInvoiceId);
-          console.log(`[INVOICE_CREATE] Invoice ${qbInvoiceId} synced from QuickBooks`);
-        } catch (syncError) {
-          console.error(`[INVOICE_CREATE] Failed to sync invoice ${qbInvoiceId} from QuickBooks:`, syncError);
-          // Don't fail invoice creation if sync fails - cron will catch it later
-        }
-      }
-
-      invoices.push(invoice);
-
-      // Log to IntegrationLog if synced to QB
-      if (qbInvoiceId) {
-        await prisma.integrationLog.create({
-          data: {
-            service: "quickbooks",
-            action: "invoice_created_and_sent",
-            status: "SUCCESS",
-            payload: {
-              invoiceId: invoice.id,
-              qbInvoiceId,
-              isInstallment: invoiceCountToCreate > 1,
-              installmentNumber: i,
-              totalInstallments: invoiceCountToCreate,
-              seriesId,
+              isFirstInstallment: false,
+              recurringTemplateId,
             } as any,
           },
         });
+        invoices.push(draftInvoice);
       }
+
+      console.log(`[INVOICE_CREATE] Saved ${invoiceCountToCreate - 1} future installments as DRAFT`);
     }
 
     // NEW: Sync first invoice to Pipedrive deal (await to prevent Vercel container shutdown)
