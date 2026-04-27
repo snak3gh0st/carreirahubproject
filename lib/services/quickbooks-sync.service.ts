@@ -945,10 +945,38 @@ export class QuickBooksSyncService {
             });
             updated.push(existing.id);
           } else {
-            const invoice = await prisma.invoice.create({
-              data: invoiceData,
-            });
-            synced.push(invoice.id);
+            // Check for a DRAFT invoice from a recurring template that matches this QB invoice.
+            // When QB auto-creates an installment, our DRAFT record has no QB ID yet.
+            // Match by: same customer + same amount (±$1) + due date within 5 days.
+            const draftMatch = customer ? await prisma.invoice.findFirst({
+              where: {
+                customerId: customer.id,
+                status: "DRAFT",
+                quickbooks_invoice_id: null,
+                amount: { gte: totalAmount - 1, lte: totalAmount + 1 },
+                dueDate: {
+                  gte: new Date(parseQuickBooksDueDate(qbInvoice.DueDate).getTime() - 5 * 86400000),
+                  lte: new Date(parseQuickBooksDueDate(qbInvoice.DueDate).getTime() + 5 * 86400000),
+                },
+              },
+              orderBy: { dueDate: "asc" },
+            }) : null;
+
+            if (draftMatch) {
+              // Link the DRAFT to the QB-created invoice
+              const { invoiceNumber: _ignored2, ...draftUpdateData } = invoiceData;
+              await prisma.invoice.update({
+                where: { id: draftMatch.id },
+                data: draftUpdateData,
+              });
+              updated.push(draftMatch.id);
+              console.log(`[QuickBooks Sync] Linked DRAFT invoice ${draftMatch.id} to QB invoice ${qbInvoiceId}`);
+            } else {
+              const invoice = await prisma.invoice.create({
+                data: invoiceData,
+              });
+              synced.push(invoice.id);
+            }
           }
         } catch (error: any) {
           errors.push({
@@ -1384,6 +1412,253 @@ export class QuickBooksSyncService {
       };
     } catch (error: any) {
       console.error("[QuickBooks Sync] Error syncing payment terms:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Incremental sync using QuickBooks Change Data Capture (CDC) API.
+   * Only fetches entities changed since the last successful sync.
+   * Handles deletions by voiding local records.
+   * Designed to run within Vercel Function timeout limits.
+   */
+  async syncIncremental(): Promise<SyncResult> {
+    const startTime = new Date();
+    const result: SyncResult = { success: false, startTime };
+
+    try {
+      await quickbooksService.initialize();
+
+      const lastSyncRow = await prisma.integrationLog.findFirst({
+        where: { service: "QUICKBOOKS", action: "SYNC", status: "SUCCESS" },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+
+      // Default to 7 days ago if no previous sync (CDC max is 30 days)
+      const sinceDate = lastSyncRow?.createdAt
+        ? lastSyncRow.createdAt
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+      // CDC rejects dates >30 days ago — clamp to 29 days
+      const maxPast = new Date(Date.now() - 29 * 24 * 60 * 60 * 1000);
+      const changedSince = sinceDate < maxPast ? maxPast : sinceDate;
+
+      const sinceIso = changedSince.toISOString();
+      console.log(`[QB CDC Sync] Fetching changes since ${sinceIso}`);
+
+      const cdcData = await (quickbooksService as any).request(
+        `/cdc?entities=Customer,Invoice,Payment&changedSince=${sinceIso}`
+      );
+
+      const responses = cdcData?.CDCResponse || [];
+      let changedCustomers: any[] = [];
+      let deletedCustomers: any[] = [];
+      let changedInvoices: any[] = [];
+      let deletedInvoices: any[] = [];
+      let changedPayments: any[] = [];
+
+      for (const resp of responses) {
+        for (const qr of resp.QueryResponse || []) {
+          if (qr.Customer) {
+            const all = Array.isArray(qr.Customer) ? qr.Customer : [qr.Customer];
+            changedCustomers = all.filter((e: any) => e.status !== "Deleted");
+            deletedCustomers = all.filter((e: any) => e.status === "Deleted");
+          }
+          if (qr.Invoice) {
+            const all = Array.isArray(qr.Invoice) ? qr.Invoice : [qr.Invoice];
+            changedInvoices = all.filter((e: any) => e.status !== "Deleted");
+            deletedInvoices = all.filter((e: any) => e.status === "Deleted");
+          }
+          if (qr.Payment) {
+            const all = Array.isArray(qr.Payment) ? qr.Payment : [qr.Payment];
+            changedPayments = all.filter((e: any) => e.status !== "Deleted");
+          }
+        }
+      }
+
+      console.log(`[QB CDC Sync] Changes: ${changedCustomers.length} customers, ${changedInvoices.length} invoices, ${changedPayments.length} payments`);
+      console.log(`[QB CDC Sync] Deletions: ${deletedCustomers.length} customers, ${deletedInvoices.length} invoices`);
+
+      // --- Process changed customers ---
+      const custResult = { total: changedCustomers.length, synced: 0, updated: 0, errors: 0 };
+      await this.processBatch(changedCustomers, async (qbCustomer: any) => {
+        try {
+          const email = qbCustomer.PrimaryEmailAddr?.Address;
+          const name = qbCustomer.DisplayName || qbCustomer.CompanyName || "Unknown";
+          if (!email) return;
+
+          await identityMapper.reconcileCustomer({
+            email,
+            name,
+            phone: qbCustomer.PrimaryPhone?.FreeFormNumber,
+            externalIds: { quickbooks_id: qbCustomer.Id },
+            metadata: {
+              quickbooks: {
+                syncDate: new Date().toISOString(),
+                companyName: qbCustomer.CompanyName,
+                balance: qbCustomer.Balance,
+              },
+            },
+          });
+
+          const existing = await prisma.customer.findFirst({ where: { quickbooks_id: qbCustomer.Id } });
+          if (existing) {
+            await prisma.customer.update({
+              where: { id: existing.id },
+              data: {
+                qbBalance: qbCustomer.Balance || 0,
+                lastQbBalanceSync: new Date(),
+                lastQuickbooksSyncAt: new Date(),
+              },
+            });
+          }
+          custResult.updated++;
+        } catch { custResult.errors++; }
+      });
+      result.customers = custResult;
+
+      // --- Process changed invoices ---
+      const invResult = { total: changedInvoices.length, synced: 0, updated: 0, errors: 0 };
+      await this.processBatch(changedInvoices, async (qbInvoice: any) => {
+        try {
+          const qbInvoiceId = qbInvoice.Id;
+          const customerRef = qbInvoice.CustomerRef?.value;
+          if (!customerRef) return;
+
+          const customer = await prisma.customer.findFirst({ where: { quickbooks_id: customerRef } });
+          if (!customer) return;
+
+          const totalAmount = qbInvoice.TotalAmt || 0;
+          const balance = qbInvoice.Balance ?? totalAmount;
+          const qbStatus = balance === 0 ? "PAID" : balance === totalAmount ? "SENT" : "OVERDUE";
+          const amountPaid = balance === 0 ? totalAmount : totalAmount - balance;
+          const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
+
+          const existing = await prisma.invoice.findUnique({ where: { quickbooks_invoice_id: qbInvoiceId } });
+
+          if (existing) {
+            await prisma.invoice.update({
+              where: { id: existing.id },
+              data: {
+                status: qbStatus as any,
+                amount: totalAmount,
+                dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
+                amountPaid,
+                paidAt,
+                installments: {
+                  ...(existing.installments as any || {}),
+                  quickbooks: {
+                    syncDate: new Date().toISOString(),
+                    txnDate: qbInvoice.TxnDate,
+                    balance,
+                    totalAmt: totalAmount,
+                  },
+                } as any,
+              },
+            });
+            invResult.updated++;
+          }
+          // Don't create new invoices from CDC — only update existing ones
+        } catch { invResult.errors++; }
+      });
+      result.invoices = invResult;
+
+      // --- Process deleted invoices (void locally) ---
+      let voidedCount = 0;
+      for (const deleted of deletedInvoices) {
+        try {
+          const existing = await prisma.invoice.findUnique({
+            where: { quickbooks_invoice_id: deleted.Id },
+          });
+          if (existing && existing.status !== "VOID") {
+            await prisma.invoice.update({
+              where: { id: existing.id },
+              data: { status: "VOID" },
+            });
+            voidedCount++;
+            console.log(`[QB CDC Sync] Voided invoice ${existing.invoiceNumber} (QB ${deleted.Id} deleted)`);
+          }
+        } catch (e) {
+          console.error(`[QB CDC Sync] Error voiding invoice QB ${deleted.Id}:`, e);
+        }
+      }
+      if (voidedCount > 0) {
+        console.log(`[QB CDC Sync] Voided ${voidedCount} locally for QB-deleted invoices`);
+      }
+
+      // --- Process changed payments ---
+      const payResult = { total: changedPayments.length, synced: 0, errors: 0 };
+      for (const qbPayment of changedPayments) {
+        try {
+          let invoiceRef: string | undefined;
+          for (const line of qbPayment.Line || []) {
+            const invoiceTxn = (line.LinkedTxn || []).find((txn: any) => txn.TxnType === "Invoice");
+            if (invoiceTxn?.TxnId) { invoiceRef = invoiceTxn.TxnId; break; }
+          }
+          if (!invoiceRef) continue;
+
+          const invoice = await prisma.invoice.findFirst({
+            where: { quickbooks_invoice_id: invoiceRef },
+          });
+          if (!invoice) continue;
+
+          const existingPayment = await prisma.payment.findFirst({
+            where: { quickbooks_payment_id: qbPayment.Id },
+          });
+
+          const paymentData = {
+            amount: qbPayment.TotalAmt || 0,
+            currency: "USD",
+            paymentDate: qbPayment.TxnDate ? new Date(qbPayment.TxnDate) : new Date(),
+            paymentMethod: "QuickBooks",
+            referenceNumber: qbPayment.DocNumber,
+            quickbooks_payment_id: qbPayment.Id,
+            invoiceId: invoice.id,
+            customerId: invoice.customerId,
+            syncedFromQb: true,
+            metadata: { quickbooksPaymentData: qbPayment } as any,
+          };
+
+          if (existingPayment) {
+            await prisma.payment.update({ where: { id: existingPayment.id }, data: paymentData });
+          } else {
+            await prisma.payment.create({ data: paymentData });
+
+            // Mark invoice as PAID if balance is now zero
+            if (invoice.status !== "PAID") {
+              const qbInvoice = changedInvoices.find((i: any) => i.Id === invoiceRef);
+              if (qbInvoice && qbInvoice.Balance === 0) {
+                await prisma.invoice.update({
+                  where: { id: invoice.id },
+                  data: {
+                    status: "PAID",
+                    amountPaid: qbInvoice.TotalAmt,
+                    paidAt: new Date(qbPayment.TxnDate || new Date()),
+                  },
+                });
+              }
+            }
+          }
+          payResult.synced++;
+        } catch { payResult.errors++; }
+      }
+      result.payments = payResult;
+
+      const endTime = new Date();
+      result.endTime = endTime;
+      result.duration = endTime.getTime() - startTime.getTime();
+      result.success = true;
+
+      await this.logSync(result);
+      console.log(`[QB CDC Sync] Completed in ${result.duration}ms`);
+      return result;
+    } catch (error: any) {
+      const endTime = new Date();
+      result.endTime = endTime;
+      result.duration = endTime.getTime() - startTime.getTime();
+      result.error = error.message || "Unknown error";
+      await this.logSync(result, error);
       throw error;
     }
   }
