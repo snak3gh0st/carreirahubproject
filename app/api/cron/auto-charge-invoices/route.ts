@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const BATCH_SIZE = 20;
 
 // Set AUTO_CHARGE_DRY_RUN=false in env to enable real charging (Phase 3)
-const DRY_RUN = process.env.AUTO_CHARGE_DRY_RUN !== "false";
+const DRY_RUN = process.env.AUTO_CHARGE_DRY_RUN?.trim() !== "false";
 
 /**
  * GET /api/cron/auto-charge-invoices
