@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { alertsService } from "@/lib/services/alerts.service";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 /**
  * Cron job endpoint to evaluate alert rules

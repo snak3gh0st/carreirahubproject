@@ -10,6 +10,7 @@ import {
   Users,
   CreditCard,
   FileSignature,
+  ClipboardList,
   BarChart3,
   TrendingUp,
   LogOut,
@@ -62,6 +63,12 @@ const mainNavItems: NavItem[] = [
     label: "Contracts",
     icon: FileSignature,
     roles: ["ADMIN", "OPERATIONAL", "FINANCE", "SALES", "COMMERCIAL"],
+  },
+  {
+    href: "/dashboard/forms",
+    label: "Formulários",
+    icon: ClipboardList,
+    roles: ["ADMIN", "OPERATIONAL"],
   },
   {
     href: "/dashboard/insights",

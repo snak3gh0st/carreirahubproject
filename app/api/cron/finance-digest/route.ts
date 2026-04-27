@@ -5,6 +5,8 @@ import { differenceInDays, endOfDay, startOfDay, subDays } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: NextRequest) { return POST(request); }
+
 /**
  * POST /api/cron/finance-digest
  *

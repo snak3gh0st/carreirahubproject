@@ -5,6 +5,8 @@ import { differenceInDays, differenceInHours, subDays, subHours } from 'date-fns
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: NextRequest) { return POST(request); }
+
 /**
  * POST /api/cron/seller-digest
  *
