@@ -192,6 +192,7 @@ export default function FinancialDashboardPage() {
             outstandingAR={data.summary.outstandingAR}
             mrr={data.summary.mrr}
             topClientConcentration={data.summary.topClientConcentration}
+            delinquencyRate={data.summary.delinquencyRate}
             totalExpenses={pnl?.totalExpenses}
             netIncome={pnl?.netIncome}
             cashOnHand={pnl?.cashOnHand}

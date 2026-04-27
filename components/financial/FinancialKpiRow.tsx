@@ -8,6 +8,7 @@ interface FinancialKpiRowProps {
   outstandingAR: KPIMetric;
   mrr: KPIMetric;
   topClientConcentration: ConcentrationMetric;
+  delinquencyRate?: number;
   totalExpenses?: number;
   netIncome?: number;
   cashOnHand?: number;
@@ -41,12 +42,16 @@ function KpiCard({ title, metric, fmt }: { title: string; metric: KPIMetric; fmt
 export function FinancialKpiRow(props: FinancialKpiRowProps) {
   const hasQb = props.totalExpenses !== undefined;
   const hasBreakeven = hasQb && props.burnRate !== undefined && props.burnRate > 0;
-  const colCount = hasBreakeven ? 8 : hasQb ? 7 : 5;
+  const hasDelinquency = props.delinquencyRate !== undefined;
+  const baseCount = hasDelinquency ? 6 : 5;
+  const colCount = hasBreakeven ? baseCount + 3 : hasQb ? baseCount + 2 : baseCount;
   const gridClass =
-    colCount === 8
+    colCount >= 8
       ? "grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-8"
       : colCount === 7
       ? "grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7"
+      : colCount === 6
+      ? "grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6"
       : "grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5";
 
   const breakevenGap = hasBreakeven ? props.mrr.value - props.burnRate! : 0;
@@ -59,6 +64,20 @@ export function FinancialKpiRow(props: FinancialKpiRowProps) {
       <KpiCard title="Outstanding AR" metric={props.outstandingAR} fmt="currency" />
       <KpiCard title="MRR" metric={props.mrr} fmt="currency" />
       <KpiCard title="Top 3 Concentration" metric={props.topClientConcentration} fmt="percent" />
+
+      {hasDelinquency && (
+        <div className={`rounded-lg border bg-white p-3 text-center ${
+          props.delinquencyRate! > 25 ? "border-red-200 bg-red-50" :
+          props.delinquencyRate! > 12 ? "border-amber-200 bg-amber-50" : "border-gray-100"
+        }`}>
+          <div className="text-[10px] uppercase text-gray-500">Delinquency Rate</div>
+          <div className={`mt-1 text-xl font-extrabold ${
+            props.delinquencyRate! > 25 ? "text-red-600" :
+            props.delinquencyRate! > 12 ? "text-amber-600" : "text-green-600"
+          }`}>{props.delinquencyRate!.toFixed(1)}%</div>
+          <div className="text-[11px] text-gray-400">Overdue / total AR</div>
+        </div>
+      )}
 
       {hasQb && (
         <div className="rounded-lg border border-gray-100 bg-white p-3 text-center">

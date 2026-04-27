@@ -32,6 +32,8 @@ export interface FinancialBISummary {
   outstandingAR: KPIMetric;
   mrr: KPIMetric;
   topClientConcentration: ConcentrationMetric;
+  delinquencyRate?: number;
+  avgDaysToPayment?: number;
   revenueTrendMini: Array<{ month: string; amount: number }>;
   agingSnapshotMini: Array<{ bucket: string; amount: number; count: number }>;
 }

@@ -144,6 +144,12 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
     };
   });
 
+  // Delinquency rate (overdue invoices by value / total outstanding AR)
+  const overdueAmount = agingInvoices
+    .filter((inv) => differenceInDays(now, inv.dueDate) > 0)
+    .reduce((sum, inv) => sum + Number(inv.amount), 0);
+  const delinquencyRate = outstanding > 0 ? (overdueAmount / outstanding) * 100 : 0;
+
   // Concentration
   const totalPaidAllTime = topCustomerPayments.reduce((sum, g) => sum + Number(g._sum.amount || 0), 0);
   const customerIds = topCustomerPayments.slice(0, 3).map((g) => g.customerId);
@@ -168,6 +174,7 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
       ...buildKpiMetric(concentration, concentration, { invertDirection: true, warningPct: 40, dangerPct: 50 }),
       topClients,
     },
+    delinquencyRate: Math.round(delinquencyRate * 10) / 10,
     revenueTrendMini,
     agingSnapshotMini,
     _raw: {
