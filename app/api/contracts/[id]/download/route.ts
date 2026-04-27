@@ -105,7 +105,7 @@ export async function GET(
         }
 
         // No S3 — return PDF directly
-        return new NextResponse(pdfBuffer, {
+        return new NextResponse(new Uint8Array(pdfBuffer), {
           headers: {
             'Content-Type': 'application/pdf',
             'Content-Disposition': `attachment; filename="contract-${contract.id.slice(0, 8)}.pdf"`,
