@@ -12,6 +12,7 @@ import {
   LogOut,
   CalendarCheck,
   LayoutList,
+  ClipboardList,
 } from "lucide-react";
 
 interface NavItem {
@@ -35,6 +36,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
     { href: "/ops/customers", label: "Clientes", icon: Users },
     { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
     { href: "/ops/pipeline", label: "Pipeline", icon: KanbanSquare },
+    { href: "/dashboard/forms", label: "Formulários", icon: ClipboardList },
     ...(userRole === "ADMIN"
       ? [{ href: "/ops/coordinator", label: "Coordenador", icon: LayoutList }]
       : []),
