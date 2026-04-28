@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   AlertTriangle, PauseCircle, CheckSquare, Square,
   ArrowRight, MessageCircle, FileText, Video, FileCheck,
@@ -70,7 +71,11 @@ const typeBadge: Record<string, string> = {
 function useMyTasks() {
   return useQuery<{ enrollments: EnrollmentData[] }>({
     queryKey: ["my-tasks"],
-    queryFn: () => fetch("/api/ops/my-tasks").then((r) => r.json()),
+    queryFn: () =>
+      fetch("/api/ops/my-tasks").then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      }),
   });
 }
 
@@ -84,6 +89,7 @@ function useToggleItem(enrollmentId: string) {
         body: JSON.stringify({ phaseKey, itemKey, completed }),
       }).then((r) => { if (!r.ok) throw new Error("Failed"); return r.json(); }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-tasks"] }),
+    onError: () => toast.error("Erro ao salvar. Tente novamente."),
   });
 }
 
@@ -272,7 +278,7 @@ function ChecklistPanel({ enrollment }: { enrollment: EnrollmentData }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function MyTasksClient() {
-  const { data, isLoading } = useMyTasks();
+  const { data, isLoading, isError } = useMyTasks();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const enrollments = data?.enrollments ?? [];
@@ -286,6 +292,14 @@ export function MyTasksClient() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-brand-verde" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="bg-white rounded-2xl border border-red-100 p-16 text-center shadow-sm">
+        <p className="text-sm text-red-500">Erro ao carregar tarefas. Tente novamente.</p>
       </div>
     );
   }
