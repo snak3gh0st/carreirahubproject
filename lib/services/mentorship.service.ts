@@ -144,6 +144,7 @@ export class MentorshipService {
   async logSession(data: LogSessionInput) {
     const { enrollmentId, sessionType, conductorId, sessionDate, notes } = data;
 
+    // Guard: enrollment must exist and be ACTIVE (read-only, outside transaction)
     const enrollment = await prisma.mentorshipEnrollment.findFirstOrThrow({
       where: { id: enrollmentId, status: "ACTIVE" },
       include: { currentPhase: true },
@@ -151,25 +152,29 @@ export class MentorshipService {
       throw new Error("Enrollment not found or not active");
     });
 
-    const session = await prisma.mentorshipSession.create({
-      data: { enrollmentId, sessionType, conductorId, sessionDate, notes },
-    });
-
-    // Auto-mark the nth session checklist item for this phase.
-    const phaseKey = enrollment.currentPhase?.key;
-    if (phaseKey) {
-      const sessionCount = await prisma.mentorshipSession.count({
-        where: { enrollmentId },
+    // Session write + checklist auto-mark in a single atomic transaction.
+    const session = await prisma.$transaction(async (tx) => {
+      const created = await tx.mentorshipSession.create({
+        data: { enrollmentId, sessionType, conductorId, sessionDate, notes },
       });
-      const itemKey = getSessionItemKey(phaseKey, sessionCount);
-      if (itemKey) {
-        await prisma.phaseChecklistProgress.upsert({
-          where: { enrollmentId_phaseKey_itemKey: { enrollmentId, phaseKey, itemKey } },
-          create: { enrollmentId, phaseKey, itemKey, completedAt: new Date(), completedById: conductorId },
-          update: { completedAt: new Date(), completedById: conductorId },
+
+      const phaseKey = enrollment.currentPhase?.key;
+      if (phaseKey) {
+        const sessionCount = await tx.mentorshipSession.count({
+          where: { enrollmentId },
         });
+        const itemKey = getSessionItemKey(phaseKey, sessionCount);
+        if (itemKey) {
+          await tx.phaseChecklistProgress.upsert({
+            where: { enrollmentId_phaseKey_itemKey: { enrollmentId, phaseKey, itemKey } },
+            create: { enrollmentId, phaseKey, itemKey, completedAt: new Date(), completedById: conductorId },
+            update: { completedAt: new Date(), completedById: conductorId },
+          });
+        }
       }
-    }
+
+      return created;
+    });
 
     return session;
   }
