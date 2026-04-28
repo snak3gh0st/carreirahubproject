@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { OpsSidebar } from "@/components/ops/ops-sidebar";
+import { OpsQueryProvider } from "./OpsQueryProvider";
 
 export default async function OpsLayout({
   children,
@@ -28,7 +29,7 @@ export default async function OpsLayout({
     <div data-portal="ops" className="min-h-screen bg-gray-50">
       <OpsSidebar userName={userName} userEmail={userEmail} userRole={userRole} />
       <main id="main-content" className="min-h-screen pl-60">
-        {children}
+        <OpsQueryProvider>{children}</OpsQueryProvider>
       </main>
     </div>
   );
