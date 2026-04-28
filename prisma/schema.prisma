@@ -34,6 +34,8 @@ model User {
   triggeredTransitions   PhaseTransition[]      @relation("TriggeredTransitions")
   aiConversations        AiConversation[]
   aiRateLimit            AiRateLimit?
+  assignedPhases         String[]               @default([])
+  checklistProgress      PhaseChecklistProgress[] @relation("CompletedByUser")
 
   @@index([id])
   @@map("users")
@@ -918,6 +920,7 @@ model MentorshipEnrollment {
 
   sessions    MentorshipSession[]
   transitions PhaseTransition[]
+  checklistProgress PhaseChecklistProgress[]
 
   @@index([customerId])
   @@index([assignedToId])
@@ -963,6 +966,23 @@ model PhaseTransition {
   @@index([toPhaseId])
   @@index([triggeredById])
   @@map("phase_transitions")
+}
+
+model PhaseChecklistProgress {
+  id            String    @id @default(cuid())
+  phaseKey      String
+  itemKey       String
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  enrollmentId  String
+  enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  completedById String?
+  completedBy   User?     @relation("CompletedByUser", fields: [completedById], references: [id])
+
+  @@unique([enrollmentId, phaseKey, itemKey])
+  @@index([enrollmentId])
+  @@map("phase_checklist_progress")
 }
 
 enum AiMessageRole {
