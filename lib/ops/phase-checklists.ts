@@ -32,22 +32,21 @@ export const PHASE_CHECKLISTS: Record<string, ChecklistItem[]> = {
   // ],
 };
 
-/**
- * Maps a phase key to the ordered list of session item keys.
- * When a session is logged, the system looks up the session count and marks
- * the nth session key (e.g. 1st session → session_1).
- */
-export const SESSION_ITEM_SEQUENCE: Record<string, string[]> = {
-  bastao: ["session_1", "session_2"],
-  // Add other phases here matching their session item keys.
-};
+export type PhaseKey = keyof typeof PHASE_CHECKLISTS;
 
+/**
+ * Returns the ordered checklist template for a given phase key.
+ * Returns an empty array if the phase has no defined checklist (safe for rendering).
+ */
 export function getPhaseChecklist(phaseKey: string): ChecklistItem[] {
   return PHASE_CHECKLISTS[phaseKey] ?? [];
 }
 
 export function getSessionItemKey(phaseKey: string, sessionCount: number): string | null {
-  const sequence = SESSION_ITEM_SEQUENCE[phaseKey];
-  if (!sequence) return null;
-  return sequence[sessionCount - 1] ?? null;
+  const items = PHASE_CHECKLISTS[phaseKey];
+  if (!items) return null;
+  const sessionItems = items
+    .filter((i) => i.type === "session" && i.autoComplete === true)
+    .map((i) => i.key);
+  return sessionItems[sessionCount - 1] ?? null;
 }
