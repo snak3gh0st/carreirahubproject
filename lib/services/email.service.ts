@@ -678,6 +678,40 @@ export class EmailService {
     return this.sendEmailSimple({ to: data.email, subject, html });
   }
 
+  async sendTeamMemberWelcome(data: {
+    name: string;
+    email: string;
+    tempPassword: string;
+  }): Promise<boolean> {
+    const firstName = data.name.split(' ')[0];
+    const loginUrl = `${process.env.NEXTAUTH_URL || 'https://carreirausa.sigmaintel.io'}/auth/signin`;
+
+    const bodyHtml = `
+      <p>Olá, ${esc(firstName)}!</p>
+      <p>Sua conta no Carreira U.S.A. Hub foi criada. Use as credenciais abaixo para acessar o painel interno.</p>
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:8px; padding:18px; margin:18px 0;">
+        <div style="font-size:12px; color:${BRAND_COLORS.textMuted}; text-transform:uppercase; font-weight:bold; letter-spacing:0.5px; margin-bottom:8px;">Suas credenciais</div>
+        <div style="font-size:15px; margin-bottom:6px;"><strong>E-mail:</strong> ${esc(data.email)}</div>
+        <div style="font-size:15px;"><strong>Senha temporária:</strong> <span style="font-family:monospace; background:${BRAND_COLORS.white}; padding:3px 8px; border-radius:4px; border:1px solid ${BRAND_COLORS.cafeLeite};">${esc(data.tempPassword)}</span></div>
+      </div>
+      <p style="font-size:13px; color:${BRAND_COLORS.textMuted};">Você será solicitado(a) a criar uma senha definitiva no primeiro acesso.</p>
+    `;
+
+    const html = renderBaseLayout({
+      title: 'Bem-vindo(a) ao Carreira U.S.A.',
+      preheader: 'Sua conta foi criada — acesse o painel interno',
+      bodyHtml,
+      ctaLabel: 'Acessar painel',
+      ctaUrl: loginUrl,
+    });
+
+    return this.sendEmailSimple({
+      to: data.email,
+      subject: 'Bem-vindo(a) ao Carreira U.S.A. — Suas credenciais de acesso',
+      html,
+    });
+  }
+
   // =========================================================================
   // Contract templates
   // =========================================================================
