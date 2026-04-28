@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   LayoutList,
   ClipboardList,
+  CheckSquare,
 } from "lucide-react";
 
 interface NavItem {
@@ -33,6 +34,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
   const navItems: NavItem[] = [
     { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
     { href: "/ops/daily", label: "Ações do Dia", icon: CalendarCheck },
+    { href: "/ops/my-tasks", label: "Minhas Tarefas", icon: CheckSquare },
     { href: "/ops/customers", label: "Clientes", icon: Users },
     { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
     { href: "/ops/pipeline", label: "Pipeline", icon: KanbanSquare },
