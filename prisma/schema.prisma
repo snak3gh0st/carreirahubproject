@@ -974,14 +974,15 @@ model PhaseChecklistProgress {
   itemKey       String
   completedAt   DateTime?
   createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   enrollmentId  String
   enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   completedById String?
-  completedBy   User?     @relation("CompletedByUser", fields: [completedById], references: [id])
+  completedBy   User?     @relation("CompletedByUser", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@unique([enrollmentId, phaseKey, itemKey])
-  @@index([enrollmentId])
+  @@index([completedById])
   @@map("phase_checklist_progress")
 }
 
