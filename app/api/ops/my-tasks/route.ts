@@ -30,6 +30,7 @@ export async function GET() {
       customer: { select: { name: true } },
       currentPhase: { select: { key: true, label: true } },
       sessions: { orderBy: { sessionDate: "desc" }, take: 1, select: { sessionDate: true } },
+      _count: { select: { sessions: true } },
       checklistProgress: { where: { completedAt: { not: null } }, select: { phaseKey: true, itemKey: true, completedAt: true } },
       assignedTo: { select: { name: true } },
     },
@@ -60,7 +61,7 @@ export async function GET() {
       phaseLabel: e.currentPhase?.label ?? phaseKey,
       assigneeName: e.assignedTo?.name ?? null,
       startDate: e.startDate.toISOString(),
-      sessionCount: e.sessions.length,
+      sessionCount: e._count.sessions,
       daysSinceLastSession,
       checklistProgress: {
         completed: template.filter((i) => completedKeys.has(i.key)).length,
@@ -82,9 +83,9 @@ export async function GET() {
   // Sort: most urgent first — 0% progress, then most days since last session
   result.sort((a, b) => {
     const aPct = a.checklistProgress.total > 0
-      ? a.checklistProgress.completed / a.checklistProgress.total : 1;
+      ? a.checklistProgress.completed / a.checklistProgress.total : 0;
     const bPct = b.checklistProgress.total > 0
-      ? b.checklistProgress.completed / b.checklistProgress.total : 1;
+      ? b.checklistProgress.completed / b.checklistProgress.total : 0;
     if (aPct !== bPct) return aPct - bPct;
     return (b.daysSinceLastSession ?? 0) - (a.daysSinceLastSession ?? 0);
   });
