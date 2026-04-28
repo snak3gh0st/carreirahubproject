@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -39,14 +39,16 @@ export function UserSheet({ open, onOpenChange, user, onSuccess }: UserSheetProp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset form when sheet opens with a different user (or opens fresh)
-  const handleOpenChange = (val: boolean) => {
-    if (val) {
+  useEffect(() => {
+    if (open) {
       setName(user?.name ?? "");
       setEmail(user?.email ?? "");
       setRole(user?.role ?? "SALES");
       setError(null);
     }
+  }, [open, user]);
+
+  const handleOpenChange = (val: boolean) => {
     onOpenChange(val);
   };
 
@@ -107,22 +109,19 @@ export function UserSheet({ open, onOpenChange, user, onSuccess }: UserSheetProp
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="ana@carreirausa.com"
-              required
-              disabled={isEdit}
-              className={isEdit ? "opacity-60 cursor-not-allowed" : ""}
-            />
-            {isEdit && (
-              <p className="text-xs text-muted-foreground">Email não pode ser alterado.</p>
-            )}
-          </div>
+          {!isEdit && (
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="ana@carreirausa.com"
+                required
+              />
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label htmlFor="role">Role</Label>
