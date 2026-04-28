@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   FileText,
   Users,
+  Users2,
   CreditCard,
   FileSignature,
   ClipboardList,
@@ -75,6 +76,13 @@ const mainNavItems: NavItem[] = [
     label: "Insights",
     icon: BarChart3,
     roles: ["ADMIN", "OPERATIONAL", "FINANCE"],
+  },
+  {
+    href: "/dashboard/team",
+    label: "Equipe",
+    icon: Users2,
+    roles: ["ADMIN"],
+    sectionBefore: "Admin",
   },
   {
     href: "/dashboard/bi",
