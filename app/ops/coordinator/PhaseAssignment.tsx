@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 
@@ -49,12 +49,19 @@ function UserPhaseRow({ user, phases }: { user: OpsUser; phases: Phase[] }) {
   const [localPhases, setLocalPhases] = useState(user.assignedPhases);
   const update = useUpdatePhases(user.id);
 
+  useEffect(() => {
+    setLocalPhases(user.assignedPhases);
+  }, [user.assignedPhases]);
+
   function toggle(phaseKey: string) {
+    const prev = localPhases;
     const next = localPhases.includes(phaseKey)
       ? localPhases.filter((k) => k !== phaseKey)
       : [...localPhases, phaseKey];
     setLocalPhases(next);
-    update.mutate(next);
+    update.mutate(next, {
+      onError: () => setLocalPhases(prev),
+    });
   }
 
   return (
@@ -90,13 +97,21 @@ function UserPhaseRow({ user, phases }: { user: OpsUser; phases: Phase[] }) {
 }
 
 export function PhaseAssignment() {
-  const { data: usersData, isLoading: loadingUsers } = useOpsUsers();
-  const { data: phasesData, isLoading: loadingPhases } = usePhases();
+  const { data: usersData, isLoading: loadingUsers, isError: usersError } = useOpsUsers();
+  const { data: phasesData, isLoading: loadingPhases, isError: phasesError } = usePhases();
 
   if (loadingUsers || loadingPhases) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-brand-verde" />
+      </div>
+    );
+  }
+
+  if (usersError || phasesError) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
+        <p className="text-sm text-red-500">Erro ao carregar dados. Tente recarregar a página.</p>
       </div>
     );
   }
