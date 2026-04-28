@@ -162,24 +162,25 @@ export default async function OpsHandbookPage() {
               </div>
             </div>
 
-            {/* Phase body — 3-col then 2-col */}
-            <div className="p-5 space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <SectionBlock type="checklist"   items={def.checklist} />
+            {/* Phase body — 2 rows, equal cols */}
+            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-gray-50">
+              {/* Col 1: Checklist */}
+              <div className="p-5">
+                <SectionBlock type="checklist" items={def.checklist} />
+              </div>
+              {/* Col 2: Próximas Ações + Slack */}
+              <div className="p-5 space-y-5">
                 <SectionBlock type="nextActions" items={def.nextActions} />
-                <SectionBlock type="records"     items={def.requiredRecords} />
-              </div>
-
-              <div className="border-t border-gray-50 pt-4 grid grid-cols-1 md:grid-cols-2 gap-5">
-                <SectionBlock type="communication" items={def.communication} />
-                <SectionBlock type="automations"   items={def.automations} />
-              </div>
-
-              {def.slackChannels.length > 0 && (
-                <div className="border-t border-gray-50 pt-4">
+                {def.slackChannels.length > 0 && (
                   <SectionBlock type="slack" items={def.slackChannels} />
-                </div>
-              )}
+                )}
+              </div>
+              {/* Col 3: Registro + Comunicação + Automações */}
+              <div className="p-5 space-y-5">
+                <SectionBlock type="records"        items={def.requiredRecords} />
+                <SectionBlock type="communication"  items={def.communication} />
+                <SectionBlock type="automations"    items={def.automations} />
+              </div>
             </div>
           </div>
         ))}
