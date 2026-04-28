@@ -684,7 +684,7 @@ export class EmailService {
     tempPassword: string;
   }): Promise<boolean> {
     const firstName = data.name.split(' ')[0];
-    const loginUrl = `${process.env.NEXTAUTH_URL || 'https://carreirausa.sigmaintel.io'}/auth/signin`;
+    const loginUrl = `${APP_URL}/auth/signin`;
 
     const bodyHtml = `
       <p>Olá, ${esc(firstName)}!</p>
