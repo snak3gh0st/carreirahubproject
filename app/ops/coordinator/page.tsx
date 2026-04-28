@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { CoordinatorQueryProvider } from "./CoordinatorClient";
 import { PhaseDistribution } from "./PhaseDistribution";
+import { PhaseAssignment } from "./PhaseAssignment";
 
 export default async function CoordinatorPage() {
   const session = await getServerSession(authOptions);
@@ -23,7 +24,10 @@ export default async function CoordinatorPage() {
       </div>
 
       <CoordinatorQueryProvider>
-        <PhaseDistribution />
+        <div className="space-y-6">
+          <PhaseAssignment />
+          <PhaseDistribution />
+        </div>
       </CoordinatorQueryProvider>
     </div>
   );
