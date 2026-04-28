@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || (session.user as any).role !== UserRole.ADMIN) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user as any).role !== "ADMIN") {
+    if (!session || (session.user as any).role !== UserRole.ADMIN) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -67,7 +67,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
       return NextResponse.json({ error: "Email already exists" }, { status: 409 });
     }
@@ -76,14 +78,23 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await authService.hashPassword(tempPassword);
 
     const user = await prisma.user.create({
-      data: { name: name.trim(), email: email.toLowerCase().trim(), role: role as UserRole, password: hashedPassword, active: true },
+      data: { name: name.trim(), email: normalizedEmail, role: role as UserRole, password: hashedPassword, passwordHashedAt: new Date(), active: true },
       select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
     });
 
-    await emailService.sendTeamMemberWelcome({ name: user.name ?? name, email: user.email, tempPassword });
+    try {
+      await emailService.sendTeamMemberWelcome({ name: user.name ?? name, email: user.email, tempPassword });
+    } catch (emailErr) {
+      console.error("[TEAM] Welcome email failed, rolling back user creation:", emailErr);
+      await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+      return NextResponse.json({ error: "User creation failed: could not send welcome email" }, { status: 500 });
+    }
 
     return NextResponse.json({ user }, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === "P2002") {
+      return NextResponse.json({ error: "Email already exists" }, { status: 409 });
+    }
     console.error("[TEAM] POST error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
