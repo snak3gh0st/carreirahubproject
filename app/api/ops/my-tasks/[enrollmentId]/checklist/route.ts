@@ -46,20 +46,33 @@ export async function POST(
     return NextResponse.json({ error: "This item is managed automatically" }, { status: 400 });
   }
 
-  const progress = await prisma.phaseChecklistProgress.upsert({
-    where: { enrollmentId_phaseKey_itemKey: { enrollmentId, phaseKey, itemKey } },
-    create: {
-      enrollmentId,
-      phaseKey,
-      itemKey,
-      completedAt: completed ? new Date() : null,
-      completedById: completed ? userId : null,
-    },
-    update: {
-      completedAt: completed ? new Date() : null,
-      completedById: completed ? userId : null,
-    },
+  // Verify enrollment exists
+  const enrollment = await prisma.mentorshipEnrollment.findUnique({
+    where: { id: enrollmentId },
+    select: { id: true },
   });
+  if (!enrollment) {
+    return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
+  }
 
-  return NextResponse.json({ progress });
+  try {
+    const progress = await prisma.phaseChecklistProgress.upsert({
+      where: { enrollmentId_phaseKey_itemKey: { enrollmentId, phaseKey, itemKey } },
+      create: {
+        enrollmentId,
+        phaseKey,
+        itemKey,
+        completedAt: completed ? new Date() : null,
+        completedById: completed ? userId : null,
+      },
+      update: {
+        completedAt: completed ? new Date() : null,
+        completedById: completed ? userId : null,
+      },
+    });
+    return NextResponse.json({ progress });
+  } catch (err) {
+    console.error("[checklist toggle]", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
