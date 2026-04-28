@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getSessionItemKey } from "@/lib/ops/phase-checklists";
 
 /**
  * MentorshipError — business rule violations that API routes can distinguish
@@ -143,26 +144,32 @@ export class MentorshipService {
   async logSession(data: LogSessionInput) {
     const { enrollmentId, sessionType, conductorId, sessionDate, notes } = data;
 
-    // 1. Guard: enrollment must exist and be ACTIVE
-    try {
-      await prisma.mentorshipEnrollment.findFirstOrThrow({
-        where: { id: enrollmentId, status: "ACTIVE" },
-      });
-    } catch {
-      // Prisma throws P2025 when no record found — re-throw with a clear message
+    const enrollment = await prisma.mentorshipEnrollment.findFirstOrThrow({
+      where: { id: enrollmentId, status: "ACTIVE" },
+      include: { currentPhase: true },
+    }).catch(() => {
       throw new Error("Enrollment not found or not active");
-    }
-
-    // 2. Persist the session
-    const session = await prisma.mentorshipSession.create({
-      data: {
-        enrollmentId,
-        sessionType,
-        conductorId,
-        sessionDate,
-        notes,
-      },
     });
+
+    const session = await prisma.mentorshipSession.create({
+      data: { enrollmentId, sessionType, conductorId, sessionDate, notes },
+    });
+
+    // Auto-mark the nth session checklist item for this phase.
+    const phaseKey = enrollment.currentPhase?.key;
+    if (phaseKey) {
+      const sessionCount = await prisma.mentorshipSession.count({
+        where: { enrollmentId },
+      });
+      const itemKey = getSessionItemKey(phaseKey, sessionCount);
+      if (itemKey) {
+        await prisma.phaseChecklistProgress.upsert({
+          where: { enrollmentId_phaseKey_itemKey: { enrollmentId, phaseKey, itemKey } },
+          create: { enrollmentId, phaseKey, itemKey, completedAt: new Date(), completedById: conductorId },
+          update: { completedAt: new Date(), completedById: conductorId },
+        });
+      }
+    }
 
     return session;
   }
