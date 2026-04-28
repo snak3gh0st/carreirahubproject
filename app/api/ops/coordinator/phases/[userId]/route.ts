@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 const bodySchema = z.object({
   assignedPhases: z.array(z.string()),
@@ -27,11 +28,30 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const updated = await prisma.user.update({
-    where: { id: params.userId },
-    data: { assignedPhases: parsed.data.assignedPhases },
-    select: { id: true, name: true, assignedPhases: true },
+  // Validate all phase keys against the DB
+  const validPhases = await prisma.mentorshipPhase.findMany({
+    select: { key: true },
   });
+  const validKeys = new Set(validPhases.map((p) => p.key));
+  const invalidKeys = parsed.data.assignedPhases.filter((k) => !validKeys.has(k));
+  if (invalidKeys.length > 0) {
+    return NextResponse.json(
+      { error: `Unknown phase keys: ${invalidKeys.join(", ")}` },
+      { status: 400 }
+    );
+  }
 
-  return NextResponse.json({ user: updated });
+  try {
+    const updated = await prisma.user.update({
+      where: { id: params.userId },
+      data: { assignedPhases: parsed.data.assignedPhases },
+      select: { id: true, name: true, assignedPhases: true },
+    });
+    return NextResponse.json({ user: updated });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    throw e;
+  }
 }
