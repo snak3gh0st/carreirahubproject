@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '';
+    if (!APP_URL) {
+      console.error('[InvoicePaymentReminder] APP_URL not configured — payment links will be broken');
+    }
 
     const invoices = await prisma.invoice.findMany({
       where: {
