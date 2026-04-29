@@ -1300,6 +1300,60 @@ export class EmailService {
     });
   }
 
+  async sendHubFormReminder(
+    customer: { id: string; email: string; name: string },
+    templateId: string,
+    assignedAt: Date,
+    daysPending: number,
+    language: string
+  ): Promise<void> {
+    const isPtBr = language === 'pt-BR';
+    const firstName = esc(customer.name.split(' ')[0]);
+    const portalUrl = `${APP_URL}/hub/login`;
+
+    const subject = isPtBr
+      ? `Lembrete: seu formulário está aguardando`
+      : `Reminder: your form is waiting`;
+
+    const bodyHtml = isPtBr
+      ? `
+        <p>Olá ${firstName},</p>
+        <p>Você tem um formulário atribuído há <strong>${daysPending} dia(s)</strong> que ainda não foi preenchido.</p>
+        ${calloutBox(
+          `<p style="margin:0;"><strong>Formulário:</strong> ${esc(templateId)}</p>
+           <p style="margin:4px 0 0 0;"><strong>Atribuído em:</strong> ${fmtDateBR(assignedAt)}</p>`,
+          'warn'
+        )}
+        <p>Acesse o portal para preencher seu formulário.</p>
+      `
+      : `
+        <p>Hi ${firstName},</p>
+        <p>You have a form assigned <strong>${daysPending} day(s) ago</strong> that hasn't been completed yet.</p>
+        ${calloutBox(
+          `<p style="margin:0;"><strong>Form:</strong> ${esc(templateId)}</p>
+           <p style="margin:4px 0 0 0;"><strong>Assigned:</strong> ${esc(new Date(assignedAt).toLocaleDateString('en-US'))}</p>`,
+          'warn'
+        )}
+        <p>Please log in to complete your form.</p>
+      `;
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      renderBaseLayout({
+        title: isPtBr ? 'Formulário pendente' : 'Pending form',
+        preheader: isPtBr
+          ? `${esc(templateId)} — pendente há ${daysPending} dia(s)`
+          : `${esc(templateId)} — pending for ${daysPending} day(s)`,
+        bodyHtml,
+        ctaLabel: isPtBr ? 'Acessar portal' : 'Go to portal',
+        ctaUrl: portalUrl,
+      }),
+      NotificationType.HUB_FORM_REMINDER,
+      { customerId: customer.id }
+    );
+  }
+
   async sendSellerDailyDigest(seller: User, data: SellerDigestData): Promise<void> {
     const allEmpty =
       data.overdueInvoices.length === 0 &&
