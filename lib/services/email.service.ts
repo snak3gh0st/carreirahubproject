@@ -199,6 +199,21 @@ export interface ContractRenewalData {
   reminderCount: number;
 }
 
+export interface OpsDigestData {
+  date: string;
+  endingSoon: Array<{
+    studentName: string;
+    programType: string;
+    endDate: Date;
+    daysRemaining: number;
+  }>;
+  inactive: Array<{
+    studentName: string;
+    lastSessionDate: Date | null;
+    daysSinceLastSession: number;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Small HTML utility helpers (private)
 // ---------------------------------------------------------------------------
@@ -1224,6 +1239,65 @@ export class EmailService {
       NotificationType.CONTRACT_RENEWAL_WARNING,
       { contractId: contract.id }
     );
+  }
+
+  async sendOpsDailyDigest(
+    coordinator: { name: string | null; email: string },
+    data: OpsDigestData
+  ): Promise<void> {
+    const endingSoonRows = data.endingSoon.map((s) =>
+      tableRow([
+        esc(s.studentName),
+        esc(s.programType),
+        fmtDateBR(s.endDate),
+        `${s.daysRemaining}d`,
+      ])
+    );
+
+    const inactiveRows = data.inactive.map((s) =>
+      tableRow([
+        esc(s.studentName),
+        s.lastSessionDate ? fmtDateBR(s.lastSessionDate) : 'Nenhuma sessão',
+        `${s.daysSinceLastSession}d`,
+      ])
+    );
+
+    const endingSoonSection =
+      data.endingSoon.length > 0
+        ? `${sectionTitle('Matrículas encerrando em breve')}${dataTable(
+            ['Aluno', 'Programa', 'Encerramento', 'Dias restantes'],
+            endingSoonRows
+          )}`
+        : '';
+
+    const inactiveSection =
+      data.inactive.length > 0
+        ? `${sectionTitle('Alunos sem sessão há 14+ dias')}${dataTable(
+            ['Aluno', 'Última sessão', 'Dias sem sessão'],
+            inactiveRows
+          )}`
+        : '';
+
+    const bodyHtml = `
+    <p>Olá ${esc(coordinator.name || 'coordenador')},</p>
+    <p>Seu resumo de alunos que precisam de atenção hoje.</p>
+    ${endingSoonSection}
+    ${inactiveSection}
+  `;
+
+    const totalCount = data.endingSoon.length + data.inactive.length;
+
+    await this.sendEmailSimple({
+      to: coordinator.email,
+      subject: `Ops — ${totalCount} aluno(s) precisam de atenção — ${data.date}`,
+      html: renderBaseLayout({
+        title: `Ops — ${totalCount} aluno(s) hoje`,
+        preheader: `${data.endingSoon.length} encerrando em breve · ${data.inactive.length} sem sessão`,
+        bodyHtml,
+        ctaLabel: 'Ver alunos',
+        ctaUrl: `${APP_URL}/ops`,
+      }),
+    });
   }
 
   async sendSellerDailyDigest(seller: User, data: SellerDigestData): Promise<void> {
