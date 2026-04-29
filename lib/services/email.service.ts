@@ -190,6 +190,30 @@ export interface AdminDigestData {
   biHighlights: string[];
 }
 
+export interface ContractRenewalData {
+  id: string;
+  signerName: string;
+  signerEmail: string;
+  sentAt: Date | null;
+  expiresAt: Date;
+  reminderCount: number;
+}
+
+export interface OpsDigestData {
+  date: string;
+  endingSoon: Array<{
+    studentName: string;
+    programType: string;
+    endDate: Date;
+    daysRemaining: number;
+  }>;
+  inactive: Array<{
+    studentName: string;
+    lastSessionDate: Date | null;
+    daysSinceLastSession: number;
+  }>;
+}
+
 // ---------------------------------------------------------------------------
 // Small HTML utility helpers (private)
 // ---------------------------------------------------------------------------
@@ -786,6 +810,43 @@ export class EmailService {
     );
   }
 
+  async sendStaleInvoiceReminder(
+    invoice: Invoice,
+    customer: Customer,
+    paymentUrl: string,
+    daysSinceSent: number
+  ): Promise<void> {
+    const urgent = daysSinceSent >= 60;
+    const subject = `Payment reminder — Invoice ${invoice.invoiceNumber || invoice.id} — ${daysSinceSent} days pending`;
+
+    const bodyHtml = `
+      <p>Dear ${esc(customer.name)},</p>
+      <p>Your invoice has been pending for <strong>${daysSinceSent} day(s)</strong>. Please process the payment at your earliest convenience.</p>
+      ${calloutBox(
+        `<h4 style="margin:0 0 8px 0; color:${BRAND_COLORS.verde};">Invoice pending for ${daysSinceSent} day(s)</h4>
+         <p style="margin:4px 0;"><strong>Invoice:</strong> ${esc(invoice.invoiceNumber || invoice.id)}</p>
+         <p style="margin:4px 0;"><strong>Amount:</strong> ${fmtMoney(Number(invoice.amount))}</p>
+         <p style="margin:4px 0;"><strong>Due date:</strong> ${esc(new Date(invoice.dueDate).toLocaleDateString('en-US'))}</p>`,
+        urgent ? 'error' : 'warn'
+      )}
+      <p>If you have already made the payment, please disregard this message.</p>
+    `;
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      renderBaseLayout({
+        title: 'Payment reminder',
+        preheader: `Invoice ${esc(invoice.invoiceNumber || invoice.id)} — ${fmtMoney(Number(invoice.amount))} — ${daysSinceSent}d pending`,
+        bodyHtml,
+        ctaLabel: 'Pay now',
+        ctaUrl: paymentUrl,
+      }),
+      NotificationType.PAYMENT_REMINDER,
+      { invoiceId: invoice.id, customerId: customer.id }
+    );
+  }
+
   async sendPaymentReceived(invoice: Invoice, customer: Customer): Promise<void> {
     const subject = `Payment Received — Invoice ${invoice.invoiceNumber || invoice.id}`;
     const html = this.generatePaymentReceivedEmail(invoice, customer);
@@ -1176,6 +1237,157 @@ export class EmailService {
       html,
       NotificationType.CONTRACT_UNSIGNED_SELLER,
       { contractId: contract.id }
+    );
+  }
+
+  async sendContractRenewalWarning(
+    contract: ContractRenewalData,
+    seller: { name: string | null; email: string },
+    daysUntilExpiry: number
+  ): Promise<void> {
+    const urgency: 'warn' | 'error' = daysUntilExpiry <= 7 ? 'error' : 'warn';
+    const subject = `Contrato expira em ${daysUntilExpiry} dia(s) — ${esc(contract.signerName)}`;
+
+    const bodyHtml = `
+    <p>Olá ${esc(seller.name || 'vendedor')},</p>
+    <p>O contrato abaixo expira em <strong>${daysUntilExpiry} dia(s)</strong>. Reenvie ou entre em contato com o cliente para evitar que expire sem assinatura.</p>
+    ${calloutBox(
+      `<h4 style="margin:0 0 8px 0; color:${BRAND_COLORS.verde};">Expira em ${daysUntilExpiry} dia(s)</h4>
+       <p style="margin:4px 0;"><strong>Assinante:</strong> ${esc(contract.signerName)}</p>
+       <p style="margin:4px 0;"><strong>E-mail:</strong> ${esc(contract.signerEmail)}</p>
+       <p style="margin:4px 0;"><strong>Enviado em:</strong> ${fmtDateBR(contract.sentAt)}</p>
+       <p style="margin:4px 0;"><strong>Expira em:</strong> ${fmtDateBR(contract.expiresAt)}</p>
+       <p style="margin:4px 0;"><strong>Lembretes enviados:</strong> ${contract.reminderCount}</p>`,
+      urgency
+    )}
+    <p>Reenvie o contrato pelo painel ou ligue para o cliente.</p>
+  `;
+
+    await this.sendEmailWithTracking(
+      seller.email,
+      subject,
+      renderBaseLayout({
+        title: `Contrato expira em ${daysUntilExpiry} dia(s)`,
+        preheader: `Ação necessária — ${esc(contract.signerName)} ainda não assinou`,
+        bodyHtml,
+        ctaLabel: 'Ver contrato',
+        ctaUrl: `${APP_URL}/dashboard/contracts/${contract.id}`,
+      }),
+      NotificationType.CONTRACT_RENEWAL_WARNING,
+      { contractId: contract.id }
+    );
+  }
+
+  async sendOpsDailyDigest(
+    coordinator: { name: string | null; email: string },
+    data: OpsDigestData
+  ): Promise<void> {
+    const endingSoonRows = data.endingSoon.map((s) =>
+      tableRow([
+        esc(s.studentName),
+        esc(s.programType),
+        fmtDateBR(s.endDate),
+        `${s.daysRemaining}d`,
+      ])
+    );
+
+    const inactiveRows = data.inactive.map((s) =>
+      tableRow([
+        esc(s.studentName),
+        s.lastSessionDate ? fmtDateBR(s.lastSessionDate) : 'Nenhuma sessão',
+        `${s.daysSinceLastSession}d`,
+      ])
+    );
+
+    const endingSoonSection =
+      data.endingSoon.length > 0
+        ? `${sectionTitle('Matrículas encerrando em breve')}${dataTable(
+            ['Aluno', 'Programa', 'Encerramento', 'Dias restantes'],
+            endingSoonRows
+          )}`
+        : '';
+
+    const inactiveSection =
+      data.inactive.length > 0
+        ? `${sectionTitle('Alunos sem sessão há 14+ dias')}${dataTable(
+            ['Aluno', 'Última sessão', 'Dias sem sessão'],
+            inactiveRows
+          )}`
+        : '';
+
+    const bodyHtml = `
+    <p>Olá ${esc(coordinator.name || 'coordenador')},</p>
+    <p>Seu resumo de alunos que precisam de atenção hoje.</p>
+    ${endingSoonSection}
+    ${inactiveSection}
+  `;
+
+    const totalCount = data.endingSoon.length + data.inactive.length;
+
+    await this.sendEmailSimple({
+      to: coordinator.email,
+      subject: `Ops — ${totalCount} aluno(s) precisam de atenção — ${data.date}`,
+      html: renderBaseLayout({
+        title: `Ops — ${totalCount} aluno(s) hoje`,
+        preheader: `${data.endingSoon.length} encerrando em breve · ${data.inactive.length} sem sessão`,
+        bodyHtml,
+        ctaLabel: 'Ver alunos',
+        ctaUrl: `${APP_URL}/ops`,
+      }),
+    });
+  }
+
+  async sendHubFormReminder(
+    customer: { id: string; email: string; name: string },
+    templateId: string,
+    assignedAt: Date,
+    daysPending: number,
+    language: string
+  ): Promise<void> {
+    const isPtBr = language === 'pt-BR';
+    const firstName = esc(customer.name.split(' ')[0]);
+    const portalUrl = `${APP_URL}/hub/login`;
+
+    const subject = isPtBr
+      ? `Lembrete: seu formulário está aguardando`
+      : `Reminder: your form is waiting`;
+
+    const bodyHtml = isPtBr
+      ? `
+        <p>Olá ${firstName},</p>
+        <p>Você tem um formulário atribuído há <strong>${daysPending} dia(s)</strong> que ainda não foi preenchido.</p>
+        ${calloutBox(
+          `<p style="margin:0;"><strong>Formulário:</strong> ${esc(templateId)}</p>
+           <p style="margin:4px 0 0 0;"><strong>Atribuído em:</strong> ${fmtDateBR(assignedAt)}</p>`,
+          'warn'
+        )}
+        <p>Acesse o portal para preencher seu formulário.</p>
+      `
+      : `
+        <p>Hi ${firstName},</p>
+        <p>You have a form assigned <strong>${daysPending} day(s) ago</strong> that hasn't been completed yet.</p>
+        ${calloutBox(
+          `<p style="margin:0;"><strong>Form:</strong> ${esc(templateId)}</p>
+           <p style="margin:4px 0 0 0;"><strong>Assigned:</strong> ${esc(new Date(assignedAt).toLocaleDateString('en-US'))}</p>`,
+          'warn'
+        )}
+        <p>Please log in to complete your form.</p>
+      `;
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      renderBaseLayout({
+        title: isPtBr ? 'Formulário pendente' : 'Pending form',
+        preheader: isPtBr
+          ? `${esc(templateId)} — pendente há ${daysPending} dia(s)`
+          : `${esc(templateId)} — pending for ${daysPending} day(s)`,
+        bodyHtml,
+        ctaLabel: isPtBr ? 'Acessar portal' : 'Go to portal',
+        ctaUrl: portalUrl,
+      }),
+      NotificationType.HUB_FORM_REMINDER,
+      { customerId: customer.id }
     );
   }
 

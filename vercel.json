@@ -71,6 +71,22 @@
     {
       "path": "/api/cron/daily-bi-digest",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/contract-renewal-reminder",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/ops-daily-digest",
+      "schedule": "15 8 * * *"
+    },
+    {
+      "path": "/api/cron/form-completion-reminder",
+      "schedule": "15 9 * * *"
+    },
+    {
+      "path": "/api/cron/invoice-payment-reminder",
+      "schedule": "0 10 * * *"
     }
   ]
 }

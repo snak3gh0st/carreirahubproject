@@ -126,6 +126,8 @@ model FormAssignment {
   templateId   String
   status       FormAssignmentStatus @default(PENDING)
   assignedAt   DateTime             @default(now())
+  lastReminderAt DateTime?
+  reminderCount  Int                @default(0)
   updatedAt    DateTime             @updatedAt
 
   customerId   String
@@ -788,6 +790,9 @@ enum NotificationType {
   SELLER_DAILY_DIGEST
   FINANCE_DAILY_DIGEST
   ADMIN_WEEKLY_DIGEST
+  CONTRACT_RENEWAL_WARNING
+  OPS_DAILY_DIGEST
+  HUB_FORM_REMINDER
 }
 
 enum NotificationStatus {
