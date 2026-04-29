@@ -810,6 +810,43 @@ export class EmailService {
     );
   }
 
+  async sendStaleInvoiceReminder(
+    invoice: Invoice,
+    customer: Customer,
+    paymentUrl: string,
+    daysSinceSent: number
+  ): Promise<void> {
+    const urgent = daysSinceSent >= 60;
+    const subject = `Payment reminder — Invoice ${invoice.invoiceNumber || invoice.id} — ${daysSinceSent} days pending`;
+
+    const bodyHtml = `
+      <p>Dear ${esc(customer.name)},</p>
+      <p>Your invoice has been pending for <strong>${daysSinceSent} day(s)</strong>. Please process the payment at your earliest convenience.</p>
+      ${calloutBox(
+        `<h4 style="margin:0 0 8px 0; color:${BRAND_COLORS.verde};">Invoice pending for ${daysSinceSent} day(s)</h4>
+         <p style="margin:4px 0;"><strong>Invoice:</strong> ${esc(invoice.invoiceNumber || invoice.id)}</p>
+         <p style="margin:4px 0;"><strong>Amount:</strong> ${fmtMoney(Number(invoice.amount))}</p>
+         <p style="margin:4px 0;"><strong>Due date:</strong> ${esc(new Date(invoice.dueDate).toLocaleDateString('en-US'))}</p>`,
+        urgent ? 'error' : 'warn'
+      )}
+      <p>If you have already made the payment, please disregard this message.</p>
+    `;
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      renderBaseLayout({
+        title: 'Payment reminder',
+        preheader: `Invoice ${esc(invoice.invoiceNumber || invoice.id)} — ${fmtMoney(Number(invoice.amount))} — ${daysSinceSent}d pending`,
+        bodyHtml,
+        ctaLabel: 'Pay now',
+        ctaUrl: paymentUrl,
+      }),
+      NotificationType.PAYMENT_REMINDER,
+      { invoiceId: invoice.id, customerId: customer.id }
+    );
+  }
+
   async sendPaymentReceived(invoice: Invoice, customer: Customer): Promise<void> {
     const subject = `Payment Received — Invoice ${invoice.invoiceNumber || invoice.id}`;
     const html = this.generatePaymentReceivedEmail(invoice, customer);
