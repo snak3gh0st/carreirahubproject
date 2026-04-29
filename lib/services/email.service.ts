@@ -1216,7 +1216,7 @@ export class EmailService {
       subject,
       renderBaseLayout({
         title: `Contrato expira em ${daysUntilExpiry} dia(s)`,
-        preheader: `Ação necessária — ${contract.signerName} ainda não assinou`,
+        preheader: `Ação necessária — ${esc(contract.signerName)} ainda não assinou`,
         bodyHtml,
         ctaLabel: 'Ver contrato',
         ctaUrl: `${APP_URL}/dashboard/contracts/${contract.id}`,
