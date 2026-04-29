@@ -106,12 +106,14 @@ export async function POST(request: NextRequest) {
 
         const data: OpsDigestData = {
           date: dateLabel,
-          endingSoon: endingSoon.map((e) => ({
-            studentName: e.customer.name,
-            programType: e.programType,
-            endDate: e.endDate!,
-            daysRemaining: differenceInDays(e.endDate!, now),
-          })),
+          endingSoon: endingSoon
+            .filter((e) => e.endDate !== null)
+            .map((e) => ({
+              studentName: e.customer.name,
+              programType: e.programType,
+              endDate: e.endDate as Date,
+              daysRemaining: differenceInDays(e.endDate as Date, now),
+            })),
           inactive: inactive.map((e) => {
             const lastSession = e.sessions[0]?.sessionDate ?? null;
             return {
