@@ -74,7 +74,10 @@ export function AssignFormClient({
         throw new Error(data.error || "Falha ao atribuir formulário.");
       }
       setSuccess(true);
-      setTimeout(() => router.push("/dashboard/forms"), 1500);
+      setTimeout(() => {
+        router.push("/dashboard/forms");
+        router.refresh();
+      }, 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido.");
     } finally {

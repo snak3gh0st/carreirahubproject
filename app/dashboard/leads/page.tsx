@@ -10,7 +10,7 @@ const ITEMS_PER_PAGE = 25;
 /**
  * Dashboard de Leads
  *
- * Exibe lista de leads e pipeline SDR com paginação
+ * Exibe lista de leads e pipeline com paginação
  */
 export default async function LeadsPage({
   searchParams,
@@ -25,15 +25,14 @@ export default async function LeadsPage({
 
   // Verificar permissão
   const userRole = (session.user as any).role;
-  if (userRole !== "ADMIN" && userRole !== "SDR" && userRole !== "SALES" && userRole !== "COMMERCIAL") {
+  if (userRole !== "ADMIN" && userRole !== "COMMERCIAL") {
     redirect("/dashboard");
   }
 
   const userId = (session.user as any).id as string;
 
-  // Leads visíveis ao SALES/COMMERCIAL: criados por ele OU com invoice gerada por ele
   let whereClause: object = {};
-  if (userRole === "SALES" || userRole === "COMMERCIAL") {
+  if (userRole === "COMMERCIAL") {
     const invoicesOwned = await prisma.invoice.findMany({
       where: { ownerId: userId, dealId: { not: null } },
       select: { deal: { select: { convertedFromLeadId: true } } },
@@ -97,7 +96,7 @@ export default async function LeadsPage({
 
     return (
       <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Leads & SDR Pipeline</h1>
+        <h1 className="text-3xl font-bold mb-6">Leads & Pipeline</h1>
 
         {/* Pipeline Overview */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
@@ -271,7 +270,7 @@ export default async function LeadsPage({
     console.error("Error fetching leads:", error);
     return (
       <div className="container mx-auto p-6">
-        <h1 className="text-3xl font-bold mb-6">Leads & SDR Pipeline</h1>
+        <h1 className="text-3xl font-bold mb-6">Leads & Pipeline</h1>
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
           <svg
             className="mx-auto h-12 w-12 text-red-400"

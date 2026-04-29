@@ -25,8 +25,7 @@ export default async function LeadDetailPage({
   const userRole = (session.user as any).role;
   if (
     userRole !== "ADMIN" &&
-    userRole !== "SDR" &&
-    userRole !== "SALES"
+    userRole !== "COMMERCIAL"
   ) {
     redirect("/dashboard");
   }

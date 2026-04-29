@@ -19,18 +19,18 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL"] },
-    { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "OPERATIONAL", "SDR", "SALES"] },
-    { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "OPERATIONAL", "SUPPORT", "SDR"] },
-    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT"] },
-    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL", "SALES"] },
-    { href: "/dashboard/payments", label: "Pagamentos", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
-    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "OPERATIONAL", "SALES", "SDR", "FINANCE", "SUPPORT", "COMMERCIAL"] },
-    { href: "/dashboard/contracts", label: "Contratos", roles: ["ADMIN", "OPERATIONAL", "FINANCE", "SALES", "COMMERCIAL"] },
-    { href: "/dashboard/insights", label: "Insights", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
-    { href: "/dashboard/support", label: "Suporte", roles: ["ADMIN", "OPERATIONAL", "SUPPORT"] },
-    { href: "/dashboard/integrations", label: "Integrações", roles: ["ADMIN", "OPERATIONAL", "FINANCE"] },
-    { href: "/", label: "Início", roles: ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL", "COMMERCIAL"] },
+    { href: "/dashboard", label: "Dashboard", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
+    { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "COMMERCIAL"] },
+    { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "COMMERCIAL"] },
+    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
+    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
+    { href: "/dashboard/payments", label: "Pagamentos", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
+    { href: "/dashboard/contracts", label: "Contratos", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
+    { href: "/dashboard/insights", label: "Insights", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/support", label: "Suporte", roles: ["ADMIN"] },
+    { href: "/dashboard/integrations", label: "Integrações", roles: ["ADMIN", "FINANCE"] },
+    { href: "/", label: "Início", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "OPERATIONAL"] },
   ]
 
   const visibleLinks = navLinks.filter((link) => link.roles.includes(userRole))

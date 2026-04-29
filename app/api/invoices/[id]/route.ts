@@ -69,8 +69,8 @@ export async function GET(
       );
     }
 
-    // Authorization: Check ownership for COMMERCIAL and SALES
-    if (userRole === "COMMERCIAL" || userRole === "SALES") {
+    // Authorization: Check ownership for COMMERCIAL
+    if (userRole === "COMMERCIAL") {
       if (invoice.ownerId !== userId) {
         return NextResponse.json(
           { error: "Forbidden: You can only view your own invoices" },
@@ -120,8 +120,8 @@ export async function PATCH(
       );
     }
 
-    // Authorization: Check ownership for COMMERCIAL and SALES
-    if (userRole === "COMMERCIAL" || userRole === "SALES") {
+    // Authorization: Check ownership for COMMERCIAL
+    if (userRole === "COMMERCIAL") {
       if (existingInvoice.ownerId !== userId) {
         return NextResponse.json(
           { error: "Forbidden: You can only update your own invoices" },

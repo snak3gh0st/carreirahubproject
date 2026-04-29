@@ -76,6 +76,8 @@ function useMyTasks() {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       }),
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 }
 

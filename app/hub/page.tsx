@@ -234,12 +234,12 @@ export default async function HubDashboardPage() {
                           </span>
                           {isOverdue && (
                             <span className="text-red-600 font-semibold">
-                              {Math.abs(daysUntilDue)} {lang === "pt-BR" ? "dias atrasado" : "days overdue"}
+                              {Math.abs(daysUntilDue)} {t(lang, "dashboard.daysOverdue")}
                             </span>
                           )}
                           {!isOverdue && daysUntilDue <= 7 && daysUntilDue > 0 && (
                             <span className="text-amber-600 font-medium">
-                              {daysUntilDue} {lang === "pt-BR" ? "dias restantes" : "days left"}
+                              {daysUntilDue} {t(lang, "dashboard.daysLeft")}
                             </span>
                           )}
                         </div>
@@ -265,7 +265,7 @@ export default async function HubDashboardPage() {
                     {inv.status === InvoiceStatus.PARTIALLY_PAID && (
                       <div className="mt-3 pt-3 border-t border-gray-100">
                         <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
-                          <span>{lang === "pt-BR" ? "Progresso do pagamento" : "Payment progress"}</span>
+                          <span>{t(lang, "dashboard.paymentProgress")}</span>
                           <span className="font-medium">{Math.round((Number(inv.amountPaid || 0) / Number(inv.amount)) * 100)}%</span>
                         </div>
                         <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -289,7 +289,7 @@ export default async function HubDashboardPage() {
                 <div className="flex items-center gap-3 pt-3">
                   <div className="h-px flex-1 bg-gray-200" />
                   <span className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                    {lang === "pt-BR" ? "Histórico" : "History"}
+                    {t(lang, "dashboard.history")}
                   </span>
                   <div className="h-px flex-1 bg-gray-200" />
                 </div>
@@ -323,7 +323,7 @@ export default async function HubDashboardPage() {
                             href={`/hub/documents/receipt/${inv.id}`}
                             className="text-xs font-medium text-brand-verde hover:underline"
                           >
-                            {lang === "pt-BR" ? "Recibo" : "Receipt"} &rarr;
+                            {t(lang, "dashboard.receipt")} &rarr;
                           </Link>
                         )}
                       </div>

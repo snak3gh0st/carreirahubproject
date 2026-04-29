@@ -49,11 +49,11 @@ export async function POST(request: NextRequest) {
     const results: Array<{ email: string; success: boolean; error?: string }> =
       [];
 
-    // Get users who should receive AR digests (FINANCE, ADMIN, SALES)
+    // Get users who should receive AR digests (FINANCE, ADMIN, COMMERCIAL)
     const users = await prisma.user.findMany({
       where: {
         active: true,
-        role: { in: ["FINANCE", "ADMIN", "SALES", "OPERATIONAL"] },
+        role: { in: ["FINANCE", "ADMIN", "COMMERCIAL"] },
       },
       select: {
         id: true,

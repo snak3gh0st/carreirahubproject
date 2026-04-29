@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  * GET /api/integrations/circuit-status
  *
  * Returns the status of all circuit breakers for external integrations.
- * Protected by NextAuth (ADMIN or OPERATIONAL role required).
+ * Protected by NextAuth (ADMIN role required).
  *
  * Response:
  * {
@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check role (ADMIN or OPERATIONAL)
+    // Check role (ADMIN only)
     const userRole = (session.user as any)?.role;
-    if (!userRole || !["ADMIN", "OPERATIONAL"].includes(userRole)) {
+    if (!userRole || userRole !== "ADMIN") {
       return NextResponse.json(
         { error: "Forbidden - insufficient permissions" },
         { status: 403 }

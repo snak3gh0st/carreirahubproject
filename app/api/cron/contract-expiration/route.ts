@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
               where: { id: contract.dealId },
               include: { owner: true },
             });
-            if (deal?.owner && deal.owner.email && deal.owner.role === 'SALES') {
+            if (deal?.owner && deal.owner.email && deal.owner.role === 'COMMERCIAL') {
               seller = deal.owner;
             }
           }
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
               where: { id: contract.invoices[0].id },
               include: { owner: true },
             });
-            if (inv?.owner && inv.owner.email && inv.owner.role === 'SALES') {
+            if (inv?.owner && inv.owner.email && inv.owner.role === 'COMMERCIAL') {
               seller = inv.owner;
             }
           }

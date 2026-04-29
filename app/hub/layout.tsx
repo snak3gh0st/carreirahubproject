@@ -16,7 +16,7 @@ export default async function HubLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("hub-token")?.value;
 
   // Decode JWT payload for header (middleware already verified it)

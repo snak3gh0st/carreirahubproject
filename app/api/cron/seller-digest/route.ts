@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) { return POST(request); }
 /**
  * POST /api/cron/seller-digest
  *
- * Daily 8 AM PT-BR digest for each active SALES user containing:
+ * Daily 8 AM PT-BR digest for each active COMMERCIAL user containing:
  *   - overdue invoices owned by them
  *   - unsigned contracts on their deals (7+ days)
  *   - stale deals (14+ days, top 10 by value)
@@ -36,11 +36,11 @@ export async function POST(request: NextRequest) {
     const dateLabel = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     const sellers = await prisma.user.findMany({
-      where: { active: true, role: 'SALES' },
+      where: { active: true, role: 'COMMERCIAL' },
       select: { id: true, name: true, email: true, role: true },
     });
 
-    console.log(`[SellerDigest] Found ${sellers.length} SALES user(s)`);
+    console.log(`[SellerDigest] Found ${sellers.length} COMMERCIAL user(s)`);
 
     let sent = 0;
     let skipped = 0;

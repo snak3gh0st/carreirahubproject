@@ -8,9 +8,10 @@ export const dynamic = "force-dynamic";
  *
  * Clear the hub-token cookie to log the client out.
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
-    const response = NextResponse.json({ success: true });
+    const url = new URL("/hub/login", request.url);
+    const response = NextResponse.redirect(url);
     clearHubCookie(response);
     return response;
   } catch (error) {

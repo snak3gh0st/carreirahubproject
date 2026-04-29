@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { supportChatService } from "@/lib/services/support-chat.service";
 import { prisma } from "@/lib/db";
 
-const TEAM_ROLES = ["ADMIN", "SUPPORT", "OPERATIONAL"];
+const TEAM_ROLES = ["ADMIN", "COMMERCIAL"];
 
 export async function GET(
   request: NextRequest,

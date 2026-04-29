@@ -13,7 +13,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const ALL_ROLES = ["SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL", "COMMERCIAL", "ADMIN"] as const;
+const ALL_ROLES = ["COMMERCIAL", "FINANCE", "OPERATIONAL", "ADMIN"] as const;
+
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Administrador",
+  COMMERCIAL: "Comercial",
+  FINANCE: "Financeiro",
+  OPERATIONAL: "Operacional",
+};
 
 type TeamUser = {
   id: string;
@@ -35,7 +42,7 @@ export function UserSheet({ open, onOpenChange, user, onSuccess }: UserSheetProp
   const isEdit = Boolean(user);
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
-  const [role, setRole] = useState(user?.role ?? "SALES");
+  const [role, setRole] = useState(user?.role ?? "COMMERCIAL");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +50,7 @@ export function UserSheet({ open, onOpenChange, user, onSuccess }: UserSheetProp
     if (open) {
       setName(user?.name ?? "");
       setEmail(user?.email ?? "");
-      setRole(user?.role ?? "SALES");
+      setRole(user?.role ?? "COMMERCIAL");
       setError(null);
     }
   }, [open, user]);
@@ -92,7 +99,7 @@ export function UserSheet({ open, onOpenChange, user, onSuccess }: UserSheetProp
           <SheetTitle>{isEdit ? "Editar Usuário" : "Novo Usuário"}</SheetTitle>
           <SheetDescription>
             {isEdit
-              ? "Altere o nome ou o role do usuário."
+              ? "Altere o nome ou o cargo do usuário."
               : "Uma senha temporária será enviada por email."}
           </SheetDescription>
         </SheetHeader>
@@ -124,14 +131,14 @@ export function UserSheet({ open, onOpenChange, user, onSuccess }: UserSheetProp
           )}
 
           <div className="space-y-1.5">
-            <Label htmlFor="role">Role</Label>
+            <Label htmlFor="role">Cargo</Label>
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger id="role">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {ALL_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>{r}</SelectItem>
+                  <SelectItem key={r} value={r}>{ROLE_LABELS[r] ?? r}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

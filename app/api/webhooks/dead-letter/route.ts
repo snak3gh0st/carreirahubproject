@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
  * - offset: Number of results to skip for pagination (default: 0)
  * - service: Optional service filter (e.g., "pipedrive", "quickbooks")
  *
- * Authentication: ADMIN or OPERATIONAL roles required
+ * Authentication: ADMIN role required
  *
  * Returns:
  * - events: Array of dead letter webhook events
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
 
     const userRole = (session.user as any).role;
 
-    // Check authorization (ADMIN or OPERATIONAL roles only)
-    if (userRole !== "ADMIN" && userRole !== "OPERATIONAL") {
+    // Check authorization (ADMIN only)
+    if (userRole !== "ADMIN") {
       await integrationLogger.logError(
         "WEBHOOK_DEAD_LETTER",
         "UNAUTHORIZED_ACCESS",
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       );
 
       return NextResponse.json(
-        { error: "Forbidden: ADMIN or OPERATIONAL role required" },
+        { error: "Forbidden: ADMIN role required" },
         { status: 403 }
       );
     }

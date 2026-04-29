@@ -30,7 +30,7 @@ function StatusBadge({ status, lang }: { status: string; lang: Language }) {
 }
 
 export default async function HubFormsPage() {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("hub-token")?.value;
   if (!token) redirect("/hub/login");
   const payload = getPayload(token);

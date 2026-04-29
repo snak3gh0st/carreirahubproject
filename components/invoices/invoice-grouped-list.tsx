@@ -324,7 +324,7 @@ export function InvoiceGroupedList({
                       const canEditInvoice =
                         (userRole === "ADMIN" ||
                           userRole === "FINANCE" ||
-                          (["COMMERCIAL", "SALES"].includes(userRole) &&
+                          (userRole === "COMMERCIAL" &&
                             invoice.ownerId === userId)) &&
                         !isPaidOrVoid;
 

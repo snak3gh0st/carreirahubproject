@@ -5,12 +5,20 @@ import Link from "next/link";
 import {
   KanbanSquare, GraduationCap, Users, BookOpen, ClipboardList,
   CalendarCheck, ArrowRight, CheckCircle2, Clock, AlertTriangle,
-  TrendingUp, UserCheck, Layers, FileText,
+  TrendingUp, UserCheck, Layers, FileText, PauseCircle, Video,
 } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 export default async function OpsHomePage() {
   const session = await getServerSession(authOptions);
   const userName = (session?.user as any)?.name?.split(" ")[0] || "User";
+
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+  weekStart.setHours(0, 0, 0, 0);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
 
   const [
     totalActive,
@@ -20,6 +28,7 @@ export default async function OpsHomePage() {
     pendingForms,
     completedForms,
     dailyFlags,
+    sessionsThisWeek,
     recentEnrollments,
   ] = await Promise.all([
     prisma.mentorshipEnrollment.count({ where: { status: "ACTIVE" } }),
@@ -39,6 +48,9 @@ export default async function OpsHomePage() {
         },
       },
     }),
+    prisma.mentorshipSession.count({
+      where: { sessionDate: { gte: weekStart, lt: weekEnd } },
+    }),
     prisma.mentorshipEnrollment.findMany({
       where: { status: "ACTIVE" },
       orderBy: { startDate: "desc" },
@@ -53,6 +65,8 @@ export default async function OpsHomePage() {
   const totalStudents = totalActive + totalPaused + totalCompleted;
   const withStudents = phaseCounts.filter((p) => p._count.enrollments > 0);
   const maxInPhase = Math.max(...phaseCounts.map((p) => p._count.enrollments), 1);
+  const totalForms = pendingForms + completedForms;
+  const formsRate = totalForms > 0 ? Math.round((completedForms / totalForms) * 100) : 0;
 
   return (
     <div className="p-6 md:p-8">
@@ -66,51 +80,79 @@ export default async function OpsHomePage() {
         </p>
       </div>
 
-      {/* Urgent Alert */}
-      {dailyFlags > 0 && (
-        <Link href="/ops/daily" className="block mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100/50 transition-colors">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-xl">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
+      {/* Alerts */}
+      <div className="space-y-3 mb-6">
+        {dailyFlags > 0 && (
+          <Link href="/ops/daily" className="block p-4 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-100 rounded-xl">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-display font-semibold text-red-700">
+                  {dailyFlags} aluno{dailyFlags > 1 ? "s" : ""} sem sessão há 14+ dias
+                </p>
+                <p className="text-xs text-red-600">Ação imediata recomendada</p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-red-400" />
             </div>
-            <div className="flex-1">
-              <p className="font-display font-semibold text-red-700">
-                {dailyFlags} aluno{dailyFlags > 1 ? "s" : ""} precisa{dailyFlags > 1 ? "m" : ""} de atenção
-              </p>
-              <p className="text-xs text-red-600">Sem sessão nos últimos 14 dias</p>
+          </Link>
+        )}
+
+        {totalPaused > 0 && (
+          <Link href="/ops/customers" className="block p-4 bg-orange-50 border border-orange-200 rounded-2xl hover:bg-orange-100/50 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 rounded-xl">
+                <PauseCircle className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-display font-semibold text-orange-700">
+                  {totalPaused} aluno{totalPaused > 1 ? "s" : ""} com mentoria pausada
+                </p>
+                <p className="text-xs text-orange-600">Verificar retorno ou encerramento</p>
+              </div>
+              <ArrowRight className="h-5 w-5 text-orange-400" />
             </div>
-            <ArrowRight className="h-5 w-5 text-red-400" />
-          </div>
-        </Link>
-      )}
+          </Link>
+        )}
+      </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2.5 bg-emerald-50 rounded-xl"><UserCheck className="h-5 w-5 text-emerald-600" /></div>
             <span className="text-sm font-medium text-gray-500">Ativos</span>
           </div>
           <p className="text-3xl font-display font-bold text-emerald-700 tabular-nums">{totalActive}</p>
-          <p className="text-xs text-gray-400 mt-1">alunos em mentoria</p>
+          <p className="text-xs text-gray-400 mt-1">em mentoria</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-2xl border border-orange-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-blue-50 rounded-xl"><Layers className="h-5 w-5 text-blue-600" /></div>
-            <span className="text-sm font-medium text-gray-500">Fases</span>
+            <div className="p-2.5 bg-orange-50 rounded-xl"><PauseCircle className="h-5 w-5 text-orange-500" /></div>
+            <span className="text-sm font-medium text-gray-500">Pausados</span>
           </div>
-          <p className="text-3xl font-display font-bold text-blue-700 tabular-nums">{withStudents.length}</p>
-          <p className="text-xs text-gray-400 mt-1">de {phaseCounts.length} com alunos</p>
+          <p className="text-3xl font-display font-bold text-orange-600 tabular-nums">{totalPaused}</p>
+          <p className="text-xs text-gray-400 mt-1">aguardando retorno</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2.5 bg-blue-50 rounded-xl"><Video className="h-5 w-5 text-blue-600" /></div>
+            <span className="text-sm font-medium text-gray-500">Sessões</span>
+          </div>
+          <p className="text-3xl font-display font-bold text-blue-700 tabular-nums">{sessionsThisWeek}</p>
+          <p className="text-xs text-gray-400 mt-1">esta semana</p>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-amber-100 p-5 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2.5 bg-amber-50 rounded-xl"><ClipboardList className="h-5 w-5 text-amber-600" /></div>
             <span className="text-sm font-medium text-gray-500">Formulários</span>
           </div>
           <p className="text-3xl font-display font-bold text-amber-700 tabular-nums">{pendingForms}</p>
-          <p className="text-xs text-gray-400 mt-1">pendentes de resposta</p>
+          <p className="text-xs text-gray-400 mt-1">{formsRate}% respondidos</p>
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -227,33 +269,31 @@ export default async function OpsHomePage() {
       </div>
 
       {/* Forms Summary */}
-      {(pendingForms > 0 || completedForms > 0) && (
-        <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-gray-400" />
-              <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide">Formulários</h2>
-            </div>
-            <Link href="/dashboard/forms" className="text-xs font-medium text-brand-verde hover:text-brand-tangerina transition-colors flex items-center gap-1">
-              Gerenciar <ArrowRight className="h-3 w-3" />
-            </Link>
+      <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-gray-400" />
+            <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide">Formulários</h2>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-amber-50 rounded-xl">
-              <p className="text-2xl font-bold text-amber-700">{pendingForms}</p>
-              <p className="text-xs text-amber-600 font-medium">Pendentes</p>
-            </div>
-            <div className="text-center p-3 bg-emerald-50 rounded-xl">
-              <p className="text-2xl font-bold text-emerald-700">{completedForms}</p>
-              <p className="text-xs text-emerald-600 font-medium">Concluídos</p>
-            </div>
-            <Link href="/dashboard/forms/assign" className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-              <ClipboardList className="h-5 w-5 text-brand-verde mb-1" />
-              <p className="text-xs text-brand-verde font-semibold">Atribuir Novo</p>
-            </Link>
-          </div>
+          <Link href="/dashboard/forms" className="text-xs font-medium text-brand-verde hover:text-brand-tangerina transition-colors flex items-center gap-1">
+            Gerenciar <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
-      )}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center p-3 bg-amber-50 rounded-xl">
+            <p className="text-2xl font-bold text-amber-700">{pendingForms}</p>
+            <p className="text-xs text-amber-600 font-medium">Pendentes</p>
+          </div>
+          <div className="text-center p-3 bg-emerald-50 rounded-xl">
+            <p className="text-2xl font-bold text-emerald-700">{completedForms}</p>
+            <p className="text-xs text-emerald-600 font-medium">Respondidos</p>
+          </div>
+          <Link href="/dashboard/forms/assign" className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+            <ClipboardList className="h-5 w-5 text-brand-verde mb-1" />
+            <p className="text-xs text-brand-verde font-semibold">Atribuir Novo</p>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

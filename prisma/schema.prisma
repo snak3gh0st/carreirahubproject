@@ -12,7 +12,7 @@ model User {
   id                     String              @id @default(uuid())
   email                  String              @unique
   name                   String?
-  role                   UserRole            @default(SALES)
+  role                   UserRole            @default(COMMERCIAL)
   active                 Boolean             @default(true)
   createdAt              DateTime            @default(now())
   updatedAt              DateTime            @updatedAt
@@ -691,10 +691,7 @@ model AlertEvent {
 
 enum UserRole {
   ADMIN
-  SALES
-  SDR
   FINANCE
-  SUPPORT
   OPERATIONAL
   COMMERCIAL
 }

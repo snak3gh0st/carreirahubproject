@@ -31,7 +31,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   if (!session) redirect("/auth/signin");
 
   const userRole = (session.user as any).role;
-  if (!["ADMIN", "FINANCE", "COMMERCIAL", "SALES", "OPERATIONAL"].includes(userRole)) redirect("/dashboard");
+  if (!["ADMIN", "FINANCE", "COMMERCIAL"].includes(userRole)) redirect("/dashboard");
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: params.id },
@@ -46,13 +46,13 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   if (!invoice) notFound();
 
   const userId = (session.user as any).id;
-  if ((userRole === "COMMERCIAL" || userRole === "SALES") && invoice.ownerId !== userId) redirect("/dashboard");
+  if (userRole === "COMMERCIAL" && invoice.ownerId !== userId) redirect("/dashboard");
 
   const dueDateOnly = normalizeDateOnly(invoice.dueDate);
   const overdueDays = differenceInCalendarDaysUTC(new Date(), dueDateOnly);
   const isOverdue = invoice.status === InvoiceStatus.OVERDUE || (invoice.status === InvoiceStatus.SENT && overdueDays > 0);
   const canApprove = userRole === "FINANCE" || userRole === "ADMIN";
-  const canEdit = (userRole === "ADMIN" || userRole === "FINANCE" || (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId))
+  const canEdit = (userRole === "ADMIN" || userRole === "FINANCE" || (userRole === "COMMERCIAL" && invoice.ownerId === userId))
     && invoice.status !== InvoiceStatus.PAID && invoice.status !== InvoiceStatus.VOID;
 
   const tz = "America/Sao_Paulo";

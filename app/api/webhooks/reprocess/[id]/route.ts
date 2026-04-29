@@ -12,7 +12,7 @@ import { integrationLogger } from "@/lib/utils/logger";
  * This endpoint allows administrators to retry permanently failed webhooks
  * by resetting their status to "pending" and scheduling them for immediate retry.
  *
- * Authentication: ADMIN or OPERATIONAL roles required
+ * Authentication: ADMIN role required
  *
  * Returns:
  * - success: true if webhook was successfully reset
@@ -32,8 +32,8 @@ export async function POST(
 
     const userRole = (session.user as any).role;
 
-    // Check authorization (ADMIN or OPERATIONAL roles only)
-    if (userRole !== "ADMIN" && userRole !== "OPERATIONAL") {
+    // Check authorization (ADMIN only)
+    if (userRole !== "ADMIN") {
       await integrationLogger.logError(
         "WEBHOOK_REPROCESS",
         "UNAUTHORIZED_ACCESS",
@@ -46,7 +46,7 @@ export async function POST(
       );
 
       return NextResponse.json(
-        { error: "Forbidden: ADMIN or OPERATIONAL role required" },
+        { error: "Forbidden: ADMIN role required" },
         { status: 403 }
       );
     }

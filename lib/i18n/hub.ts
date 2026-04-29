@@ -40,6 +40,12 @@ const translations = {
     "dashboard.allCompleted": "All completed",
     "dashboard.fillNow": "Fill Now",
     "dashboard.view": "View",
+    "dashboard.daysOverdue": "days overdue",
+    "dashboard.daysLeft": "days left",
+    "dashboard.history": "History",
+    "dashboard.paymentProgress": "Payment progress",
+    "dashboard.receipt": "Receipt",
+    "login.accountReady": "Your account is ready! Log in below to view your invoice and complete your payment.",
 
     // Payment form
     "payment.paymentTitle": "Payment",
@@ -269,6 +275,12 @@ const translations = {
     "dashboard.allCompleted": "Todos concluídos",
     "dashboard.fillNow": "Preencher Agora",
     "dashboard.view": "Ver",
+    "dashboard.daysOverdue": "dias atrasado",
+    "dashboard.daysLeft": "dias restantes",
+    "dashboard.history": "Histórico",
+    "dashboard.paymentProgress": "Progresso do pagamento",
+    "dashboard.receipt": "Recibo",
+    "login.accountReady": "Sua conta foi criada! Entre abaixo para acessar sua fatura e finalizar o pagamento.",
 
     // Payment form
     "payment.paymentTitle": "Pagamento",

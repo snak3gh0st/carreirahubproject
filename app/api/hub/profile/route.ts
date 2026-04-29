@@ -68,6 +68,10 @@ export async function PUT(request: NextRequest) {
 
     // ---- Language update ----
     if (language) {
+      const allowedLanguages = ["en", "pt-BR"];
+      if (!allowedLanguages.includes(language)) {
+        return NextResponse.json({ error: "Invalid language" }, { status: 400 });
+      }
       await prisma.clientUser.update({
         where: { id: auth.clientUserId },
         data: { language },
@@ -76,6 +80,12 @@ export async function PUT(request: NextRequest) {
 
     // ---- Password change ----
     if (currentPassword && newPassword) {
+      if (typeof newPassword !== "string" || newPassword.length < 8) {
+        return NextResponse.json(
+          { error: "Password must be at least 8 characters" },
+          { status: 400 }
+        );
+      }
       const clientUser = await prisma.clientUser.findUnique({
         where: { id: auth.clientUserId },
         select: { passwordHash: true },

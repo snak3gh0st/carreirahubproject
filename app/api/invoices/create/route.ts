@@ -8,6 +8,10 @@ import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
 import { addMonths, parseLocalDate } from "@/lib/utils/date";
+import {
+  getProductsFromCatalogProductIds,
+  validatePaymentSelection,
+} from "@/lib/invoices/payment-rules";
 
 /** Create a Date at UTC noon for today - safe for date-only operations */
 function todayUTCNoon(): Date {
@@ -23,6 +27,7 @@ const createInvoiceSchema = z.object({
   items: z
     .array(
       z.object({
+        catalogProductId: z.string().optional(),
         serviceItemId: z.string(),
         quantity: z.number().min(1),
         unitPrice: z.number().min(0),
@@ -32,7 +37,7 @@ const createInvoiceSchema = z.object({
     .min(1),
   discount: z.number().min(0).optional(),
   entryAmount: z.number().min(0).optional(),
-  installments: z.number().min(0).max(6).optional(),
+  installments: z.number().int().min(0).max(12).optional(),
   dueDate: z.string().optional(), // Aceita string de data simples (YYYY-MM-DD)
   description: z.string().optional(),
 });
@@ -46,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   const role = (session.user as any).role;
   const userId = (session.user as any).id;
-  const allowedRoles = ["ADMIN", "FINANCE", "SALES", "COMMERCIAL"];
+  const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL"];
   if (!allowedRoles.includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -84,6 +89,16 @@ export async function POST(request: NextRequest) {
     const installmentCount = data.installments || 0;
     const remaining = Math.max(0, totalAmount - entryAmount);
     const isSinglePayment = entryAmount === 0 && installmentCount === 0;
+    const selectedCatalogProducts = getProductsFromCatalogProductIds(
+      data.items.map((item) => item.catalogProductId)
+    );
+
+    validatePaymentSelection({
+      products: selectedCatalogProducts,
+      entryAmount,
+      installments: installmentCount,
+      totalAmount,
+    });
 
     // Derive service name: use description field, or first item name, or fallback
     const serviceName = data.description

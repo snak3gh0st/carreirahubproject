@@ -16,7 +16,7 @@ import { UserRole } from "@prisma/client";
  * {
  *   email: string (unique)
  *   name: string (required)
- *   role: UserRole (ADMIN | SALES | SDR | FINANCE | SUPPORT | OPERATIONAL | COMMERCIAL)
+ *   role: UserRole (ADMIN | FINANCE | OPERATIONAL | COMMERCIAL)
  * }
  *
  * Response:

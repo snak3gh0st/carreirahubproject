@@ -7,13 +7,13 @@ import { toStudentSafeDto } from '../../dto';
 export const getStudentsByPhase = defineAiTool({
   name: 'getStudentsByPhase',
   description: 'Lista alunos ativos em uma fase específica do programa de mentoria. Use quando o usuário perguntar quais alunos estão em determinada fase, ou quantos alunos estão em cada etapa do programa.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT],
+  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
   inputSchema: z.object({
     phaseKey: z.string(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
   async handler({ phaseKey, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
     try {
       const enrollments = await prisma.mentorshipEnrollment.findMany({
         where: {

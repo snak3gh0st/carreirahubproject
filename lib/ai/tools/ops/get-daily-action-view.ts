@@ -13,13 +13,13 @@ function daysBetween(a: Date, b: Date): number {
 export const getDailyActionView = defineAiTool({
   name: 'getDailyActionView',
   description: 'Retorna a visão diária de ações agrupadas por urgência de SLA: atrasados, atenção e em dia. Use quando o usuário perguntar quais alunos precisam de atenção hoje ou quem está atrasado.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT],
+  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
   inputSchema: z.object({
     assigneeId: z.string().optional(),
     limit: z.number().int().min(1).max(200).default(100),
   }),
   async handler({ assigneeId, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
     try {
       const where: Record<string, unknown> = { status: 'ACTIVE' };
       if (assigneeId) where.assignedToId = assigneeId;

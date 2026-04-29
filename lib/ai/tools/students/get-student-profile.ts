@@ -7,12 +7,12 @@ import { toStudentSafeDto } from '../../dto';
 export const getStudentProfile = defineAiTool({
   name: 'getStudentProfile',
   description: 'Retorna o perfil completo de um aluno: fase atual, sessões, faturas abertas e histórico de transições. Use quando o usuário perguntar sobre um aluno específico.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT],
+  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
   inputSchema: z.object({
     enrollmentId: z.string(),
   }),
   async handler({ enrollmentId }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
     try {
       const enrollment = await prisma.mentorshipEnrollment.findUnique({
         where: { id: enrollmentId },

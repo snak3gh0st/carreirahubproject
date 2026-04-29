@@ -3,7 +3,7 @@ import { LeadTableSkeleton } from "@/components/dashboard/lead-table-skeleton";
 export default function Loading() {
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Leads & SDR Pipeline</h1>
+      <h1 className="text-3xl font-bold mb-6">Leads & Pipeline</h1>
       {/* Skeleton pipeline */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8 animate-pulse">
         {[...Array(6)].map((_, i) => (

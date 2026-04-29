@@ -24,7 +24,14 @@ export async function GET(
         customerId: auth.customerId,
       },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+            address: true,
+          },
+        },
       },
     });
 

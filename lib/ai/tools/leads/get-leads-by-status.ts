@@ -7,13 +7,13 @@ import { toLeadSafeDto } from '../../dto';
 export const getLeadsByStatus = defineAiTool({
   name: 'getLeadsByStatus',
   description: 'Lista leads filtrados por status. Use quando o usuário perguntar sobre leads novos, qualificados, convertidos ou perdidos, ou quiser ver o pipeline de prospecção.',
-  allowedRoles: [UserRole.ADMIN, UserRole.SALES, UserRole.SDR],
+  allowedRoles: [UserRole.ADMIN, UserRole.COMMERCIAL],
   inputSchema: z.object({
     status: z.enum(['NEW', 'QUALIFYING', 'QUALIFIED', 'UNQUALIFIED', 'CONVERTED', 'LOST']).optional(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
   async handler({ status, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.SALES, UserRole.SDR]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.COMMERCIAL]);
     try {
       const where: Record<string, unknown> = {};
       if (status) where.status = status;

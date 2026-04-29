@@ -12,12 +12,12 @@ function daysBetween(a: Date, b: Date): number {
 export const getStudentNextActions = defineAiTool({
   name: 'getStudentNextActions',
   description: 'Calcula as próximas ações recomendadas para um aluno com base no SLA da fase atual. Use quando o usuário perguntar o que deve ser feito a seguir para um aluno específico.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT],
+  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
   inputSchema: z.object({
     enrollmentId: z.string(),
   }),
   async handler({ enrollmentId }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
     try {
       const enrollment = await prisma.mentorshipEnrollment.findUnique({
         where: { id: enrollmentId },

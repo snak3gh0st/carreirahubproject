@@ -6,6 +6,7 @@ import { FORM_TEMPLATES } from "@/lib/hub/form-templates";
 import { hashPassword } from "@/lib/hub-auth";
 import { emailService } from "@/lib/services/email.service";
 import { randomBytes } from "crypto";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    revalidatePath("/dashboard/forms");
     return NextResponse.json({ success: true, count: created.count });
   } catch (error) {
     console.error("[Dashboard Forms Assign Error]:", error);

@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
     if (customerId) where.customerId = customerId;
     if (dealId) where.dealId = dealId;
 
-    // Authorization: Filter by owner for COMMERCIAL and SALES
-    if (userRole === "COMMERCIAL" || userRole === "SALES") {
+    // Authorization: Filter by owner for COMMERCIAL
+    if (userRole === "COMMERCIAL") {
       where.ownerId = userId;
     }
 

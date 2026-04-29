@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
       for (const inv of freshlyOverdue) {
         try {
           if (!inv.owner || !inv.owner.email) continue;
-          if (inv.owner.role !== 'SALES') continue;
+          if (inv.owner.role !== 'COMMERCIAL') continue;
 
           await emailService.sendSellerInvoiceOverdue(
             {

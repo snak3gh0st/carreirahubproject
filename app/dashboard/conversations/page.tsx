@@ -21,8 +21,7 @@ export default async function ConversationsPage() {
   const userRole = (session.user as any).role;
   if (
     userRole !== "ADMIN" &&
-    userRole !== "SUPPORT" &&
-    userRole !== "SDR"
+    userRole !== "COMMERCIAL"
   ) {
     redirect("/dashboard");
   }

@@ -6,13 +6,13 @@ import { prisma } from '@/lib/db';
 export const getStudentSessions = defineAiTool({
   name: 'getStudentSessions',
   description: 'Lista as sessões de mentoria de um aluno em ordem cronológica inversa. Use quando o usuário perguntar sobre sessões realizadas, frequência de atendimento ou progresso nas sessões.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT],
+  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
   inputSchema: z.object({
     enrollmentId: z.string(),
     limit: z.number().int().min(1).max(50).default(20),
   }),
   async handler({ enrollmentId, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL, UserRole.SUPPORT]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
     try {
       const sessions = await prisma.mentorshipSession.findMany({
         where: { enrollmentId },

@@ -4,10 +4,7 @@ export type AiHubSlug = "financial" | "commercial" | "operational" | "admin";
 
 export type AiRole =
   | "ADMIN"
-  | "SALES"
-  | "SDR"
   | "FINANCE"
-  | "SUPPORT"
   | "OPERATIONAL"
   | "COMMERCIAL";
 
@@ -73,20 +70,14 @@ export const AI_HUBS: Readonly<Record<AiHubKey, AiHubDefinition>> = {
 
 export const ROLE_TO_HUB: Readonly<Record<AiRole, AiHubSlug>> = {
   ADMIN: "admin",
-  SALES: "commercial",
-  SDR: "commercial",
   FINANCE: "financial",
-  SUPPORT: "operational",
   OPERATIONAL: "operational",
   COMMERCIAL: "commercial",
 } as const;
 
 export const ROLE_TO_ROUTE: Readonly<Record<AiRole, string>> = {
   ADMIN: AI_HUBS.ADMIN_EXECUTIVE.routePath,
-  SALES: AI_HUBS.COMMERCIAL.routePath,
-  SDR: AI_HUBS.COMMERCIAL.routePath,
   FINANCE: AI_HUBS.FINANCIAL.routePath,
-  SUPPORT: AI_HUBS.OPERATIONAL.routePath,
   OPERATIONAL: AI_HUBS.OPERATIONAL.routePath,
   COMMERCIAL: AI_HUBS.COMMERCIAL.routePath,
 } as const;

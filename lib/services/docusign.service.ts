@@ -47,9 +47,11 @@ function getInvoiceServiceDescriptionValue(invoice: Invoice): string {
 // Per-tab dimension/position overrides. Prevents long values from overflowing
 // or overlapping adjacent static template characters.
 const TAB_OVERRIDES: Record<string, { width?: string; height?: string; xPosition?: string }> = {
-  client_address:  { width: '280' },
-  payment_plan:    { height: '30' },
-  invoice_numbers: { width: '425', height: '50' },
+  // client_address and client_address_2 fields are ~150-173px wide in all templates.
+  // Heights are computed dynamically in buildTextTab based on content length.
+  client_address: { width: '154' },
+  payment_plan:     { height: '30' },
+  invoice_numbers:  { width: '425', height: '50' },
 };
 
 // Prefix-based overrides — applied when no exact match found.
@@ -69,6 +71,18 @@ function buildTextTab(label: string, value: string) {
   if (overrides?.width)     base.width     = overrides.width;
   if (overrides?.height)    base.height    = overrides.height;
   if (overrides?.xPosition) base.xPosition = overrides.xPosition;
+
+  // Dynamic height for address: estimate lines from field width and content.
+  // ~6.5px per char in DocuSign's default font; 20px per line height; min 20px.
+  if (label === 'client_address' && overrides?.width) {
+    const charsPerLine = Math.floor(parseInt(overrides.width) / 6.5);
+    const totalLines = value.split('\n').reduce(
+      (acc, segment) => acc + Math.max(1, Math.ceil(segment.length / charsPerLine)),
+      0
+    );
+    base.height = String(Math.max(20, totalLines * 20));
+  }
+
   return base;
 }
 
@@ -164,15 +178,17 @@ async function buildDocuSignCustomFields(
   customFields.client_cpf = customer.cpf || '';
   customFields.client_passport = customer.passport || '';
   customFields.client_ssn_last4 = getPreferredCustomerIdentificationValue(customer);
-  customFields.client_address = [
-    customer.address,
-    customer.city,
-    customer.state,
-    customer.zipCode,
-  ]
-    .map((part) => (typeof part === 'string' ? part.trim() : part))
+  // Template has two address rows: client_address (street) + client_address_2 (city/state/zip).
+  // Each column (PT and EN) has its own tab instance (~150px wide) so values must fit per row.
+  const stateZip = [customer.state, customer.zipCode]
+    .map((p) => (typeof p === 'string' ? p.trim() : p))
+    .filter(Boolean)
+    .join(' ');
+  const cityLine = [customer.city, stateZip, customer.country]
+    .map((p) => (typeof p === 'string' ? p.trim() : p))
     .filter(Boolean)
     .join(', ');
+  customFields.client_address = [customer.address?.trim(), cityLine].filter(Boolean).join(', ');
   customFields.contract_date_day = new Date().getDate().toString();
   customFields.contract_date_month = new Date().toLocaleDateString('pt-BR', { month: 'long' });
   customFields.contract_date_year = new Date().getFullYear().toString().slice(-2);

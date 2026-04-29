@@ -21,8 +21,7 @@ export function getSuggestionsForRole(role: string, hubSlug?: string): string[] 
         'Liste contratos pendentes de assinatura',
         'Mostre o P&L do QuickBooks deste trimestre',
       ];
-    case 'SALES':
-    case 'SDR':
+    case 'COMMERCIAL':
       return [
         'Liste leads qualificados das últimas 48h',
         'Quais leads vieram de Meta esta semana?',
@@ -35,13 +34,6 @@ export function getSuggestionsForRole(role: string, hubSlug?: string): string[] 
         'Mostre o daily action view',
         'Quais alunos estão atrasados na sua fase atual?',
         'Visão geral do coordenador',
-      ];
-    case 'SUPPORT':
-      return [
-        'Busque o aluno "Silva"',
-        'Mostre as sessões do aluno X',
-        'Quais são as próximas ações para o aluno X?',
-        'Liste tickets de suporte abertos',
       ];
     default:
       return [

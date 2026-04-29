@@ -88,9 +88,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check authorization - COMMERCIAL, FINANCE, ADMIN, SALES can create customers
+    // Check authorization - COMMERCIAL, FINANCE, ADMIN can create customers
     const userRole = (session.user as any).role;
-    const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL", "SALES"];
+    const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL"];
     if (!allowedRoles.includes(userRole)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

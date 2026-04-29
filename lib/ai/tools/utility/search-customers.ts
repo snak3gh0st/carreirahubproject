@@ -7,13 +7,13 @@ import { toCustomerSafeDto } from '../../dto';
 export const searchCustomers = defineAiTool({
   name: 'searchCustomers',
   description: 'Busca clientes por nome ou email (busca parcial, insensível a maiúsculas). Use quando o usuário quiser encontrar um cliente específico para ver faturas, contratos ou histórico.',
-  allowedRoles: [UserRole.ADMIN, UserRole.SALES, UserRole.FINANCE],
+  allowedRoles: [UserRole.ADMIN, UserRole.COMMERCIAL, UserRole.FINANCE],
   inputSchema: z.object({
     query: z.string().min(2),
     limit: z.number().int().min(1).max(50).default(20),
   }),
   async handler({ query, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.SALES, UserRole.FINANCE]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.COMMERCIAL, UserRole.FINANCE]);
     try {
       const customers = await prisma.customer.findMany({
         where: {

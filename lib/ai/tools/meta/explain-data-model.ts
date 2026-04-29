@@ -3,8 +3,7 @@ import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 
 const ALL_ROLES = [
-  UserRole.ADMIN, UserRole.SALES, UserRole.SDR, UserRole.FINANCE,
-  UserRole.SUPPORT, UserRole.OPERATIONAL, UserRole.COMMERCIAL,
+  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL,
 ];
 
 const DATA_MODEL_DOCS: Record<string, string> = {

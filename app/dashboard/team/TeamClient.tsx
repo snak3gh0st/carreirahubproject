@@ -16,17 +16,21 @@ type TeamUser = {
   createdAt: string;
 };
 
-const ROLE_COLORS: Record<string, string> = {
-  ADMIN: "bg-yellow-100 text-yellow-800",
-  SALES: "bg-blue-100 text-blue-800",
-  SDR: "bg-purple-100 text-purple-800",
-  FINANCE: "bg-green-100 text-green-800",
-  SUPPORT: "bg-orange-100 text-orange-800",
-  OPERATIONAL: "bg-gray-100 text-gray-800",
-  COMMERCIAL: "bg-indigo-100 text-indigo-800",
+const ROLE_LABELS: Record<string, string> = {
+  ADMIN: "Administrador",
+  COMMERCIAL: "Comercial",
+  FINANCE: "Financeiro",
+  OPERATIONAL: "Operacional",
 };
 
-const ALL_ROLES = ["ADMIN", "SALES", "SDR", "FINANCE", "SUPPORT", "OPERATIONAL", "COMMERCIAL"];
+const ROLE_COLORS: Record<string, string> = {
+  ADMIN: "bg-yellow-100 text-yellow-800",
+  COMMERCIAL: "bg-indigo-100 text-indigo-800",
+  FINANCE: "bg-green-100 text-green-800",
+  OPERATIONAL: "bg-gray-100 text-gray-800",
+};
+
+const ALL_ROLES = ["ADMIN", "COMMERCIAL", "FINANCE", "OPERATIONAL"];
 
 export function TeamClient({ initialUsers, currentUserId }: { initialUsers: TeamUser[]; currentUserId: string }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
@@ -134,12 +138,9 @@ export function TeamClient({ initialUsers, currentUserId }: { initialUsers: Team
   const avatarColor = (role: string) => {
     const map: Record<string, string> = {
       ADMIN: "bg-yellow-600",
-      SALES: "bg-blue-600",
-      SDR: "bg-purple-600",
-      FINANCE: "bg-green-600",
-      SUPPORT: "bg-orange-600",
-      OPERATIONAL: "bg-gray-600",
       COMMERCIAL: "bg-indigo-600",
+      FINANCE: "bg-green-600",
+      OPERATIONAL: "bg-gray-600",
     };
     return map[role] ?? "bg-gray-500";
   };
@@ -174,8 +175,8 @@ export function TeamClient({ initialUsers, currentUserId }: { initialUsers: Team
           onChange={(e) => setRoleFilter(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 text-sm text-gray-700 bg-white"
         >
-          <option value="">Todos os roles</option>
-          {ALL_ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
+          <option value="">Todos os cargos</option>
+          {ALL_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>)}
         </select>
         <select
           value={statusFilter}
@@ -198,7 +199,7 @@ export function TeamClient({ initialUsers, currentUserId }: { initialUsers: Team
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Usuário</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Role</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Cargo</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Criado em</th>
               <th className="text-right px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
@@ -228,7 +229,7 @@ export function TeamClient({ initialUsers, currentUserId }: { initialUsers: Team
                   </td>
                   <td className="px-4 py-3">
                     <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${ROLE_COLORS[user.role] ?? "bg-gray-100 text-gray-700"}`}>
-                      {user.role}
+                      {ROLE_LABELS[user.role] ?? user.role}
                     </span>
                   </td>
                   <td className="px-4 py-3">

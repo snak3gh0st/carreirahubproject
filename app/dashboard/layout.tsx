@@ -42,7 +42,7 @@ export default async function DashboardLayout({
   const userId = (session.user as any).id;
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
-  const isTeamRole = ["ADMIN", "SUPPORT", "OPERATIONAL", "SALES", "SDR", "FINANCE", "COMMERCIAL"].includes(userRole);
+  const isTeamRole = ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL"].includes(userRole);
   console.log("[DashboardLayout] User role:", userRole);
 
   return (

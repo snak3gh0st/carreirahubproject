@@ -62,7 +62,7 @@ export default async function EditInvoicePage({
   const canEdit =
     userRole === "ADMIN" ||
     userRole === "FINANCE" ||
-    (["COMMERCIAL", "SALES"].includes(userRole) && invoice.ownerId === userId);
+    (userRole === "COMMERCIAL" && invoice.ownerId === userId);
 
   if (!canEdit) {
     redirect("/dashboard");

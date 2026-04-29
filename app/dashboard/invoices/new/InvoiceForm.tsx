@@ -8,8 +8,11 @@ import {
   CARREIRA_CATALOG,
   getProductsByCategory,
   type CarreiraProduct,
-  type PaymentRule,
 } from "@/lib/constants/carreira-products";
+import {
+  getPaymentPolicyForProducts,
+  validatePaymentSelection,
+} from "@/lib/invoices/payment-rules";
 
 interface Customer {
   id: string;
@@ -74,7 +77,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const [items, setItems] = useState<InvoiceItemForm[]>([
     { id: `item-${Date.now()}`, catalogProductId: "", serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
   ]);
-  const [mentoriaPreset, setMentoriaPreset] = useState<"avista" | "entry30_6x" | "6x" | null>(null);
+  const [mentoriaPreset, setMentoriaPreset] = useState<"avista" | "entry30_max" | "max" | null>(null);
   const [filteredDeals, setFilteredDeals] = useState<Deal[]>(deals);
   const [submitting, setSubmitting] = useState(false);
   const [createdInvoiceData, setCreatedInvoiceData] = useState<{
@@ -204,27 +207,30 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     );
   };
 
-  // Derive the active payment rule from selected catalog products
-  const activePaymentRule: PaymentRule | null = (() => {
-    const selected = items
-      .map((item) => CARREIRA_CATALOG.find((p) => p.id === item.catalogProductId))
-      .filter(Boolean) as CarreiraProduct[];
-    if (selected.length === 0) return null;
-    if (selected.some((p) => p.paymentRule === "MENTORIA_PRESET")) return "MENTORIA_PRESET";
-    if (selected.some((p) => p.paymentRule === "MAX_2X_MIN_300")) return "MAX_2X_MIN_300";
-    return "AVISTA_ONLY";
-  })();
+  const selectedCatalogProducts = items
+    .map((item) => CARREIRA_CATALOG.find((product) => product.id === item.catalogProductId))
+    .filter(Boolean) as CarreiraProduct[];
+  const activePaymentPolicy = getPaymentPolicyForProducts(selectedCatalogProducts);
+  const activePaymentRule = activePaymentPolicy.paymentRule;
 
-  const applyMentoriaPreset = (preset: "avista" | "entry30_6x" | "6x") => {
+  const applyMentoriaPreset = (preset: "avista" | "entry30_max" | "max") => {
     setMentoriaPreset(preset);
     const currentTotal = calculateTotal();
     if (preset === "avista") {
       setForm((f) => ({ ...f, entryAmount: "", installments: "" }));
-    } else if (preset === "entry30_6x") {
+    } else if (preset === "entry30_max") {
       const entry = Math.round(currentTotal * 0.3 * 100) / 100;
-      setForm((f) => ({ ...f, entryAmount: String(entry), installments: "6" }));
+      setForm((f) => ({
+        ...f,
+        entryAmount: String(entry),
+        installments: String(activePaymentPolicy.maxInstallments),
+      }));
     } else {
-      setForm((f) => ({ ...f, entryAmount: "", installments: "6" }));
+      setForm((f) => ({
+        ...f,
+        entryAmount: "",
+        installments: String(activePaymentPolicy.maxInstallments),
+      }));
     }
   };
 
@@ -363,6 +369,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
         .map((item) => {
           const product = CARREIRA_CATALOG.find((p) => p.id === item.catalogProductId);
           return {
+            catalogProductId: item.catalogProductId || undefined,
             serviceItemId: item.serviceItemId,
             quantity: item.quantity,
             unitPrice: getNumericValue(item.unitPrice),
@@ -379,25 +386,13 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       const installmentsNum = getNumericValue(form.installments);
       const totalNum = calculateTotal();
 
-      if (activePaymentRule === "AVISTA_ONLY") {
-        if (entryNum > 0 || installmentsNum > 0) {
-          throw new Error("Este produto é somente à vista — não é permitido parcelamento.");
-        }
-      } else if (activePaymentRule === "MAX_2X_MIN_300") {
-        if (installmentsNum > 2) {
-          throw new Error("Combo: máximo de 2 parcelas.");
-        }
-        if (installmentsNum > 0) {
-          const remaining = Math.max(0, totalNum - entryNum);
-          const perInstallmentCheck = remaining / installmentsNum;
-          if (perInstallmentCheck < 300) {
-            throw new Error(`Parcela mínima de $300 (atual: $${perInstallmentCheck.toFixed(2)}).`);
-          }
-        }
-      } else if (activePaymentRule === "MENTORIA_PRESET") {
-        if (installmentsNum > 6) {
-          throw new Error("Mentoria: máximo de 6 parcelas.");
-        }
+      if (activePaymentRule) {
+        validatePaymentSelection({
+          products: selectedCatalogProducts,
+          entryAmount: entryNum,
+          installments: installmentsNum,
+          totalAmount: totalNum,
+        });
       }
 
       // Convert discount to dollar amount (handles both "amount" and "percentage" types)
@@ -1016,9 +1011,9 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas <span className="text-gray-400 font-normal">(máx. 2)</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas</label>
                   <input
-                    type="number" min="1" max="2"
+                    type="number" min="1"
                     value={form.installments}
                     onChange={(e) => handleChange("installments", e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
@@ -1039,14 +1034,14 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                     [
                       { key: "avista", label: "À vista", sub: `$${total.toFixed(2)}` },
                       {
-                        key: "entry30_6x",
-                        label: "30% entrada + 6x",
-                        sub: `Entrada $${(Math.round(total * 0.3 * 100) / 100).toFixed(2)} + 6x $${((total - Math.round(total * 0.3 * 100) / 100) / 6).toFixed(2)}`,
+                        key: "entry30_max",
+                        label: `30% entrada + ${activePaymentPolicy.maxInstallments}x`,
+                        sub: `Entrada $${(Math.round(total * 0.3 * 100) / 100).toFixed(2)} + ${activePaymentPolicy.maxInstallments}x $${((total - Math.round(total * 0.3 * 100) / 100) / activePaymentPolicy.maxInstallments).toFixed(2)}`,
                       },
                       {
-                        key: "6x",
-                        label: "6x sem entrada",
-                        sub: `6x de $${(total / 6).toFixed(2)}`,
+                        key: "max",
+                        label: `${activePaymentPolicy.maxInstallments}x sem entrada`,
+                        sub: `${activePaymentPolicy.maxInstallments}x de $${(total / activePaymentPolicy.maxInstallments).toFixed(2)}`,
                       },
                     ] as const
                   ).map(({ key, label, sub }) => (
@@ -1078,9 +1073,9 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas <span className="text-gray-400 font-normal">(máx. 6)</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas</label>
                   <input
-                    type="number" min="1" max="6"
+                    type="number" min="1"
                     value={form.installments}
                     onChange={(e) => { setMentoriaPreset(null); handleChange("installments", e.target.value); }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"

@@ -10,10 +10,10 @@ import { verifyHmacSignature } from '@/lib/utils/hmac';
 import { integrationLogger } from '@/lib/utils/logger';
 
 /**
- * Resolve the SALES seller for a contract:
+ * Resolve the COMMERCIAL seller for a contract:
  *   1) Deal.owner (preferred — Deal.ownerId is the assigned seller)
  *   2) Invoice.owner (fallback — when contract has no deal but does have invoices)
- * Returns null if no SALES-role user can be found.
+ * Returns null if no COMMERCIAL-role user can be found.
  */
 async function resolveSellerForContract(contract: {
   id: string;
@@ -29,7 +29,7 @@ async function resolveSellerForContract(contract: {
     });
     if (deal) {
       dealTitle = deal.title;
-      if (deal.owner && deal.owner.email && deal.owner.role === 'SALES') {
+      if (deal.owner && deal.owner.email && deal.owner.role === 'COMMERCIAL') {
         return { seller: deal.owner, dealTitle };
       }
     }
@@ -40,7 +40,7 @@ async function resolveSellerForContract(contract: {
       where: { id: contract.invoices[0].id },
       include: { owner: true },
     });
-    if (inv && inv.owner && inv.owner.email && inv.owner.role === 'SALES') {
+    if (inv && inv.owner && inv.owner.email && inv.owner.role === 'COMMERCIAL') {
       return { seller: inv.owner, dealTitle };
     }
   }
@@ -49,7 +49,7 @@ async function resolveSellerForContract(contract: {
 }
 
 /**
- * Notify the SALES seller that a contract is unsigned (declined / voided / expired).
+ * Notify the COMMERCIAL seller that a contract is unsigned (declined / voided / expired).
  * Best-effort — never throws.
  */
 async function notifySellerContractUnsigned(
@@ -63,7 +63,7 @@ async function notifySellerContractUnsigned(
       invoices: contract.invoices,
     });
     if (!seller) {
-      console.log(`[SellerNotify] Contract ${contract.id} ${reason} - no SALES seller resolved`);
+      console.log(`[SellerNotify] Contract ${contract.id} ${reason} - no COMMERCIAL seller resolved`);
       return;
     }
     await emailService.sendSellerContractUnsigned(
@@ -375,7 +375,7 @@ export async function POST(request: NextRequest) {
             );
             console.log(`[SellerNotify] Contract ${contract.id} signed -> ${seller.email}`);
           } else {
-            console.log(`[SellerNotify] Contract ${contract.id} signed - no SALES seller resolved`);
+            console.log(`[SellerNotify] Contract ${contract.id} signed - no COMMERCIAL seller resolved`);
           }
         } catch (notifyErr) {
           console.error(`[SellerNotify] Failed to notify seller of signed contract ${contract.id}:`, notifyErr);

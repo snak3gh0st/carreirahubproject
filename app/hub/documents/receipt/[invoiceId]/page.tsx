@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default async function ReceiptPage({ params }: Props) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const token = cookieStore.get("hub-token")?.value;
   if (!token) redirect("/hub/login");
   const payload = getPayload(token);

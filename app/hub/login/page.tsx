@@ -91,9 +91,7 @@ export default function HubLoginPage() {
 
         {accountCreated && (
           <div className="mb-4 px-4 py-3 border rounded-xl text-sm text-center" style={{ backgroundColor: "#FFF8E8", borderColor: "#E1C19B", color: "#2F443F" }}>
-            {lang === "pt-BR"
-              ? "✓ Sua conta foi criada! Entre abaixo para acessar sua fatura e finalizar o pagamento."
-              : "✓ Your account is ready! Log in below to view your invoice and complete your payment."}
+            ✓ {t(lang, "login.accountReady")}
           </div>
         )}
 

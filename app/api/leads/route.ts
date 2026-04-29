@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    const isVendedor = (role === "SALES" || role === "COMMERCIAL") && !!userId;
+    const isVendedor = role === "COMMERCIAL" && !!userId;
 
     let additionalLeadIds: string[] | undefined;
     if (isVendedor) {

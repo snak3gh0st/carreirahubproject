@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHubAuth } from "@/lib/hub-auth";
+import { prisma } from "@/lib/db";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,14 @@ export async function POST(
     }
 
     const { id } = await params;
+
+    const assignment = await prisma.formAssignment.findUnique({
+      where: { id, customerId: auth.customerId },
+      select: { id: true },
+    });
+    if (!assignment) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
 
     // Parse FormData
     const formData = await request.formData();

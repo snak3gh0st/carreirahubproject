@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 
           console.log(`[QuickBooks Webhook] ${operation} ${name} with ID: ${id}`);
 
-          // Handle Payment.Create / Payment.Update events - notify the SALES owner of the
+          // Handle Payment.Create / Payment.Update events - notify the COMMERCIAL owner of the
           // related invoice that payment was received. Best-effort, never fails the webhook.
           if (name === "Payment" && (operation === "Create" || operation === "Update")) {
             try {
@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
               });
 
               const invoice = payment?.invoice;
-              if (invoice && invoice.owner && invoice.owner.email && invoice.owner.role === "SALES") {
+              if (invoice && invoice.owner && invoice.owner.email && invoice.owner.role === "COMMERCIAL") {
                 await emailService.sendSellerInvoicePaid(
                   {
                     id: invoice.id,
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
                 );
                 console.log(`[SellerNotify] Payment ${id} -> notified seller ${invoice.owner.email}`);
               } else {
-                console.log(`[SellerNotify] Payment ${id} - no SALES owner to notify (skipped)`);
+                console.log(`[SellerNotify] Payment ${id} - no COMMERCIAL owner to notify (skipped)`);
               }
             } catch (notifyErr) {
               console.error(`[SellerNotify] Failed to notify seller for payment ${id}:`, notifyErr);

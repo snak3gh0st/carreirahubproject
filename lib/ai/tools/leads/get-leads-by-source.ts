@@ -6,14 +6,14 @@ import { prisma } from '@/lib/db';
 export const getLeadsBySource = defineAiTool({
   name: 'getLeadsBySource',
   description: 'Agrupa leads por fonte de origem dentro de um período. Use quando o usuário perguntar sobre canais de aquisição, desempenho de campanhas ou ROI por canal.',
-  allowedRoles: [UserRole.ADMIN, UserRole.SALES, UserRole.SDR],
+  allowedRoles: [UserRole.ADMIN, UserRole.COMMERCIAL],
   inputSchema: z.object({
     source: z.enum(['WEBSITE', 'WHATSAPP', 'REFERRAL', 'SOCIAL_MEDIA', 'OTHER', 'PIPEDRIVE']).optional(),
     days: z.number().int().min(1).max(365).default(30),
     limit: z.number().int().min(1).max(100).default(50),
   }),
   async handler({ source, days, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.SALES, UserRole.SDR]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.COMMERCIAL]);
     try {
       const since = new Date(Date.now() - (days ?? 30) * 86_400_000);
       const where: Record<string, unknown> = { createdAt: { gte: since } };

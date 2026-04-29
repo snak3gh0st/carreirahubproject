@@ -37,21 +37,13 @@ export async function GET(request: NextRequest) {
           ],
         },
       };
-    } else if (userRole === "SALES") {
-      // Sales sees: their own deals at risk, their own overdue invoices
+    } else if (userRole === "COMMERCIAL") {
+      // Commercial sees: their deals at risk, their overdue invoices, pending approvals
       whereClause.OR = [
         {
           rule: { name: "High-Value Deals at Risk" },
           deal: { ownerId: userId },
         },
-        {
-          rule: { name: "Overdue Invoices Alert" },
-          invoice: { ownerId: userId },
-        },
-      ];
-    } else if (userRole === "COMMERCIAL") {
-      // Commercial sees: their invoices pending approval, their overdue invoices
-      whereClause.OR = [
         {
           rule: { name: "Overdue Invoices Alert" },
           invoice: { ownerId: userId },
