@@ -190,6 +190,15 @@ export interface AdminDigestData {
   biHighlights: string[];
 }
 
+export interface ContractRenewalData {
+  id: string;
+  signerName: string;
+  signerEmail: string;
+  sentAt: Date | null;
+  expiresAt: Date;
+  reminderCount: number;
+}
+
 // ---------------------------------------------------------------------------
 // Small HTML utility helpers (private)
 // ---------------------------------------------------------------------------
@@ -1175,6 +1184,44 @@ export class EmailService {
       subject,
       html,
       NotificationType.CONTRACT_UNSIGNED_SELLER,
+      { contractId: contract.id }
+    );
+  }
+
+  async sendContractRenewalWarning(
+    contract: ContractRenewalData,
+    seller: { name: string | null; email: string },
+    daysUntilExpiry: number
+  ): Promise<void> {
+    const urgency: 'warn' | 'error' = daysUntilExpiry <= 7 ? 'error' : 'warn';
+    const subject = `Contrato expira em ${daysUntilExpiry} dia(s) — ${esc(contract.signerName)}`;
+
+    const bodyHtml = `
+    <p>Olá ${esc(seller.name || 'vendedor')},</p>
+    <p>O contrato abaixo expira em <strong>${daysUntilExpiry} dia(s)</strong>. Reenvie ou entre em contato com o cliente para evitar que expire sem assinatura.</p>
+    ${calloutBox(
+      `<h4 style="margin:0 0 8px 0; color:${BRAND_COLORS.verde};">Expira em ${daysUntilExpiry} dia(s)</h4>
+       <p style="margin:4px 0;"><strong>Assinante:</strong> ${esc(contract.signerName)}</p>
+       <p style="margin:4px 0;"><strong>E-mail:</strong> ${esc(contract.signerEmail)}</p>
+       <p style="margin:4px 0;"><strong>Enviado em:</strong> ${fmtDateBR(contract.sentAt)}</p>
+       <p style="margin:4px 0;"><strong>Expira em:</strong> ${fmtDateBR(contract.expiresAt)}</p>
+       <p style="margin:4px 0;"><strong>Lembretes enviados:</strong> ${contract.reminderCount}</p>`,
+      urgency
+    )}
+    <p>Reenvie o contrato pelo painel ou ligue para o cliente.</p>
+  `;
+
+    await this.sendEmailWithTracking(
+      seller.email,
+      subject,
+      renderBaseLayout({
+        title: `Contrato expira em ${daysUntilExpiry} dia(s)`,
+        preheader: `Ação necessária — ${contract.signerName} ainda não assinou`,
+        bodyHtml,
+        ctaLabel: 'Ver contrato',
+        ctaUrl: `${APP_URL}/dashboard/contracts/${contract.id}`,
+      }),
+      NotificationType.CONTRACT_RENEWAL_WARNING,
       { contractId: contract.id }
     );
   }
