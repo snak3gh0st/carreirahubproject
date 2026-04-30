@@ -120,10 +120,10 @@ export default async function DocumentosPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {urlValid && (
+                    {urlValid ? (
                       <>
                         <a
-                          href={c.signedS3Url!}
+                          href={`/api/hub/contracts/${c.id}?action=view`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="border border-gray-200 text-gray-600 text-xs font-semibold px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
@@ -131,8 +131,7 @@ export default async function DocumentosPage() {
                           {t(lang, "documentos.view")}
                         </a>
                         <a
-                          href={c.signedS3Url!}
-                          download
+                          href={`/api/hub/contracts/${c.id}?action=download`}
                           className="bg-brand-verde text-white text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5"
                         >
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -141,8 +140,7 @@ export default async function DocumentosPage() {
                           {t(lang, "documentos.download")}
                         </a>
                       </>
-                    )}
-                    {!urlValid && (
+                    ) : (
                       <span className="text-xs text-gray-400">{t(lang, "documents.contactSupport")}</span>
                     )}
                   </div>
@@ -163,45 +161,50 @@ export default async function DocumentosPage() {
               <p className="text-xs text-gray-400">{invoices.length} {t(lang, "inicio.installments")}</p>
             </div>
           </div>
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-            {/* Header row */}
-            <div className="hidden sm:flex items-center gap-4 px-5 py-2.5 bg-gray-50 border-b border-gray-100">
-              <p className="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{t(lang, "documents.invoice")}</p>
-              <p className="w-28 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{t(lang, "documents.paidOn")}</p>
-              <p className="w-24 text-[10px] font-semibold text-gray-400 uppercase tracking-wide text-right">{lang === "pt-BR" ? "Valor" : "Amount"}</p>
-              <p className="w-32" />
-            </div>
-
-            {invoices.map((inv, idx) => (
+          <div className="space-y-3">
+            {invoices.map((inv) => (
               <div
                 key={inv.id}
-                className={`flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 px-5 py-3.5 ${
-                  idx < invoices.length - 1 ? "border-b border-gray-50" : ""
-                }`}
+                className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center gap-4"
               >
+                {/* PDF badge */}
+                <div className="w-9 h-11 bg-green-50 border border-green-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span className="text-[8px] text-green-500 font-bold mt-0.5">PDF</span>
+                </div>
+
+                {/* Info */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900">
-                    #{inv.invoiceNumber ?? inv.id.slice(0, 8)}
+                    {inv.paidAt
+                      ? new Date(inv.paidAt).toLocaleDateString(dateLocale, { month: "long", year: "numeric" })
+                      : `#${inv.invoiceNumber ?? inv.id.slice(0, 8)}`}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {inv.paidAt
+                      ? new Date(inv.paidAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })
+                      : ""}
                   </p>
                 </div>
-                <p className="w-28 text-xs text-gray-500">
-                  {inv.paidAt
-                    ? new Date(inv.paidAt).toLocaleDateString(dateLocale, { day: "numeric", month: "short", year: "numeric" })
-                    : ""}
-                </p>
-                <p className="w-24 text-sm font-bold text-green-600 sm:text-right">
+
+                {/* Amount */}
+                <p className="text-sm font-bold text-green-600 flex-shrink-0">
                   ${fmtAmount(Number(inv.amount))}
                 </p>
-                <div className="flex items-center gap-2 w-32 justify-end">
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <Link
                     href={`/hub/documents/receipt/${inv.id}`}
-                    className="border border-gray-200 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="border border-gray-200 text-gray-600 text-xs font-semibold px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors whitespace-nowrap"
                   >
                     {t(lang, "documentos.view")}
                   </Link>
                   <Link
                     href={`/hub/documents/receipt/${inv.id}`}
-                    className="bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1"
+                    className="bg-green-50 border border-green-200 text-green-700 text-xs font-semibold px-3 py-2 rounded-lg hover:bg-green-100 transition-colors flex items-center gap-1 whitespace-nowrap"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
