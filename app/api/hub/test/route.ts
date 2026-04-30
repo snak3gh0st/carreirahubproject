@@ -42,8 +42,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ questions, testId: pendingTest.id });
       }
 
-      // Pending test is expired (> 24 hours old) — delete it
-      await prisma.placementTest.delete({ where: { id: pendingTest.id } });
+      // Pending test is expired (> 24 hours old) — delete it (deleteMany avoids P2025 on race)
+      await prisma.placementTest.deleteMany({ where: { id: pendingTest.id } });
     }
 
     // Collect previously seen question IDs from completed tests
