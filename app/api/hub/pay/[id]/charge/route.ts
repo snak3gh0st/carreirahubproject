@@ -12,6 +12,7 @@ import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
+import { telegramService } from "@/lib/services/telegram.service";
 import { integrationLogger } from "@/lib/utils/logger";
 import { clintEventProcessor } from "@/lib/services/clint-event-processor.service";
 import { slackService } from "@/lib/services/slack.service";
@@ -77,6 +78,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  let customerName = "Unknown";
   try {
     // ---- Auth ----
     const auth = await getHubAuth(request);
@@ -109,6 +111,8 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    customerName = invoice.customer.name || invoice.customer.email || "Unknown";
 
     // ---- Status check ----
     if (invoice.status === InvoiceStatus.PAID) {
@@ -469,6 +473,27 @@ export async function POST(
       undefined,
       { invoiceId: params.id }
     );
+    const typedError = error as Error & {
+      code?: string;
+      status?: number;
+      statusCode?: number;
+      response?: { status?: number };
+      cause?: unknown;
+    };
+    const safeTelegramError =
+      error instanceof Error
+        ? Object.assign(new Error(error.message), {
+            name: error.name,
+            code: typedError.code,
+            status: typedError.status ?? typedError.statusCode ?? typedError.response?.status,
+            cause: typedError.cause instanceof Error ? new Error(typedError.cause.message) : undefined,
+            stack: error.stack,
+          })
+        : error;
+    await telegramService.alertPaymentError(params.id, customerName, safeTelegramError, {
+      Route: request.nextUrl.pathname,
+      Method: request.method,
+    });
     return secureJson(
       { error: "An unexpected error occurred. Please try again." },
       { status: 500 }

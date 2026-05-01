@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
+import { telegramService } from "@/lib/services/telegram.service";
 import { InvoiceStatus, AutoChargeStatus } from "@prisma/client";
 import { integrationLogger } from "@/lib/utils/logger";
 
@@ -23,6 +24,7 @@ const DRY_RUN = process.env.AUTO_CHARGE_DRY_RUN?.trim() !== "false";
  * Runs BEFORE overdue-invoices cron (02:00 UTC) to prevent race conditions.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
@@ -372,9 +374,21 @@ export async function GET(request: NextRequest) {
       JSON.stringify(summary, null, 2)
     );
 
+    if (charged > 0 || failed > 0) {
+      await telegramService.alertCronSuccess("auto-charge-invoices",
+        `${DRY_RUN ? "[DRY RUN] " : ""}Total: ${invoices.length} · Charged: ${charged} · Skipped: ${skipped} · Failed: ${failed}`
+      );
+    }
+
     return NextResponse.json(summary);
   } catch (error: any) {
     console.error("[CRON] Auto-charge-invoices job failed:", error);
+    await telegramService.alertCronError("auto-charge-invoices", error, {
+      Route: request.nextUrl.pathname,
+      Method: request.method,
+      Duration: `${Date.now() - startTime}ms`,
+      DryRun: DRY_RUN,
+    });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

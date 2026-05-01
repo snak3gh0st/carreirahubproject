@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { validateQuickBooksWebhookSignature } from "@/lib/utils/webhook-validation";
 import { acceptWebhook, webhookResponse } from "@/lib/utils/webhook-handler";
+import { telegramService } from "@/lib/services/telegram.service";
 
 // Configuração para garantir que a rota seja dinâmica
 export const runtime = "nodejs";
@@ -256,6 +257,13 @@ export async function POST(request: NextRequest) {
     } catch (logError) {
       console.error("[QuickBooks Webhook] Failed to log error:", logError);
     }
+
+    await telegramService.alertWebhookError("QuickBooks", "WEBHOOK_ERROR", error, {
+      Route: request.nextUrl.pathname,
+      Method: request.method,
+      EventNotifications: Array.isArray(body?.eventNotifications) ? body.eventNotifications.length : 0,
+      PayloadPreview: rawBody ? rawBody.substring(0, 500) : undefined,
+    });
 
     // Still return 200 OK to prevent external retries
     return webhookResponse({

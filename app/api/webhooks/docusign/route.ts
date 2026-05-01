@@ -5,6 +5,7 @@ import { clintEventProcessor } from '@/lib/services/clint-event-processor.servic
 
 import { notificationService } from '@/lib/services/notification.service';
 import { emailService } from '@/lib/services/email.service';
+import { telegramService } from '@/lib/services/telegram.service';
 import { ContractStatus } from '@prisma/client';
 import { verifyHmacSignature } from '@/lib/utils/hmac';
 import { integrationLogger } from '@/lib/utils/logger';
@@ -99,6 +100,9 @@ async function notifySellerContractUnsigned(
  * - envelope-voided: Contract voided/cancelled
  */
 export async function POST(request: NextRequest) {
+  let event = 'unknown';
+  let envelopeId: string | undefined;
+  let payloadMeta: Record<string, unknown> | undefined;
   try {
     // CRITICAL: Get raw body BEFORE parsing JSON for HMAC verification
     const rawBody = await request.text();
@@ -123,8 +127,13 @@ export async function POST(request: NextRequest) {
     const payload = JSON.parse(rawBody);
     console.log('[DOCUSIGN_WEBHOOK] Received event:', JSON.stringify(payload, null, 2));
 
-    const event = payload.event;
-    const envelopeId = payload.data?.envelopeId || payload.envelopeId;
+    event = typeof payload.event === 'string' ? payload.event : 'unknown';
+    envelopeId = payload.data?.envelopeId || payload.envelopeId;
+    payloadMeta = {
+      event,
+      envelopeId,
+      generatedDateTime: payload.generatedDateTime,
+    };
 
     if (!envelopeId) {
       console.error('[DOCUSIGN_WEBHOOK] No envelope ID in payload');
@@ -474,6 +483,14 @@ export async function POST(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Unknown error',
         payload: { error: String(error) } as any,
       },
+    });
+
+    await telegramService.alertWebhookError("DocuSign", "WEBHOOK_ERROR", error, {
+      Route: request.nextUrl.pathname,
+      Method: request.method,
+      Event: event,
+      EnvelopeId: envelopeId,
+      Payload: payloadMeta,
     });
 
     // Return 200 to prevent retries for unrecoverable errors

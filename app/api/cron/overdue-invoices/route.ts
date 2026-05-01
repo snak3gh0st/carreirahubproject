@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { paymentWorkflowService } from '@/lib/services/payment-workflow.service';
 import { prisma } from '@/lib/db';
 import { emailService } from '@/lib/services/email.service';
+import { telegramService } from '@/lib/services/telegram.service';
 import { InvoiceStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,7 @@ export const dynamic = 'force-dynamic';
  * Notification failures NEVER fail the cron run.
  */
 export async function GET(request: NextRequest) {
+  const startTime = Date.now();
   try {
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
@@ -74,6 +76,10 @@ export async function GET(request: NextRequest) {
       console.error('[SellerNotify] Failed to query freshly-overdue invoices:', err);
     }
 
+    await telegramService.alertCronSuccess('overdue-invoices',
+      `Overdue: ${result.overdue} · Errors: ${result.errors} · Notified: ${notified}`
+    );
+
     return NextResponse.json({
       success: true,
       message: 'Overdue invoice check completed',
@@ -85,6 +91,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[CRON] Overdue invoice check failed:', error);
+    await telegramService.alertCronError('overdue-invoices', error, {
+      Route: request.nextUrl.pathname,
+      Method: request.method,
+      Duration: `${Date.now() - startTime}ms`,
+    });
 
     return NextResponse.json(
       {
