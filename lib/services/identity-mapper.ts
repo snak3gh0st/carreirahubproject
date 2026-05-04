@@ -71,6 +71,9 @@ export class IdentityMapperService {
       if (externalIds.clint_contact_id && !customer.clint_contact_id) {
         updates.clint_contact_id = externalIds.clint_contact_id;
       }
+      if (externalIds.clint_contact_id) {
+        updates.lastClintSyncAt = new Date();
+      }
       if (externalIds.quickbooks_id && !customer.quickbooks_id) {
         updates.quickbooks_id = externalIds.quickbooks_id;
       }
@@ -117,6 +120,7 @@ export class IdentityMapperService {
           zipCode,
           country,
           clint_contact_id: externalIds.clint_contact_id,
+          lastClintSyncAt: externalIds.clint_contact_id ? new Date() : undefined,
           quickbooks_id: externalIds.quickbooks_id,
           docusign_id: externalIds.docusign_id,
           trello_id: externalIds.trello_id,
@@ -343,4 +347,3 @@ export class IdentityMapperService {
 }
 
 export const identityMapper = new IdentityMapperService();
-

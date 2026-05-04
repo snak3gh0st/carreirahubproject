@@ -17,6 +17,7 @@ export interface StatCardProps {
   icon?: React.ReactNode;     // Optional icon (top right)
   description?: string;       // "vs last month"
   className?: string;
+  isLoading?: boolean;
 }
 
 const trendConfig = {
@@ -42,6 +43,7 @@ export function StatCard({
   icon,
   description,
   className,
+  isLoading = false,
 }: StatCardProps) {
   const TrendIcon = trend ? trendConfig[trend].icon : null;
   const trendClassName = trend ? trendConfig[trend].className : "";
@@ -69,13 +71,19 @@ export function StatCard({
       </div>
 
       {/* Main value */}
-      <p className="text-3xl font-bold text-gray-900 tabular-nums leading-none mb-1.5">
-        {value}
-      </p>
+      {isLoading ? (
+        <div className="mb-1.5 h-9 w-32 animate-pulse rounded-md bg-gray-200" />
+      ) : (
+        <p className="text-3xl font-bold text-gray-900 tabular-nums leading-none mb-1.5">
+          {value}
+        </p>
+      )}
 
       {/* Trend and change — fixed height so cards align even without content */}
       <div className="h-5 flex items-center gap-1.5 text-xs text-gray-500">
-        {(change || description) ? (
+        {isLoading ? (
+          <div className="h-3 w-24 animate-pulse rounded bg-gray-200" />
+        ) : (change || description) ? (
           <>
             {TrendIcon && (
               <TrendIcon className={cn("h-3.5 w-3.5", trendClassName)} />

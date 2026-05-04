@@ -5,16 +5,12 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Logo } from "@/components/brand/Logo";
 import {
-  LayoutDashboard,
-  Users,
   GraduationCap,
-  KanbanSquare,
   LogOut,
-  CalendarCheck,
-  LayoutList,
-  ClipboardList,
-  CheckSquare,
-  BookOpen,
+  CalendarDays,
+  BarChart3,
+  ListChecks,
+  UsersRound,
 } from "lucide-react";
 
 interface NavItem {
@@ -33,16 +29,14 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
   const pathname = usePathname();
 
   const navItems: NavItem[] = [
-    { href: "/ops", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/ops/daily", label: "Ações do Dia", icon: CalendarCheck },
-    { href: "/ops/my-tasks", label: "Minhas Tarefas", icon: CheckSquare },
-    { href: "/ops/customers", label: "Clientes", icon: Users },
-    { href: "/ops/enroll", label: "Matricular", icon: GraduationCap },
-    { href: "/ops/pipeline", label: "Pipeline", icon: KanbanSquare },
-    { href: "/ops/handbook", label: "Guia Operacional", icon: BookOpen },
-    { href: "/dashboard/forms", label: "Formulários", icon: ClipboardList },
+    { href: "/ops", label: "Hoje", icon: CalendarDays },
+    { href: "/ops/pipeline", label: "Alunos", icon: ListChecks },
+    { href: "/ops/enroll", label: "Matrículas", icon: GraduationCap },
+    { href: "/ops/bi", label: "BI", icon: BarChart3 },
     ...(userRole === "ADMIN"
-      ? [{ href: "/ops/coordinator", label: "Coordenador", icon: LayoutList }]
+      ? [
+          { href: "/ops/team", label: "Gestão", icon: UsersRound },
+        ]
       : []),
   ];
 

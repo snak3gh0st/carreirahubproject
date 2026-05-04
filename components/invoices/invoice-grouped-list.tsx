@@ -9,6 +9,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
+import { CopyQbInvoiceLinkButton } from "@/components/invoices/copy-qb-invoice-link-button";
 import type { Decimal } from "@prisma/client/runtime/library";
 
 interface Invoice {
@@ -19,6 +20,7 @@ interface Invoice {
   dueDate: Date | string;
   ownerId: string | null;
   quickbooks_invoice_id: string | null;
+  quickbooks_invoice_link: string | null;
   customer: { id: string; name: string; email: string };
   deal: { id: string; title: string } | null;
 }
@@ -384,6 +386,13 @@ export function InvoiceGroupedList({
                                 >
                                   Editar
                                 </Link>
+                              )}
+                              {invoice.quickbooks_invoice_id && invoice.status !== "VOID" && (
+                                <CopyQbInvoiceLinkButton
+                                  invoiceId={invoice.id}
+                                  cachedLink={invoice.quickbooks_invoice_link}
+                                  compact
+                                />
                               )}
                               <DeleteInvoiceButton
                                 invoiceId={invoice.id}

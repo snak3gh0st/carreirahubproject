@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { documentStorageService } from '@/lib/services/document-storage.service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/contracts/[id]/download
  * Get download URL for signed contract

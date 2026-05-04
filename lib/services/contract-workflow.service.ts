@@ -32,7 +32,7 @@ interface Invoice {
  * Contract Workflow Service
  *
  * Orchestrates the contract signing workflow:
- * 1. Send contract after invoice approval
+ * 1. Send package/service contract after the first invoice in the series
  * 2. Track signature status
  * 3. Send reminders at 3 and 7 days
  * 4. Expire contracts after 30 days
@@ -40,12 +40,13 @@ interface Invoice {
  */
 export class ContractWorkflowService {
   /**
-   * Send contract for signature after invoice approval
-   * Main entry point for the contract workflow
+   * Send package/service contract for signature.
+   * The first invoice in the series is only the trigger; the contract covers
+   * the full package and links the whole invoice series.
    */
   async sendContractOnApproval(invoice: Invoice): Promise<any> {
     try {
-      console.log(`[CONTRACT_WORKFLOW] Starting contract workflow for invoice ${invoice.id}`);
+      console.log(`[CONTRACT_WORKFLOW] Starting package contract workflow from invoice trigger ${invoice.id}`);
 
       // Validate customer has required fields for contract
       const missingFields = validateCustomerForContract(invoice.customer as any);
@@ -181,7 +182,7 @@ export class ContractWorkflowService {
       return updatedContract;
 
     } catch (error) {
-      console.error(`[CONTRACT_WORKFLOW] Failed to send contract for invoice ${invoice.id}:`, error);
+      console.error(`[CONTRACT_WORKFLOW] Failed to send package contract from invoice trigger ${invoice.id}:`, error);
       throw new Error('Failed to send contract: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
@@ -529,7 +530,7 @@ export class ContractWorkflowService {
   }
 
   /**
-   * Trigger contract generation after 5-10 minute delay
+   * Trigger package contract generation after 5-10 minute delay
    * Only for first invoice in series, with duplicate prevention
    * 
    * MVP Implementation: Uses setTimeout (7 minutes)
@@ -537,24 +538,24 @@ export class ContractWorkflowService {
    * Future production hardening: Use Vercel Cron + database flag or BullMQ queue
    */
   async triggerContractAfterDelay(invoiceId: string, delayMinutes: number = 7): Promise<void> {
-    console.log(`[CONTRACT_WORKFLOW] Scheduling contract generation for invoice ${invoiceId} in ${delayMinutes} minutes`);
+    console.log(`[CONTRACT_WORKFLOW] Scheduling package contract generation from invoice ${invoiceId} in ${delayMinutes} minutes`);
     
     // Use setTimeout for delay (MVP approach)
     // Better approach for production: Use Vercel Cron or external queue
     setTimeout(async () => {
       try {
-        console.log(`[CONTRACT_WORKFLOW] Delay complete, checking if contract should be generated for invoice ${invoiceId}`);
+        console.log(`[CONTRACT_WORKFLOW] Delay complete, checking if package contract should be generated from invoice ${invoiceId}`);
         
         // Check if this is first invoice and no existing contract
         const { isFirst, seriesPrefix, existingContract } = await this.isFirstInvoiceInSeries(invoiceId);
         
         if (!isFirst) {
-          console.log(`[CONTRACT_WORKFLOW] Skipping contract - not first invoice in series`);
+          console.log(`[CONTRACT_WORKFLOW] Skipping package contract - not first invoice in series`);
           return;
         }
         
         if (existingContract) {
-          console.log(`[CONTRACT_WORKFLOW] Skipping contract - customer already has contract for series ${seriesPrefix}`);
+          console.log(`[CONTRACT_WORKFLOW] Skipping package contract - customer already has contract for series ${seriesPrefix}`);
           
           // TODO: Alert commercial team about duplicate attempt
           // await notificationService.alertCommercialTeam({
@@ -568,7 +569,7 @@ export class ContractWorkflowService {
         }
         
         // All checks passed - generate contract
-        console.log(`[CONTRACT_WORKFLOW] Generating contract for first invoice ${invoiceId} in series ${seriesPrefix}`);
+        console.log(`[CONTRACT_WORKFLOW] Generating package contract from first invoice ${invoiceId} in series ${seriesPrefix}`);
         
         const invoice = await prisma.invoice.findUnique({
           where: { id: invoiceId },

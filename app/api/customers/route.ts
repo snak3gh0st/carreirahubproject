@@ -34,37 +34,80 @@ const createCustomerSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id as string;
+    const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL"];
+    if (!allowedRoles.includes(userRole)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const email = searchParams.get("email");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const selectedId = searchParams.get("selectedId");
+    const requestedLimit = parseInt(searchParams.get("limit") || "50");
+    const limit = Math.min(Math.max(requestedLimit, 1), 200);
+    const offset = Math.max(parseInt(searchParams.get("offset") || "0"), 0);
 
     const where: any = {};
     if (email) where.email = { contains: email, mode: "insensitive" };
+    if (userRole === "COMMERCIAL") {
+      where.OR = [
+        { createdById: userId },
+        { invoices: { some: { ownerId: userId } } },
+        { deals: { some: { ownerId: userId } } },
+      ];
+    }
 
-    const customers = await prisma.customer.findMany({
-      where,
-      include: {
-        deals: {
-          take: 5,
-          orderBy: { createdAt: "desc" },
-        },
-        invoices: {
-          take: 5,
-          orderBy: { createdAt: "desc" },
-        },
+    const total = await prisma.customer.count({ where });
+
+    const customerInclude = {
+      deals: {
+        take: 5,
+        orderBy: { createdAt: "desc" as const },
       },
+      invoices: {
+        take: 5,
+        orderBy: { createdAt: "desc" as const },
+      },
+    };
+
+    let customers = await prisma.customer.findMany({
+      where,
+      include: customerInclude,
       orderBy: { createdAt: "desc" },
       take: limit,
       skip: offset,
     });
+
+    if (selectedId && !customers.some((customer) => customer.id === selectedId)) {
+      const selectedWhere: any = { id: selectedId };
+      if (userRole === "COMMERCIAL") {
+        selectedWhere.OR = [
+          { createdById: userId },
+          { invoices: { some: { ownerId: userId } } },
+          { deals: { some: { ownerId: userId } } },
+        ];
+      }
+      const selectedCustomer = await prisma.customer.findFirst({
+        where: selectedWhere,
+        include: customerInclude,
+      });
+      if (selectedCustomer) {
+        customers = [selectedCustomer, ...customers];
+      }
+    }
 
     return NextResponse.json({
       customers,
       pagination: {
         limit,
         offset,
-        total: customers.length,
+        total,
       },
     });
   } catch (error) {
@@ -234,4 +277,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(fallback, { status: statusCode });
   }
 }
-

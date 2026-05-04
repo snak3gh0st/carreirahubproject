@@ -11,11 +11,11 @@ import { integrationLogger } from "@/lib/utils/logger";
 
 export class ClintSyncService {
   /** Sincroniza contatos Clint → Customer / Lead local */
-  async syncContacts(): Promise<{ upserted: number; errors: number }> {
+  async syncContacts(options: { maxPages?: number } = {}): Promise<{ upserted: number; errors: number }> {
     let upserted = 0;
     let errors = 0;
 
-    const contacts = await clintService.getAllContacts();
+    const contacts = await clintService.getAllContacts(options.maxPages);
 
     for (const contact of contacts) {
       try {
@@ -50,11 +50,11 @@ export class ClintSyncService {
   }
 
   /** Sincroniza deals Clint → Deal local */
-  async syncDeals(): Promise<{ upserted: number; errors: number }> {
+  async syncDeals(options: { maxPages?: number } = {}): Promise<{ upserted: number; errors: number }> {
     let upserted = 0;
     let errors = 0;
 
-    const deals = await clintService.getAllDeals();
+    const deals = await clintService.getAllDeals(options.maxPages);
 
     for (const deal of deals) {
       try {
@@ -116,23 +116,29 @@ export class ClintSyncService {
   }
 
   /** Full sync: contacts + deals. Debounce: skip se última sync < 5 min */
-  async syncAll(): Promise<{ contacts: { upserted: number; errors: number }; deals: { upserted: number; errors: number } }> {
+  async syncAll(options: { maxPages?: number } = {}): Promise<{ contacts: { upserted: number; errors: number }; deals: { upserted: number; errors: number } }> {
     const config = await prisma.systemConfig.findUnique({ where: { id: "system" } });
 
-    if (config?.last_clint_sync) {
+    if (!options.maxPages && config?.last_clint_sync) {
       const elapsed = Date.now() - config.last_clint_sync.getTime();
       if (elapsed < 5 * 60 * 1000) {
         return { contacts: { upserted: 0, errors: 0 }, deals: { upserted: 0, errors: 0 } };
       }
     }
 
-    const contacts = await this.syncContacts();
-    const deals = await this.syncDeals();
+    const contacts = await this.syncContacts({ maxPages: options.maxPages });
+    const deals = await this.syncDeals({ maxPages: options.maxPages });
 
     await prisma.systemConfig.upsert({
       where: { id: "system" },
       update: { last_clint_sync: new Date() },
       create: { id: "system", last_clint_sync: new Date() },
+    });
+
+    await integrationLogger.logSuccess("clint-sync", "syncAll", {
+      contacts,
+      deals,
+      maxPages: options.maxPages ?? null,
     });
 
     return { contacts, deals };

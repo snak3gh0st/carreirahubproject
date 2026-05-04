@@ -12,6 +12,7 @@ import {
   getProductsFromCatalogProductIds,
   validatePaymentSelection,
 } from "@/lib/invoices/payment-rules";
+import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 
 /** Create a Date at UTC noon for today - safe for date-only operations */
 function todayUTCNoon(): Date {
@@ -69,11 +70,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
+    if (role === "COMMERCIAL") {
+      const canAccessCustomer = await prisma.customer.count({
+        where: {
+          id: customerId,
+          OR: [
+            { createdById: userId },
+            { invoices: { some: { ownerId: userId } } },
+            { deals: { some: { ownerId: userId } } },
+          ],
+        },
+      });
+      if (!canAccessCustomer) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
     // Validar deal se fornecido
     if (dealId) {
       const deal = await prisma.deal.findUnique({ where: { id: dealId } });
       if (!deal) {
         return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+      }
+      if (deal.customerId && deal.customerId !== customerId) {
+        return NextResponse.json({ error: "Deal does not belong to customer" }, { status: 400 });
+      }
+      if (role === "COMMERCIAL" && deal.ownerId && deal.ownerId !== userId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
 
@@ -304,22 +327,6 @@ export async function POST(request: NextRequest) {
       phone: customer.phone || undefined,
     });
 
-    if (customer.email) {
-      const emailVerified = await quickbooksService.ensureCustomerEmail(qbCustomer.Id, customer.email);
-      await prisma.integrationLog.create({
-        data: {
-          service: "quickbooks",
-          action: emailVerified ? "customer_email_verified" : "customer_email_verification_failed",
-          status: emailVerified ? "SUCCESS" : "ERROR",
-          payload: {
-            qbCustomerId: qbCustomer.Id,
-            customerEmail: customer.email,
-            emailVerified,
-          } as any,
-        },
-      });
-    }
-
     // ── STEP A: Create the FIRST invoice in QB (entry or first installment) ──
     const firstMeta = invoiceMetadata[0];
     const firstLineItems = firstMeta.lineItems.map((item) => ({
@@ -359,7 +366,6 @@ export async function POST(request: NextRequest) {
     let firstEmailError: string | undefined;
 
     if (customer.email) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
       try {
         const sendResult = await quickbooksService.sendInvoice(qbInvoice.Id, customer.email);
         if (sendResult.success && sendResult.sent) {
@@ -392,6 +398,7 @@ export async function POST(request: NextRequest) {
         dueDate: firstMeta.dueDate,
         status: InvoiceStatus.SENT,
         quickbooks_invoice_id: qbInvoice.Id,
+        ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
         ownerId: userId,
         dealId,
         customerId,
@@ -406,13 +413,12 @@ export async function POST(request: NextRequest) {
     });
     invoices.push(firstInvoice);
 
-    // Sync first invoice from QB
-    try {
-      const { quickbooksSyncService } = await import("@/lib/services/quickbooks-sync.service");
-      await quickbooksSyncService.syncSingleInvoice(qbInvoice.Id);
-    } catch {
-      // non-critical
-    }
+    // Sync first invoice from QB without blocking the user-facing create flow.
+    void import("@/lib/services/quickbooks-sync.service")
+      .then(({ quickbooksSyncService }) => quickbooksSyncService.syncSingleInvoice(qbInvoice.Id))
+      .catch((syncError) => {
+        console.error("[INVOICE_CREATE] Non-blocking QB sync failed:", syncError);
+      });
 
     // ── STEP B: Create RecurringTransaction for installments 2-N ──
     if (invoiceCountToCreate > 1) {

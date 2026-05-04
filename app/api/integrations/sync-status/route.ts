@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { UserRole } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/integrations/sync-status
  * Get sync health status for all integrations

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { telegramService } from "@/lib/services/telegram.service";
-import { InvoiceStatus, AutoChargeStatus } from "@prisma/client";
+import { clintEventProcessor } from "@/lib/services/clint-event-processor.service";
+import { InvoiceStatus, AutoChargeStatus, ContractStatus } from "@prisma/client";
 import { integrationLogger } from "@/lib/utils/logger";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,58 @@ const BATCH_SIZE = 20;
 
 // Set AUTO_CHARGE_DRY_RUN=false in env to enable real charging (Phase 3)
 const DRY_RUN = process.env.AUTO_CHARGE_DRY_RUN?.trim() !== "false";
+
+async function recordAutoChargePayment(args: {
+  invoiceId: string;
+  customerId: string;
+  amount: number;
+  paymentMethod: string;
+  chargeId: string;
+  qbPaymentId?: string | null;
+}) {
+  if (args.qbPaymentId) {
+    return prisma.payment.upsert({
+      where: { quickbooks_payment_id: args.qbPaymentId },
+      create: {
+        amount: args.amount,
+        currency: "USD",
+        paymentDate: new Date(),
+        paymentMethod: args.paymentMethod,
+        referenceNumber: args.chargeId,
+        quickbooks_payment_id: args.qbPaymentId,
+        invoiceId: args.invoiceId,
+        customerId: args.customerId,
+        syncedFromQb: false,
+        syncedToQb: true,
+        lastSyncAt: new Date(),
+        metadata: { source: "auto_charge", qbPaymentChargeId: args.chargeId } as any,
+      },
+      update: {
+        amount: args.amount,
+        paymentMethod: args.paymentMethod,
+        referenceNumber: args.chargeId,
+        syncedToQb: true,
+        lastSyncAt: new Date(),
+        metadata: { source: "auto_charge", qbPaymentChargeId: args.chargeId } as any,
+      },
+    });
+  }
+
+  return prisma.payment.create({
+    data: {
+      amount: args.amount,
+      currency: "USD",
+      paymentDate: new Date(),
+      paymentMethod: args.paymentMethod,
+      referenceNumber: args.chargeId,
+      invoiceId: args.invoiceId,
+      customerId: args.customerId,
+      syncedFromQb: false,
+      syncedToQb: false,
+      metadata: { source: "auto_charge", qbPaymentChargeId: args.chargeId } as any,
+    },
+  });
+}
 
 /**
  * GET /api/cron/auto-charge-invoices
@@ -180,8 +233,9 @@ export async function GET(request: NextRequest) {
 
         // Create payment in QB Accounting
         const qbInvoiceId = invoice.quickbooks_invoice_id;
+        let qbAccountingPaymentId: string | null = null;
         if (qbInvoiceId) {
-          await quickbooksService.createPayment({
+          const qbPayment = await quickbooksService.createPayment({
             customerId: qbCustomerId,
             invoiceId: qbInvoiceId,
             amount,
@@ -189,7 +243,17 @@ export async function GET(request: NextRequest) {
             referenceNumber: chargeResult?.id || requestId,
             source: "auto_charge",
           });
+          qbAccountingPaymentId = qbPayment?.Id ?? null;
         }
+
+        await recordAutoChargePayment({
+          invoiceId: invoice.id,
+          customerId: invoice.customerId,
+          amount,
+          paymentMethod: paymentType,
+          chargeId: chargeResult?.id || requestId,
+          qbPaymentId: qbAccountingPaymentId,
+        });
 
         // Update local invoice
         await prisma.invoice.update({
@@ -205,6 +269,23 @@ export async function GET(request: NextRequest) {
             autoChargePaymentRef: chargeResult?.id || requestId,
           },
         });
+
+        // Onboarding gate: if this autopay completes the purchase and the
+        // contract is signed, enroll PASS/ADVANCED in the operational hub.
+        if (invoice.dealId) {
+          try {
+            const signedContract = await prisma.contract.findFirst({
+              where: { dealId: invoice.dealId, status: ContractStatus.SIGNED },
+              select: { id: true },
+            });
+            if (signedContract) {
+              console.log(`[CRON] Contract SIGNED — triggering onboarding for deal ${invoice.dealId}`);
+              await clintEventProcessor.triggerOnboarding(invoice.dealId, invoice.customer);
+            }
+          } catch (onboardingErr) {
+            console.error("[CRON] Onboarding gate failed (non-blocking):", onboardingErr);
+          }
+        }
 
         // Update customer balance
         await prisma.customer.update({

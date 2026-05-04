@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { ProfessionalSidebar } from "@/components/dashboard/professional-sidebar";
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Professional Dashboard Layout
  * 
@@ -20,9 +22,7 @@ export default async function DashboardLayout({
 }) {
   let session;
   try {
-    console.log("[DashboardLayout] Getting session...");
     session = await getServerSession(authOptions);
-    console.log("[DashboardLayout] Session retrieved successfully");
   } catch (error) {
     console.error("[DashboardLayout] Session error:", {
       error,
@@ -34,7 +34,6 @@ export default async function DashboardLayout({
   }
 
   if (!session) {
-    console.log("[DashboardLayout] No session found, redirecting to signin");
     redirect("/auth/signin");
   }
 
@@ -43,7 +42,6 @@ export default async function DashboardLayout({
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
   const isTeamRole = ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL"].includes(userRole);
-  console.log("[DashboardLayout] User role:", userRole);
 
   return (
     <div data-portal="dashboard" className="min-h-screen bg-gray-50">

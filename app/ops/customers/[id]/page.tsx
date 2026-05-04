@@ -236,11 +236,11 @@ export default async function OpsCustomerDetailPage({
     <div className="p-8">
       <div className="mb-6">
         <Link
-          href="/ops/customers"
+          href="/ops/pipeline"
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-verde transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
-          Voltar para clientes
+          Voltar para alunos
         </Link>
       </div>
 

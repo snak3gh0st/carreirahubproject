@@ -10,11 +10,12 @@ import { PaymentStatusCard } from "@/components/invoices/payment-status-card";
 import { CollectionCallButton } from "@/components/invoices/collection-call-button";
 import { CollectionCallHistory } from "@/components/invoices/collection-call-history";
 import { DeleteInvoiceButton } from "@/components/invoices/delete-invoice-button";
+import { CopyQbInvoiceLinkButton } from "@/components/invoices/copy-qb-invoice-link-button";
 import { normalizeDateOnly, differenceInCalendarDaysUTC } from "@/lib/utils/date";
 import {
   Edit, Download, ArrowLeft, FileText, DollarSign, Calendar,
   User, Mail, Phone, ExternalLink, CheckCircle2, Clock, AlertTriangle,
-  CreditCard, Hash, Building2, Send, Eye, XCircle, Shield,
+  CreditCard, Hash, Building2, Send, XCircle, Shield,
 } from "lucide-react";
 
 function statusDisplay(status: InvoiceStatus, isOverdue: boolean) {
@@ -24,6 +25,41 @@ function statusDisplay(status: InvoiceStatus, isOverdue: boolean) {
   if (status === "PARTIALLY_PAID") return { label: "Parcialmente Pago", icon: CreditCard, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200" };
   if (status === "VOID") return { label: "Anulada", icon: XCircle, color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" };
   return { label: "Rascunho", icon: FileText, color: "text-gray-500", bg: "bg-gray-50", border: "border-gray-200" };
+}
+
+function formatQuickbooksDeliveryError(error: string | null) {
+  if (!error) {
+    return {
+      description: "Envio automatico ainda nao confirmado no QuickBooks.",
+      note: null as string | null,
+    };
+  }
+
+  if (error.includes("Object Not Found") || error.includes('"code":"610"') || error.includes('"code": "610"')) {
+    return {
+      description: "O QuickBooks nao encontrou esta invoice para enviar.",
+      note: "O identificador salvo no hub nao existe mais na conta atual do QuickBooks.",
+    };
+  }
+
+  if (error.includes("Invalid ID") || error.includes('"code":"2030"') || error.includes('"code": "2030"')) {
+    return {
+      description: "O identificador da invoice no QuickBooks esta invalido.",
+      note: "Essa invoice precisa ser resincronizada com um ID valido antes de um novo envio.",
+    };
+  }
+
+  if (error.includes("AuthenticationFailed") || error.includes("invalid_grant")) {
+    return {
+      description: "A autenticacao do QuickBooks expirou durante o envio.",
+      note: "O OAuth do QuickBooks precisa ser reconectado para liberar novos envios.",
+    };
+  }
+
+  return {
+    description: "Falha no envio automatico pelo QuickBooks.",
+    note: error.length > 180 ? `${error.slice(0, 177)}...` : error,
+  };
 }
 
 export default async function InvoiceDetailPage({ params }: { params: { id: string } }) {
@@ -61,15 +97,148 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   const amount = Number(invoice.amount);
   const paidAmount = Number(invoice.amountPaid || 0);
   const remaining = amount - paidAmount;
+  const daysUntilDue = differenceInCalendarDaysUTC(dueDateOnly, new Date());
+  const deliveryFailure = formatQuickbooksDeliveryError(invoice.lastEmailSendError);
+
+  const contractStep =
+    !invoice.contract
+      ? {
+          title: "Contrato do pacote",
+          status: "pending" as const,
+          date: null,
+          description: "Nenhum contrato gerado para o pacote deste servico.",
+          note: "O contrato pode cobrir toda a serie de invoices vinculadas ao servico.",
+        }
+      : invoice.contract.status === ContractStatus.SIGNED
+      ? {
+          title: "Contrato do pacote",
+          status: "completed" as const,
+          date: invoice.contract.signedAt ?? invoice.contract.sentAt,
+          description: "Contrato do pacote concluido pelo cliente.",
+          note: invoice.contract.signerEmail,
+        }
+      : invoice.contract.status === ContractStatus.SENT_FOR_SIGNATURE || invoice.contract.status === ContractStatus.VIEWED
+      ? {
+          title: "Contrato do pacote",
+          status: "current" as const,
+          date: invoice.contract.sentAt,
+          description: "Contrato do pacote enviado e aguardando resposta do cliente.",
+          note: `${invoice.contract.reminderCount || 0} lembrete(s) enviados.`,
+        }
+      : invoice.contract.status === ContractStatus.DECLINED || invoice.contract.status === ContractStatus.EXPIRED
+      ? {
+          title: "Contrato do pacote",
+          status: "failed" as const,
+          date: invoice.contract.sentAt,
+          description: invoice.contract.status === ContractStatus.DECLINED ? "Cliente recusou o contrato do pacote." : "Contrato do pacote expirou sem assinatura.",
+          note: invoice.contract.signerEmail,
+        }
+      : {
+          title: "Contrato do pacote",
+          status: "pending" as const,
+          date: null,
+          description: "Contrato do pacote em preparacao.",
+          note: invoice.contract.signerEmail,
+        };
+
+  const deliveryStep =
+    invoice.status === InvoiceStatus.VOID
+      ? {
+          title: "Entrega ao cliente",
+          status: "pending" as const,
+          date: null,
+          description: "Fatura anulada. O envio ao cliente nao se aplica.",
+          note: null,
+        }
+      : invoice.emailSentAt
+      ? {
+          title: "Entrega ao cliente",
+          status: "completed" as const,
+          date: invoice.emailSentAt,
+          description: `Invoice enviada para ${invoice.customer.email}.`,
+          note: invoice.quickbooks_invoice_link ? "Link publico do QuickBooks armazenado no hub." : null,
+        }
+      : invoice.lastEmailSendError
+      ? {
+          title: "Entrega ao cliente",
+          status: "failed" as const,
+          date: null,
+          description: deliveryFailure.description,
+          note: deliveryFailure.note,
+        }
+      : invoice.quickbooks_invoice_id
+      ? {
+          title: "Entrega ao cliente",
+          status: daysUntilDue > 7 ? ("pending" as const) : ("current" as const),
+          date: null,
+          description:
+            daysUntilDue > 7
+              ? "Envio automatico programado para a janela de 7 dias antes do vencimento."
+              : "Invoice pronta no QuickBooks para envio ao cliente.",
+          note:
+            invoice.quickbooks_invoice_link
+              ? "O time comercial ja pode copiar o link do QuickBooks pelo hub."
+              : "O hub ainda nao recebeu o link publico desta invoice.",
+        }
+      : {
+          title: "Entrega ao cliente",
+          status: "pending" as const,
+          date: null,
+          description: "Aguardando sincronizacao com o QuickBooks.",
+          note: null,
+        };
+
+  const paymentStep =
+    invoice.status === InvoiceStatus.PAID
+      ? {
+          title: "Pagamento",
+          status: "completed" as const,
+          date: invoice.paidAt,
+          description: `Pagamento confirmado via ${invoice.paymentMethod || "QuickBooks"}.`,
+          note: null,
+        }
+      : invoice.status === InvoiceStatus.PARTIALLY_PAID
+      ? {
+          title: "Pagamento",
+          status: "current" as const,
+          date: invoice.paidAt,
+          description: "Pagamento parcial registrado.",
+          note: `Saldo atual de $${remaining.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`,
+        }
+      : isOverdue
+      ? {
+          title: "Pagamento",
+          status: "failed" as const,
+          date: null,
+          description: `Pagamento em atraso ha ${overdueDays} dia(s).`,
+          note: invoice.paymentReminderCount > 0 ? `${invoice.paymentReminderCount} lembrete(s) de pagamento enviados.` : null,
+        }
+      : {
+          title: "Pagamento",
+          status: "current" as const,
+          date: null,
+          description: "Aguardando pagamento do cliente.",
+          note: `Vencimento em ${Math.max(daysUntilDue, 0)} dia(s).`,
+        };
 
   const workflowSteps = [
-    { title: "Fatura Criada", status: "completed" as const, date: invoice.createdAt, description: `Criada por ${invoice.deal?.owner?.name || "Sistema"}` },
-    { title: "Sincronização QuickBooks", status: invoice.quickbooks_invoice_id ? ("completed" as const) : ("current" as const), date: invoice.quickbooks_invoice_id ? invoice.createdAt : null, description: invoice.quickbooks_invoice_id ? `Sincronizado com QuickBooks (ID: ${invoice.quickbooks_invoice_id})` : "Sincronizando com QuickBooks..." },
-    { title: "E-mail Enviado", status: invoice.emailSentAt ? ("completed" as const) : invoice.lastEmailSendError ? ("failed" as const) : ("pending" as const), date: invoice.emailSentAt, description: invoice.emailSentAt ? `E-mail enviado para ${invoice.customer.email} (${invoice.emailSendAttempts || 1} tentativa${(invoice.emailSendAttempts || 1) > 1 ? "s" : ""})` : invoice.lastEmailSendError ? `Falha ao enviar: ${invoice.lastEmailSendError}` : "O e-mail será enviado automaticamente" },
-    { title: "Contrato Enviado", status: invoice.contract ? (invoice.contract.status === ContractStatus.DECLINED || invoice.contract.status === ContractStatus.EXPIRED ? ("failed" as const) : ("completed" as const)) : ("pending" as const), date: invoice.contract?.sentAt, description: invoice.contract ? `Enviado para ${invoice.contract.signerEmail}` : "O contrato será gerado automaticamente" },
-    { title: "Contrato Assinado", status: invoice.contract?.status === ContractStatus.SIGNED ? ("completed" as const) : invoice.contract?.status === ContractStatus.DECLINED ? ("failed" as const) : invoice.contract?.status === ContractStatus.SENT_FOR_SIGNATURE ? ("current" as const) : ("pending" as const), date: invoice.contract?.signedAt, description: invoice.contract?.status === ContractStatus.SIGNED ? "Cliente assinou o contrato" : invoice.contract?.status === ContractStatus.DECLINED ? "Cliente recusou assinar" : invoice.contract?.status === ContractStatus.EXPIRED ? "Contrato expirado" : invoice.contract?.status === ContractStatus.SENT_FOR_SIGNATURE ? `Aguardando assinatura (${invoice.contract?.reminderCount || 0} lembretes)` : "Aguardando assinatura do contrato" },
-    { title: "Invoice Enviado", status: invoice.emailSentAt ? ("completed" as const) : invoice.contract?.status === ContractStatus.SIGNED ? ("current" as const) : ("pending" as const), date: invoice.emailSentAt || null, description: invoice.emailSentAt ? "Invoice enviado ao cliente via QuickBooks" : invoice.contract?.status === ContractStatus.SIGNED ? "Aguardando envio do invoice..." : "Contrato precisa ser assinado primeiro" },
-    { title: "Pagamento", status: invoice.status === InvoiceStatus.PAID ? ("completed" as const) : invoice.emailSentAt ? ("current" as const) : ("pending" as const), date: invoice.paidAt, description: invoice.status === InvoiceStatus.PAID ? `Pago via ${invoice.paymentMethod || "QuickBooks"}` : invoice.emailSentAt ? `Aguardando pagamento (${invoice.paymentReminderCount || 0} lembretes)` : "Aguardando pagamento" },
+    {
+      title: "Fatura criada",
+      status: "completed" as const,
+      date: invoice.createdAt,
+      description: `Criada por ${invoice.deal?.owner?.name || invoice.owner?.name || "Sistema"}.`,
+      note: invoice.invoiceNumber || null,
+    },
+    {
+      title: "QuickBooks",
+      status: invoice.quickbooks_invoice_id ? ("completed" as const) : ("current" as const),
+      date: invoice.quickbooks_invoice_id ? invoice.updatedAt : null,
+      description: invoice.quickbooks_invoice_id ? `Sincronizada com QuickBooks (ID ${invoice.quickbooks_invoice_id}).` : "Sincronizacao com QuickBooks em andamento.",
+      note: invoice.quickbooks_invoice_link ? "Link publico do cliente ja salvo no hub." : "O link publico ainda sera carregado do QuickBooks.",
+    },
+    contractStep,
+    deliveryStep,
+    paymentStep,
   ];
 
   return (
@@ -123,6 +292,12 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
                   <Download className="w-4 h-4" />
                   PDF
                 </a>
+              )}
+              {invoice.quickbooks_invoice_id && invoice.status !== InvoiceStatus.VOID && (
+                <CopyQbInvoiceLinkButton
+                  invoiceId={invoice.id}
+                  cachedLink={invoice.quickbooks_invoice_link}
+                />
               )}
               <DeleteInvoiceButton invoiceId={invoice.id} invoiceNumber={invoice.invoiceNumber || invoice.id.slice(0, 8)} hasQuickbooksId={!!invoice.quickbooks_invoice_id} userRole={userRole} />
             </div>
@@ -210,7 +385,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
 
         {/* Workflow Timeline */}
         <div className="bg-white rounded-2xl border border-gray-100 p-6 mb-6 shadow-sm">
-          <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide mb-5">Progresso do Fluxo</h2>
+          <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide mb-5">Status Operacional</h2>
           <WorkflowTimeline steps={workflowSteps} />
         </div>
 
@@ -347,8 +522,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
             />
 
             <PaymentStatusCard
-              invoice={{ id: invoice.id, invoiceNumber: invoice.invoiceNumber, status: invoice.status, amount: Number(invoice.amount), dueDate: invoice.dueDate, paidAt: invoice.paidAt, amountPaid: Number(invoice.amountPaid || 0), paymentMethod: invoice.paymentMethod, lastPaymentReminderAt: invoice.lastPaymentReminderAt, paymentReminderCount: invoice.paymentReminderCount }}
-              contractStatus={invoice.contract?.status || null}
+              invoice={{ id: invoice.id, invoiceNumber: invoice.invoiceNumber, quickbooksInvoiceId: invoice.quickbooks_invoice_id, status: invoice.status, amount: Number(invoice.amount), dueDate: invoice.dueDate, paidAt: invoice.paidAt, amountPaid: Number(invoice.amountPaid || 0), paymentMethod: invoice.paymentMethod, lastPaymentReminderAt: invoice.lastPaymentReminderAt, paymentReminderCount: invoice.paymentReminderCount }}
             />
 
             {(invoice.status === InvoiceStatus.OVERDUE || isOverdue) && invoice.status !== InvoiceStatus.PAID && canApprove && (

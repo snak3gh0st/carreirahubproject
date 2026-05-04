@@ -10,7 +10,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
-import { InvoiceStatus } from "@prisma/client";
+import { clintEventProcessor } from "@/lib/services/clint-event-processor.service";
+import { ContractStatus, InvoiceStatus } from "@prisma/client";
 import { integrationLogger } from "@/lib/utils/logger";
 import { getPaymentSecurityHeaders } from "@/lib/hub/security-headers";
 
@@ -57,6 +58,60 @@ function sanitizeForLog(obj: unknown): unknown {
 function secureJson(body: unknown, init?: { status?: number }): NextResponse {
   const headers = getPaymentSecurityHeaders();
   return NextResponse.json(body, { ...init, headers });
+}
+
+async function recordLocalPayment(args: {
+  invoiceId: string;
+  customerId: string;
+  amount: number;
+  paymentMethod: string;
+  chargeId?: string | null;
+  qbPaymentId?: string | null;
+  syncedToQb: boolean;
+  metadata?: Record<string, unknown>;
+}) {
+  if (args.qbPaymentId) {
+    return prisma.payment.upsert({
+      where: { quickbooks_payment_id: args.qbPaymentId },
+      create: {
+        amount: args.amount,
+        currency: "USD",
+        paymentDate: new Date(),
+        paymentMethod: args.paymentMethod,
+        referenceNumber: args.chargeId ?? args.qbPaymentId,
+        quickbooks_payment_id: args.qbPaymentId,
+        invoiceId: args.invoiceId,
+        customerId: args.customerId,
+        syncedFromQb: false,
+        syncedToQb: args.syncedToQb,
+        lastSyncAt: args.syncedToQb ? new Date() : null,
+        metadata: args.metadata as any,
+      },
+      update: {
+        amount: args.amount,
+        paymentMethod: args.paymentMethod,
+        referenceNumber: args.chargeId ?? args.qbPaymentId,
+        syncedToQb: args.syncedToQb,
+        lastSyncAt: new Date(),
+        metadata: args.metadata as any,
+      },
+    });
+  }
+
+  return prisma.payment.create({
+    data: {
+      amount: args.amount,
+      currency: "USD",
+      paymentDate: new Date(),
+      paymentMethod: args.paymentMethod,
+      referenceNumber: args.chargeId ?? undefined,
+      invoiceId: args.invoiceId,
+      customerId: args.customerId,
+      syncedFromQb: false,
+      syncedToQb: false,
+      metadata: args.metadata as any,
+    },
+  });
 }
 
 /**
@@ -133,9 +188,11 @@ export async function POST(
     console.log(`[PAYMENT_V2] ${paymentMethod} charge successful: ${chargeResult?.id}`);
 
     // Record payment in QB Accounting
+    let qbAccountingPaymentId: string | null = null;
+    let qbAccountingPaymentError: string | null = null;
     if (invoice.quickbooks_invoice_id) {
       try {
-        await quickbooksService.createPayment({
+        const qbPayment = await quickbooksService.createPayment({
           customerId: qbCustomerId,
           invoiceId: invoice.quickbooks_invoice_id,
           amount,
@@ -143,10 +200,28 @@ export async function POST(
           referenceNumber: chargeResult?.id || requestId,
           source: "manual",
         });
+        qbAccountingPaymentId = qbPayment?.Id ?? null;
       } catch (err: any) {
+        qbAccountingPaymentError = err.message ?? String(err);
         console.error("[PAYMENT_V2] QB Accounting payment record failed:", err.message);
       }
     }
+
+    await recordLocalPayment({
+      invoiceId: invoice.id,
+      customerId: invoice.customerId,
+      amount,
+      paymentMethod: paymentType,
+      chargeId: chargeResult?.id || requestId,
+      qbPaymentId: qbAccountingPaymentId,
+      syncedToQb: Boolean(qbAccountingPaymentId),
+      metadata: {
+        source: "payment_v2",
+        qbPaymentChargeId: chargeResult?.id || requestId,
+        qbAccountingPaymentError,
+        paymentSaved,
+      },
+    });
 
     // Update local invoice
     await prisma.invoice.update({
@@ -166,6 +241,22 @@ export async function POST(
           : {}),
       },
     });
+
+    // Onboarding gate: if contract was already signed, enroll PASS/ADVANCED in Ops.
+    if (invoice.dealId) {
+      try {
+        const signedContract = await prisma.contract.findFirst({
+          where: { dealId: invoice.dealId, status: ContractStatus.SIGNED },
+          select: { id: true },
+        });
+        if (signedContract) {
+          console.log(`[PAYMENT_V2] Contract SIGNED — triggering onboarding for deal ${invoice.dealId}`);
+          await clintEventProcessor.triggerOnboarding(invoice.dealId, invoice.customer);
+        }
+      } catch (onboardingErr) {
+        console.error("[PAYMENT_V2] Onboarding gate failed (non-blocking):", onboardingErr);
+      }
+    }
 
     // Update customer balance
     await prisma.customer.update({
@@ -231,7 +322,8 @@ async function processCardPayment(
     };
   }
 
-  // Save card to customer wallet
+  // Save card to customer wallet. createFromToken consumes the token even when
+  // the save attempt fails, so fallback charge must use a fresh token.
   let savedCard: any = null;
   try {
     savedCard = await quickbooksService.createCardFromToken(qbCustomerId, token);
@@ -246,7 +338,15 @@ async function processCardPayment(
     if (savedCard?.id) {
       chargeResult = await quickbooksService.chargeCard({ cardId: savedCard.id, amount, description, requestId });
     } else {
-      chargeResult = await quickbooksService.chargeWithToken({ token, amount, description, requestId });
+      const freshToken = await quickbooksService.tokenizeCard({
+        number: cardNumber,
+        expMonth,
+        expYear,
+        cvc,
+        name: cardholderName,
+        postalCode,
+      });
+      chargeResult = await quickbooksService.chargeWithToken({ token: freshToken, amount, description, requestId });
     }
     return { chargeResult, paymentSaved: !!savedCard?.id };
   } catch (err: any) {
@@ -294,7 +394,8 @@ async function processAchPayment(
     };
   }
 
-  // Save bank account to customer
+  // Save bank account to customer. createFromToken consumes the token even when
+  // the save attempt fails, so fallback charge must use a fresh token.
   let savedAccount: any = null;
   try {
     savedAccount = await quickbooksService.createBankAccountFromToken(qbCustomerId, token);
@@ -314,8 +415,14 @@ async function processAchPayment(
         requestId,
       });
     } else {
-      // Fallback: charge with token directly
-      chargeResult = await quickbooksService.chargeEcheckWithToken({ token, amount, description, requestId });
+      const freshToken = await quickbooksService.tokenizeBankAccount({
+        routingNumber,
+        accountNumber,
+        name: accountName,
+        accountType: accountType || "PERSONAL_CHECKING",
+        phone,
+      });
+      chargeResult = await quickbooksService.chargeEcheckWithToken({ token: freshToken, amount, description, requestId });
     }
     return { chargeResult, paymentSaved: !!savedAccount?.id };
   } catch (err: any) {

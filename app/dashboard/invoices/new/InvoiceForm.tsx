@@ -496,7 +496,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           <div className="flex gap-3 justify-center">
             <button
               onClick={() => router.push(
-                `/dashboard/contracts/new?customerId=${createdInvoiceData.customerId}`
+                `/dashboard/contracts/new?customerId=${createdInvoiceData.customerId}&invoiceId=${createdInvoiceData.firstInvoiceId}`
               )}
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center gap-2"
             >

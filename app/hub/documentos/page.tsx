@@ -35,8 +35,10 @@ export default async function DocumentosPage() {
       select: {
         id: true,
         signedAt: true,
+        signedUrl: true,
         signedS3Url: true,
         signedS3UrlExpiresAt: true,
+        docusign_env_id: true,
         deal: { select: { title: true } },
       },
       orderBy: { signedAt: "desc" },
@@ -85,7 +87,7 @@ export default async function DocumentosPage() {
           </div>
           <div className="space-y-3">
             {contracts.map((c) => {
-              const urlValid = c.signedS3Url && (!c.signedS3UrlExpiresAt || new Date(c.signedS3UrlExpiresAt) > new Date());
+              const hasAccessibleDocument = Boolean(c.signedS3Url || c.signedUrl || c.docusign_env_id);
               return (
                 <div
                   key={c.id}
@@ -120,7 +122,7 @@ export default async function DocumentosPage() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 flex-shrink-0">
-                    {urlValid ? (
+                    {hasAccessibleDocument ? (
                       <>
                         <a
                           href={`/api/hub/contracts/${c.id}?action=view`}

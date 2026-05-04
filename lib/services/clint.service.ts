@@ -37,6 +37,12 @@ export type ClintDeal = {
 
 type ClintPageResponse<T> = {
   data: T[];
+  status?: string;
+  totalCount?: number;
+  page?: number;
+  totalPages?: number;
+  hasNext?: boolean;
+  hasPrevious?: boolean;
   meta?: { total?: number; page?: number; per_page?: number };
 };
 
@@ -114,9 +120,9 @@ export class ClintService {
     return result !== null;
   }
 
-  async getContacts(limit = PAGE_LIMIT, offset = 0): Promise<ClintPageResponse<ClintContact>> {
+  async getContacts(limit = PAGE_LIMIT, page = 1): Promise<ClintPageResponse<ClintContact>> {
     const result = await this.request<ClintPageResponse<ClintContact>>(
-      `/contacts?limit=${limit}&offset=${offset}`
+      `/contacts?limit=${limit}&page=${page}`
     );
     return result ?? { data: [] };
   }
@@ -125,24 +131,25 @@ export class ClintService {
     return this.request<ClintContact>(`/contacts/${id}`);
   }
 
-  async getAllContacts(): Promise<ClintContact[]> {
+  async getAllContacts(maxPages = Number.POSITIVE_INFINITY): Promise<ClintContact[]> {
     const all: ClintContact[] = [];
-    let offset = 0;
+    let pageNumber = 1;
 
     while (true) {
-      const page = await this.getContacts(PAGE_LIMIT, offset);
+      const page = await this.getContacts(PAGE_LIMIT, pageNumber);
       if (!page.data?.length) break;
       all.push(...page.data);
-      if (page.data.length < PAGE_LIMIT) break;
-      offset += PAGE_LIMIT;
+      if (page.hasNext === false || page.data.length < PAGE_LIMIT) break;
+      if (pageNumber >= maxPages) break;
+      pageNumber += 1;
     }
 
     return all;
   }
 
-  async getDeals(limit = PAGE_LIMIT, offset = 0): Promise<ClintPageResponse<ClintDeal>> {
+  async getDeals(limit = PAGE_LIMIT, page = 1): Promise<ClintPageResponse<ClintDeal>> {
     const result = await this.request<ClintPageResponse<ClintDeal>>(
-      `/deals?limit=${limit}&offset=${offset}`
+      `/deals?limit=${limit}&page=${page}`
     );
     return result ?? { data: [] };
   }
@@ -151,16 +158,17 @@ export class ClintService {
     return this.request<ClintDeal>(`/deals/${id}`);
   }
 
-  async getAllDeals(): Promise<ClintDeal[]> {
+  async getAllDeals(maxPages = Number.POSITIVE_INFINITY): Promise<ClintDeal[]> {
     const all: ClintDeal[] = [];
-    let offset = 0;
+    let pageNumber = 1;
 
     while (true) {
-      const page = await this.getDeals(PAGE_LIMIT, offset);
+      const page = await this.getDeals(PAGE_LIMIT, pageNumber);
       if (!page.data?.length) break;
       all.push(...page.data);
-      if (page.data.length < PAGE_LIMIT) break;
-      offset += PAGE_LIMIT;
+      if (page.hasNext === false || page.data.length < PAGE_LIMIT) break;
+      if (pageNumber >= maxPages) break;
+      pageNumber += 1;
     }
 
     return all;

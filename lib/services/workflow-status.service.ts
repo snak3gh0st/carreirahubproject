@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { quickbooksService } from "./quickbooks.service";
 import { docusignService } from "./docusign.service";
 import { integrationLogger } from "@/lib/utils/logger";
+import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 
 /**
  * Workflow Status Service
@@ -250,6 +251,7 @@ export class WorkflowStatusService {
             dueDate,
             status: "SENT",
             quickbooks_invoice_id: qbInvoice.Id,
+            ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
           },
         });
 

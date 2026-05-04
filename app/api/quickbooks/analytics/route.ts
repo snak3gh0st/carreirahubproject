@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/quickbooks/analytics
  *

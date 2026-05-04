@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { extractQuickbooksInvoiceLink } from '@/lib/quickbooks/invoice-link';
 import { quickbooksService } from '@/lib/services/quickbooks.service';
 
 export const dynamic = 'force-dynamic';
@@ -101,13 +102,6 @@ export async function GET(request: NextRequest) {
           continue;
         }
 
-        // Skip if no QB invoice ID (shouldn't happen due to query filter, but be safe)
-        if (!invoice.quickbooks_invoice_id) {
-          console.log(`[CRON] Skipping invoice ${invoice.id} — no QB invoice ID`);
-          skipped++;
-          continue;
-        }
-
         // Calculate days until due
         const daysUntilDue = Math.ceil((invoice.dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
@@ -148,6 +142,7 @@ export async function GET(request: NextRequest) {
                 where: { id: invoice.id },
                 data: {
                   quickbooks_invoice_id: qbInvoice.Id,
+                  ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
                   status: 'SENT',
                 },
               });
@@ -184,13 +179,34 @@ export async function GET(request: NextRequest) {
               where: { id: invoice.id },
               data: {
                 quickbooks_invoice_id: qbInvoice.Id,
+                ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
                 status: 'SENT',
               },
             });
 
             // Update local reference for the send step below
             (invoice as any).quickbooks_invoice_id = qbInvoice.Id;
+            (invoice as any).quickbooks_invoice_link = extractQuickbooksInvoiceLink(qbInvoice);
             console.log(`[CRON] ✓ DRAFT invoice ${invoice.id} created in QB as ${qbInvoice.Id}, proceeding to send`);
+          }
+
+          if (!invoice.quickbooks_invoice_id) {
+            console.log(`[CRON] Skipping invoice ${invoice.id} — no QB invoice ID after creation step`);
+            skipped++;
+            continue;
+          }
+
+          if (!/^[0-9]+$/.test(invoice.quickbooks_invoice_id)) {
+            console.log(`[CRON] Skipping invoice ${invoice.id} — malformed QB invoice ID ${invoice.quickbooks_invoice_id}`);
+            await prisma.invoice.update({
+              where: { id: invoice.id },
+              data: {
+                status: 'VOID',
+                lastEmailSendError: 'Malformed QuickBooks invoice ID. Invoice auto-voided from scheduled send queue.',
+              },
+            });
+            errors++;
+            continue;
           }
 
           console.log(`[CRON] Sending email for invoice ${invoice.id} (QB: ${invoice.quickbooks_invoice_id}, due in ${daysUntilDue} days, isInstallment: ${isInstallment})`);
@@ -205,6 +221,8 @@ export async function GET(request: NextRequest) {
           );
 
           if (sendResult.success && sendResult.sent) {
+            const deliveredLink = extractQuickbooksInvoiceLink(sendResult.result);
+
             // Update emailSentAt in our DB to mark as sent
             await prisma.invoice.update({
               where: { id: invoice.id },
@@ -212,6 +230,7 @@ export async function GET(request: NextRequest) {
                 emailSentAt: new Date(),
                 emailSendAttempts: { increment: 1 },
                 lastEmailSendError: null,
+                ...(deliveredLink ? { quickbooks_invoice_link: deliveredLink } : {}),
               },
             });
 

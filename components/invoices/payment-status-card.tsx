@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { InvoiceStatus, ContractStatus } from "@prisma/client";
+import { InvoiceStatus } from "@prisma/client";
 import { normalizeDateOnly, differenceInCalendarDaysUTC } from "@/lib/utils/date";
 
 interface PaymentStatusCardProps {
@@ -9,6 +9,7 @@ interface PaymentStatusCardProps {
     id: string;
     invoiceNumber: string | null;
     status: InvoiceStatus;
+    quickbooksInvoiceId: string | null;
     amount: any;
     dueDate: Date | string;
     paidAt: Date | null;
@@ -17,10 +18,9 @@ interface PaymentStatusCardProps {
     lastPaymentReminderAt: Date | null;
     paymentReminderCount: number;
   };
-  contractStatus: ContractStatus | null;
 }
 
-export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCardProps) {
+export function PaymentStatusCard({ invoice }: PaymentStatusCardProps) {
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -35,14 +35,14 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to send payment link");
+        throw new Error(data.error || "Falha ao enviar o link de pagamento");
       }
 
-      setMessage({ type: "success", text: "Payment link sent successfully" });
+      setMessage({ type: "success", text: "Link de pagamento enviado com sucesso" });
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to send payment link",
+        text: error instanceof Error ? error.message : "Falha ao enviar o link de pagamento",
       });
     } finally {
       setIsSending(false);
@@ -54,14 +54,14 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
   const isOverdue = daysUntilDue < 0;
   const isPaid = invoice.status === InvoiceStatus.PAID;
   const canSendPaymentLink =
-    contractStatus === ContractStatus.SIGNED &&
     !isPaid &&
-    invoice.status !== InvoiceStatus.VOID;
+    invoice.status !== InvoiceStatus.VOID &&
+    !!invoice.quickbooksInvoiceId;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Payment Status</h3>
+        <h3 className="font-semibold">Status do Pagamento</h3>
         <span
           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
             isPaid
@@ -71,13 +71,13 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
               : "bg-yellow-100 text-yellow-800"
           }`}
         >
-          {isPaid ? "Paid" : isOverdue ? "Overdue" : "Pending"}
+          {isPaid ? "Pago" : isOverdue ? "Em atraso" : "Pendente"}
         </span>
       </div>
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-600">Amount</span>
+          <span className="text-gray-600">Valor</span>
           <span className="font-medium">
             ${Number(invoice.amount).toLocaleString("en-US", {
               minimumFractionDigits: 2,
@@ -86,7 +86,7 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
         </div>
 
         <div className="flex justify-between">
-          <span className="text-gray-600">Due Date</span>
+          <span className="text-gray-600">Vencimento</span>
           <span
             className={`font-medium ${
               isOverdue && !isPaid ? "text-red-600" : ""
@@ -95,7 +95,7 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
             {dueDateOnly.toLocaleDateString("pt-BR", { timeZone: "UTC" })}
             {!isPaid && (
               <span className="ml-1">
-                ({isOverdue ? `${Math.abs(daysUntilDue)} days overdue` : `${daysUntilDue} days`})
+                ({isOverdue ? `${Math.abs(daysUntilDue)} dias em atraso` : `${daysUntilDue} dias`})
               </span>
             )}
           </span>
@@ -104,14 +104,14 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
         {isPaid && invoice.paidAt && (
           <>
             <div className="flex justify-between">
-              <span className="text-gray-600">Paid On</span>
+              <span className="text-gray-600">Pago em</span>
               <span className="font-medium text-green-600">
                 {new Date(invoice.paidAt).toLocaleDateString("pt-BR")}
               </span>
             </div>
             {invoice.amountPaid && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Amount Paid</span>
+                <span className="text-gray-600">Valor pago</span>
                 <span className="font-medium text-green-600">
                   ${Number(invoice.amountPaid).toLocaleString("en-US", {
                     minimumFractionDigits: 2,
@@ -121,7 +121,7 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
             )}
             {invoice.paymentMethod && (
               <div className="flex justify-between">
-                <span className="text-gray-600">Payment Method</span>
+                <span className="text-gray-600">Metodo</span>
                 <span className="font-medium">{invoice.paymentMethod}</span>
               </div>
             )}
@@ -130,7 +130,7 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
 
         {!isPaid && invoice.paymentReminderCount > 0 && (
           <div className="flex justify-between">
-            <span className="text-gray-600">Reminders Sent</span>
+            <span className="text-gray-600">Lembretes enviados</span>
             <span className="font-medium">{invoice.paymentReminderCount}</span>
           </div>
         )}
@@ -144,13 +144,13 @@ export function PaymentStatusCard({ invoice, contractStatus }: PaymentStatusCard
             disabled={isSending}
             className="w-full px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition disabled:opacity-50"
           >
-            {isSending ? "Sending..." : "Send Payment Link"}
+            {isSending ? "Enviando..." : "Enviar link de pagamento"}
           </button>
         )}
 
-        {!canSendPaymentLink && !isPaid && contractStatus !== ContractStatus.SIGNED && (
+        {!canSendPaymentLink && !isPaid && invoice.status !== InvoiceStatus.VOID && (
           <p className="text-xs text-gray-500 text-center">
-            Contract must be signed before sending payment link
+            Sincronize a invoice com o QuickBooks para enviar o link ao cliente
           </p>
         )}
       </div>

@@ -76,18 +76,24 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
   const prevDateFilter = { gte: prevStart, lte: prevEnd };
 
   const [
-    paidAgg, invoicedAgg, outstandingAgg,
-    prevPaidAgg, prevInvoicedAgg, prevOutstandingAgg,
+    paidAgg, invoicedAgg, outstandingInvoicesForAr,
+    prevPaidAgg, prevInvoicedAgg, prevOutstandingInvoicesForAr,
     revenueTrend, agingInvoices, topCustomerPayments, systemConfig,
   ] = await Promise.all([
     prisma.invoice.aggregate({ where: { status: "PAID", paidAt: dateFilter }, _sum: { amountPaid: true } }),
     prisma.invoice.aggregate({ where: { createdAt: dateFilter, status: { not: "VOID" } }, _sum: { amount: true } }),
-    prisma.invoice.aggregate({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }, _sum: { amount: true } }),
+    prisma.invoice.findMany({
+      where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } },
+      select: { amount: true, amountPaid: true },
+    }),
     prisma.invoice.aggregate({ where: { status: "PAID", paidAt: prevDateFilter }, _sum: { amountPaid: true } }),
     prisma.invoice.aggregate({ where: { createdAt: prevDateFilter, status: { not: "VOID" } }, _sum: { amount: true } }),
-    prisma.invoice.aggregate({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] }, createdAt: { lte: prevEnd } }, _sum: { amount: true } }),
+    prisma.invoice.findMany({
+      where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] }, createdAt: { lte: prevEnd } },
+      select: { amount: true, amountPaid: true },
+    }),
     prisma.payment.findMany({ where: { paymentDate: { gte: subMonths(new Date(), 12) } }, select: { paymentDate: true, amount: true } }),
-    prisma.invoice.findMany({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }, select: { id: true, amount: true, dueDate: true, customerId: true } }),
+    prisma.invoice.findMany({ where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }, select: { id: true, amount: true, amountPaid: true, dueDate: true, customerId: true } }),
     prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, orderBy: { _sum: { amount: "desc" } }, take: 10 }),
     prisma.systemConfig.findUnique({ where: { id: "system" }, select: { last_qb_sync: true } }),
   ]);
@@ -96,8 +102,14 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
   const prevRevenue = Number(prevPaidAgg._sum.amountPaid || 0);
   const totalInvoiced = Number(invoicedAgg._sum.amount || 0);
   const prevTotalInvoiced = Number(prevInvoicedAgg._sum.amount || 0);
-  const outstanding = Number(outstandingAgg._sum.amount || 0);
-  const prevOutstanding = Number(prevOutstandingAgg._sum.amount || 0);
+  const outstanding = outstandingInvoicesForAr.reduce(
+    (sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0),
+    0
+  );
+  const prevOutstanding = prevOutstandingInvoicesForAr.reduce(
+    (sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0),
+    0
+  );
 
   const collectionRate = totalInvoiced > 0 ? (revenue / totalInvoiced) * 100 : 0;
   const prevCollectionRate = prevTotalInvoiced > 0 ? (prevRevenue / prevTotalInvoiced) * 100 : 0;
@@ -139,7 +151,7 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
     });
     return {
       bucket,
-      amount: matching.reduce((sum, inv) => sum + Number(inv.amount), 0),
+      amount: matching.reduce((sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0), 0),
       count: matching.length,
     };
   });
@@ -147,7 +159,7 @@ async function querySummary(startDate: Date, endDate: Date, prevStart: Date, pre
   // Delinquency rate (overdue invoices by value / total outstanding AR)
   const overdueAmount = agingInvoices
     .filter((inv) => differenceInDays(now, inv.dueDate) > 0)
-    .reduce((sum, inv) => sum + Number(inv.amount), 0);
+    .reduce((sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0), 0);
   const delinquencyRate = outstanding > 0 ? (overdueAmount / outstanding) * 100 : 0;
 
   // Concentration
@@ -265,7 +277,11 @@ async function queryArCollections(startDate: Date, endDate: Date): Promise<ArCol
       const days = differenceInDays(now, inv.dueDate);
       return days >= min && days <= max;
     });
-    return { bucket, count: matching.length, amount: matching.reduce((sum, inv) => sum + Number(inv.amount), 0) };
+    return {
+      bucket,
+      count: matching.length,
+      amount: matching.reduce((sum, inv) => sum + Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0), 0),
+    };
   });
 
   const monthlyPerformance = new Map<string, { totalDays: number; count: number; paid: number; invoiced: number }>();
@@ -288,7 +304,7 @@ async function queryArCollections(startDate: Date, endDate: Date): Promise<ArCol
     .filter((inv) => differenceInDays(now, inv.dueDate) > 0)
     .map((inv) => ({
       id: inv.id, customerName: inv.customer.name, invoiceNumber: inv.invoiceNumber || "N/A",
-      amount: Number(inv.amount), dueDate: inv.dueDate.toISOString(),
+      amount: Math.max(Number(inv.amount) - Number(inv.amountPaid || 0), 0), dueDate: inv.dueDate.toISOString(),
       daysOverdue: differenceInDays(now, inv.dueDate), remindersSent: inv.paymentReminderCount,
       collectionCalls: inv.collectionCallCount, autoChargeStatus: inv.autoChargeStatus,
       ownerName: inv.owner?.name || "Unassigned",

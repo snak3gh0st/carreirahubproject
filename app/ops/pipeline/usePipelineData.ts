@@ -6,16 +6,30 @@ export interface EnrollmentCard {
   id: string;
   programType: "PASS" | "ADVANCED";
   status: string;
+  startDate: string;
   customer: {
     id: string;
     name: string;
+    email: string;
+    phone: string | null;
     qbBalance: string | null;
+    invoices: Array<{
+      id: string;
+      invoiceNumber: string | null;
+      amount: string;
+      amountPaid: string | null;
+      dueDate: string;
+      status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "VOID" | "PARTIALLY_PAID" | "REFUNDED" | "PARTIALLY_REFUNDED";
+    }>;
   };
   assignedTo: {
     id: string;
     name: string | null;
   };
   transitions: Array<{ createdAt: string }>;
+  sessions: Array<{ sessionDate: string }>;
+  _count: { sessions: number };
+  checklistProgress: Array<{ phaseKey: string; itemKey: string; completedAt: string | null }>;
 }
 
 export interface PhaseWithEnrollments {

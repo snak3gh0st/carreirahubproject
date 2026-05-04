@@ -5,6 +5,7 @@ import { identityMapper } from "./identity-mapper";
 import { workflowStatusService } from "./workflow-status.service";
 import { financeService } from "./finance.service";
 import { integrationLogger } from "@/lib/utils/logger";
+import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 import { InvoiceStatus, ContractStatus } from "@prisma/client";
 
 /**
@@ -298,6 +299,7 @@ export class InvoiceWorkflowService {
         dueDate,
         status: InvoiceStatus.SENT,
         quickbooks_invoice_id: qbInvoice.Id,
+        ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
       },
     });
 
@@ -323,4 +325,3 @@ export class InvoiceWorkflowService {
 }
 
 export const invoiceWorkflowService = new InvoiceWorkflowService();
-

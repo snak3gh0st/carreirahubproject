@@ -336,18 +336,16 @@ export class EmailService {
           { to, type }
         );
 
-        await prisma.notification.create({
-          data: {
-            type,
-            status: NotificationStatus.PENDING,
-            recipient: to,
-            subject,
-            templateId: type,
-            errorMessage: 'RESEND_API_KEY not configured',
-            invoiceId: relations.invoiceId,
-            contractId: relations.contractId,
-            customerId: relations.customerId,
-          },
+        await this.createNotificationSafe({
+          type,
+          status: NotificationStatus.PENDING,
+          recipient: to,
+          subject,
+          templateId: type,
+          errorMessage: 'RESEND_API_KEY not configured',
+          invoiceId: relations.invoiceId,
+          contractId: relations.contractId,
+          customerId: relations.customerId,
         });
         return;
       }
@@ -365,18 +363,17 @@ export class EmailService {
         throw new Error(error.message);
       }
 
-      await prisma.notification.create({
-        data: {
-          type,
-          status: NotificationStatus.SENT,
-          recipient: to,
-          subject,
-          templateId: type,
-          sentAt: new Date(),
-          invoiceId: relations.invoiceId,
-          contractId: relations.contractId,
-          customerId: relations.customerId,
-        },
+      await this.createNotificationSafe({
+        type,
+        status: NotificationStatus.SENT,
+        recipient: to,
+        subject,
+        templateId: type,
+        resendId: data?.id ?? null,
+        sentAt: new Date(),
+        invoiceId: relations.invoiceId,
+        contractId: relations.contractId,
+        customerId: relations.customerId,
       });
     } catch (error) {
       if (error instanceof CircuitOpenError) {
@@ -392,18 +389,16 @@ export class EmailService {
 
         console.warn(`[EMAIL] Circuit breaker open for email service: ${error.message}`);
 
-        await prisma.notification.create({
-          data: {
-            type,
-            status: NotificationStatus.PENDING,
-            recipient: to,
-            subject,
-            templateId: type,
-            errorMessage: `Circuit breaker open: ${error.message}. Email will be retried when service recovers.`,
-            invoiceId: relations.invoiceId,
-            contractId: relations.contractId,
-            customerId: relations.customerId,
-          },
+        await this.createNotificationSafe({
+          type,
+          status: NotificationStatus.PENDING,
+          recipient: to,
+          subject,
+          templateId: type,
+          errorMessage: `Circuit breaker open: ${error.message}. Email will be retried when service recovers.`,
+          invoiceId: relations.invoiceId,
+          contractId: relations.contractId,
+          customerId: relations.customerId,
         });
         return;
       }
@@ -422,22 +417,40 @@ export class EmailService {
 
       console.error(`[EMAIL] Failed to send email to ${to}:`, error);
 
-      await prisma.notification.create({
-        data: {
-          type,
-          status: NotificationStatus.FAILED,
-          recipient: to,
-          subject,
-          templateId: type,
-          failedAt: new Date(),
-          errorMessage: error instanceof Error ? error.message : 'Unknown error',
-          invoiceId: relations.invoiceId,
-          contractId: relations.contractId,
-          customerId: relations.customerId,
-        },
+      await this.createNotificationSafe({
+        type,
+        status: NotificationStatus.FAILED,
+        recipient: to,
+        subject,
+        templateId: type,
+        failedAt: new Date(),
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        invoiceId: relations.invoiceId,
+        contractId: relations.contractId,
+        customerId: relations.customerId,
       });
 
       throw error;
+    }
+  }
+
+  // Wraps prisma.notification.create — strips customerId/invoiceId/contractId on FK violation
+  // so a notification logging bug never prevents the email path from completing.
+  private async createNotificationSafe(data: Parameters<typeof prisma.notification.create>[0]['data']): Promise<void> {
+    try {
+      await prisma.notification.create({ data });
+    } catch (err: any) {
+      if (err?.code === 'P2003') {
+        // FK violation — retry without relation FKs so the notification is still recorded
+        const { customerId, invoiceId, contractId, ...safeData } = data as any;
+        try {
+          await prisma.notification.create({ data: safeData });
+        } catch (retryErr: any) {
+          console.error('[EMAIL] Failed to create notification record (retry):', retryErr.message);
+        }
+      } else {
+        console.error('[EMAIL] Failed to create notification record:', err.message);
+      }
     }
   }
 

@@ -47,11 +47,11 @@ export const AI_HUBS: Readonly<Record<AiHubKey, AiHubDefinition>> = {
     slug: "operational",
     routePath: "/dashboard/operational/ai",
     label: "Operacional AI",
-    focus: "alunos, fases operacionais, gargalos de execução, SLAs e follow-ups do time",
+    focus: "execução da mentoria: aluno por fase, SLA, checklist, sessões, formulários, débitos, NPS e próximo follow-up do time",
     starterPrompts: [
-      "Quais alunos estão na fase 3 hoje?",
-      "Mostre o daily action view.",
-      "Quais alunos estão atrasados na fase atual?",
+      "Quais alunos precisam de ação operacional hoje?",
+      "Mostre os gargalos por fase e SLA.",
+      "Quais alunos não têm sessão recente ou checklist avançando?",
     ],
   },
   ADMIN_EXECUTIVE: {
@@ -126,5 +126,8 @@ export function getAiHubKeyBySlug(slug: string): AiHubKey | null {
 }
 
 export function isRoleAllowedForHub(role: string, hubSlug: string): boolean {
+  if (role === "ADMIN") {
+    return Boolean(getAiHubBySlug(hubSlug));
+  }
   return getAiHubForRole(role)?.slug === hubSlug;
 }

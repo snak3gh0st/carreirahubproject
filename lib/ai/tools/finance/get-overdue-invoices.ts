@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
+import { InvoiceStatus, UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toInvoiceSafeDto } from '../../dto';
@@ -18,7 +18,7 @@ export const getOverdueInvoices = defineAiTool({
       const cutoff = new Date(Date.now() - (minDaysOverdue ?? 1) * 86_400_000);
       const invoices = await prisma.invoice.findMany({
         where: {
-          status: { in: ['OPEN', 'OVERDUE'] as any[] },
+          status: { in: [InvoiceStatus.SENT, InvoiceStatus.OVERDUE, InvoiceStatus.PARTIALLY_PAID] },
           dueDate: { lt: cutoff },
         },
         include: { customer: { select: { id: true, name: true, email: true } } },

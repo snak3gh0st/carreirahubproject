@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
+import { AutoChargeStatus, ContractStatus, LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
 import { subDays, startOfYear } from "date-fns";
 import { buildDashboardMetrics } from "@/lib/dashboard/metrics-calculations";
 
@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userRole = (session.user as any).role as string;
+    const userId = (session.user as any).id as string;
 
     // Parse query parameters for filters
     const url = new URL(request.url);
@@ -31,10 +33,12 @@ export async function GET(request: NextRequest) {
 
     // Calculate date range
     const now = new Date();
+    const today = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const yearStart = startOfYear(now);
 
-    let dateFilter: { gte?: Date; lte?: Date } = {};
+    let dateFilter: { gte?: Date; lte?: Date } | undefined;
 
     if (fromDate && toDate) {
       dateFilter = {
@@ -57,7 +61,7 @@ export async function GET(request: NextRequest) {
           break;
         case "allTime":
         default:
-          dateFilter = {}; // No date filter
+          dateFilter = undefined; // No date filter
       }
     }
 
@@ -67,11 +71,24 @@ export async function GET(request: NextRequest) {
       : undefined;
 
     // Build where clauses with filters
-    const invoiceWhereInvoiceStatus = invoiceStatuses
-      ? { status: { in: invoiceStatuses } }
-      : {};
+    const invoiceWhereInvoiceStatus = invoiceStatuses ? { status: { in: invoiceStatuses } } : {};
+    const invoiceOwnerWhere = userRole === "COMMERCIAL" ? { ownerId: userId } : {};
+    const dealOwnerWhere = userRole === "COMMERCIAL" ? { ownerId: userId } : {};
+    const leadOwnerWhere = userRole === "COMMERCIAL" ? { createdById: userId } : {};
+    const customerOwnerWhere =
+      userRole === "COMMERCIAL"
+        ? {
+            OR: [
+              { createdById: userId },
+              { invoices: { some: { ownerId: userId } } },
+              { deals: { some: { ownerId: userId } } },
+            ],
+          }
+        : {};
 
+    const leadWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
     const dealWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
+    const invoiceWhereCreatedAt = dateFilter ? { createdAt: dateFilter } : {};
     
     // For revenue metrics, filter by when payment was received (paidAt), not when invoice was created
     // This ensures "Last 30 Days" shows revenue RECEIVED in last 30 days, not invoices CREATED in last 30 days
@@ -85,111 +102,186 @@ export async function GET(request: NextRequest) {
       dealSummary,
       wonDealsThisMonth,
       totalInvoices,
-      paidInvoicesInPeriod,
-      allInvoicesForOverdue,
+      invoiceTotalsInPeriod,
+      paidInvoiceFallbackTotals,
+      paymentsInPeriod,
+      overdueInvoiceTotals,
+      invoicesPaidLastMonth,
+      invoicesPaidThisMonth,
+      openInvoiceCount,
+      partialInvoiceCount,
+      pendingContractCount,
+      openDealCount,
+      qualifiedLeadCount,
+      quickbooksGapCount,
+      autoChargeRiskCount,
       totalCustomers,
       newCustomersThisMonth,
     ] = await prisma.$transaction([
-      prisma.lead.count(),
-      prisma.lead.count({ where: { status: LeadStatus.QUALIFIED } }),
+      prisma.lead.count({ where: { ...leadOwnerWhere, ...leadWhereCreatedAt } }),
+      prisma.lead.count({ where: { ...leadOwnerWhere, ...leadWhereCreatedAt, status: LeadStatus.QUALIFIED } }),
       prisma.deal.groupBy({
         by: ["status"],
-        where: dealWhereCreatedAt,
+        where: { ...dealOwnerWhere, ...dealWhereCreatedAt },
         orderBy: { status: "asc" },
         _count: { _all: true },
         _sum: { value: true },
       }),
       prisma.deal.count({
         where: {
+          ...dealOwnerWhere,
           status: DealStatus.WON,
           createdAt: { gte: startOfMonth },
         },
       }),
       prisma.invoice.count({
-        where: invoiceWhereInvoiceStatus,
-      }),
-      // Fetch invoices for revenue calculations - filter by paidAt for accurate revenue metrics
-      prisma.invoice.findMany({
         where: {
+          ...invoiceOwnerWhere,
+          ...invoiceWhereInvoiceStatus,
+          ...invoiceWhereCreatedAt,
+        },
+      }),
+      prisma.invoice.aggregate({
+        where: {
+          ...invoiceOwnerWhere,
+          ...invoiceWhereInvoiceStatus,
+          ...invoiceWhereCreatedAt,
+        },
+        _sum: {
+          amount: true,
+        },
+      }),
+      // Fallback only used when Payment rows are not available for the selected period.
+      prisma.invoice.aggregate({
+        where: {
+          ...invoiceOwnerWhere,
           ...invoiceWhereInvoiceStatus,
           ...invoiceWherePaidAt,
+          status: { in: [InvoiceStatus.PAID, InvoiceStatus.PARTIALLY_PAID] },
         },
-        select: {
-          status: true,
-          dueDate: true,
-          amount: true,
+        _sum: {
           amountPaid: true,
-          paidAt: true,
-          createdAt: true,
-          customerId: true,
         },
       }),
-      // Fetch ALL invoices for overdue calculations (no date filter - current state metric)
-      prisma.invoice.findMany({
-        where: invoiceWhereInvoiceStatus,
-        select: {
-          status: true,
-          dueDate: true,
+      prisma.payment.aggregate({
+        where: {
+          ...(dateFilter ? { paymentDate: dateFilter } : {}),
+          ...(userRole === "COMMERCIAL" ? { invoice: { ownerId: userId } } : {}),
+        },
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      // Current overdue state: no selected-period date filter.
+      prisma.invoice.aggregate({
+        where: {
+          ...invoiceOwnerWhere,
+          ...invoiceWhereInvoiceStatus,
+          status: { notIn: [InvoiceStatus.PAID, InvoiceStatus.VOID] },
+          dueDate: { lt: today },
+        },
+        _count: { _all: true },
+        _sum: {
           amount: true,
           amountPaid: true,
-          paidAt: true,
-          createdAt: true,
-          customerId: true,
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          ...invoiceOwnerWhere,
+          status: InvoiceStatus.PAID,
+          paidAt: {
+            gte: lastMonth,
+            lt: startOfMonth,
+          },
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          ...invoiceOwnerWhere,
+          status: InvoiceStatus.PAID,
+          paidAt: {
+            gte: startOfMonth,
+          },
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          ...invoiceOwnerWhere,
+          status: { in: [InvoiceStatus.SENT, InvoiceStatus.OVERDUE, InvoiceStatus.PARTIALLY_PAID] },
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          ...invoiceOwnerWhere,
+          status: InvoiceStatus.PARTIALLY_PAID,
+        },
+      }),
+      prisma.contract.count({
+        where: {
+          ...(userRole === "COMMERCIAL" ? { deal: { ownerId: userId } } : {}),
+          status: { in: [ContractStatus.SENT_FOR_SIGNATURE, ContractStatus.VIEWED] },
+        },
+      }),
+      prisma.deal.count({
+        where: {
+          ...dealOwnerWhere,
+          status: DealStatus.OPEN,
+        },
+      }),
+      prisma.lead.count({
+        where: {
+          ...leadOwnerWhere,
+          status: LeadStatus.QUALIFIED,
         },
       }),
       prisma.customer.count({
-        where: dateFilter ? { createdAt: dateFilter } : {},
+        where: {
+          ...customerOwnerWhere,
+          quickbooks_id: null,
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          ...invoiceOwnerWhere,
+          autoChargeStatus: { in: [AutoChargeStatus.FAILED, AutoChargeStatus.RETRY_PENDING] },
+        },
       }),
       prisma.customer.count({
-        where: { createdAt: { gte: startOfMonth } },
+        where: {
+          ...customerOwnerWhere,
+          ...(dateFilter ? { createdAt: dateFilter } : {}),
+        },
+      }),
+      prisma.customer.count({
+        where: {
+          ...customerOwnerWhere,
+          createdAt: { gte: startOfMonth },
+        },
       }),
     ]);
 
     // Calculate financial metrics
-    const today = new Date();
     const totalDeals = dealSummary.reduce((sum, deal) => sum + getGroupCount(deal._count), 0);
     const wonDeals = getGroupCount(dealSummary.find((deal) => deal.status === DealStatus.WON)?._count);
 
-    // Total Revenue = sum of amountPaid from PAID invoices IN THE SELECTED PERIOD (filtered by paidAt)
-    const paidInvoices = paidInvoicesInPeriod.filter((inv) => inv.status === InvoiceStatus.PAID);
-    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
+    // Total Revenue/Paid = payments received in the selected period. If the
+    // Payment table is empty in an older environment, fall back to invoice paidAt.
+    const paymentRows = getGroupCount(paymentsInPeriod._count);
+    const totalRevenue = paymentRows > 0
+      ? Number(paymentsInPeriod._sum.amount || 0)
+      : Number(paidInvoiceFallbackTotals._sum.amountPaid || 0);
+    const totalPaid = totalRevenue;
 
-    // Total Paid = sum of amountPaid from invoices with payments IN THE SELECTED PERIOD (PAID or PARTIALLY_PAID)
-    const paidOrPartialInvoices = paidInvoicesInPeriod.filter(
-      (inv) => inv.status === InvoiceStatus.PAID || inv.status === InvoiceStatus.PARTIALLY_PAID
+    const overdueAmount = Math.max(
+      Number(overdueInvoiceTotals._sum.amount || 0) - Number(overdueInvoiceTotals._sum.amountPaid || 0),
+      0
     );
-    const totalPaid = paidOrPartialInvoices.reduce((sum, inv) => sum + Number(inv.amountPaid || 0), 0);
-
-    // Overdue calculations use ALL invoices (current state, not filtered by date)
-    const overdueInvoices = allInvoicesForOverdue.filter(
-      (inv) =>
-        inv.status !== InvoiceStatus.PAID &&
-        inv.status !== InvoiceStatus.VOID &&
-        new Date(inv.dueDate) < today
-    );
-    const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + Number(inv.amount), 0);
+    const overdueCount = getGroupCount(overdueInvoiceTotals._count);
 
     // Total invoiced and pending use period-filtered invoices
-    const totalInvoiced = paidInvoicesInPeriod.reduce((sum, inv) => sum + Number(inv.amount), 0);
+    const totalInvoiced = Number(invoiceTotalsInPeriod._sum.amount || 0);
     const pendingAmount = totalInvoiced - totalPaid;
     const collectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
-
-    // Month-over-month comparison for growth indicators (use ALL invoices, not filtered by period)
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const invoicesPaidLastMonth = allInvoicesForOverdue.filter(
-      (inv) =>
-        inv.status === InvoiceStatus.PAID &&
-        inv.paidAt &&
-        new Date(inv.paidAt) >= lastMonth &&
-        new Date(inv.paidAt) < startOfMonth
-    ).length;
-
-    const invoicesPaidThisMonth = allInvoicesForOverdue.filter(
-      (inv) =>
-        inv.status === InvoiceStatus.PAID &&
-        inv.paidAt &&
-        new Date(inv.paidAt) >= startOfMonth
-    ).length;
 
     const metrics = buildDashboardMetrics({
       totalLeads,
@@ -202,7 +294,7 @@ export async function GET(request: NextRequest) {
       totalInvoiced,
       totalPaid,
       overdueAmount,
-      overdueCount: overdueInvoices.length,
+      overdueCount,
       totalCustomers,
       newCustomersThisMonth,
       dealStatusSummary: dealSummary.map((deal) => ({
@@ -214,7 +306,16 @@ export async function GET(request: NextRequest) {
       dateRange,
       customerSegment,
       invoiceStatuses: invoiceStatuses || [],
-      appliedDateRange: dateFilter,
+      appliedDateRange: dateFilter ?? {},
+      actions: {
+        openInvoiceCount,
+        partialInvoiceCount,
+        pendingContractCount,
+        openDealCount,
+        qualifiedLeadCount,
+        quickbooksGapCount,
+        autoChargeRiskCount,
+      },
     });
 
     return NextResponse.json(metrics);
@@ -247,6 +348,15 @@ export async function GET(request: NextRequest) {
         totalCustomers: 0,
         newCustomersThisMonth: 0,
         avgCustomerValue: 0,
+      },
+      actions: {
+        openInvoiceCount: 0,
+        partialInvoiceCount: 0,
+        pendingContractCount: 0,
+        openDealCount: 0,
+        qualifiedLeadCount: 0,
+        quickbooksGapCount: 0,
+        autoChargeRiskCount: 0,
       },
       error: "Failed to fetch complete metrics",
     }, { status: 200 });

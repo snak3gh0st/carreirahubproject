@@ -45,14 +45,14 @@ export function ContractStatusCard({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to resend contract");
+        throw new Error(data.error || "Falha ao reenviar o contrato");
       }
 
-      setMessage({ type: "success", text: "Contract reminder sent successfully" });
+      setMessage({ type: "success", text: "Lembrete do contrato enviado com sucesso" });
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Failed to resend contract",
+        text: error instanceof Error ? error.message : "Falha ao reenviar o contrato",
       });
     } finally {
       setIsResending(false);
@@ -62,9 +62,9 @@ export function ContractStatusCard({
   if (!contract) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="font-semibold mb-4">Contract Status</h3>
+        <h3 className="font-semibold mb-4">Contrato do pacote</h3>
         <p className="text-gray-500 text-sm">
-          No contract has been generated for this invoice yet.
+          Nenhum contrato foi gerado para o pacote deste servico.
         </p>
       </div>
     );
@@ -79,13 +79,13 @@ export function ContractStatusCard({
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold">Contract Status</h3>
+        <h3 className="font-semibold">Contrato do pacote</h3>
         <ContractStatusBadge status={contract.status} />
       </div>
 
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-600">Signer</span>
+          <span className="text-gray-600">Assinante</span>
           <span className="font-medium">{contract.signerName}</span>
         </div>
         <div className="flex justify-between">
@@ -95,7 +95,7 @@ export function ContractStatusCard({
 
         {contract.sentAt && (
           <div className="flex justify-between">
-            <span className="text-gray-600">Sent</span>
+            <span className="text-gray-600">Enviado em</span>
             <span className="font-medium">
               {new Date(contract.sentAt).toLocaleDateString("pt-BR")}
             </span>
@@ -104,7 +104,7 @@ export function ContractStatusCard({
 
         {contract.status === ContractStatus.SIGNED && contract.signedAt && (
           <div className="flex justify-between">
-            <span className="text-gray-600">Signed</span>
+            <span className="text-gray-600">Assinado em</span>
             <span className="font-medium text-green-600">
               {new Date(contract.signedAt).toLocaleDateString("pt-BR")}
             </span>
@@ -114,18 +114,18 @@ export function ContractStatusCard({
         {contract.status === ContractStatus.SENT_FOR_SIGNATURE && contract.expiresAt && (
           <>
             <div className="flex justify-between">
-              <span className="text-gray-600">Expires</span>
+              <span className="text-gray-600">Expira em</span>
               <span
                 className={`font-medium ${
                   daysRemaining && daysRemaining <= 7 ? "text-orange-600" : ""
                 }`}
               >
                 {new Date(contract.expiresAt).toLocaleDateString("pt-BR")}
-                {daysRemaining !== null && ` (${daysRemaining} days)`}
+                {daysRemaining !== null && ` (${daysRemaining} dias)`}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Reminders Sent</span>
+              <span className="text-gray-600">Lembretes enviados</span>
               <span className="font-medium">{contract.reminderCount}</span>
             </div>
           </>
@@ -147,7 +147,7 @@ export function ContractStatusCard({
             disabled={isResending}
             className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition disabled:opacity-50"
           >
-            {isResending ? "Sending..." : "Resend Contract Reminder"}
+            {isResending ? "Enviando..." : "Reenviar lembrete do contrato"}
           </button>
         )}
 
@@ -158,7 +158,7 @@ export function ContractStatusCard({
             rel="noopener noreferrer"
             className="block w-full px-4 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 transition text-center"
           >
-            View Signed Contract
+            Ver contrato assinado
           </a>
         )}
       </div>

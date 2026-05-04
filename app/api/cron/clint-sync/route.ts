@@ -11,7 +11,10 @@ export async function GET(request: Request) {
 
   const start = Date.now();
   try {
-    const result = await clintSyncService.syncAll();
+    const url = new URL(request.url);
+    const maxPagesParam = url.searchParams.get("maxPages");
+    const maxPages = maxPagesParam ? Math.max(Number(maxPagesParam), 1) : undefined;
+    const result = await clintSyncService.syncAll({ maxPages });
     await telegramService.alertSyncComplete("Clint CRM", {
       ...Object.fromEntries(
         Object.entries(result).filter(([, v]) => typeof v === "number" || typeof v === "string")

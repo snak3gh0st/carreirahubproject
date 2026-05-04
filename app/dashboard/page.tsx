@@ -10,14 +10,15 @@ import {
   DollarSign,
   ShoppingCart,
   Target,
-  ArrowUpRight,
-  ArrowDownRight,
   AlertCircle,
   RefreshCw,
   BarChart,
+  CreditCard,
+  Receipt,
 } from "lucide-react";
 import { StatCard } from "@/components/ui/stat-card";
 import { QuickFilters } from "@/components/dashboard/quick-filters";
+import { DashboardActionCenter } from "@/components/dashboard/action-center";
 import { useEffect, useState } from "react";
 
 /**
@@ -56,7 +57,17 @@ export default function DashboardPage() {
       newCustomersThisMonth: 0,
       avgCustomerValue: 0,
     },
+    actions: {
+      openInvoiceCount: 0,
+      partialInvoiceCount: 0,
+      pendingContractCount: 0,
+      openDealCount: 0,
+      qualifiedLeadCount: 0,
+      quickbooksGapCount: 0,
+      autoChargeRiskCount: 0,
+    },
   });
+  const [metricsLoading, setMetricsLoading] = useState(true);
 
   // Get filter params from URL (default to thisYear instead of allTime)
   const dateRange = searchParams.get("dateRange") || "thisYear";
@@ -68,7 +79,12 @@ export default function DashboardPage() {
 
   // Fetch comprehensive metrics from API - MUST be before any conditional returns
   useEffect(() => {
+    const controller = new AbortController();
+    let isCurrent = true;
+
     async function fetchMetrics() {
+      setMetricsLoading(true);
+
       try {
         // Build query params with filters
         const params = new URLSearchParams();
@@ -83,21 +99,33 @@ export default function DashboardPage() {
         const response = await fetch(url, {
           cache: "no-store",
           credentials: "include",
+          signal: controller.signal,
         });
         if (response.ok) {
           const data = await response.json();
-          if (data.sales && data.finance && data.customers) {
+          if (isCurrent && data.sales && data.finance && data.customers) {
             setMetrics(data);
           }
         }
       } catch (error) {
-        console.error("Failed to fetch metrics:", error);
+        if ((error as Error).name !== "AbortError") {
+          console.error("Failed to fetch metrics:", error);
+        }
+      } finally {
+        if (isCurrent) {
+          setMetricsLoading(false);
+        }
       }
     }
 
     if (session) {
       fetchMetrics();
     }
+
+    return () => {
+      isCurrent = false;
+      controller.abort();
+    };
   }, [session, dateRange, from, to, segment, invoiceStatus, dealStatus]);
 
   // Format currency helper
@@ -109,6 +137,17 @@ export default function DashboardPage() {
     }).format(value);
 
   const formatNumber = (value: number) => value.toLocaleString("en-US");
+
+  const rangeLabel =
+    dateRange === "last7"
+      ? "ultimos 7 dias"
+      : dateRange === "last30"
+      ? "ultimos 30 dias"
+      : dateRange === "last90"
+      ? "ultimos 90 dias"
+      : dateRange === "allTime"
+      ? "todo o periodo"
+      : "este ano";
 
   // Get greeting based on time of day
   const getGreeting = () => {
@@ -136,62 +175,216 @@ export default function DashboardPage() {
     return (
       <div className="bg-gray-50">
         <div className="container mx-auto px-4 sm:px-6 py-8">
-          {/* Page Header with Greeting */}
-          <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">
-              {getGreeting()}, {firstName}! 👋
+          <div className="mb-6 flex flex-col gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-verde">Comercial</p>
+            <h1 className="text-3xl font-semibold text-gray-900">
+              {getGreeting()}, {firstName}
             </h1>
-            <p className="text-gray-600">
-              Área Comercial - Gestão de Faturas
+            <p className="text-sm text-gray-500">
+              Sua carteira, suas invoices e seus contratos no periodo: {rangeLabel}.
             </p>
           </div>
 
-          {/* Quick Actions for COMMERCIAL */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
-            <Link
-              href="/dashboard/customers/new"
-              className="group rounded-xl border border-purple-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="relative">
-                <p className="text-lg font-bold text-gray-900">Criar Cliente</p>
-                <p className="text-sm text-gray-600">
-                  Novo cliente no QuickBooks
-                </p>
-              </div>
-            </Link>
-            <Link
-              href="/dashboard/invoices/new"
-              className="group rounded-xl border border-blue-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="relative">
-                <p className="text-lg font-bold text-gray-900">Criar Fatura</p>
-                <p className="text-sm text-gray-600">
-                  Nova fatura para cliente
-                </p>
-              </div>
-            </Link>
-            <Link
-              href="/dashboard/invoices"
-              className="group rounded-xl border border-green-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              <div className="relative">
-                <p className="text-lg font-bold text-gray-900">Minhas Faturas</p>
-                <p className="text-sm text-gray-600">
-                  Ver faturas criadas por mim
-                </p>
-              </div>
-            </Link>
+          <div className="mb-6">
+            <QuickFilters isLoading={metricsLoading} />
           </div>
 
-          <div className="rounded-xl border border-blue-100 bg-white p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Fluxo comercial (resumo)
-            </h3>
-            <ol className="text-sm text-gray-600 list-decimal list-inside space-y-1">
-              <li>Crie o cliente e confirme o e-mail</li>
-              <li>Monte a invoice com um ou mais itens</li>
-              <li>Envio imediato: invoice + contrato DocuSign</li>
-            </ol>
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Recebido"
+              value={formatCurrency(metrics.finance.totalPaid)}
+              description="pagamentos da sua carteira"
+              icon={<DollarSign className="h-5 w-5 text-success-600" />}
+              isLoading={metricsLoading}
+            />
+            <StatCard
+              label="Faturado"
+              value={formatCurrency(metrics.finance.totalInvoiced)}
+              description={`${metrics.finance.totalInvoices} invoice${metrics.finance.totalInvoices === 1 ? "" : "s"}`}
+              icon={<Receipt className="h-5 w-5 text-brand-verde" />}
+              isLoading={metricsLoading}
+            />
+            <StatCard
+              label="Em Aberto"
+              value={formatCurrency(metrics.finance.pendingAmount)}
+              description="criado ainda nao recebido"
+              icon={<CreditCard className="h-5 w-5 text-brand-tangerina" />}
+              isLoading={metricsLoading}
+            />
+            <StatCard
+              label="Clientes"
+              value={formatNumber(metrics.customers.totalCustomers)}
+              description={`${metrics.customers.newCustomersThisMonth} novos este mes`}
+              icon={<Users className="h-5 w-5 text-info-600" />}
+              isLoading={metricsLoading}
+            />
+          </div>
+
+          <div className="mb-8">
+            <DashboardActionCenter role={userRole} actions={metrics.actions} isLoading={metricsLoading} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Fila comercial</h2>
+                  <p className="text-sm text-gray-500">Acoes que movem cliente para pagamento e contrato.</p>
+                </div>
+                <Link href="/dashboard/invoices" className="text-sm font-semibold text-brand-verde hover:underline">
+                  Ver invoices
+                </Link>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Link
+                  href="/dashboard/customers/new"
+                  className="rounded-lg border border-gray-100 bg-gray-50 p-4 transition hover:border-brand-verde hover:bg-white"
+                >
+                  <Users className="mb-3 h-5 w-5 text-brand-verde" />
+                  <p className="text-sm font-semibold text-gray-900">Criar cliente</p>
+                  <p className="mt-1 text-xs text-gray-500">Cadastro com dono correto.</p>
+                </Link>
+                <Link
+                  href="/dashboard/invoices/new"
+                  className="rounded-lg border border-gray-100 bg-gray-50 p-4 transition hover:border-brand-verde hover:bg-white"
+                >
+                  <FileText className="mb-3 h-5 w-5 text-brand-verde" />
+                  <p className="text-sm font-semibold text-gray-900">Criar invoice</p>
+                  <p className="mt-1 text-xs text-gray-500">Fatura enviada via QuickBooks.</p>
+                </Link>
+                <Link
+                  href="/dashboard/contracts/new"
+                  className="rounded-lg border border-gray-100 bg-gray-50 p-4 transition hover:border-brand-verde hover:bg-white"
+                >
+                  <Target className="mb-3 h-5 w-5 text-brand-verde" />
+                  <p className="text-sm font-semibold text-gray-900">Criar contrato</p>
+                  <p className="mt-1 text-xs text-gray-500">DocuSign com cliente certo.</p>
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">Saude da carteira</h2>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                  <span className="text-sm text-gray-600">Taxa de cobranca</span>
+                  <span className="text-sm font-bold text-gray-900">{metricsLoading ? "..." : `${metrics.finance.collectionRate}%`}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-red-50 p-3">
+                  <span className="text-sm text-red-700">Vencido</span>
+                  <span className="text-sm font-bold text-red-800">{metricsLoading ? "..." : formatCurrency(metrics.finance.overdueAmount)}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
+                  <span className="text-sm text-gray-600">Ticket medio recebido</span>
+                  <span className="text-sm font-bold text-gray-900">{metricsLoading ? "..." : formatCurrency(metrics.customers.avgCustomerValue)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  if (userRole === "FINANCE") {
+    return (
+      <div className="bg-gray-50">
+        <div className="container mx-auto px-4 sm:px-6 py-8">
+          <div className="mb-6 flex flex-col gap-2">
+            <p className="text-xs font-bold uppercase tracking-wide text-brand-verde">Financeiro</p>
+            <h1 className="text-3xl font-semibold text-gray-900">
+              {getGreeting()}, {firstName}
+            </h1>
+            <p className="text-sm text-gray-500">
+              Caixa recebido, contas a receber e riscos de cobranca no periodo: {rangeLabel}.
+            </p>
+          </div>
+
+          <div className="mb-6">
+            <QuickFilters isLoading={metricsLoading} />
+          </div>
+
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Recebido"
+              value={formatCurrency(metrics.finance.totalPaid)}
+              description="pagamentos registrados"
+              icon={<DollarSign className="h-5 w-5 text-success-600" />}
+              isLoading={metricsLoading}
+            />
+            <StatCard
+              label="Faturado"
+              value={formatCurrency(metrics.finance.totalInvoiced)}
+              description="invoices criadas no periodo"
+              icon={<Receipt className="h-5 w-5 text-brand-verde" />}
+              isLoading={metricsLoading}
+            />
+            <StatCard
+              label="Em Aberto"
+              value={formatCurrency(metrics.finance.pendingAmount)}
+              description={`${metrics.finance.collectionRate}% de cobranca`}
+              icon={<CreditCard className="h-5 w-5 text-brand-tangerina" />}
+              isLoading={metricsLoading}
+            />
+            <StatCard
+              label="Vencido"
+              value={formatCurrency(metrics.finance.overdueAmount)}
+              description={`${metrics.finance.overdueCount} invoices precisam acao`}
+              icon={<AlertCircle className="h-5 w-5 text-error-600" />}
+              isLoading={metricsLoading}
+            />
+          </div>
+
+          <div className="mb-8">
+            <DashboardActionCenter role={userRole} actions={metrics.actions} isLoading={metricsLoading} />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Painel financeiro</h2>
+                  <p className="text-sm text-gray-500">Atalhos para rotinas de cobranca e conciliacao.</p>
+                </div>
+                <Link href="/dashboard/financial" className="text-sm font-semibold text-brand-verde hover:underline">
+                  Abrir BI financeiro
+                </Link>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Link href="/dashboard/invoices?status=OVERDUE" className="rounded-lg border border-red-100 bg-red-50 p-4 transition hover:border-red-300">
+                  <AlertCircle className="mb-3 h-5 w-5 text-red-600" />
+                  <p className="text-sm font-semibold text-red-900">Cobrar vencidas</p>
+                  <p className="mt-1 text-xs text-red-700">Fila com maior risco.</p>
+                </Link>
+                <Link href="/dashboard/invoices/approval-queue" className="rounded-lg border border-gray-100 bg-gray-50 p-4 transition hover:border-brand-verde hover:bg-white">
+                  <FileText className="mb-3 h-5 w-5 text-brand-verde" />
+                  <p className="text-sm font-semibold text-gray-900">Aprovacoes</p>
+                  <p className="mt-1 text-xs text-gray-500">Revisar invoices pendentes.</p>
+                </Link>
+                <Link href="/dashboard/payments" className="rounded-lg border border-gray-100 bg-gray-50 p-4 transition hover:border-brand-verde hover:bg-white">
+                  <CreditCard className="mb-3 h-5 w-5 text-brand-verde" />
+                  <p className="text-sm font-semibold text-gray-900">Pagamentos</p>
+                  <p className="mt-1 text-xs text-gray-500">Conferir recebimentos.</p>
+                </Link>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <h2 className="text-lg font-semibold text-gray-900">Leitura rapida</h2>
+              <div className="mt-4 space-y-3">
+                <div className="rounded-lg bg-gray-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Efetividade</p>
+                  <p className="mt-1 text-2xl font-bold text-gray-900">{metricsLoading ? "..." : `${metrics.finance.collectionRate}%`}</p>
+                </div>
+                <div className="rounded-lg bg-red-50 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-red-500">Risco atual</p>
+                  <p className="mt-1 text-sm font-semibold text-red-800">
+                    {metricsLoading ? "Atualizando risco..." : `${metrics.finance.overdueCount} invoices vencidas somam ${formatCurrency(metrics.finance.overdueAmount)}`}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -214,7 +407,11 @@ export default function DashboardPage() {
 
         {/* ========== QUICK FILTERS ========== */}
         <div className="mb-8">
-          <QuickFilters />
+          <QuickFilters isLoading={metricsLoading} />
+        </div>
+
+        <div className="mb-8">
+          <DashboardActionCenter role={userRole || "ADMIN"} actions={metrics.actions} isLoading={metricsLoading} />
         </div>
 
         {/* ========== FINANCE SECTION ========== */}
@@ -231,12 +428,14 @@ export default function DashboardPage() {
               trend={parseFloat(metrics.finance.revenueGrowth) > 0 ? "up" : parseFloat(metrics.finance.revenueGrowth) < 0 ? "down" : "neutral"}
               description="em relação ao mês passado"
               icon={<DollarSign className="h-5 w-5 text-success-600" />}
+              isLoading={metricsLoading}
             />
             <StatCard
               label="Total de Faturas"
               value={formatNumber(metrics.finance.totalInvoices)}
               description={`${metrics.finance.totalInvoices - metrics.finance.overdueCount} pagas`}
               icon={<FileText className="h-5 w-5 text-brand-verde" />}
+              isLoading={metricsLoading}
             />
             <StatCard
               label="Clientes Ativos"
@@ -245,12 +444,14 @@ export default function DashboardPage() {
               trend="up"
               description="novos este mês"
               icon={<Users className="h-5 w-5 text-info-600" />}
+              isLoading={metricsLoading}
             />
             <StatCard
               label="Faturas Vencidas"
               value={formatCurrency(metrics.finance.overdueAmount)}
               description={`${metrics.finance.overdueCount} faturas precisam de atenção`}
               icon={<AlertCircle className="h-5 w-5 text-error-600" />}
+              isLoading={metricsLoading}
             />
           </div>
         </div>

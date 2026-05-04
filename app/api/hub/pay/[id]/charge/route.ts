@@ -26,6 +26,60 @@ const PAYABLE_STATUSES: InvoiceStatus[] = [
   InvoiceStatus.PARTIALLY_PAID,
 ];
 
+async function recordLocalPayment(args: {
+  invoiceId: string;
+  customerId: string;
+  amount: number;
+  paymentMethod: string;
+  chargeId?: string | null;
+  qbPaymentId?: string | null;
+  syncedToQb: boolean;
+  metadata?: Record<string, unknown>;
+}) {
+  if (args.qbPaymentId) {
+    return prisma.payment.upsert({
+      where: { quickbooks_payment_id: args.qbPaymentId },
+      create: {
+        amount: args.amount,
+        currency: "USD",
+        paymentDate: new Date(),
+        paymentMethod: args.paymentMethod,
+        referenceNumber: args.chargeId ?? args.qbPaymentId,
+        quickbooks_payment_id: args.qbPaymentId,
+        invoiceId: args.invoiceId,
+        customerId: args.customerId,
+        syncedFromQb: false,
+        syncedToQb: args.syncedToQb,
+        lastSyncAt: args.syncedToQb ? new Date() : null,
+        metadata: args.metadata as any,
+      },
+      update: {
+        amount: args.amount,
+        paymentMethod: args.paymentMethod,
+        referenceNumber: args.chargeId ?? args.qbPaymentId,
+        syncedToQb: args.syncedToQb,
+        lastSyncAt: new Date(),
+        metadata: args.metadata as any,
+      },
+    });
+  }
+
+  return prisma.payment.create({
+    data: {
+      amount: args.amount,
+      currency: "USD",
+      paymentDate: new Date(),
+      paymentMethod: args.paymentMethod,
+      referenceNumber: args.chargeId ?? undefined,
+      invoiceId: args.invoiceId,
+      customerId: args.customerId,
+      syncedFromQb: false,
+      syncedToQb: false,
+      metadata: args.metadata as any,
+    },
+  });
+}
+
 /** PCI-safe fields that are allowed in logs (never card/bank details). */
 const SENSITIVE_KEYS = [
   "cardNumber",
@@ -374,10 +428,12 @@ export async function POST(
     // Post-charge: create QB Accounting payment
     // ----------------------------------------------------------------
     const chargeId = chargeResult?.id;
+    let qbAccountingPaymentId: string | null = null;
+    let qbAccountingPaymentError: string | null = null;
 
     if (invoice.quickbooks_invoice_id) {
       try {
-        await quickbooksService.createPayment({
+        const qbPayment = await quickbooksService.createPayment({
           customerId: qbCustomerId,
           invoiceId: invoice.quickbooks_invoice_id,
           amount: chargeAmount,
@@ -385,7 +441,9 @@ export async function POST(
           referenceNumber: chargeId,
           source: "auto_charge",
         });
+        qbAccountingPaymentId = qbPayment?.Id ?? null;
       } catch (err: any) {
+        qbAccountingPaymentError = err.message ?? String(err);
         // Log but do not fail the request; the charge already succeeded
         await integrationLogger.logError(
           "hub-payment",
@@ -400,6 +458,22 @@ export async function POST(
         );
       }
     }
+
+    await recordLocalPayment({
+      invoiceId: invoice.id,
+      customerId: invoice.customerId,
+      amount: chargeAmount,
+      paymentMethod: paymentMethod === "card" ? "card" : "ach",
+      chargeId,
+      qbPaymentId: qbAccountingPaymentId,
+      syncedToQb: Boolean(qbAccountingPaymentId),
+      metadata: {
+        source: "hub_charge",
+        qbPaymentChargeId: chargeId,
+        qbAccountingPaymentError,
+        paymentSaved,
+      },
+    });
 
     // ----------------------------------------------------------------
     // Post-charge: update invoice record

@@ -1,298 +1,280 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import Link from "next/link";
 import {
-  KanbanSquare, GraduationCap, Users, BookOpen, ClipboardList,
-  CalendarCheck, ArrowRight, CheckCircle2, Clock, AlertTriangle,
-  TrendingUp, UserCheck, Layers, FileText, PauseCircle, Video,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  Clock,
+  GraduationCap,
+  ListChecks,
+  MessageSquareText,
+  PauseCircle,
+  UsersRound,
 } from "lucide-react";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
+import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
 
 export const dynamic = "force-dynamic";
 
+function daysBetween(from: Date | string | null | undefined, to = new Date()) {
+  if (!from) return null;
+  return Math.max(0, Math.floor((to.getTime() - new Date(from).getTime()) / 86_400_000));
+}
+
+function initials(name: string) {
+  return name.split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
+}
+
 export default async function OpsHomePage() {
   const session = await getServerSession(authOptions);
-  const userName = (session?.user as any)?.name?.split(" ")[0] || "User";
+  const user = session?.user as { id?: string; name?: string | null; role?: string } | undefined;
+  const userName = user?.name?.split(" ")[0] || "User";
+  const role = user?.role ?? "";
+  const userId = user?.id ?? "";
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 7);
 
-  const [
-    totalActive,
-    totalPaused,
-    totalCompleted,
-    phaseCounts,
-    pendingForms,
-    completedForms,
-    dailyFlags,
-    sessionsThisWeek,
-    recentEnrollments,
-  ] = await Promise.all([
-    prisma.mentorshipEnrollment.count({ where: { status: "ACTIVE" } }),
-    prisma.mentorshipEnrollment.count({ where: { status: "PAUSED" } }),
-    prisma.mentorshipEnrollment.count({ where: { status: "COMPLETED" } }),
-    prisma.mentorshipPhase.findMany({
-      orderBy: { sortOrder: "asc" },
-      select: { label: true, key: true, _count: { select: { enrollments: true } } },
-    }),
-    prisma.formAssignment.count({ where: { status: "PENDING" } }),
-    prisma.formAssignment.count({ where: { status: "COMPLETED" } }),
-    prisma.mentorshipEnrollment.count({
-      where: {
-        status: "ACTIVE",
-        sessions: {
-          none: { sessionDate: { gte: new Date(Date.now() - 14 * 86400000) } },
-        },
-      },
-    }),
-    prisma.mentorshipSession.count({
-      where: { sessionDate: { gte: weekStart, lt: weekEnd } },
-    }),
+  const userRecord = userId
+    ? await prisma.user.findUnique({ where: { id: userId }, select: { assignedPhases: true } })
+    : null;
+
+  const phaseScope = role === "ADMIN"
+    ? {}
+    : { currentPhase: { key: { in: userRecord?.assignedPhases ?? [] } } };
+
+  const [activeEnrollments, pausedCount, pendingForms, sessionsThisWeek] = await Promise.all([
     prisma.mentorshipEnrollment.findMany({
-      where: { status: "ACTIVE" },
-      orderBy: { startDate: "desc" },
-      take: 5,
+      where: { status: "ACTIVE", ...phaseScope },
       include: {
-        customer: { select: { name: true } },
-        currentPhase: { select: { label: true } },
+        customer: { select: { id: true, name: true, email: true, qbBalance: true } },
+        currentPhase: { select: { id: true, key: true, label: true, slaDays: true } },
+        assignedTo: { select: { id: true, name: true } },
+        sessions: { orderBy: { sessionDate: "desc" }, take: 1, select: { sessionDate: true } },
+        transitions: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
+        checklistProgress: {
+          where: { completedAt: { not: null } },
+          select: { phaseKey: true, itemKey: true, completedAt: true },
+        },
+        _count: { select: { sessions: true } },
       },
     }),
+    prisma.mentorshipEnrollment.count({ where: { status: "PAUSED" } }),
+    prisma.formAssignment.count({ where: { status: "PENDING" } }),
+    prisma.mentorshipSession.count({ where: { sessionDate: { gte: weekStart } } }),
   ]);
 
-  const totalStudents = totalActive + totalPaused + totalCompleted;
-  const withStudents = phaseCounts.filter((p) => p._count.enrollments > 0);
-  const maxInPhase = Math.max(...phaseCounts.map((p) => p._count.enrollments), 1);
-  const totalForms = pendingForms + completedForms;
-  const formsRate = totalForms > 0 ? Math.round((completedForms / totalForms) * 100) : 0;
+  const rows = activeEnrollments.map((enrollment) => {
+    const phase = enrollment.currentPhase;
+    const phaseAgeDays = daysBetween(enrollment.transitions[0]?.createdAt ?? enrollment.startDate) ?? 0;
+    const daysSinceLastSession = daysBetween(enrollment.sessions[0]?.sessionDate);
+    const checklist = getPhaseChecklist(phase?.key ?? "");
+    const completedKeys = new Set(
+      enrollment.checklistProgress
+        .filter((item) => item.phaseKey === phase?.key && item.completedAt)
+        .map((item) => item.itemKey)
+    );
+    const completedChecklist = checklist.filter((item) => completedKeys.has(item.key)).length;
+    const checklistPercent = checklist.length > 0 ? Math.round((completedChecklist / checklist.length) * 100) : 0;
+    const overdueSla = phase ? phaseAgeDays > phase.slaDays : false;
+    const noRecentSession = daysSinceLastSession === null || daysSinceLastSession >= 14;
+    const hasDebt = Number(enrollment.customer.qbBalance ?? 0) > 0;
+    const incompleteChecklist = checklist.length > 0 && checklistPercent < 100;
+    const riskScore =
+      (overdueSla ? 40 : 0) +
+      (noRecentSession ? 35 : 0) +
+      (hasDebt ? 15 : 0) +
+      (checklist.length > 0 && checklistPercent < 50 ? 10 : 0);
 
+    return {
+      enrollment,
+      phase,
+      phaseAgeDays,
+      daysSinceLastSession,
+      checklistPercent,
+      completedChecklist,
+      totalChecklist: checklist.length,
+      overdueSla,
+      noRecentSession,
+      hasDebt,
+      incompleteChecklist,
+      riskScore,
+    };
+  });
+
+  const attentionRows = rows
+    .filter((row) => row.riskScore > 0 || row.incompleteChecklist)
+    .sort((a, b) => b.riskScore - a.riskScore || a.checklistPercent - b.checklistPercent)
+    .slice(0, 8);
+
+  const overdueCount = rows.filter((row) => row.overdueSla).length;
+  const noSessionCount = rows.filter((row) => row.noRecentSession).length;
   return (
     <div className="p-6 md:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">
-          Olá, {userName}
-        </h1>
-        <p className="text-gray-500 text-sm mt-1">
-          Hub Operacional &mdash; {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
-        </p>
-      </div>
-
-      {/* Alerts */}
-      <div className="space-y-3 mb-6">
-        {dailyFlags > 0 && (
-          <Link href="/ops/daily" className="block p-4 bg-red-50 border border-red-200 rounded-2xl hover:bg-red-100/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-xl">
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-display font-semibold text-red-700">
-                  {dailyFlags} aluno{dailyFlags > 1 ? "s" : ""} sem sessão há 14+ dias
-                </p>
-                <p className="text-xs text-red-600">Ação imediata recomendada</p>
-              </div>
-              <ArrowRight className="h-5 w-5 text-red-400" />
-            </div>
+      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="mb-2 flex items-center gap-3">
+            <CalendarDays className="h-7 w-7 text-brand-verde" />
+            <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">
+              Hoje
+            </h1>
+          </div>
+          <p className="text-sm text-gray-500">
+            Olá, {userName}. A prioridade aqui é decidir quem precisa de ação agora.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/ops/pipeline" className="inline-flex items-center gap-2 rounded-lg bg-brand-verde px-4 py-2 text-sm font-semibold text-white">
+            <ListChecks className="h-4 w-4" />
+            Abrir alunos
           </Link>
-        )}
-
-        {totalPaused > 0 && (
-          <Link href="/ops/customers" className="block p-4 bg-orange-50 border border-orange-200 rounded-2xl hover:bg-orange-100/50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-xl">
-                <PauseCircle className="h-5 w-5 text-orange-600" />
-              </div>
-              <div className="flex-1">
-                <p className="font-display font-semibold text-orange-700">
-                  {totalPaused} aluno{totalPaused > 1 ? "s" : ""} com mentoria pausada
-                </p>
-                <p className="text-xs text-orange-600">Verificar retorno ou encerramento</p>
-              </div>
-              <ArrowRight className="h-5 w-5 text-orange-400" />
-            </div>
+          <Link href="/ops/enroll" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-brand-verde hover:text-brand-verde">
+            <GraduationCap className="h-4 w-4" />
+            Nova matrícula
           </Link>
-        )}
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-emerald-50 rounded-xl"><UserCheck className="h-5 w-5 text-emerald-600" /></div>
-            <span className="text-sm font-medium text-gray-500">Ativos</span>
-          </div>
-          <p className="text-3xl font-display font-bold text-emerald-700 tabular-nums">{totalActive}</p>
-          <p className="text-xs text-gray-400 mt-1">em mentoria</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-orange-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-orange-50 rounded-xl"><PauseCircle className="h-5 w-5 text-orange-500" /></div>
-            <span className="text-sm font-medium text-gray-500">Pausados</span>
-          </div>
-          <p className="text-3xl font-display font-bold text-orange-600 tabular-nums">{totalPaused}</p>
-          <p className="text-xs text-gray-400 mt-1">aguardando retorno</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-blue-50 rounded-xl"><Video className="h-5 w-5 text-blue-600" /></div>
-            <span className="text-sm font-medium text-gray-500">Sessões</span>
-          </div>
-          <p className="text-3xl font-display font-bold text-blue-700 tabular-nums">{sessionsThisWeek}</p>
-          <p className="text-xs text-gray-400 mt-1">esta semana</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-amber-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-amber-50 rounded-xl"><ClipboardList className="h-5 w-5 text-amber-600" /></div>
-            <span className="text-sm font-medium text-gray-500">Formulários</span>
-          </div>
-          <p className="text-3xl font-display font-bold text-amber-700 tabular-nums">{pendingForms}</p>
-          <p className="text-xs text-gray-400 mt-1">{formsRate}% respondidos</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-gray-100 rounded-xl"><TrendingUp className="h-5 w-5 text-gray-600" /></div>
-            <span className="text-sm font-medium text-gray-500">Concluídos</span>
-          </div>
-          <p className="text-3xl font-display font-bold text-gray-900 tabular-nums">{totalCompleted}</p>
-          <p className="text-xs text-gray-400 mt-1">{totalStudents > 0 ? `${Math.round((totalCompleted / totalStudents) * 100)}%` : "0%"} do total</p>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {[
-          { href: "/ops/pipeline", icon: KanbanSquare, label: "Pipeline", primary: true },
-          { href: "/ops/daily", icon: CalendarCheck, label: "Ações do Dia" },
-          { href: "/ops/enroll", icon: GraduationCap, label: "Matricular" },
-          { href: "/ops/customers", icon: Users, label: "Clientes" },
-          { href: "/dashboard/forms", icon: ClipboardList, label: "Formulários" },
-          { href: "/ops/handbook", icon: BookOpen, label: "Guia" },
-        ].map((action) => {
-          const Icon = action.icon;
+          { label: "Na operação", value: rows.length, icon: UsersRound, color: "text-brand-verde", bg: "bg-brand-verde/10" },
+          { label: "SLA vencido", value: overdueCount, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
+          { label: "Sem sessão", value: noSessionCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Sessões semana", value: sessionsThisWeek, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
+          { label: "Formulários pend.", value: pendingForms, icon: MessageSquareText, color: "text-blue-600", bg: "bg-blue-50" },
+        ].map((item) => {
+          const Icon = item.icon;
           return (
-            <Link
-              key={action.href}
-              href={action.href}
-              className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all text-center ${
-                action.primary
-                  ? "bg-brand-verde text-white hover:opacity-90 shadow-md"
-                  : "bg-white border border-gray-100 text-gray-700 hover:border-brand-verde hover:shadow-sm"
-              }`}
-            >
-              <Icon className={`h-5 w-5 ${action.primary ? "text-white" : "text-brand-verde"}`} />
-              <span className="font-display font-semibold text-xs">{action.label}</span>
-            </Link>
+            <div key={item.label} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-3">
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${item.bg}`}>
+                  <Icon className={`h-5 w-5 ${item.color}`} />
+                </div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">{item.label}</span>
+              </div>
+              <p className={`text-3xl font-display font-bold ${item.color}`}>{item.value}</p>
+            </div>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Phase Distribution */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-            <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide">Distribuição por Fase</h2>
-            <Link href="/ops/pipeline" className="text-xs font-medium text-brand-verde hover:text-brand-tangerina transition-colors flex items-center gap-1">
-              Ver Pipeline <ArrowRight className="h-3 w-3" />
-            </Link>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
+          <div className="border-b border-gray-50 px-5 py-4">
+            <h2 className="font-display text-base font-bold text-gray-900">Fila de atenção</h2>
+            <p className="text-xs text-gray-400">Alunos ordenados por risco, checklist e cadência.</p>
           </div>
-          {withStudents.length === 0 ? (
-            <div className="p-12 text-center">
-              <p className="text-sm text-gray-400">Nenhum aluno matriculado ainda</p>
-            </div>
-          ) : (
-            <div className="p-6 space-y-3">
-              {phaseCounts.map((phase) => {
-                const count = phase._count.enrollments;
-                const pct = (count / maxInPhase) * 100;
-                return (
-                  <div key={phase.key} className="flex items-center gap-4">
-                    <span className="text-sm text-gray-700 w-36 truncate font-medium">{phase.label}</span>
-                    <div className="flex-1 h-6 bg-gray-50 rounded-lg overflow-hidden">
-                      {count > 0 && (
-                        <div
-                          className="h-full bg-gradient-to-r from-brand-verde to-brand-verde/70 rounded-lg flex items-center justify-end pr-2 transition-all"
-                          style={{ width: `${Math.max(pct, 8)}%` }}
-                        >
-                          <span className="text-[11px] font-bold text-white">{count}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* Recent Students */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
-            <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide">Alunos Recentes</h2>
-            <Link href="/ops/customers" className="text-xs font-medium text-brand-verde hover:text-brand-tangerina transition-colors flex items-center gap-1">
-              Ver Todos <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          {recentEnrollments.length === 0 ? (
+          {attentionRows.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-sm text-gray-400">Nenhum aluno ativo</p>
+              <CheckCircle2 className="mx-auto mb-3 h-9 w-9 text-emerald-500" />
+              <p className="font-display font-semibold text-gray-700">Tudo em dia na sua operação.</p>
+              <p className="mt-1 text-sm text-gray-400">Nenhum aluno exige ação imediata.</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
-              {recentEnrollments.map((e) => (
+              {attentionRows.map((row) => (
                 <Link
-                  key={e.id}
-                  href={`/ops/students/${e.id}`}
-                  className="flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50/50 transition-colors"
+                  key={row.enrollment.id}
+                  href={`/ops/students/${row.enrollment.id}`}
+                  className="flex items-start gap-4 p-4 transition-colors hover:bg-gray-50"
                 >
-                  <div className="w-8 h-8 bg-brand-creme rounded-lg flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-brand-verde">
-                      {e.customer.name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase()}
-                    </span>
+                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
+                    row.riskScore > 40 ? "bg-red-50 text-red-600" : "bg-brand-creme text-brand-verde"
+                  }`}>
+                    {initials(row.enrollment.customer.name)}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{e.customer.name}</p>
-                    <p className="text-xs text-gray-400">{e.currentPhase?.label || "—"}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate text-sm font-semibold text-gray-900">{row.enrollment.customer.name}</p>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
+                        {row.phase?.label ?? "Sem fase"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-400">
+                      {row.enrollment.assignedTo.name ?? "Sem responsável"} · {row.enrollment._count.sessions} sessão{row.enrollment._count.sessions !== 1 ? "ões" : ""}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {row.overdueSla && (
+                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
+                          SLA {row.phaseAgeDays}d
+                        </span>
+                      )}
+                      {row.noRecentSession && (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                          {row.daysSinceLastSession === null ? "Sem sessão" : `${row.daysSinceLastSession}d sem sessão`}
+                        </span>
+                      )}
+                      {row.incompleteChecklist && (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
+                          Checklist {row.checklistPercent}%
+                        </span>
+                      )}
+                      {row.hasDebt && (
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700">
+                          Débito
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <ArrowRight className="h-3.5 w-3.5 text-gray-300" />
+                  <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-gray-300" />
                 </Link>
               ))}
             </div>
           )}
-        </div>
-      </div>
+        </section>
 
-      {/* Forms Summary */}
-      <div className="mt-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <ClipboardList className="h-4 w-4 text-gray-400" />
-            <h2 className="text-sm font-display font-semibold text-gray-500 uppercase tracking-wide">Formulários</h2>
+        <aside className="space-y-4">
+          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h2 className="font-display text-base font-bold text-gray-900">Atalhos úteis</h2>
+            <div className="mt-4 space-y-2">
+              {[
+                { href: "/ops/bi", label: "Ver gargalos no BI", icon: BarChart3 },
+                { href: "/ops/handbook", label: "Guia operacional", icon: BookOpen },
+                { href: "/dashboard/forms", label: "Gerenciar formulários", icon: ClipboardList },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:border-brand-verde hover:text-brand-verde"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      {item.label}
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-gray-300" />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-          <Link href="/dashboard/forms" className="text-xs font-medium text-brand-verde hover:text-brand-tangerina transition-colors flex items-center gap-1">
-            Gerenciar <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center p-3 bg-amber-50 rounded-xl">
-            <p className="text-2xl font-bold text-amber-700">{pendingForms}</p>
-            <p className="text-xs text-amber-600 font-medium">Pendentes</p>
+
+          <div className="rounded-xl border border-orange-100 bg-orange-50 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <PauseCircle className="h-5 w-5 text-orange-600" />
+              <h2 className="font-display text-base font-bold text-orange-800">Pausados</h2>
+            </div>
+            <p className="text-3xl font-display font-bold text-orange-700">{pausedCount}</p>
+            <p className="mt-1 text-xs text-orange-700/70">Validar retorno ou encerramento no acompanhamento.</p>
           </div>
-          <div className="text-center p-3 bg-emerald-50 rounded-xl">
-            <p className="text-2xl font-bold text-emerald-700">{completedForms}</p>
-            <p className="text-xs text-emerald-600 font-medium">Respondidos</p>
+
+          <div className="rounded-xl border border-amber-100 bg-amber-50 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <ClipboardList className="h-5 w-5 text-amber-600" />
+              <h2 className="font-display text-base font-bold text-amber-800">Formulários</h2>
+            </div>
+            <p className="text-3xl font-display font-bold text-amber-700">{pendingForms}</p>
+            <p className="mt-1 text-xs text-amber-700/70">Pendentes na operação e no hub do aluno.</p>
           </div>
-          <Link href="/dashboard/forms/assign" className="flex flex-col items-center justify-center p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
-            <ClipboardList className="h-5 w-5 text-brand-verde mb-1" />
-            <p className="text-xs text-brand-verde font-semibold">Atribuir Novo</p>
-          </Link>
-        </div>
+        </aside>
       </div>
     </div>
   );

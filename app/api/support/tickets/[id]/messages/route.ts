@@ -5,6 +5,8 @@ import { supportChatService } from "@/lib/services/support-chat.service";
 
 const TEAM_ROLES = ["ADMIN", "COMMERCIAL"];
 
+export const dynamic = "force-dynamic";
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }

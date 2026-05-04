@@ -23,7 +23,21 @@ export async function GET() {
             select: {
               id: true,
               name: true,
+              email: true,
+              phone: true,
               qbBalance: true,
+              invoices: {
+                orderBy: { createdAt: "desc" },
+                take: 8,
+                select: {
+                  id: true,
+                  invoiceNumber: true,
+                  amount: true,
+                  amountPaid: true,
+                  dueDate: true,
+                  status: true,
+                },
+              },
             },
           },
           assignedTo: {
@@ -34,6 +48,16 @@ export async function GET() {
             take: 1,
             select: { createdAt: true },
           },
+          sessions: {
+            orderBy: { sessionDate: "desc" },
+            take: 1,
+            select: { sessionDate: true },
+          },
+          checklistProgress: {
+            where: { completedAt: { not: null } },
+            select: { phaseKey: true, itemKey: true, completedAt: true },
+          },
+          _count: { select: { sessions: true } },
         },
       },
     },

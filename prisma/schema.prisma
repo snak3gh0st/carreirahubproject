@@ -36,6 +36,8 @@ model User {
   aiRateLimit            AiRateLimit?
   assignedPhases         String[]               @default([])
   checklistProgress      PhaseChecklistProgress[] @relation("CompletedByUser")
+  opsStudentComments     OpsStudentComment[]      @relation("OpsStudentComments")
+  sentOpsDigisacMessages OpsDigisacMessage[]       @relation("OpsDigisacSentBy")
 
   @@index([id])
   @@map("users")
@@ -87,10 +89,12 @@ model Customer {
   payments             Payment[]
   placementTests       PlacementTest[]
   mentorshipEnrollments MentorshipEnrollment[]
+  opsDigisacThreads    OpsDigisacThread[]
 
   @@index([email])
   @@index([clint_contact_id])
   @@index([createdById])
+  @@index([createdAt])
   @@map("customers")
 }
 
@@ -287,6 +291,10 @@ model Deal {
   invoices            Invoice[]
   convertedFromLead   Lead?      @relation("ConvertedLead")
 
+  @@index([customerId])
+  @@index([ownerId])
+  @@index([status])
+  @@index([createdAt])
   @@map("deals")
 }
 
@@ -297,6 +305,7 @@ model Invoice {
   dueDate               DateTime
   status                InvoiceStatus    @default(DRAFT)
   quickbooks_invoice_id String?          @unique
+  quickbooks_invoice_link String?
   dealId                String?
   customerId            String
   pdfUrl                String?
@@ -333,6 +342,13 @@ model Invoice {
   notifications         Notification[]
   payments              Payment[]
 
+  @@index([customerId])
+  @@index([dealId])
+  @@index([contractId])
+  @@index([ownerId])
+  @@index([status, dueDate])
+  @@index([paidAt])
+  @@index([createdAt])
   @@map("invoices")
 }
 
@@ -411,6 +427,11 @@ model Contract {
   invoices             Invoice[]
   notifications        Notification[]
 
+  @@index([customerId])
+  @@index([dealId])
+  @@index([status])
+  @@index([sentAt])
+  @@index([createdAt])
   @@map("contracts")
 }
 
@@ -461,8 +482,10 @@ model Notification {
   recipient    String
   subject      String
   templateId   String?
+  resendId     String?
   sentAt       DateTime?
   failedAt     DateTime?
+  bouncedAt    DateTime?
   errorMessage String?
   invoiceId    String?
   contractId   String?
@@ -476,6 +499,7 @@ model Notification {
   @@index([invoiceId])
   @@index([contractId])
   @@index([status])
+  @@index([resendId])
   @@map("notifications")
 }
 
@@ -923,6 +947,8 @@ model MentorshipEnrollment {
   sessions    MentorshipSession[]
   transitions PhaseTransition[]
   checklistProgress PhaseChecklistProgress[]
+  comments    OpsStudentComment[]
+  digisacThreads OpsDigisacThread[]
 
   @@index([customerId])
   @@index([assignedToId])
@@ -986,6 +1012,78 @@ model PhaseChecklistProgress {
   @@unique([enrollmentId, phaseKey, itemKey])
   @@index([completedById])
   @@map("phase_checklist_progress")
+}
+
+model OpsStudentComment {
+  id            String    @id @default(cuid())
+  body          String    @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enrollmentId  String
+  enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  authorId      String?
+  author        User?     @relation("OpsStudentComments", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([enrollmentId, createdAt])
+  @@index([authorId])
+  @@map("ops_student_comments")
+}
+
+enum OpsDigisacMessageDirection {
+  INBOUND
+  OUTBOUND
+  SYSTEM
+}
+
+model OpsDigisacThread {
+  id                String    @id @default(cuid())
+  phoneNumber       String
+  contactId         String?
+  contactName       String?
+  ticketId          String?
+  serviceId         String?
+  status            String    @default("OPEN")
+  lastMessageAt     DateTime?
+  lastSyncedAt      DateTime?
+  metadata          Json?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  customerId        String?
+  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  enrollmentId      String?
+  enrollment        MentorshipEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  messages          OpsDigisacMessage[]
+
+  @@index([customerId, updatedAt])
+  @@index([enrollmentId, updatedAt])
+  @@index([contactId])
+  @@index([phoneNumber])
+  @@map("ops_digisac_threads")
+}
+
+model OpsDigisacMessage {
+  id                String    @id @default(cuid())
+  externalId        String?   @unique
+  direction         OpsDigisacMessageDirection
+  content           String    @db.Text
+  type              String?
+  status            String?
+  senderName        String?
+  externalCreatedAt DateTime?
+  raw               Json?
+  createdAt         DateTime  @default(now())
+
+  threadId          String
+  thread            OpsDigisacThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sentById          String?
+  sentBy            User?     @relation("OpsDigisacSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([threadId, createdAt])
+  @@index([direction, createdAt])
+  @@index([sentById])
+  @@map("ops_digisac_messages")
 }
 
 enum AiMessageRole {

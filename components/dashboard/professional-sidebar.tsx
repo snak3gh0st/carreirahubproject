@@ -37,31 +37,31 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   {
     href: "/dashboard",
-    label: "Dashboard",
+    label: "Início",
     icon: LayoutDashboard,
     roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
   },
   {
     href: "/dashboard/invoices",
-    label: "Invoices",
+    label: "Faturas",
     icon: FileText,
     roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
   },
   {
     href: "/dashboard/customers",
-    label: "Customers",
+    label: "Clientes",
     icon: Users,
     roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
   },
   {
     href: "/dashboard/payments",
-    label: "Payments",
+    label: "Pagamentos",
     icon: CreditCard,
     roles: ["ADMIN", "FINANCE"],
   },
   {
     href: "/dashboard/contracts",
-    label: "Contracts",
+    label: "Contratos",
     icon: FileSignature,
     roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
   },
@@ -73,9 +73,9 @@ const mainNavItems: NavItem[] = [
   },
   {
     href: "/dashboard/insights",
-    label: "Insights",
+    label: "Relatórios QB",
     icon: BarChart3,
-    roles: ["ADMIN", "FINANCE"],
+    roles: ["ADMIN"],
   },
   {
     href: "/dashboard/team",
@@ -86,14 +86,14 @@ const mainNavItems: NavItem[] = [
   },
   {
     href: "/dashboard/bi",
-    label: "BI",
+    label: "BI Admin",
     icon: PieChart,
     roles: ["ADMIN"],
     sectionBefore: "Intelligence",
   },
   {
     href: "/dashboard/financial",
-    label: "Financial",
+    label: "BI Financeiro",
     icon: TrendingUp,
     roles: ["ADMIN", "FINANCE"],
   },

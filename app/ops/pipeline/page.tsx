@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PipelineBoard } from "./PipelineBoard";
 
-export const metadata = { title: "Pipeline | Ops Hub" };
+export const metadata = { title: "Alunos por Area | Ops Hub" };
 
 export default async function PipelinePage() {
   const session = await getServerSession(authOptions);
@@ -16,14 +16,20 @@ export default async function PipelinePage() {
   const currentUserName = (session.user as { name?: string | null }).name ?? "";
 
   return (
-    <div className="p-6 h-screen flex flex-col">
-      <div className="mb-6 flex-shrink-0">
-        <h1 className="text-2xl font-display font-bold text-brand-verde">Pipeline</h1>
-        <p className="text-sm text-gray-500 mt-1">Jornada dos alunos por fase — arraste para avançar</p>
+    <div className="p-6 md:p-8">
+      <div className="mb-6">
+        <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">Alunos por Area</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Lista operacional por fase, responsavel, risco e progresso do aluno.
+        </p>
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div>
         <Suspense fallback={<PipelineSkeleton />}>
-          <PipelineBoard currentUserId={currentUserId} currentUserName={currentUserName} />
+          <PipelineBoard
+            currentUserId={currentUserId}
+            currentUserName={currentUserName}
+            currentUserRole={role}
+          />
         </Suspense>
       </div>
     </div>
@@ -32,9 +38,9 @@ export default async function PipelinePage() {
 
 function PipelineSkeleton() {
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
-      {Array.from({ length: 11 }).map((_, i) => (
-        <div key={i} className="flex-shrink-0 w-56 h-80 bg-white rounded-2xl border border-gray-200 animate-pulse" />
+    <div className="space-y-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="h-24 rounded-xl border border-gray-200 bg-white animate-pulse" />
       ))}
     </div>
   );

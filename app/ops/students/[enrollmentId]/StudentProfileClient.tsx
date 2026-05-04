@@ -90,7 +90,7 @@ export function StudentProfileClient({
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-verde transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Voltar ao Pipeline
+        Voltar a lista de alunos
       </Link>
 
       {/* Header card */}

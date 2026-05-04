@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { prisma } from "@/lib/db";
+import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 
 /**
  * POST /api/quickbooks/sync/invoices
@@ -115,12 +116,14 @@ export async function POST(request: Request) {
           continue;
         }
 
+        const quickbooksInvoiceLink = extractQuickbooksInvoiceLink(qbInvoice);
         const invoiceData = {
           invoiceNumber: qbInvoice.DocNumber || undefined,
           amount: totalAmount,
           dueDate: qbInvoice.DueDate ? new Date(qbInvoice.DueDate) : new Date(),
           status: qbStatus as any,
           quickbooks_invoice_id: qbInvoiceId,
+          ...(quickbooksInvoiceLink ? { quickbooks_invoice_link: quickbooksInvoiceLink } : {}),
           dealId,
           customerId: customer.id,
           metadata: {
@@ -241,4 +244,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

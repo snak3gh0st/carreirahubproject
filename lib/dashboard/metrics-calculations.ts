@@ -19,6 +19,15 @@ export interface DashboardMetricsBuildInput {
   customerSegment: string;
   invoiceStatuses: string[];
   appliedDateRange: { gte?: Date; lte?: Date };
+  actions?: {
+    openInvoiceCount: number;
+    partialInvoiceCount: number;
+    pendingContractCount: number;
+    openDealCount: number;
+    qualifiedLeadCount: number;
+    quickbooksGapCount: number;
+    autoChargeRiskCount: number;
+  };
 }
 
 export function buildDashboardMetrics(input: DashboardMetricsBuildInput) {
@@ -34,6 +43,16 @@ export function buildDashboardMetrics(input: DashboardMetricsBuildInput) {
     input.invoicesPaidLastMonth > 0
       ? (((input.invoicesPaidThisMonth - input.invoicesPaidLastMonth) / input.invoicesPaidLastMonth) * 100).toFixed(1)
       : "0";
+
+  const actions = input.actions ?? {
+    openInvoiceCount: 0,
+    partialInvoiceCount: 0,
+    pendingContractCount: 0,
+    openDealCount: 0,
+    qualifiedLeadCount: 0,
+    quickbooksGapCount: 0,
+    autoChargeRiskCount: 0,
+  };
 
   return {
     sales: {
@@ -72,5 +91,6 @@ export function buildDashboardMetrics(input: DashboardMetricsBuildInput) {
       invoiceStatus: input.invoiceStatuses,
       appliedDateRange: input.appliedDateRange,
     },
+    actions,
   };
 }

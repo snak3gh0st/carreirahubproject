@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { docusignService } from '@/lib/services/docusign.service';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/docusign/diagnose?templateId=<id>
  *

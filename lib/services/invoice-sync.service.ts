@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "./quickbooks.service";
 import { contractWorkflowService } from "./contract-workflow.service";
+import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 
 /**
  * Invoice Sync Service
@@ -107,6 +108,7 @@ export class InvoiceSyncService {
             where: { id: invoiceId },
             data: {
               quickbooks_invoice_id: String(qbInvoice.Id),
+              ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
               invoiceNumber: qbInvoice.DocNumber,
             },
           });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
+import { InvoiceStatus, UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toInvoiceSafeDto } from '../../dto';
@@ -9,7 +9,7 @@ export const getInvoices = defineAiTool({
   description: 'Lista faturas do sistema. Use quando o usuário perguntar sobre faturas, cobranças, status de pagamento ou histórico financeiro de um cliente.',
   allowedRoles: [UserRole.ADMIN, UserRole.FINANCE],
   inputSchema: z.object({
-    status: z.enum(['OPEN', 'PAID', 'OVERDUE', 'VOID']).optional(),
+    status: z.nativeEnum(InvoiceStatus).optional(),
     customerId: z.string().cuid().optional(),
     limit: z.number().int().min(1).max(100).default(50),
   }),

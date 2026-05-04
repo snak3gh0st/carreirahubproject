@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
+import { InvoiceStatus, UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toStudentSafeDto } from '../../dto';
@@ -41,7 +41,7 @@ export const getStudentProfile = defineAiTool({
       const openInvoicesCount = await prisma.invoice.count({
         where: {
           customerId: enrollment.customerId,
-          status: { in: ['OPEN', 'OVERDUE'] as any[] },
+          status: { in: [InvoiceStatus.SENT, InvoiceStatus.OVERDUE, InvoiceStatus.PARTIALLY_PAID] },
         },
       });
 

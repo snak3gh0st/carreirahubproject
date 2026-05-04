@@ -12,6 +12,7 @@ import { leadService } from "@/lib/services/lead.service";
 import { sdrService } from "@/lib/services/sdr.service";
 import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
 import { slackService } from "@/lib/services/slack.service";
+import { MentorshipError, mentorshipService } from "@/lib/services/mentorship.service";
 import { integrationLogger } from "@/lib/utils/logger";
 import type { ClintContact, ClintDeal } from "@/lib/services/clint.service";
 
@@ -211,7 +212,7 @@ export class ClintEventProcessor {
       select: { title: true },
     });
 
-    const programType: string = this.detectProgram(deal?.title ?? "");
+    const programType = this.detectProgram(deal?.title ?? "");
 
     // Guard: don't create duplicate active enrollment
     const existing = await prisma.mentorshipEnrollment.findFirst({
@@ -222,10 +223,16 @@ export class ClintEventProcessor {
       return;
     }
 
-    // Assign to first OPERATIONAL user (V1 — no round-robin)
+    // Prefer an active ops user assigned to the entry phase, then fall back to
+    // the first active operational user.
     const opsUser = await prisma.user.findFirst({
-      where: { role: "OPERATIONAL" },
+      where: { role: "OPERATIONAL", active: true, assignedPhases: { has: "bastao" } },
       select: { id: true },
+      orderBy: { createdAt: "asc" },
+    }) ?? await prisma.user.findFirst({
+      where: { role: "OPERATIONAL", active: true },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
     });
 
     if (!opsUser) {
@@ -240,32 +247,38 @@ export class ClintEventProcessor {
       return;
     }
 
-    const enrollment = await prisma.mentorshipEnrollment.create({
-      data: {
+    try {
+      const { enrollment } = await mentorshipService.createEnrollment({
         programType,
         customerId: customer.id,
         assignedToId: opsUser.id,
         startDate: new Date(),
-        status: "ACTIVE",
-      },
-    });
+        triggeredById: opsUser.id,
+      });
 
-    await slackService.notifyOnboardingReady(
-      { id: enrollment.id, programType: enrollment.programType },
-      customer
-    );
+      await slackService.notifyOnboardingReady(
+        { id: enrollment.id, programType: enrollment.programType },
+        customer
+      );
 
-    await integrationLogger.logSuccess("clint-event", "onboarding_triggered", {
-      enrollmentId: enrollment.id,
-      customerId: customer.id,
-      programType,
-    });
+      await integrationLogger.logSuccess("clint-event", "onboarding_triggered", {
+        enrollmentId: enrollment.id,
+        customerId: customer.id,
+        programType,
+      });
+    } catch (error) {
+      if (error instanceof MentorshipError && error.code === "DUPLICATE_ENROLLMENT") {
+        console.log(`[ClintEvent] Enrollment already exists for customer ${customer.id} — skipping`);
+        return;
+      }
+      throw error;
+    }
   }
 
   // ─── Private Helpers ─────────────────────────────────────────────────────
 
   /** Detect program type from deal title. Default: PASS */
-  private detectProgram(title: string): string {
+  private detectProgram(title: string): "PASS" | "ADVANCED" {
     const t = title.toUpperCase();
     if (t.includes("ADVANCED")) return "ADVANCED";
     return "PASS";

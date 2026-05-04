@@ -1341,6 +1341,9 @@ export class DocuSignService {
     signedDateTime?: string;
   }> {
     const result = await this.apiRequest(`/envelopes/${envelopeId}`);
+    if (!result) {
+      throw new Error(`DocuSign returned no envelope payload for ${envelopeId}`);
+    }
 
     return {
       status: result.status || 'unknown',
@@ -1414,6 +1417,92 @@ export class DocuSignService {
     }));
   }
 
+  async listEnvelopesByStatus(params: {
+    fromDate: Date | string;
+    status: string;
+    count?: number;
+    startPosition?: number;
+  }): Promise<{
+    resultSetSize: number;
+    totalSetSize: number;
+    nextUri: string | null;
+    envelopes: Array<{
+      envelopeId: string;
+      emailSubject: string;
+      status: string;
+      recipientsUri: string;
+      createdDateTime?: string;
+      sentDateTime?: string;
+      deliveredDateTime?: string;
+      completedDateTime?: string;
+    }>;
+  }> {
+    const query = new URLSearchParams({
+      from_date:
+        typeof params.fromDate === "string"
+          ? params.fromDate
+          : params.fromDate.toISOString(),
+      status: params.status,
+      count: String(params.count ?? 100),
+    });
+
+    if (typeof params.startPosition === "number") {
+      query.set("start_position", String(params.startPosition));
+    }
+
+    const result = await this.apiRequest(`/envelopes?${query.toString()}`);
+    if (!result) {
+      throw new Error("DocuSign returned no envelope list payload");
+    }
+
+    return {
+      resultSetSize: Number(result?.resultSetSize || 0),
+      totalSetSize: Number(result?.totalSetSize || 0),
+      nextUri: result?.nextUri || null,
+      envelopes: (result?.envelopes || []).map((envelope: any) => ({
+        envelopeId: envelope.envelopeId || "",
+        emailSubject: envelope.emailSubject || "",
+        status: envelope.status || "",
+        recipientsUri: envelope.recipientsUri || "",
+        createdDateTime: envelope.createdDateTime || undefined,
+        sentDateTime: envelope.sentDateTime || undefined,
+        deliveredDateTime: envelope.deliveredDateTime || undefined,
+        completedDateTime: envelope.completedDateTime || undefined,
+      })),
+    };
+  }
+
+  async getEnvelopeRecipients(envelopeId: string): Promise<{
+    signers: Array<{
+      name: string;
+      email: string;
+      status: string;
+      recipientType: string;
+      signedDateTime?: string;
+      deliveredDateTime?: string;
+      sentDateTime?: string;
+    }>;
+    recipientCount: number;
+  }> {
+    const result = await this.apiRequest(`/envelopes/${envelopeId}/recipients`);
+    if (!result) {
+      throw new Error(`DocuSign returned no recipients payload for ${envelopeId}`);
+    }
+
+    return {
+      signers: (result?.signers || []).map((signer: any) => ({
+        name: signer.name || "",
+        email: signer.email || "",
+        status: signer.status || "",
+        recipientType: signer.recipientType || "signer",
+        signedDateTime: signer.signedDateTime || undefined,
+        deliveredDateTime: signer.deliveredDateTime || undefined,
+        sentDateTime: signer.sentDateTime || undefined,
+      })),
+      recipientCount: Number(result?.recipientCount || 0),
+    };
+  }
+
   /**
    * List available DocuSign templates
    * Returns templates that commercial users can select from
@@ -1480,7 +1569,8 @@ export class DocuSignService {
     templateId: string,
     signerEmail: string,
     signerName: string,
-    customFields?: Record<string, string>
+    customFields?: Record<string, string>,
+    programLabel?: string
   ): Promise<string> {
     try {
       const sanitizedTemplateId = sanitizeTemplateId(templateId);
@@ -1494,7 +1584,9 @@ export class DocuSignService {
       // Template already has CarreiraUSA, Testemunha 1, Testemunha 2 pre-configured.
       const envelopeDefinition: any = {
         status: 'sent',
-        emailSubject: 'CarreiraUSA - Contrato para Assinatura',
+        emailSubject: programLabel
+          ? `CarreiraUSA - ${signerName} | ${programLabel}`
+          : `CarreiraUSA - Contrato para Assinatura - ${signerName}`,
         emailBlurb: 'Por favor, revise e assine o contrato de prestação de serviços anexo.',
         templateId: sanitizedTemplateId,
         templateRoles: [

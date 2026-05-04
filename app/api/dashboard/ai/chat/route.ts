@@ -86,6 +86,7 @@ export async function POST(req: NextRequest) {
     hub?: string;
     personaSlug?: string;
     refresh?: boolean;
+    opsContext?: string;
   };
   try {
     body = await req.json();
@@ -281,11 +282,20 @@ export async function POST(req: NextRequest) {
   }
 
   // 8. Build system prompt with page context + tool list
+  const opsContext =
+    typeof body.opsContext === "string" && body.opsContext.trim().length > 0
+      ? body.opsContext.trim().slice(0, 1200)
+      : "";
+  const pageContext = [
+    buildPageContext(pathname, params),
+    opsContext ? `Contexto operacional selecionado: ${opsContext}` : "",
+  ].filter(Boolean).join("\n");
+
   const systemPrompt = buildSystemPrompt({
     userName: user.name ?? user.email,
     userRole: String(user.role),
     currentDate: currentDateInET(),
-    pageContext: buildPageContext(pathname, params),
+    pageContext,
     toolNames: effectiveTools.map((t) => t.name),
     hub: {
       slug: hub.slug,

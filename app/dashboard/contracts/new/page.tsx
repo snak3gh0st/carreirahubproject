@@ -46,6 +46,7 @@ interface Invoice {
     isFirstInstallment?: boolean;
   } | null;
   customer: {
+    id: string;
     name: string;
   };
 }
@@ -88,8 +89,12 @@ export default function CreateContractPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const customerIdParam = params.get('customerId');
+    const invoiceIdParam = params.get('invoiceId');
     if (customerIdParam) {
       setCustomerId(customerIdParam);
+    }
+    if (invoiceIdParam) {
+      setInvoiceId(invoiceIdParam);
     }
   }, []);
 
@@ -144,15 +149,24 @@ export default function CreateContractPage() {
     async function fetchData() {
       try {
         setLoadingData(true);
+        const params = new URLSearchParams(window.location.search);
+        const selectedCustomerId = params.get('customerId');
+        const selectedInvoiceId = params.get('invoiceId');
         
         // Fetch customers
-        const customersRes = await fetch('/api/customers?limit=10000');
+        const customersUrl = selectedCustomerId
+          ? `/api/customers?limit=200&selectedId=${encodeURIComponent(selectedCustomerId)}`
+          : '/api/customers?limit=200';
+        const customersRes = await fetch(customersUrl);
         if (!customersRes.ok) throw new Error('Falha ao buscar clientes');
         const customersData = await customersRes.json();
         setCustomers(customersData.customers || []);
         
         // Fetch invoices
-        const invoicesRes = await fetch('/api/invoices?limit=1000');
+        const invoicesUrl = selectedInvoiceId
+          ? `/api/invoices?limit=200&selectedId=${encodeURIComponent(selectedInvoiceId)}`
+          : '/api/invoices?limit=200';
+        const invoicesRes = await fetch(invoicesUrl);
         if (!invoicesRes.ok) throw new Error('Falha ao buscar faturas');
         const invoicesData = await invoicesRes.json();
         setInvoices(invoicesData.invoices || []);
@@ -208,9 +222,7 @@ export default function CreateContractPage() {
         setSignerEmail(customer.email);
 
         // Filter invoices for selected customer
-        const customerInvoices = invoices.filter(inv =>
-          inv.customer && inv.customer.name === customer.name
-        );
+        const customerInvoices = invoices.filter(inv => inv.customer?.id === customer.id);
         setFilteredInvoices(customerInvoices);
 
         // Check required fields for contract

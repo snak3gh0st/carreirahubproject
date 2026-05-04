@@ -9,7 +9,7 @@ const ROLE_FEATURES: Record<string, string> = {
 
 **Clientes** (/dashboard/customers): Criar, editar clientes. Busca por nome/email/telefone. Detalhe financeiro completo. Sincroniza com QuickBooks.
 
-**Contratos** (/dashboard/contracts): Criar contratos DocuSign. Acompanhar assinaturas. Download de contratos assinados. Enviar lembretes. Contratos sao gerados automaticamente 7min apos primeira fatura.
+**Contratos** (/dashboard/contracts): Criar contratos DocuSign. Acompanhar assinaturas. Download de contratos assinados. Enviar lembretes. Contratos do pacote/servico sao gerados automaticamente 7min apos a primeira fatura da serie.
 
 **Pagamentos** (/dashboard/payments): Todos os pagamentos recebidos. Filtros por periodo e valor. Detalhe com link para cliente/fatura.
 
@@ -34,7 +34,7 @@ const ROLE_FEATURES: Record<string, string> = {
 
 **Clientes** (/dashboard/customers): Criar, editar clientes. Detalhe financeiro completo — total faturado, pago, pendente, vencido, saldo devedor.
 
-**Contratos** (/dashboard/contracts): Criar contratos DocuSign. Acompanhar status de assinatura. Download de contratos assinados. Enviar lembretes. Contratos gerados automaticamente 7min apos primeira fatura.
+**Contratos** (/dashboard/contracts): Criar contratos DocuSign. Acompanhar status de assinatura. Download de contratos assinados. Enviar lembretes. Contratos do pacote/servico sao gerados automaticamente 7min apos a primeira fatura da serie.
 
 **Pagamentos** (/dashboard/payments): Todos os pagamentos recebidos. Filtros: Hoje, Esta Semana, Este Mes. Cards: Total Recebido, Media, Total do Mes.
 
@@ -79,7 +79,7 @@ Voce NAO tem acesso a: Faturas, Clientes (gestao), Pagamentos, Contratos, Insigh
 
 **Minhas Faturas** (/dashboard/invoices): Ver SOMENTE as faturas que voce criou. Criar Fatura: selecionar cliente, itens de servico, desconto (valor ou %), parcelas, data de vencimento. A fatura sincroniza com QuickBooks e o email e enviado automaticamente.
 
-**Criar Contrato** (/dashboard/contracts/new): Gerar contratos DocuSign para seus clientes. Selecionar template e fatura associada.
+**Criar Contrato** (/dashboard/contracts/new): Gerar contratos DocuSign para seus clientes. Selecionar template e o servico/pacote associado para vincular a serie de faturas.
 
 Voce NAO tem acesso a: Faturas de outros usuarios, Pagamentos, Insights financeiros, Leads, Negocios, Configuracoes, Integracoes.`,
 
@@ -135,7 +135,7 @@ Exemplos:
 
 ## FLUXO GERAL DO SISTEMA (para contexto interno, NAO compartilhe com usuarios de perfis que nao participam do fluxo)
 
-Lead entra → Qualificado por IA → Vira Negocio → Cria Cliente → Cria Fatura → Sincroniza com QB → Email enviado → Contrato DocuSign automatico (7min apos fatura) → Cliente assina → Negocio marcado Ganho
+Lead entra → Qualificado por IA → Vira Negocio → Cria Cliente → Cria Fatura → Sincroniza com QB → Email enviado → Contrato DocuSign do pacote/servico automatico (7min apos a primeira fatura da serie) → Cliente assina → Negocio marcado Ganho
 
 ---
 

@@ -63,6 +63,9 @@ export function ChatPanel({
   const firstName = session?.user?.name?.split(' ')[0] ?? 'time';
   const role = (session?.user as any)?.role ?? 'ADMIN';
   const isStreaming = status === 'streaming' || status === 'submitted';
+  const helperText = hub === 'operational'
+    ? 'Pergunte sobre fases, SLAs, checklists, sessões, formulários, débitos e próximos follow-ups.'
+    : 'Pergunte sobre alunos, leads, faturas, contratos.';
 
   const extraBody = { conversationId, pathname, params, hub };
 
@@ -138,7 +141,7 @@ export function ChatPanel({
             <div className="text-center">
               <h2 className="text-lg font-semibold">Oi, {firstName}! Como posso ajudar?</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Pergunte sobre alunos, leads, faturas, contratos.
+                {helperText}
               </p>
             </div>
             {personas.length > 0 && (

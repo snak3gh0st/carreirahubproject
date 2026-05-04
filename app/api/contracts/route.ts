@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db';
 import { ContractStatus } from '@prisma/client';
 import { docusignService, validateCustomerForContract } from '@/lib/services/docusign.service';
 
+export const dynamic = 'force-dynamic';
+
 const PROGRAM_LABEL_MAP: Record<string, string> = {
   pass_advanced: 'Pass Advanced',
   pass: 'Pass',
@@ -66,6 +68,12 @@ export async function GET(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id as string;
+    const allowedRoles = ['ADMIN', 'FINANCE', 'COMMERCIAL'];
+    if (!allowedRoles.includes(userRole)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') as ContractStatus | null;
@@ -76,6 +84,16 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const where: any = {};
+    const andClauses: any[] = [];
+    if (userRole === 'COMMERCIAL') {
+      andClauses.push({
+        OR: [
+          { deal: { ownerId: userId } },
+          { customer: { createdById: userId } },
+          { invoices: { some: { ownerId: userId } } },
+        ],
+      });
+    }
 
     if (status) {
       where.status = status;
@@ -86,11 +104,16 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
-      where.OR = [
-        { customer: { name: { contains: search, mode: 'insensitive' } } },
-        { customer: { email: { contains: search, mode: 'insensitive' } } },
-        { signerName: { contains: search, mode: 'insensitive' } },
-      ];
+      andClauses.push({
+        OR: [
+          { customer: { name: { contains: search, mode: 'insensitive' } } },
+          { customer: { email: { contains: search, mode: 'insensitive' } } },
+          { signerName: { contains: search, mode: 'insensitive' } },
+        ],
+      });
+    }
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
     }
 
     // Get total count for pagination
@@ -175,6 +198,12 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const userRole = (session.user as any).role;
+    const userId = (session.user as any).id as string;
+    const allowedRoles = ['ADMIN', 'FINANCE', 'COMMERCIAL'];
+    if (!allowedRoles.includes(userRole)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const body = await request.json();
     const { customerId, invoiceId, signerName, signerEmail, expiresInDays = 30, templateId, program } = body;
@@ -195,6 +224,22 @@ export async function POST(request: NextRequest) {
 
     if (!customer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    if (userRole === 'COMMERCIAL') {
+      const canAccessCustomer = await prisma.customer.count({
+        where: {
+          id: customerId,
+          OR: [
+            { createdById: userId },
+            { invoices: { some: { ownerId: userId } } },
+            { deals: { some: { ownerId: userId } } },
+          ],
+        },
+      });
+      if (!canAccessCustomer) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
     }
 
     // Validate customer has required fields for contract
@@ -218,6 +263,12 @@ export async function POST(request: NextRequest) {
 
       if (!invoice) {
         return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+      }
+      if (invoice.customerId !== customerId) {
+        return NextResponse.json({ error: 'Invoice does not belong to customer' }, { status: 400 });
+      }
+      if (userRole === 'COMMERCIAL' && invoice.ownerId !== userId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
 
@@ -310,6 +361,19 @@ export async function POST(request: NextRequest) {
 
       // Resolve the template ID from the program selection or direct templateId
       let resolvedTemplateId = templateId || null;
+
+      const PROGRAM_LABEL_MAP: Record<string, string> = {
+        pass_advanced: 'Programa Pass Advanced',
+        pass: 'Programa Pass',
+        combo: 'Programa Combo',
+        start: 'Programa Start',
+        avulso: 'Programa Avulso',
+        upgrade: 'Upgrade',
+        new_pass: 'New Pass',
+        treinamento: 'Treinamento',
+        early_career: 'Early Career',
+      };
+      const programLabel = program ? (PROGRAM_LABEL_MAP[program] || program) : undefined;
 
       if (program && !resolvedTemplateId) {
         // Map program key to env var name
@@ -498,7 +562,8 @@ export async function POST(request: NextRequest) {
           resolvedTemplateId,
           signerEmail,
           signerName,
-          customFields
+          customFields,
+          programLabel
         );
       } else {
         // Fallback to invoice-based template resolution (keyword matching) or inline PDF

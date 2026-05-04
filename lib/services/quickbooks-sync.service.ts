@@ -13,6 +13,7 @@
 import { quickbooksService } from "./quickbooks.service";
 import { identityMapper } from "./identity-mapper";
 import { prisma } from "@/lib/db";
+import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 import { parseLocalDate } from "@/lib/utils/date";
 
 const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
@@ -43,6 +44,40 @@ function parseQuickBooksDueDate(dueDate?: string): Date {
   }
 
   return new Date(dueDate);
+}
+
+async function triggerOperationalOnboardingForPaidInvoice(
+  invoiceId: string,
+  source: string
+): Promise<void> {
+  try {
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: invoiceId },
+      select: {
+        status: true,
+        dealId: true,
+        customer: {
+          select: { id: true, name: true, email: true, phone: true },
+        },
+      },
+    });
+
+    if (!invoice || invoice.status !== "PAID" || !invoice.dealId) return;
+
+    const signedContract = await prisma.contract.findFirst({
+      where: { dealId: invoice.dealId, status: "SIGNED" },
+      select: { id: true },
+    });
+    if (!signedContract) return;
+
+    const { clintEventProcessor } = await import("@/lib/services/clint-event-processor.service");
+    console.log(
+      `[QuickBooks Sync] Contract SIGNED — triggering onboarding for deal ${invoice.dealId} (${source})`
+    );
+    await clintEventProcessor.triggerOnboarding(invoice.dealId, invoice.customer);
+  } catch (error) {
+    console.error("[QuickBooks Sync] Onboarding gate failed (non-blocking):", error);
+  }
 }
 
 export interface SyncOptions {
@@ -259,6 +294,7 @@ export class QuickBooksSyncService {
       const dueDate = parseQuickBooksDueDate(qbInvoice.DueDate);
       const dueDateKey = formatDateKeyInTimeZone(dueDate, BUSINESS_TIME_ZONE);
       const todayKey = formatDateKeyInTimeZone(new Date(), BUSINESS_TIME_ZONE);
+      const quickbooksInvoiceLink = extractQuickbooksInvoiceLink(qbInvoice);
 
       if (balance === 0) {
         status = "PAID";
@@ -325,6 +361,7 @@ export class QuickBooksSyncService {
             amountPaid: balance === 0 ? totalAmt : balance < totalAmt && balance > 0 ? totalAmt - balance : 0,
             paidAt: balance < totalAmt && balance >= 0 ? (balance === 0 ? new Date(qbInvoice.TxnDate || new Date()) : new Date()) : null,
             markedOverdueAt: status === "OVERDUE" ? new Date() : existing.markedOverdueAt,
+            ...(quickbooksInvoiceLink ? { quickbooks_invoice_link: quickbooksInvoiceLink } : {}),
             // Merge QB sync data into installments without overwriting local data
             installments: mergedInstallments as any,
             // Preserve existing: invoiceNumber, amount, dueDate, dealId, customerId, ownerId, lineItems
@@ -338,6 +375,7 @@ export class QuickBooksSyncService {
           dueDate,
           status,
           quickbooks_invoice_id: qbInvoiceId,
+          ...(quickbooksInvoiceLink ? { quickbooks_invoice_link: quickbooksInvoiceLink } : {}),
           dealId: deal.id,
           customerId: customer.id,
           markedOverdueAt: status === "OVERDUE" ? new Date() : null,
@@ -359,6 +397,9 @@ export class QuickBooksSyncService {
       }
 
       console.log(`[QuickBooks Sync] Invoice ${qbInvoiceId} synced: ${invoice.id} (${existing ? 'updated' : 'new'}) - Status: ${status}`);
+      if (status === "PAID" && existing?.status !== "PAID") {
+        await triggerOperationalOnboardingForPaidInvoice(invoice.id, "syncSingleInvoice");
+      }
 
       return {
         success: true,
@@ -913,6 +954,7 @@ export class QuickBooksSyncService {
           const balance = qbInvoice.Balance || 0;
           const amountPaid = balance === 0 ? totalAmount : balance < totalAmount && balance > 0 ? totalAmount - balance : 0;
           const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
+          const quickbooksInvoiceLink = extractQuickbooksInvoiceLink(qbInvoice);
 
           const invoiceData = {
             invoiceNumber: qbInvoice.DocNumber || undefined,
@@ -920,6 +962,7 @@ export class QuickBooksSyncService {
             dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
             status: qbStatus as any,
             quickbooks_invoice_id: qbInvoiceId,
+            ...(quickbooksInvoiceLink ? { quickbooks_invoice_link: quickbooksInvoiceLink } : {}),
             dealId: latestDeal.id,
             customerId: customer.id,
             amountPaid,
@@ -944,6 +987,9 @@ export class QuickBooksSyncService {
               data: invoiceUpdateData,
             });
             updated.push(existing.id);
+            if (qbStatus === "PAID" && existing.status !== "PAID") {
+              await triggerOperationalOnboardingForPaidInvoice(existing.id, "syncInvoices");
+            }
           } else {
             // Check for a DRAFT invoice from a recurring template that matches this QB invoice.
             // When QB auto-creates an installment, our DRAFT record has no QB ID yet.
@@ -971,11 +1017,17 @@ export class QuickBooksSyncService {
               });
               updated.push(draftMatch.id);
               console.log(`[QuickBooks Sync] Linked DRAFT invoice ${draftMatch.id} to QB invoice ${qbInvoiceId}`);
+              if (qbStatus === "PAID") {
+                await triggerOperationalOnboardingForPaidInvoice(draftMatch.id, "syncInvoices");
+              }
             } else {
               const invoice = await prisma.invoice.create({
                 data: invoiceData,
               });
               synced.push(invoice.id);
+              if (qbStatus === "PAID") {
+                await triggerOperationalOnboardingForPaidInvoice(invoice.id, "syncInvoices");
+              }
             }
           }
         } catch (error: any) {
@@ -1573,6 +1625,9 @@ export class QuickBooksSyncService {
               } as any,
             },
           });
+          if (qbStatus === "PAID") {
+            await triggerOperationalOnboardingForPaidInvoice(existing.id, "cdcSync");
+          }
           invResult.updated++;
         } catch { invResult.errors++; }
       }
@@ -1917,6 +1972,7 @@ export class QuickBooksSyncService {
                 dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
                 status,
                 quickbooks_invoice_id: qbInvoice.Id,
+                ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
                 amountPaid: amountPaidBulk,
                 paidAt: paidAtBulk,
               },
@@ -1925,6 +1981,7 @@ export class QuickBooksSyncService {
                 amount: totalAmount,
                 dueDate: parseQuickBooksDueDate(qbInvoice.DueDate),
                 status,
+                ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
                 amountPaid: amountPaidBulk,
                 paidAt: paidAtBulk,
               },
