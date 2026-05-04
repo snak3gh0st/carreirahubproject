@@ -130,9 +130,28 @@ export default function ContractDetailPage() {
     setMessage(null);
     try {
       const response = await fetch(`/api/contracts/${contractId}/download`);
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to get download URL');
-      window.open(data.downloadUrl, '_blank');
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!response.ok) {
+        const data = contentType.includes('application/json')
+          ? await response.json()
+          : null;
+        throw new Error(data?.error || 'Failed to get download URL');
+      }
+
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        if (!data?.downloadUrl) {
+          throw new Error('No download URL returned');
+        }
+        window.open(data.downloadUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank', 'noopener,noreferrer');
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+      }
+
       setMessage({ type: 'success', text: 'Download iniciado' });
     } catch (err) {
       setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Falha no download' });

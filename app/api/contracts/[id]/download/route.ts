@@ -118,12 +118,19 @@ export async function GET(
       }
     }
 
-    if (contract.signedUrl) {
+    if (contract.signedUrl && /^https?:\/\//i.test(contract.signedUrl)) {
       return NextResponse.json({
         downloadUrl: contract.signedUrl,
         source: 'docusign',
         note: 'Direct DocuSign link - may require authentication',
       });
+    }
+
+    if (contract.signedUrl) {
+      return NextResponse.json(
+        { error: 'Contract PDF requires regeneration. Please try again shortly.' },
+        { status: 409 }
+      );
     }
 
     return NextResponse.json(
