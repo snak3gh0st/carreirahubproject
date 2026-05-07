@@ -1,0 +1,69 @@
+# CarreiraHub — host cron schedule
+# Replaces vercel.json cron block after Vercel is retired.
+#
+# Install: sudo crontab -u root /opt/carreirahub/crontab
+#   (or append to existing crontab)
+#
+# Prerequisite: /opt/carreirahub/run-cron.sh must be installed (see run-cron.sh).
+#
+# All times are server local time (adjust if server runs UTC).
+
+SHELL=/bin/bash
+MAILTO=""
+
+# ── Queue processing (every 5 min) ───────────────────────────────────────────
+*/5 * * * * root /opt/carreirahub/run-cron.sh process-queue
+
+# ── Queue monitoring (every 4 hours) ─────────────────────────────────────────
+0 */4 * * * root /opt/carreirahub/run-cron.sh monitor-queues
+
+# ── QuickBooks token refresh (02:00 daily) ───────────────────────────────────
+0 2 * * * root /opt/carreirahub/run-cron.sh refresh-quickbooks-token
+
+# ── QuickBooks sync (03:00 daily via clint-sync) ─────────────────────────────
+0 3 * * * root /opt/carreirahub/run-cron.sh clint-sync
+
+# ── Auto charge invoices (00:30 daily) ───────────────────────────────────────
+30 0 * * * root /opt/carreirahub/run-cron.sh auto-charge-invoices
+
+# ── Overdue invoices (02:00 daily) ───────────────────────────────────────────
+0 2 * * * root /opt/carreirahub/run-cron.sh overdue-invoices
+
+# ── Overdue invoice alerts (every 6 hours) ───────────────────────────────────
+0 */6 * * * root /opt/carreirahub/run-cron.sh overdue-invoice-alerts
+
+# ── Contract expiration check (01:00 daily) ──────────────────────────────────
+0 1 * * * root /opt/carreirahub/run-cron.sh contract-expiration
+
+# ── Contract renewal reminder (07:00 daily) ──────────────────────────────────
+0 7 * * * root /opt/carreirahub/run-cron.sh contract-renewal-reminder
+
+# ── Collection calls (13:00 daily) ───────────────────────────────────────────
+0 13 * * * root /opt/carreirahub/run-cron.sh collection-calls
+
+# ── Send scheduled invoices (09:00 daily) ────────────────────────────────────
+0 9 * * * root /opt/carreirahub/run-cron.sh send-scheduled-invoices
+
+# ── Invoice payment reminder (10:00 daily) ───────────────────────────────────
+0 10 * * * root /opt/carreirahub/run-cron.sh invoice-payment-reminder
+
+# ── Evaluate alerts (every hour) ─────────────────────────────────────────────
+0 * * * * root /opt/carreirahub/run-cron.sh evaluate-alerts
+
+# ── Digests (08:00 daily) ────────────────────────────────────────────────────
+0 8 * * * root /opt/carreirahub/run-cron.sh cfo-analysis
+0 8 * * * root /opt/carreirahub/run-cron.sh seller-digest
+0 8 * * * root /opt/carreirahub/run-cron.sh finance-digest
+15 8 * * * root /opt/carreirahub/run-cron.sh ops-daily-digest
+
+# ── Admin digest (Monday 08:00) ──────────────────────────────────────────────
+0 8 * * 1 root /opt/carreirahub/run-cron.sh admin-digest
+
+# ── Daily AR digest (09:00 daily) ────────────────────────────────────────────
+0 9 * * * root /opt/carreirahub/run-cron.sh daily-ar-digest
+
+# ── Daily BI digest (21:00 daily) ────────────────────────────────────────────
+0 21 * * * root /opt/carreirahub/run-cron.sh daily-bi-digest
+
+# ── Form completion reminder (09:15 daily) ───────────────────────────────────
+15 9 * * * root /opt/carreirahub/run-cron.sh form-completion-reminder

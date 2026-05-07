@@ -32,11 +32,12 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Validate Vercel cron secret
-    const cronSecret = process.env.VERCEL_CRON_SECRET;
+    // Accept CRON_SECRET (host scheduler, Bearer) or VERCEL_CRON_SECRET (Vercel overlap, x-vercel-cron-secret or Bearer)
+    const cronSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
     if (cronSecret) {
-      const headerSecret = request.headers.get("x-vercel-cron-secret");
-      if (headerSecret !== cronSecret) {
+      const authHeader = request.headers.get("authorization");
+      const vercelHeader = request.headers.get("x-vercel-cron-secret");
+      if (authHeader !== `Bearer ${cronSecret}` && vercelHeader !== cronSecret) {
         console.warn("[CRON] Unauthorized refresh-quickbooks-token request (invalid secret)");
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
       }

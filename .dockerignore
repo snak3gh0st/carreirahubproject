@@ -1,0 +1,32 @@
+.git
+.gitignore
+.next
+node_modules
+npm-debug.log*
+
+# Docs and planning
+docs/
+.planning/
+*.md
+!prisma/*.md
+
+# Dev / test files
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CI
+.gitlab-ci.yml
+.github/
+
+# Scripts not needed at runtime
+scripts/

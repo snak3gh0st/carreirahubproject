@@ -30,8 +30,8 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    // Validate Vercel cron secret if configured
-    const cronSecret = process.env.VERCEL_CRON_SECRET;
+    // Accept CRON_SECRET (host scheduler) or VERCEL_CRON_SECRET (Vercel overlap)
+    const cronSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
     if (cronSecret) {
       const authHeader = request.headers.get("authorization");
       if (authHeader !== `Bearer ${cronSecret}`) {

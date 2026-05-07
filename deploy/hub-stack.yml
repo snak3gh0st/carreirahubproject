@@ -1,0 +1,46 @@
+version: "3.8"
+
+# CarreiraHub — Docker Swarm stack
+#
+# Deploy:
+#   docker stack deploy -c /opt/carreirahub/hub-stack.yml carreirahub
+#
+# Update image:
+#   docker service update --image registry.gitlab.com/sigma-group192807/carreirausahub:<sha> carreirahub_hub
+#
+# Scale down (rollback):
+#   docker service scale carreirahub_hub=0
+
+services:
+  hub:
+    image: registry.gitlab.com/sigma-group192807/carreirausahub:latest
+    networks:
+      - network_public
+    env_file:
+      - /opt/carreirahub/.env
+    deploy:
+      replicas: 1
+      update_config:
+        order: start-first
+        failure_action: rollback
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 15s
+        max_attempts: 3
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+
+        # HTTPS router (HTTP→HTTPS redirect is global in Traefik — no per-service redirect needed)
+        - "traefik.http.routers.hub.rule=Host(`app.carreirausa.com`)"
+        - "traefik.http.routers.hub.entrypoints=websecure"
+        - "traefik.http.routers.hub.tls=true"
+        - "traefik.http.routers.hub.tls.certresolver=letsencryptresolver"
+
+        # Backend port
+        - "traefik.http.services.hub.loadbalancer.server.port=3000"
+
+networks:
+  network_public:
+    external: true
