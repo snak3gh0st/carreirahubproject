@@ -21,6 +21,17 @@ RUN npm ci --ignore-scripts
 
 COPY . .
 
+# Build-time env vars: needed only so next build can collect page data.
+# These stay in the builder stage and are NOT copied to the runner image.
+ARG OPENAI_API_KEY
+ARG DATABASE_URL
+ARG POSTGRES_PRISMA_URL
+ARG NEXTAUTH_SECRET
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+ENV DATABASE_URL=$DATABASE_URL
+ENV POSTGRES_PRISMA_URL=$POSTGRES_PRISMA_URL
+ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
+
 # Build generates Prisma client then runs next build (output: standalone)
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
