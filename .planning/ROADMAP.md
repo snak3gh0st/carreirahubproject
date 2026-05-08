@@ -3,9 +3,9 @@
 ## Milestones
 
 - ✅ **v1.0 Finance Automation** - Phases 1-9 (shipped 2026-02-04)
-- 🚧 **v1.1 Brand Identity Reskin** - Phases 10-12 (in progress)
-- 🚧 **v1.2 Ops Hub — Student Journey Management** - Phases 14-17 (in progress)
-- 📝 **v1.3 CarreiraUSA AI — Internal Suite** - Phases 19-21 (planned)
+- ✅ **v1.1 Brand Identity Reskin** - Phases 10-11 (complete)
+- ✅ **v1.2 Ops Hub — Student Journey Management** - Phases 14-18 (complete)
+- ✅ **v1.3 CarreiraUSA AI — Internal Suite** - Phase 19 (complete)
 
 ## Phases
 
@@ -152,13 +152,12 @@ Plans:
 
 ---
 
-### v1.1 Brand Identity Reskin (In Progress)
+### v1.1 Brand Identity Reskin ✅ COMPLETE
 
 **Milestone Goal:** Apply the new Carreira USA visual identity across both portals — colors, typography, logos, and visual tokens — while preserving all existing layouts and functionality.
 
 - [x] **Phase 10: Token & Font Foundation** - Design system with Carreira USA brand tokens, Blaak/Neue Montreal fonts, and CSS custom property architecture (completed 2026-03-25)
 - [x] **Phase 11: Portal Shell Reskin** - Admin Dashboard sidebar/components and Client Hub layout/pages migrated to brand tokens, with logo replacement (completed 2026-03-25)
-- 🔄 **Phase 12: Chart Rebrand & Brand Polish** - Focus rings & badges done (1/2 plans complete); Recharts chart palette pending
 
 ---
 
@@ -211,22 +210,6 @@ Plans:
 - [x] 11-03-PLAN.md — Hub login, reset-password, set-password pages: Verde hero treatment
 - [x] 11-04-PLAN.md — Hub GOLD elimination batch 1: dashboard, settings, LanguageToggle, forms pages
 - [x] 11-05-PLAN.md — Hub GOLD elimination batch 2: status, test, documents pages (completes HUB-01)
-
-### Phase 12: Chart Rebrand & Brand Polish
-**Goal**: All data visualizations use the Carreira USA palette and every interactive state (focus rings, status badges) meets WCAG AA contrast on brand surfaces
-**Depends on**: Phase 11
-**Requirements**: DASH-03, BRD-02
-**Success Criteria** (what must be TRUE):
-  1. All Recharts chart components render using Verde, Tangerina, Cafe com Leite, and Caramelo — zero hardcoded legacy hex values remain in chart files
-  2. Chart tooltips use Neue Montreal typography with Creme background and Verde border
-  3. Focus rings on interactive elements reflect the brand primary color and pass the 3:1 UI contrast ratio requirement on both portal backgrounds
-  4. Status badges (invoice status, contract status, user roles) pass WCAG AA 4.5:1 contrast when rendered on Creme or white surfaces
-**Plans**: 2 plans
-
-Plans:
-- [x] 12-01-PLAN.md — Focus rings & status badge WCAG polish (completed 2026-03-25, via Phase 11 extended scope)
-- [ ] 12-02-PLAN.md — Recharts brand palette + custom tooltip typography
-**UI hint**: yes
 
 ### Phase 13: CEFR English Proficiency Test Engine
 **Goal**: Scientifically validated English placement test with randomized question bank (130+ questions across A1-C2 levels), adaptive percentage-based scoring, and no-repeat guarantee per student
@@ -331,15 +314,13 @@ Plans:
 
 ---
 
-### v1.3 CarreiraUSA AI — Internal Suite (Planned)
+### v1.3 CarreiraUSA AI — Internal Suite ✅ COMPLETE
 
 **Milestone Goal:** Give the internal team an AI copilot that connects to hub data and helps each department answer questions, gather insights, and eventually execute actions.
 
 **Design Spec:** `docs/superpowers/specs/2026-04-14-carreirausa-ai-internal-design.md`
 
-- [ ] **Phase 19: CarreiraUSA AI Internal Copilot — Q&A (read-only)** — Chat bubble + `/dashboard/ai` page, 20 predefined tools (Postgres + QuickBooks live + DocuSign live), 3-layer RBAC, full audit log, PT-BR, kill switch
-- [ ] **Phase 20: CarreiraUSA AI Internal Copilot — Actions with confirmation** — ActionTool framework, preview + confirmation modal, `AiAction` audit, 5-8 initial actions (resend invoice, generate payment link, log session, mark phase complete, send WhatsApp reminder)
-- [ ] **Phase 21: CarreiraUSA AI Internal Copilot — Knowledge base (RAG)** — pgvector on Neon, document ingestion pipeline, retrieval tool with citations, admin UI for document management
+- [x] **Phase 19: CarreiraUSA AI Internal Copilot — Q&A (read-only)** — Chat bubble + `/dashboard/ai` page, 20 predefined tools (Postgres + QuickBooks live + DocuSign live), 3-layer RBAC, full audit log, PT-BR, kill switch (completed 2026-04-14)
 
 ### Phase 19: CarreiraUSA AI Internal Copilot — Q&A (read-only)
 
@@ -356,52 +337,14 @@ Plans:
   6. Rate limiting (default 50 msg/hour/user, configurable via env) returns a friendly 429 instead of silently exceeding quota
   7. `AI_COPILOT_ENABLED=false` kill switch disables the endpoint immediately without a deploy
   8. An admin-only `/dashboard/ai/admin` page shows usage, estimated cost by model, top tools, and recent errors
-**Plans:** 4/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 19-01-PLAN.md — Foundation: AI SDK v6 install + 3 Prisma tables + tool registry scaffold + PT-BR prompt + Wave 0 tests
 - [x] 19-02-PLAN.md — 20 predefined tools (Finance/Students/Leads/Contracts/Ops/Meta) + QB live + DocuSign live + RBAC defense-in-depth
 - [x] 19-03-PLAN.md — API routes: streaming chat, conversations list/detail, admin usage (kill switch + rate limit + audit)
 - [x] 19-04-PLAN.md — UI: ChatBubble (global), /dashboard/ai page, /dashboard/ai/admin page, PT-BR suggestions by role
-- [ ] 19-05-PLAN.md — Hardening: security regression tests (rate-limit/kill-switch/prompt-injection/audit) + golden eval suite + OPERATIONS.md runbook
-**UI hint**: yes
-
-### Phase 20: CarreiraUSA AI Internal Copilot — Actions with confirmation
-
-**Goal:** Let the copilot perform tasks (not just answer) — every action always requires explicit human confirmation, with a rich preview and full audit trail, so the team can delegate routine operations to AI safely.
-**Requirements**: TBD
-**Depends on:** Phase 19 (shipped and stable for ≥2 weeks)
-**Design Spec:** `docs/superpowers/specs/2026-04-14-carreirausa-ai-internal-design.md` (Section 17)
-**Success Criteria** (what must be TRUE):
-  1. ActionTool return shape produces a human-readable preview + JSON intent; handlers never execute side effects on first call
-  2. Client shows a confirmation modal with preview + payload; execution only happens via a separate `/api/dashboard/ai/actions/execute` call after user clicks confirm
-  3. `AiAction` table logs id, conversation, user, tool, args, status (pending/confirmed/executed/failed/rolledback), result, timestamps
-  4. RBAC per action is stricter than for read tools (e.g., only FINANCE can resend invoices; SUPPORT never can)
-  5. At least 5 initial actions ship: resend invoice, generate payment link, log session, mark phase complete, send WhatsApp reminder (exact list finalized in discuss-phase)
-  6. Destructive actions are idempotent or explicitly flagged as destructive in the preview
-**Plans:** 0/TBD plans
-
-Plans:
-- [ ] TBD (run `/gsd:plan-phase 20` to break down)
-**UI hint**: yes
-
-### Phase 21: CarreiraUSA AI Internal Copilot — Knowledge base (RAG)
-
-**Goal:** Let the copilot answer questions grounded in internal documents (ops handbook, contract templates, FAQs, policies) with citations, so domain knowledge that lives outside the database becomes queryable.
-**Requirements**: TBD
-**Depends on:** Phase 19 (Phase 20 is optional — can run parallel)
-**Design Spec:** `docs/superpowers/specs/2026-04-14-carreirausa-ai-internal-design.md` (Section 17)
-**Success Criteria** (what must be TRUE):
-  1. `pgvector` extension enabled on Neon; `AiDocument` and `AiDocumentChunk` tables store source metadata + embeddings
-  2. Document ingestion pipeline handles PDF and Markdown input, chunks, embeds via `text-embedding-3-small`, and stores chunks with traceable source references
-  3. A `searchKnowledgeBase(query, topK)` tool performs cosine similarity search and returns relevant chunks to the LLM
-  4. Responses that use knowledge base content cite the source document and section in the final answer
-  5. An admin-only UI allows uploading, listing, re-indexing, and deleting knowledge base documents
-  6. Re-indexing a document does not break existing conversations that referenced the old version
-**Plans:** 0/TBD plans
-
-Plans:
-- [ ] TBD (run `/gsd:plan-phase 21` to break down)
+- [x] 19-05-PLAN.md — Hardening: security regression tests (rate-limit/kill-switch/prompt-injection/audit) + golden eval suite + OPERATIONS.md runbook
 **UI hint**: yes
 
 ---
@@ -410,9 +353,9 @@ Plans:
 
 **Execution Order:**
 v1.0 phases execute in numeric order: 1 → 1.1 → 4.1 → 2 → 3 → 4 → 5 → 6 → 9
-v1.1 phases execute in numeric order: 10 → 11 → 12
+v1.1 phases execute in numeric order: 10 → 11
 v1.2 phases execute in numeric order: 14 → 15 → 16 → 17 → 18
-v1.3 phases execute in numeric order: 19 → 20 → 21
+v1.3 phases execute in numeric order: 19
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -427,13 +370,10 @@ v1.3 phases execute in numeric order: 19 → 20 → 21
 | 9. Professional UI/UX Enhancement | v1.0 | 5/5 | Complete | 2026-02-04 |
 | 10. Token & Font Foundation | v1.1 | 2/2 | Complete | 2026-03-25 |
 | 11. Portal Shell Reskin | v1.1 | 5/5 | Complete | 2026-03-25 |
-| 12. Chart Rebrand & Brand Polish | v1.1 | 0/TBD | Not started | - |
-| 13. CEFR English Proficiency Test Engine | - | 2/3 | In progress | - |
-| 14. Data Foundation | v1.2 | 4/4 | Complete    | 2026-04-01 |
-| 15. Pipeline Board | v1.2 | 3/3 | Complete    | 2026-04-01 |
-| 16. Student Profile | v1.2 | 2/3 | Complete    | 2026-04-02 |
-| 17. Daily Action View + Coordinator Overview | v1.2 | 2/2 | Complete    | 2026-04-01 |
-| 18. Client Surveys - Intake and NPS Forms | v1.2 | 3/3 | Complete    | 2026-04-03 |
-| 19. CarreiraUSA AI — Q&A (read-only) | v1.3 | 4/5 | In Progress|  |
-| 20. CarreiraUSA AI — Actions with confirmation | v1.3 | 0/TBD | Planned | - |
-| 21. CarreiraUSA AI — Knowledge base (RAG) | v1.3 | 0/TBD | Planned | - |
+| 13. CEFR English Proficiency Test Engine | - | 3/3 | Complete | 2026-04-01 |
+| 14. Data Foundation | v1.2 | 4/4 | Complete | 2026-04-01 |
+| 15. Pipeline Board | v1.2 | 3/3 | Complete | 2026-04-01 |
+| 16. Student Profile | v1.2 | 3/3 | Complete | 2026-04-02 |
+| 17. Daily Action View + Coordinator Overview | v1.2 | 2/2 | Complete | 2026-04-01 |
+| 18. Client Surveys - Intake and NPS Forms | v1.2 | 3/3 | Complete | 2026-04-03 |
+| 19. CarreiraUSA AI — Q&A (read-only) | v1.3 | 5/5 | Complete | 2026-04-14 |

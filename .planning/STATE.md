@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.1
-milestone_name: Brand Identity Reskin
-status: verifying
-stopped_at: context exhaustion at 75% (2026-05-07)
-last_updated: "2026-05-07T22:43:14.758Z"
-last_activity: "2026-04-14 - Completed quick task 260414-oco: Wire the forms to the operacional hub correctly"
+milestone: v1.3
+milestone_name: CarreiraUSA AI — Internal Suite
+status: complete
+stopped_at: all milestones complete — migrating to SSH self-hosted (2026-05-08)
+last_updated: "2026-05-08T00:00:00.000Z"
+last_activity: "2026-05-08 - Removed phases 12/20/21 (deferred); system migrating to ssh carreirausa"
 progress:
-  total_phases: 19
-  completed_phases: 18
-  total_plans: 59
-  completed_plans: 60
+  total_phases: 17
+  completed_phases: 17
+  total_plans: 57
+  completed_plans: 57
   percent: 100
 ---
 
@@ -22,17 +22,16 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Give the Carreira USA support team a single operational workspace to track every student's journey phase, replacing ClickUp as the team's hub.
 
-**Current focus:** Phase 19 — carreirausa-ai-internal-copilot-q-a
+**Current focus:** All phases complete. System migrating to SSH self-hosted (carreirausa).
 
 ## Current Position
 
-Phase: 19 (carreirausa-ai-internal-copilot-q-a) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-04-14 - Completed quick task 260414-oco: Wire the forms to the operacional hub correctly
+Phase: 19 (carreirausa-ai-internal-copilot-q-a) — COMPLETE (5/5 plans, VERIFICATION 8/8)
+Status: All milestones complete
+Last activity: 2026-05-08 - Removed phases 12/20/21; migrating to ssh carreirausa
 
 ```
-Progress: [████████░░] 80% (4/5 phases)
+Progress: [████████████████████] 100% (17/17 phases)
 ```
 
 ## Performance Metrics
@@ -188,7 +187,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-07T22:43:14.753Z
-Stopped at: context exhaustion at 75% (2026-05-07)
+Last session: 2026-05-08
+Stopped at: roadmap cleanup complete
 Resume file: None
-Next action: Manually verify Phase 18 flows and write 18-01/18-02/18-03 summaries
+Next action: Continue SSH self-hosted migration (ssh carreirausa)
