@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { refreshQbCfoReports } from "@/lib/services/qb-cfo-reports";
 
+export const dynamic = "force-dynamic";
+
 // POST /api/analytics/financial-bi/refresh-qb
 // Manually re-fetches all QB CFO reports (P&L, Balance Sheet, etc.) and updates the cache.
 // Requires admin session. Use this after changing the report date range.
