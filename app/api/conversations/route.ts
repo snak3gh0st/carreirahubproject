@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ConversationStatus } from "@prisma/client";
 import { z } from "zod";
@@ -14,6 +16,9 @@ const createConversationSchema = z.object({
  * Listar conversas com filtros opcionais
  */
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const leadId = searchParams.get("leadId");
@@ -75,6 +80,9 @@ export async function GET(request: NextRequest) {
  * Criar nova conversa
  */
 export async function POST(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const body = await request.json();
     const { leadId } = createConversationSchema.parse(body);

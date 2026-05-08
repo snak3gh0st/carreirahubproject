@@ -174,7 +174,7 @@ class SupportChatService {
     }
 
     try {
-      console.log(`[SupportChat] Calling AI with model=${SUPPORT_AI_MODEL}, key=${apiKey.slice(0, 8)}...`);
+      console.log(`[SupportChat] Calling AI with model=${SUPPORT_AI_MODEL}`);
       // Get user name and role
       const user = await prisma.user.findUnique({
         where: { id: userId },

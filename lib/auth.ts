@@ -11,7 +11,10 @@ import { UserRole } from "@prisma/client";
  * Responsabilidade: Autenticação e RBAC (Role-Based Access Control)
  */
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET || "development-secret-change-in-production",
+  secret: (() => {
+    if (!process.env.NEXTAUTH_SECRET) throw new Error("NEXTAUTH_SECRET env var is required");
+    return process.env.NEXTAUTH_SECRET;
+  })(),
   providers: [
     CredentialsProvider({
       name: "Credentials",

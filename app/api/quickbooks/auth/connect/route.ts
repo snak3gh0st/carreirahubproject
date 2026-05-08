@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 /**
  * GET /api/quickbooks/auth/connect
@@ -7,6 +9,11 @@ import { NextRequest, NextResponse } from "next/server";
  * Redireciona para o servidor de autorização da Intuit
  */
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const clientId = process.env.QUICKBOOKS_CLIENT_ID;
     const environment = process.env.QUICKBOOKS_ENVIRONMENT || "sandbox";

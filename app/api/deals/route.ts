@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { DealStatus } from "@prisma/client";
 import { z } from "zod";
@@ -10,6 +12,9 @@ export const dynamic = "force-dynamic";
  * Listar deals com filtros opcionais
  */
 export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status") as DealStatus | null;
