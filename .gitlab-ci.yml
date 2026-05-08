@@ -35,8 +35,9 @@ deploy:
   script:
     - |
       ssh "$DEPLOY_USER@$DEPLOY_HOST" \
-        "docker service update --image $IMAGE:$CI_COMMIT_SHORT_SHA carreirahub_hub \
-         || docker stack deploy -c /opt/carreirahub/hub-stack.yml carreirahub"
+        "echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY && \
+         docker service update --with-registry-auth --image $IMAGE:$CI_COMMIT_SHORT_SHA carreirahub_hub \
+         || docker stack deploy --with-registry-auth -c /opt/carreirahub/hub-stack.yml carreirahub"
   environment:
     name: production
     url: https://app.carreirausa.com
