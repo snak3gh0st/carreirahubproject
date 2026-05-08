@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { emailService } from '@/lib/services/email.service';
 import { subDays, differenceInDays } from 'date-fns';
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = 'force-dynamic';
-
-export async function GET(request: NextRequest) { return POST(request); }
 
 /**
  * POST /api/cron/invoice-payment-reminder
@@ -22,14 +21,8 @@ export async function GET(request: NextRequest) { return POST(request); }
  * Schedule (vercel.json): 0 10 * * *  (10:00 AM UTC)
  * Auth: Bearer ${CRON_SECRET}
  */
-export async function POST(request: NextRequest) {
+export const POST = withCronTelemetry("invoice-payment-reminder", async (request) => {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     console.log('[InvoicePaymentReminder] Starting...');
 
@@ -125,4 +118,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+export const GET = POST;

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withCronTelemetry } from '@/lib/utils/cron-with-telegram';
 import { prisma } from '@/lib/db';
 import { emailService, ExecutiveDailyDigestData } from '@/lib/services/email.service';
 import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
@@ -17,8 +18,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) { return POST(request); }
-
 /**
  * POST /api/cron/daily-bi-digest
  * Daily 18h BRT (21h UTC) — executive report for Thais only.
@@ -27,14 +26,8 @@ export async function GET(request: NextRequest) { return POST(request); }
  * Revenue source of truth: invoice.amountPaid + paidAt (QB sync writes here directly).
  * MRR: average of the last 3 COMPLETE calendar months (never includes the current partial month).
  */
-export async function POST(request: NextRequest) {
+export const POST = withCronTelemetry('daily-bi-digest', async (request) => {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const now = new Date();
     const todayStart = startOfDay(now);
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -395,4 +388,6 @@ export async function POST(request: NextRequest) {
     console.error('[DailyBIDigest] Fatal:', error);
     return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
-}
+});
+
+export const GET = POST;

@@ -1,25 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { collectionCallService } from "@/lib/services/collection-call.service";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60; // Allow up to 60 seconds for processing
+export const maxDuration = 60;
 
 /**
  * GET /api/cron/collection-calls
  * Automatically initiate collection calls for overdue invoices
  * Schedule: Daily at 10:00 AM (during business hours)
  */
-export async function GET(request: NextRequest) {
+export const GET = withCronTelemetry("collection-calls", async (_request) => {
   try {
-    // Verify cron secret
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     console.log("[COLLECTION_CALLS_CRON] Starting automatic collection calls...");
 
     // Check if service is configured
@@ -75,8 +68,8 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Cron job failed" },
+      { success: false, error: error instanceof Error ? error.message : "Cron job failed" },
       { status: 500 }
     );
   }
-}
+});

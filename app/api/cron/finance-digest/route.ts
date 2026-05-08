@@ -4,10 +4,9 @@ import { emailService, FinanceDigestData } from '@/lib/services/email.service';
 import { differenceInDays, endOfDay, startOfDay, subDays } from 'date-fns';
 import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
 import { getFinancialHubExcludedCustomerIds } from '@/lib/financial/hub-exclusions-db';
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = 'force-dynamic';
-
-export async function GET(request: NextRequest) { return POST(request); }
 
 /**
  * POST /api/cron/finance-digest
@@ -22,14 +21,8 @@ export async function GET(request: NextRequest) { return POST(request); }
  * Schedule (vercel.json): 0 8 * * *
  * Auth: Bearer ${CRON_SECRET}
  */
-export async function POST(request: NextRequest) {
+export const POST = withCronTelemetry("finance-digest", async (request) => {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     console.log('[FinanceDigest] Starting daily finance digest send...');
 
@@ -170,4 +163,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+export const GET = POST;

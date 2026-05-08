@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { monitorAllQueues } from "@/lib/utils/queue-monitor";
 import { prisma } from "@/lib/db";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 /**
  * GET /api/cron/monitor-queues
@@ -26,7 +27,7 @@ import { prisma } from "@/lib/db";
  * Returns 200 even if issues found (monitoring shouldn't fail the cron).
  * All issues logged to IntegrationLog for dashboarding and debugging.
  */
-export async function GET(request: NextRequest) {
+export const GET = withCronTelemetry("monitor-queues", async (request) => {
   const startTime = Date.now();
 
   try {
@@ -163,9 +164,6 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   }
-}
+});
 
-// Also support POST for compatibility
-export async function POST(request: NextRequest) {
-  return GET(request);
-}
+export const POST = GET;

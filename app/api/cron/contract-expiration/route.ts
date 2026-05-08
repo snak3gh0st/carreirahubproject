@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { contractWorkflowService } from '@/lib/services/contract-workflow.service';
 import { prisma } from '@/lib/db';
 import { emailService } from '@/lib/services/email.service';
-import { telegramService } from '@/lib/services/telegram.service';
 import { ContractStatus } from '@prisma/client';
+import { withCronTelemetry } from '@/lib/utils/cron-with-telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,17 +16,8 @@ export const dynamic = 'force-dynamic';
  * After expiration, fire a real-time PT-BR notification to the SALES seller
  * (Deal.owner preferred, Invoice.owner fallback). Best-effort, never fails the cron.
  */
-export async function GET(request: NextRequest) {
-  const startTime = Date.now();
+export const GET = withCronTelemetry('contract-expiration', async (_request) => {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      console.log('[CRON] Unauthorized request to contract-expiration');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     console.log('[CRON] Starting contract expiration check...');
 
     const result = await contractWorkflowService.checkExpiredContracts();
@@ -95,12 +86,6 @@ export async function GET(request: NextRequest) {
       console.error('[SellerNotify] Failed to query freshly-expired contracts:', err);
     }
 
-    if (result.expired > 0) {
-      await telegramService.alertCronSuccess('contract-expiration',
-        `Expired: ${result.expired} · Notified: ${notified} · Errors: ${result.errors}`
-      );
-    }
-
     return NextResponse.json({
       success: true,
       message: 'Contract expiration check completed',
@@ -112,12 +97,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[CRON] Contract expiration check failed:', error);
-    await telegramService.alertCronError('contract-expiration', error, {
-      Route: request.nextUrl.pathname,
-      Method: request.method,
-      Duration: `${Date.now() - startTime}ms`,
-    });
-
     return NextResponse.json(
       {
         success: false,
@@ -127,4 +106,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

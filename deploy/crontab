@@ -67,3 +67,6 @@ MAILTO=""
 
 # ── Form completion reminder (09:15 daily) ───────────────────────────────────
 15 9 * * * root /opt/carreirahub/run-cron.sh form-completion-reminder
+
+# ── Health digest (08:00 UTC daily) ──────────────────────────────────────────
+0 8 * * * root /opt/carreirahub/run-cron.sh health-digest

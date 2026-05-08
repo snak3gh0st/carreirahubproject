@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { emailService, SellerDigestData } from '@/lib/services/email.service';
 import { differenceInDays, differenceInHours, subDays, subHours } from 'date-fns';
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = 'force-dynamic';
-
-export async function GET(request: NextRequest) { return POST(request); }
 
 /**
  * POST /api/cron/seller-digest
@@ -21,14 +20,8 @@ export async function GET(request: NextRequest) { return POST(request); }
  * Schedule (vercel.json): 0 8 * * *
  * Auth: Bearer ${CRON_SECRET}
  */
-export async function POST(request: NextRequest) {
+export const POST = withCronTelemetry("seller-digest", async (request) => {
   try {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     console.log('[SellerDigest] Starting daily seller digest send...');
 
@@ -157,4 +150,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+export const GET = POST;

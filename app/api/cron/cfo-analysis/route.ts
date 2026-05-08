@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateAndCacheCfoInsight } from "@/lib/services/cfo-analysis";
 import { refreshQbCfoReports } from "@/lib/services/qb-cfo-reports";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -14,13 +15,8 @@ async function refreshQbReports(): Promise<void> {
   }
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withCronTelemetry("cfo-analysis", async (_request) => {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     await refreshQbReports();
 
     await Promise.all([
@@ -31,6 +27,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, generatedAt: new Date().toISOString() });
   } catch (error) {
     console.error("[CFO-ANALYSIS-CRON] Error:", error);
-    return NextResponse.json({ error: "Failed to generate CFO analysis" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Failed to generate CFO analysis" }, { status: 500 });
   }
-}
+});

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { processAllQueues } from "@/lib/utils/queue-processor";
 import { prisma } from "@/lib/db";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 /**
  * GET /api/cron/process-queue
@@ -33,7 +34,7 @@ import { prisma } from "@/lib/db";
  * Metrics logged to IntegrationLog table for monitoring.
  * Job failures logged with full context for debugging.
  */
-export async function GET(request: NextRequest) {
+export const GET = withCronTelemetry("process-queue", async (request) => {
   const startTime = Date.now();
 
   try {
@@ -108,9 +109,6 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   }
-}
+});
 
-// Also support POST for compatibility
-export async function POST(request: NextRequest) {
-  return GET(request);
-}
+export const POST = GET;

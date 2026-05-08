@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
-import { telegramService } from "@/lib/services/telegram.service";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 /**
  * GET/POST /api/cron/refresh-quickbooks-token
@@ -28,7 +28,7 @@ import { telegramService } from "@/lib/services/telegram.service";
  * - Never throws errors (returns 200 even on failure)
  * - Cron should not fail, all issues logged for monitoring
  */
-export async function GET(request: NextRequest) {
+export const GET = withCronTelemetry("refresh-qb-token", async (request) => {
   const startTime = Date.now();
 
   try {
@@ -120,8 +120,6 @@ export async function GET(request: NextRequest) {
         console.error("[CRON] Failed to log token refresh success:", logError);
       }
 
-      await telegramService.alertCronSuccess("refresh-qb-token", "Token refreshed OK");
-
       return NextResponse.json(
         {
           success: true,
@@ -157,13 +155,6 @@ export async function GET(request: NextRequest) {
       } catch (logError) {
         console.error("[CRON] Failed to log token refresh error:", logError);
       }
-
-      await telegramService.alertCronError("refresh-qb-token", refreshError, {
-        Route: request.nextUrl.pathname,
-        Method: request.method,
-        Duration: `${durationMs}ms`,
-        ReportedStatus: 200,
-      });
 
       // Return 200 even on failure (cron endpoint should not fail)
       // Details logged to IntegrationLog for operator monitoring
@@ -204,13 +195,6 @@ export async function GET(request: NextRequest) {
       console.error("[CRON] Failed to log unexpected error:", logError);
     }
 
-    await telegramService.alertCronError("refresh-qb-token", error, {
-      Route: request.nextUrl.pathname,
-      Method: request.method,
-      Duration: `${durationMs}ms`,
-      ReportedStatus: 200,
-    });
-
     // Return 200 even on unexpected error
     return NextResponse.json(
       {
@@ -222,9 +206,6 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   }
-}
+});
 
-// Also support POST for compatibility
-export async function POST(request: NextRequest) {
-  return GET(request);
-}
+export const POST = GET;

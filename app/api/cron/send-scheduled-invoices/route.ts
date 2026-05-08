@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { extractQuickbooksInvoiceLink } from '@/lib/quickbooks/invoice-link';
 import { quickbooksService } from '@/lib/services/quickbooks.service';
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
  * get a QB ID at creation time, so that query always returned 0 results and no emails were sent.
  * The correct signal for "not yet emailed" is emailSentAt being null.
  */
-export async function GET(request: NextRequest) {
+export const GET = withCronTelemetry("send-scheduled-invoices", async (request) => {
   try {
     // Verify cron secret (Vercel cron jobs include this header)
     const authHeader = request.headers.get('authorization');
@@ -359,4 +360,4 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     }, { status: 500 });
   }
-}
+});

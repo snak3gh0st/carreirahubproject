@@ -4,10 +4,9 @@ import { emailService, OverdueInvoiceEmail } from "@/lib/services/email.service"
 import { differenceInDays } from "date-fns";
 import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
 import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = "force-dynamic";
-
-export async function GET(request: NextRequest) { return POST(request); }
 
 /**
  * POST /api/cron/overdue-invoice-alerts
@@ -25,7 +24,7 @@ export async function GET(request: NextRequest) { return POST(request); }
  *   }]
  * }
  */
-export async function POST(request: NextRequest) {
+export const POST = withCronTelemetry("overdue-invoice-alerts", async (request) => {
   try {
     // Verify cron secret
     const authHeader = request.headers.get("authorization");
@@ -220,4 +219,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+export const GET = POST;

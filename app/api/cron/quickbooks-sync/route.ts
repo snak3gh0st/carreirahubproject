@@ -1,32 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { quickbooksSyncService } from "@/lib/services/quickbooks-sync.service";
 import { telegramService } from "@/lib/services/telegram.service";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export async function GET(request: NextRequest) {
-  return handleSync(request);
-}
-
-export async function POST(request: NextRequest) {
-  return handleSync(request);
-}
-
-async function handleSync(request: NextRequest) {
+export const GET = withCronTelemetry("quickbooks-sync", async (request) => {
   const start = Date.now();
   let mode: "full" | "incremental" = "incremental";
   let requestBody: Record<string, unknown> = {};
   try {
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret) {
-      const authHeader = request.headers.get("authorization");
-      if (authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-    }
-
     const body = await request.json().catch(() => ({}));
     requestBody = body;
     const useFull = body.full === true;
@@ -44,12 +29,6 @@ async function handleSync(request: NextRequest) {
         maxResults: 1000,
         incremental: false,
       });
-      await telegramService.alertSyncComplete("QuickBooks (full)", {
-        customers: String(typeof result.customers === "object" ? result.customers?.synced ?? 0 : result.customers ?? 0),
-        invoices: String(typeof result.invoices === "object" ? result.invoices?.synced ?? 0 : result.invoices ?? 0),
-        payments: String(typeof result.payments === "object" ? result.payments?.synced ?? 0 : result.payments ?? 0),
-        duration: `${Date.now() - start}ms`,
-      });
       return NextResponse.json({ success: true, mode: "full", result });
     }
 
@@ -61,13 +40,6 @@ async function handleSync(request: NextRequest) {
       customers: result.customers,
       invoices: result.invoices,
       payments: result.payments,
-    });
-
-    await telegramService.alertSyncComplete("QuickBooks (incremental)", {
-      customers: String(typeof result.customers === "object" ? result.customers?.synced ?? 0 : result.customers ?? 0),
-      invoices: String(typeof result.invoices === "object" ? result.invoices?.synced ?? 0 : result.invoices ?? 0),
-      payments: String(typeof result.payments === "object" ? result.payments?.synced ?? 0 : result.payments ?? 0),
-      duration: String(result.duration ?? `${Date.now() - start}ms`),
     });
 
     return NextResponse.json({
@@ -96,4 +68,6 @@ async function handleSync(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
+
+export const POST = GET;

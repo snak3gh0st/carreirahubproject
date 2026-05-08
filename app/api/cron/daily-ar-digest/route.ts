@@ -4,10 +4,9 @@ import { emailService, DailyDigestEmail } from "@/lib/services/email.service";
 import { differenceInDays } from "date-fns";
 import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
 import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
+import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = "force-dynamic";
-
-export async function GET(request: NextRequest) { return POST(request); }
 
 /**
  * POST /api/cron/daily-ar-digest
@@ -30,21 +29,8 @@ export async function GET(request: NextRequest) { return POST(request); }
  * POST /api/cron/daily-ar-digest
  * Authorization: Bearer <CRON_SECRET>
  */
-export async function POST(request: NextRequest) {
+export const POST = withCronTelemetry("daily-ar-digest", async (_request) => {
   try {
-    // Verify cron secret
-    const authHeader = request.headers.get("authorization");
-    const cronSecret = process.env.CRON_SECRET;
-
-    // Allow Vercel cron jobs or manual trigger with secret
-    const isVercelCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
-    const isManualWithSecret =
-      cronSecret && authHeader === `Bearer ${cronSecret}`;
-
-    if (!isVercelCron && !isManualWithSecret) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     console.log("[DailyARDigest] Starting daily digest send...");
 
     const now = new Date();
@@ -263,10 +249,13 @@ export async function POST(request: NextRequest) {
     console.error("[DailyARDigest] Fatal error:", error);
     return NextResponse.json(
       {
+        success: false,
         error: "Failed to send daily digest",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
   }
-}
+});
+
+export const GET = POST;
