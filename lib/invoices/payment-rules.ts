@@ -4,9 +4,7 @@ import {
   type PaymentRule,
 } from "@/lib/constants/carreira-products";
 
-const DEFAULT_MAX_INSTALLMENTS = 24;
-const MIN_COMBO_INSTALLMENT_AMOUNT = 300;
-const AVULSO_INSTALLMENT_THRESHOLD = 600;
+const DEFAULT_MAX_INSTALLMENTS = 12;
 
 export interface PaymentPolicy {
   paymentRule: PaymentRule | null;
@@ -27,7 +25,7 @@ export function getProductsFromCatalogProductIds(
 
 export function getPaymentPolicyForProducts(
   products: CarreiraProduct[],
-  totalAmount = 0
+  _totalAmount = 0
 ): PaymentPolicy {
   if (products.length === 0) {
     return {
@@ -43,41 +41,27 @@ export function getPaymentPolicyForProducts(
   if (mentorshipProducts.length > 0) {
     return {
       paymentRule: "MENTORIA_PRESET",
-      maxInstallments: Math.max(
-        ...mentorshipProducts.map(
-          (product) => product.maxInstallments ?? DEFAULT_MAX_INSTALLMENTS
+      maxInstallments: Math.min(
+        DEFAULT_MAX_INSTALLMENTS,
+        Math.max(
+          ...mentorshipProducts.map(
+            (product) => product.maxInstallments ?? DEFAULT_MAX_INSTALLMENTS
+          )
         )
       ),
     };
   }
 
-  const comboProducts = products.filter(
-    (product) => product.paymentRule === "MAX_2X_MIN_300"
-  );
-
-  if (comboProducts.length > 0) {
-    return {
-      paymentRule: "MAX_2X_MIN_300",
-      maxInstallments: Math.min(
-        ...comboProducts.map((product) => product.maxInstallments ?? 2)
-      ),
-    };
-  }
-
-  const avulsoOnlySelection = products.every(
-    (product) => product.category === "AVULSO"
-  );
-
-  if (avulsoOnlySelection && totalAmount > AVULSO_INSTALLMENT_THRESHOLD) {
-    return {
-      paymentRule: "MAX_2X_MIN_300",
-      maxInstallments: 2,
-    };
-  }
-
   return {
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: Math.min(
+      DEFAULT_MAX_INSTALLMENTS,
+      Math.min(
+        ...products.map(
+          (product) => product.maxInstallments ?? DEFAULT_MAX_INSTALLMENTS
+        )
+      )
+    ),
   };
 }
 
@@ -89,32 +73,10 @@ export function validatePaymentSelection(input: {
 }): PaymentPolicy {
   const policy = getPaymentPolicyForProducts(input.products, input.totalAmount);
 
-  if (policy.paymentRule === "AVISTA_ONLY") {
-    if (input.entryAmount > 0 || input.installments > 0) {
-      throw new Error(
-        "Este produto é somente à vista — não é permitido parcelamento."
-      );
-    }
-
-    return policy;
-  }
-
   if (input.installments > policy.maxInstallments) {
-    const productLabel =
-      policy.paymentRule === "MAX_2X_MIN_300" ? "Combo" : "Mentoria";
     throw new Error(
-      `${productLabel}: máximo de ${policy.maxInstallments} parcelas.`
+      `Máximo de ${policy.maxInstallments} parcelas para esta seleção.`
     );
-  }
-
-  if (policy.paymentRule === "MAX_2X_MIN_300" && input.installments > 0) {
-    const remaining = Math.max(0, input.totalAmount - input.entryAmount);
-    const perInstallment = remaining / input.installments;
-    if (perInstallment < MIN_COMBO_INSTALLMENT_AMOUNT) {
-      throw new Error(
-        `Parcela mínima de $300 (atual: $${perInstallment.toFixed(2)}).`
-      );
-    }
   }
 
   return policy;

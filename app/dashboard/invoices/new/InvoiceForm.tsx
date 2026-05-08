@@ -981,57 +981,55 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
             <p className="text-sm text-gray-400 italic">Selecione um produto acima para ver as condições de pagamento disponíveis.</p>
           )}
 
-          {/* AVISTA_ONLY — lock installments */}
-          {activePaymentRule === "AVISTA_ONLY" && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center gap-3">
-              <svg className="h-5 w-5 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m0 0v2m0-2h2m-2 0H10m2-6V9m0 0V7m0 2h2m-2 0H10m10 5a10 10 0 11-20 0 10 10 0 0120 0z" />
-              </svg>
-              <div>
-                <p className="text-sm font-semibold text-amber-800">Somente à vista</p>
-                <p className="text-xs text-amber-700">Parcelamento indisponível para esta seleção enquanto o total for de até $600.</p>
-              </div>
-            </div>
-          )}
-
-          {/* MAX_2X_MIN_300 — combo rules */}
-          {activePaymentRule === "MAX_2X_MIN_300" && (
+          {/* FLEXIBLE — any 1..maxInstallments, no entry/min constraints */}
+          {activePaymentRule === "FLEXIBLE" && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">Opção de pagamento</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Atalhos de pagamento</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {([
-                    { key: "avista", label: "À vista", sub: `$${total.toFixed(2)}`, inst: "", entry: "" },
-                    { key: "2x", label: "2x sem entrada", sub: `2x de $${(total / 2).toFixed(2)}`, inst: "2", entry: "" },
-                  ] as const).map(({ key, label, sub, inst, entry }) => {
-                    const isSelected = (key === "avista" && !form.installments && !form.entryAmount) ||
-                      (key === "2x" && form.installments === "2");
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => {
-                          setForm((f) => ({ ...f, entryAmount: entry, installments: inst }));
-                        }}
-                        className={`rounded-lg border-2 px-4 py-3 text-left transition-colors ${
-                          isSelected
-                            ? "border-blue-600 bg-blue-50"
-                            : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
-                        }`}
-                      >
-                        <p className={`text-sm font-semibold ${isSelected ? "text-blue-800" : "text-gray-900"}`}>{label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
-                      </button>
-                    );
-                  })}
+                    { key: "avista", label: "À vista", n: 0 },
+                    { key: "2x", label: "2x", n: 2 },
+                    { key: "3x", label: "3x", n: 3 },
+                    { key: "6x", label: "6x", n: 6 },
+                    { key: "10x", label: "10x", n: 10 },
+                    { key: "12x", label: "12x", n: 12 },
+                  ] as const)
+                    .filter((opt) => opt.n <= activePaymentPolicy.maxInstallments)
+                    .map(({ key, label, n }) => {
+                      const sub = n === 0
+                        ? `$${total.toFixed(2)}`
+                        : `${n}x de $${(total / n).toFixed(2)}`;
+                      const isSelected = n === 0
+                        ? !form.installments && !form.entryAmount
+                        : form.installments === String(n) && !form.entryAmount;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setForm((f) => ({
+                              ...f,
+                              entryAmount: "",
+                              installments: n === 0 ? "" : String(n),
+                            }));
+                          }}
+                          className={`rounded-lg border-2 px-3 py-2 text-left transition-colors ${
+                            isSelected
+                              ? "border-blue-600 bg-blue-50"
+                              : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          <p className={`text-sm font-semibold ${isSelected ? "text-blue-800" : "text-gray-900"}`}>{label}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{sub}</p>
+                        </button>
+                      );
+                    })}
                 </div>
-                {total > 0 && total / 2 < 300 && (
-                  <p className="text-xs text-red-600 mt-2">Parcelamento indisponível — parcela mínima $300 (valor total: ${total.toFixed(2)})</p>
-                )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Entrada (USD)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Entrada (USD) — opcional</label>
                   <input
                     type="number" step="0.01" min="0" max={total}
                     value={form.entryAmount}
@@ -1041,13 +1039,15 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número de parcelas (até {activePaymentPolicy.maxInstallments}x)
+                  </label>
                   <input
-                    type="number" min="1"
+                    type="number" min="0" max={activePaymentPolicy.maxInstallments}
                     value={form.installments}
                     onChange={(e) => handleChange("installments", e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    placeholder="1"
+                    placeholder="0 (à vista)"
                   />
                 </div>
               </div>

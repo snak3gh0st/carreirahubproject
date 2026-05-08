@@ -1,8 +1,7 @@
 export type ProductCategory = "MENTORIA" | "COMBO" | "AVULSO" | "CONSULTORIA";
 
 export type PaymentRule =
-  | "AVISTA_ONLY"      // no installments allowed
-  | "MAX_2X_MIN_300"   // up to 2x, min $300/installment
+  | "FLEXIBLE"         // any 1-12x, no entry/min constraints (default for non-mentorship)
   | "MENTORIA_PRESET"; // 3 preset options: à vista / 30% down+Nx / Nx no down (max 12x)
 
 export interface CarreiraProduct {
@@ -56,8 +55,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Combo Early Career",
     category: "COMBO",
     officialPrice: 750,
-    paymentRule: "MAX_2X_MIN_300",
-    maxInstallments: 2,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Sessão Bússola + Construção de Material — Early Career",
   },
   {
@@ -66,8 +65,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Combo Pass",
     category: "COMBO",
     officialPrice: 1050,
-    paymentRule: "MAX_2X_MIN_300",
-    maxInstallments: 2,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Sessão Bússola + Construção de Material — Pass",
   },
   {
@@ -76,8 +75,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Combo Advanced",
     category: "COMBO",
     officialPrice: 1650,
-    paymentRule: "MAX_2X_MIN_300",
-    maxInstallments: 2,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Sessão Bússola + Construção de Material — Advanced",
   },
   {
@@ -86,8 +85,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Construção de Material I",
     category: "COMBO",
     officialPrice: 950,
-    paymentRule: "MAX_2X_MIN_300",
-    maxInstallments: 2,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Construção de Material + Sessão Bússola — Early Career / Pass",
   },
   {
@@ -96,8 +95,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Construção de Material II",
     category: "COMBO",
     officialPrice: 1500,
-    paymentRule: "MAX_2X_MIN_300",
-    maxInstallments: 2,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Construção de Material + Sessão Bússola — Advanced",
   },
 
@@ -108,8 +107,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Sessão Bússola",
     category: "AVULSO",
     officialPrice: 300,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-ingles",
@@ -117,8 +116,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Teste de Inglês",
     category: "AVULSO",
     officialPrice: 90,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-mock",
@@ -126,8 +125,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Mock Interview",
     category: "AVULSO",
     officialPrice: 197,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-analise-gravada",
@@ -135,8 +134,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Análise de Entrevista Gravada",
     category: "AVULSO",
     officialPrice: 297,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-analise-vagas",
@@ -144,8 +143,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Análise de Vagas",
     category: "AVULSO",
     officialPrice: 297,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-negociacao",
@@ -153,8 +152,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Negociação de Salário",
     category: "AVULSO",
     officialPrice: 187,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-treinamento",
@@ -162,8 +161,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Treinamento de Entrevista",
     category: "AVULSO",
     officialPrice: 447,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
   {
     id: "avulso-treinamento-advanced",
@@ -171,8 +170,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Treinamento de Entrevista (Advanced)",
     category: "AVULSO",
     officialPrice: 557,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
   },
 
   // ── Consultoria Informativa ─────────────────────────────────────────────
@@ -182,8 +181,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Consultoria — Thais Mei",
     category: "CONSULTORIA",
     officialPrice: 700,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Consultoria Informativa (1h) com Thais Mei",
   },
   {
@@ -192,8 +191,8 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     name: "Consultoria — Time Carreira",
     category: "CONSULTORIA",
     officialPrice: 397,
-    paymentRule: "AVISTA_ONLY",
-    maxInstallments: 0,
+    paymentRule: "FLEXIBLE",
+    maxInstallments: 12,
     description: "Consultoria Informativa (1h) com o time Carreira USA",
   },
 ];
