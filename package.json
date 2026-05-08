@@ -55,6 +55,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@react-email/components": "^1.0.3",
     "@react-pdf/renderer": "^4.4.1",
+    "@sentry/nextjs": "^10.52.0",
     "@stripe/stripe-js": "^8.6.1",
     "@tanstack/react-query": "^5.90.17",
     "@tanstack/react-table": "^8.21.3",
