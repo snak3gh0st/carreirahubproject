@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { getEffectiveSyncTimestamps } from "@/lib/integrations/sync-health";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,13 @@ export async function GET() {
   }
 
   try {
-    // Get system config for integration settings
-    const systemConfig = await prisma.systemConfig.findUnique({
-      where: { id: "system" },
-    });
+    // Get system config for integration settings plus effective sync timestamps
+    const [systemConfig, effectiveSyncs] = await Promise.all([
+      prisma.systemConfig.findUnique({
+        where: { id: "system" },
+      }),
+      getEffectiveSyncTimestamps(),
+    ]);
 
     // QuickBooks Status
     let quickbooksStatus: any = {
@@ -37,7 +41,7 @@ export async function GET() {
         connected: true,
         companyId: systemConfig.quickbooks_company_id,
         tokenExpiresAt: systemConfig.quickbooks_token_expires_at,
-        lastSync: systemConfig.last_qb_sync,
+        lastSync: effectiveSyncs.quickbooksLastSync,
         tokenStatus: systemConfig.quickbooks_token_expires_at
           ? new Date(systemConfig.quickbooks_token_expires_at) > new Date()
             ? "valid"
@@ -63,7 +67,7 @@ export async function GET() {
         systemConfig?.cron_secret ||
         process.env.PIPEDRIVE_WEBHOOK_SECRET
       ),
-      lastSync: systemConfig?.last_clint_sync || null,
+      lastSync: effectiveSyncs.clintLastSync,
     };
 
     // Get last webhook received for each service

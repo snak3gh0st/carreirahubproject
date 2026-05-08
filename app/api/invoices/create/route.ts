@@ -13,6 +13,7 @@ import {
   validatePaymentSelection,
 } from "@/lib/invoices/payment-rules";
 import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
+import { resolveInvoiceQuickBooksItemRefs } from "@/lib/invoices/quickbooks-item-resolution";
 
 /** Create a Date at UTC noon for today - safe for date-only operations */
 function todayUTCNoon(): Date {
@@ -123,6 +124,17 @@ export async function POST(request: NextRequest) {
       totalAmount,
     });
 
+    await quickbooksService.initialize();
+    const quickbooksItems = await quickbooksService.getServiceItems();
+    const resolvedItems = resolveInvoiceQuickBooksItemRefs(
+      data.items.map((item) => ({
+        catalogProductId: item.catalogProductId,
+        serviceItemId: item.serviceItemId,
+        description: item.description,
+      })),
+      quickbooksItems
+    );
+
     // Derive service name: use description field, or first item name, or fallback
     const serviceName = data.description
       || data.items[0]?.description
@@ -217,12 +229,12 @@ export async function POST(request: NextRequest) {
 
       if (invoiceCountToCreate === 1) {
         // Single invoice - use original items
-        lineItems = data.items.map((item) => ({
+        lineItems = data.items.map((item, index) => ({
           description: item.description || invoiceDescription,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           amount: Number((item.unitPrice * item.quantity).toFixed(2)),
-          serviceItemId: item.serviceItemId,
+          serviceItemId: resolvedItems[index].serviceItemId,
         }));
       } else if (entryAmount > 0 && i === 1) {
         // Entry invoice - single line item for entry
@@ -232,7 +244,7 @@ export async function POST(request: NextRequest) {
             quantity: 1,
             unitPrice: entryAmount,
             amount: entryAmount,
-            serviceItemId: data.items[0].serviceItemId,
+            serviceItemId: resolvedItems[0].serviceItemId,
           },
         ];
       } else if (entryAmount > 0 && i > 1) {
@@ -245,7 +257,7 @@ export async function POST(request: NextRequest) {
             quantity: 1,
             unitPrice: Number(installmentAmount.toFixed(2)),
             amount: Number(installmentAmount.toFixed(2)),
-            serviceItemId: data.items[0].serviceItemId,
+            serviceItemId: resolvedItems[0].serviceItemId,
           },
         ];
       } else {
@@ -257,7 +269,7 @@ export async function POST(request: NextRequest) {
             quantity: 1,
             unitPrice: Number(installmentAmount.toFixed(2)),
             amount: Number(installmentAmount.toFixed(2)),
-            serviceItemId: data.items[0].serviceItemId,
+            serviceItemId: resolvedItems[0].serviceItemId,
           },
         ];
       }
@@ -319,8 +331,6 @@ export async function POST(request: NextRequest) {
     // ============================================
 
     // Resolve QB customer once before the loop — avoids N redundant API round-trips
-    await quickbooksService.initialize();
-
     const qbCustomer = await quickbooksService.getOrCreateCustomer({
       email: customer.email,
       name: customer.name,
@@ -437,7 +447,7 @@ export async function POST(request: NextRequest) {
           installmentAmount,
           installmentCount: invoiceCountToCreate - 1,
           startDate: firstInstallmentDueDate,
-          itemRef: data.items[0].serviceItemId,
+          itemRef: resolvedItems[0].serviceItemId,
           serviceName,
           billingAddress: {
             line1: customer.address || undefined,

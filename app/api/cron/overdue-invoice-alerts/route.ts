@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { emailService, OverdueInvoiceEmail } from "@/lib/services/email.service";
 import { differenceInDays } from "date-fns";
+import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,8 @@ export async function POST(request: NextRequest) {
     console.log("[OverdueInvoiceAlerts] Starting overdue check...");
 
     const now = new Date();
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerIdExclusionWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
     const results: Array<{ email: string; success: boolean; error?: string }> =
       [];
 
@@ -47,6 +51,7 @@ export async function POST(request: NextRequest) {
     const overdueInvoices = await prisma.invoice.findMany({
       where: {
         status: "OVERDUE",
+        ...customerIdExclusionWhere,
       },
       select: {
         id: true,

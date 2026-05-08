@@ -718,6 +718,7 @@ enum UserRole {
   FINANCE
   OPERATIONAL
   COMMERCIAL
+  HEAD_COMERCIAL
 }
 
 enum DealStatus {

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import {
+  buildCustomerIdExclusionWhere,
+} from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 import { startOfMonth, subMonths, subDays, startOfYear, format, eachMonthOfInterval, endOfMonth } from "date-fns";
 
 /**
@@ -102,9 +106,13 @@ export async function GET(request: NextRequest) {
     const dateFilter = startDate && endDate
       ? { gte: startDate, lte: endDate }
       : undefined;
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
 
     // Detect if Payment table has data — drives fallback logic throughout
-    const paymentCount = await prisma.payment.count();
+    const paymentCount = await prisma.payment.count({
+      where: customerVisibilityWhere,
+    });
     const hasPayments = paymentCount > 0;
 
     // Calculate chart data range
@@ -115,10 +123,12 @@ export async function GET(request: NextRequest) {
     if (dateRange === "allTime") {
       if (hasPayments) {
         const oldestPayment = await prisma.payment.findFirst({
+          where: customerVisibilityWhere,
           orderBy: { paymentDate: "asc" },
           select: { paymentDate: true },
         });
         const newestPayment = await prisma.payment.findFirst({
+          where: customerVisibilityWhere,
           orderBy: { paymentDate: "desc" },
           select: { paymentDate: true },
         });
@@ -129,12 +139,12 @@ export async function GET(request: NextRequest) {
         }
       } else {
         const oldestPaidInvoice = await prisma.invoice.findFirst({
-          where: { status: "PAID", paidAt: { not: null } },
+          where: { status: "PAID", paidAt: { not: null }, ...customerVisibilityWhere },
           orderBy: { paidAt: "asc" },
           select: { paidAt: true },
         });
         const newestPaidInvoice = await prisma.invoice.findFirst({
-          where: { status: "PAID", paidAt: { not: null } },
+          where: { status: "PAID", paidAt: { not: null }, ...customerVisibilityWhere },
           orderBy: { paidAt: "desc" },
           select: { paidAt: true },
         });
@@ -157,6 +167,7 @@ export async function GET(request: NextRequest) {
       const totalRevenueResult = await prisma.payment.aggregate({
         where: {
           ...(dateFilter && { paymentDate: dateFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amount: true },
       });
@@ -167,6 +178,7 @@ export async function GET(request: NextRequest) {
           status: "PAID",
           amountPaid: { not: null },
           ...(dateFilter && { paidAt: dateFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amountPaid: true },
       });
@@ -187,6 +199,7 @@ export async function GET(request: NextRequest) {
       where: {
         ...(dateFilter && { dueDate: dateFilter }),
         status: { notIn: ["DRAFT", "VOID"] },
+        ...customerVisibilityWhere,
       },
       _sum: { amount: true },
     });
@@ -198,6 +211,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: { notIn: ["DRAFT", "VOID"] },
         ...(dateFilter && { createdAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       _sum: { amount: true },
     });
@@ -205,6 +219,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: "PAID",
         ...(dateFilter && { paidAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       _sum: { amountPaid: true },
     });
@@ -217,6 +232,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: "OVERDUE",
         ...(dateFilter && { createdAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       _sum: { amount: true },
     });
@@ -228,6 +244,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: { notIn: ["DRAFT", "VOID"] },
         ...(dateFilter && { createdAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       _avg: { amount: true },
     });
@@ -240,7 +257,7 @@ export async function GET(request: NextRequest) {
     // Invoice Status Distribution
     const invoiceStatusDist = await prisma.invoice.groupBy({
       by: ["status"],
-      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      where: dateFilter ? { createdAt: dateFilter, ...customerVisibilityWhere } : customerVisibilityWhere,
       _count: { id: true },
       _sum: { amount: true },
     });
@@ -251,6 +268,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
         ...(dateFilter && { createdAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       select: {
         amount: true,
@@ -295,6 +313,7 @@ export async function GET(request: NextRequest) {
         status: "PAID",
         paidAt: { not: null },
         ...(dateFilter && { createdAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       select: {
         createdAt: true,
@@ -324,6 +343,7 @@ export async function GET(request: NextRequest) {
       where: {
         createdAt: { gte: invoiceTrendStartDate },
         status: { notIn: ["DRAFT", "VOID"] },
+        ...customerVisibilityWhere,
       },
       _count: { id: true },
       _sum: { amount: true },
@@ -335,7 +355,7 @@ export async function GET(request: NextRequest) {
 
     // Active Customers (with invoices in period)
     const activeCustomersResult = await prisma.invoice.findMany({
-      where: dateFilter ? { createdAt: dateFilter } : undefined,
+      where: dateFilter ? { createdAt: dateFilter, ...customerVisibilityWhere } : customerVisibilityWhere,
       distinct: ["customerId"],
       select: { customerId: true },
     });
@@ -345,6 +365,7 @@ export async function GET(request: NextRequest) {
     const newCustomersResult = await prisma.customer.count({
       where: {
         ...(dateFilter && { createdAt: dateFilter }),
+        ...(excludedCustomerIds.length > 0 ? { id: { notIn: excludedCustomerIds } } : {}),
       },
     });
     const newCustomers = newCustomersResult;
@@ -356,6 +377,7 @@ export async function GET(request: NextRequest) {
       const paymentsForLtv = await prisma.payment.findMany({
         where: {
           ...(dateFilter && { paymentDate: dateFilter }),
+          ...customerVisibilityWhere,
         },
         select: { customerId: true, amount: true },
       });
@@ -370,6 +392,7 @@ export async function GET(request: NextRequest) {
           status: "PAID",
           amountPaid: { not: null },
           ...(dateFilter && { paidAt: dateFilter }),
+          ...customerVisibilityWhere,
         },
         select: { customerId: true, amountPaid: true },
       });
@@ -384,7 +407,12 @@ export async function GET(request: NextRequest) {
     const customerIds = Array.from(customerPayments.keys());
     const customersWithPayments = customerIds.length > 0
       ? await prisma.customer.findMany({
-          where: { id: { in: customerIds } },
+          where: {
+            id: {
+              in: customerIds,
+              ...(excludedCustomerIds.length > 0 ? { notIn: excludedCustomerIds } : {}),
+            },
+          },
           select: { id: true, name: true, qbTotalPaid: true },
         })
       : [];
@@ -431,6 +459,7 @@ export async function GET(request: NextRequest) {
       by: ["state"],
       where: {
         state: { not: null },
+        ...(excludedCustomerIds.length > 0 ? { id: { notIn: excludedCustomerIds } } : {}),
       },
       _count: { id: true },
       _sum: { qbTotalPaid: true },
@@ -447,7 +476,7 @@ export async function GET(request: NextRequest) {
 
     if (hasPayments) {
       const totalPaymentsResult = await prisma.payment.aggregate({
-        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        where: dateFilter ? { paymentDate: dateFilter, ...customerVisibilityWhere } : customerVisibilityWhere,
         _count: { id: true },
         _sum: { amount: true },
       });
@@ -455,7 +484,7 @@ export async function GET(request: NextRequest) {
 
       const paymentsByMethodResult = await prisma.payment.groupBy({
         by: ["paymentMethod"],
-        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        where: dateFilter ? { paymentDate: dateFilter, ...customerVisibilityWhere } : customerVisibilityWhere,
         _count: { id: true },
         _sum: { amount: true },
       });
@@ -466,7 +495,7 @@ export async function GET(request: NextRequest) {
       }));
 
       const avgPaymentAmountResult = await prisma.payment.aggregate({
-        where: dateFilter ? { paymentDate: dateFilter } : undefined,
+        where: dateFilter ? { paymentDate: dateFilter, ...customerVisibilityWhere } : customerVisibilityWhere,
         _avg: { amount: true },
       });
       avgPaymentAmount = Number(avgPaymentAmountResult._avg.amount || 0);
@@ -476,6 +505,7 @@ export async function GET(request: NextRequest) {
           status: "PAID",
           amountPaid: { not: null },
           ...(dateFilter && { paidAt: dateFilter }),
+          ...customerVisibilityWhere,
         },
         _count: { id: true },
         _sum: { amountPaid: true },
@@ -490,6 +520,7 @@ export async function GET(request: NextRequest) {
           status: "PAID",
           amountPaid: { not: null },
           ...(dateFilter && { paidAt: dateFilter }),
+          ...customerVisibilityWhere,
         },
         _count: { id: true },
         _sum: { amountPaid: true },
@@ -506,6 +537,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: { in: ["REFUNDED", "PARTIALLY_REFUNDED"] },
         ...(dateFilter && { updatedAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       _count: { id: true },
       _sum: { amountRefunded: true },
@@ -533,6 +565,7 @@ export async function GET(request: NextRequest) {
       const paymentsForTrend = await prisma.payment.findMany({
         where: {
           paymentDate: { gte: chartStartDate, lte: chartEndDate },
+          ...customerVisibilityWhere,
         },
         select: { paymentDate: true, amount: true },
       });
@@ -546,6 +579,7 @@ export async function GET(request: NextRequest) {
           status: "PAID",
           amountPaid: { not: null },
           paidAt: { gte: chartStartDate, lte: chartEndDate },
+          ...customerVisibilityWhere,
         },
         select: { paidAt: true, amountPaid: true },
       });
@@ -625,6 +659,7 @@ export async function GET(request: NextRequest) {
       where: {
         dueDate: { gte: chartStartDate, lte: chartEndDate },
         status: { notIn: ["DRAFT", "VOID"] },
+        ...customerVisibilityWhere,
       },
       select: { dueDate: true, amount: true, status: true },
     });
@@ -659,6 +694,7 @@ export async function GET(request: NextRequest) {
     const customersForAcquisition = await prisma.customer.findMany({
       where: {
         createdAt: { gte: chartStartDate, lte: chartEndDate },
+        ...(excludedCustomerIds.length > 0 ? { id: { notIn: excludedCustomerIds } } : {}),
       },
       select: {
         createdAt: true,

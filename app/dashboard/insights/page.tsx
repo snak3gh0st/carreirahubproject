@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
 import { QuickBooksKpiCard } from "@/components/analytics/quickbooks-kpi-card";
@@ -17,6 +17,14 @@ import { CollectionProbabilityGauge } from "@/components/analytics/collection-pr
 import { AtRiskInvoicesTable } from "@/components/analytics/at-risk-invoices-table";
 import { ReceivablesForecastChart } from "@/components/analytics/receivables-forecast-chart";
 import { DateRangeFilter } from "@/components/dashboard/date-range-filter";
+import { LegacyExecutiveSummary } from "@/components/executive-bi/LegacyExecutiveSummary";
+import {
+  buildLegacyExecutiveCards,
+  buildLegacyWindowParams,
+  type LegacyExecutiveCard,
+} from "@/lib/executive-bi/legacy-summary";
+import type { ExecutiveBIResponse } from "@/lib/types/executive-bi";
+import type { DateRangeParam } from "@/lib/types/financial-bi";
 import {
   DollarSign,
   TrendingUp,
@@ -38,6 +46,8 @@ import {
   CheckCircle2,
   Info,
 } from "lucide-react";
+
+type InsightsDateRangeParam = DateRangeParam | "mtd" | "ytd";
 
 interface QuickBooksAnalytics {
   kpis: {
@@ -155,13 +165,81 @@ const formatPercentage = (value: number): string => `${value.toFixed(1)}%`;
 // Format integer with commas
 const formatInteger = (value: number): string => value.toLocaleString();
 
+function toDateInputValue(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+function normalizeExecutiveWindow(
+  rawDateRange: InsightsDateRangeParam,
+  from?: string,
+  to?: string,
+): {
+  dateRange: DateRangeParam;
+  from?: string;
+  to?: string;
+} {
+  if (rawDateRange === "mtd") {
+    const now = new Date();
+    return {
+      dateRange: "custom",
+      from: toDateInputValue(new Date(now.getFullYear(), now.getMonth(), 1)),
+      to: toDateInputValue(now),
+    };
+  }
+
+  if (rawDateRange === "ytd") {
+    const now = new Date();
+    return {
+      dateRange: "custom",
+      from: toDateInputValue(new Date(now.getFullYear(), 0, 1)),
+      to: toDateInputValue(now),
+    };
+  }
+
+  if (rawDateRange === "custom") {
+    return { dateRange: rawDateRange, from, to };
+  }
+
+  return { dateRange: rawDateRange, from, to };
+}
+
 export default function InsightsPage() {
   const searchParams = useSearchParams();
 
   // Get filter params from URL
-  const dateRange = searchParams.get("dateRange") || "allTime";
+  const rawDateRange = (searchParams.get("dateRange") || "allTime") as InsightsDateRangeParam;
   const from = searchParams.get("from") || undefined;
   const to = searchParams.get("to") || undefined;
+  const executiveWindow = normalizeExecutiveWindow(rawDateRange, from, to);
+  const preservedWindow = buildLegacyWindowParams(
+    executiveWindow.dateRange,
+    executiveWindow.from,
+    executiveWindow.to,
+  );
+
+  const fallbackExecutiveCards: LegacyExecutiveCard[] = [
+    { label: "Cash On Hand", value: "Unavailable", helper: "Retry the cockpit for canonical liquidity." },
+    { label: "Net Margin", value: "Unavailable", helper: "Canonical margin is temporarily unavailable." },
+    { label: "Revenue Pace", value: "Unavailable", helper: "Retry the cockpit for shared revenue pace." },
+    { label: "AR At Risk", value: "Unavailable", helper: "Shared receivables risk is temporarily unavailable." },
+    { label: "Runway", value: "Unavailable", helper: "Canonical runway data is temporarily unavailable." },
+  ];
+
+  const {
+    data: executiveData,
+    isLoading: executiveLoading,
+    isError: executiveIsError,
+  } = useQuery<ExecutiveBIResponse>({
+    queryKey: ["executive-bi-insights-summary", executiveWindow.dateRange, executiveWindow.from, executiveWindow.to],
+    queryFn: async () => {
+      const response = await fetch(`/api/analytics/executive-bi?${preservedWindow}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch executive BI");
+      }
+      return response.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   // Fetch QuickBooks analytics data
   const {
@@ -171,10 +249,10 @@ export default function InsightsPage() {
     error,
     refetch,
   } = useQuery<QuickBooksAnalytics>({
-    queryKey: ["quickbooks-analytics", dateRange, from, to],
+    queryKey: ["quickbooks-analytics", rawDateRange, from, to],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (dateRange) params.set("dateRange", dateRange);
+      if (rawDateRange) params.set("dateRange", rawDateRange);
       if (from) params.set("from", from);
       if (to) params.set("to", to);
 
@@ -195,10 +273,10 @@ export default function InsightsPage() {
     isError: forecastError,
     refetch: refetchForecast,
   } = useQuery<ReceivablesForecast>({
-    queryKey: ["receivables-forecast", dateRange, from, to],
+    queryKey: ["receivables-forecast", rawDateRange, from, to],
     queryFn: async () => {
       const params = new URLSearchParams();
-      if (dateRange) params.set("dateRange", dateRange);
+      if (rawDateRange) params.set("dateRange", rawDateRange);
       if (from) params.set("from", from);
       if (to) params.set("to", to);
 
@@ -215,19 +293,60 @@ export default function InsightsPage() {
   // Calculate trends (mock for now - would need historical data)
   const revenueTrend = data ? { value: 12.5, isPositive: true } : undefined;
   const collectionTrend = data ? { value: 3.2, isPositive: true } : undefined;
+  const executiveCards = executiveData
+    ? buildLegacyExecutiveCards(executiveData)
+    : fallbackExecutiveCards;
+  const executiveSubtitle = executiveData
+    ? `${executiveData.overview.briefing} This QuickBooks surface remains available for deeper receivables analysis, forecast review, and finance-side diagnostics.`
+    : "The CEO cockpit is the canonical executive BI entry point. Keep this page for deeper QuickBooks analysis and receivables detail once you need to inspect the underlying mechanics.";
+  const executiveStatus = executiveData
+    ? executiveData.overview.freshness.summary
+    : executiveIsError
+      ? "Canonical executive summary is temporarily unavailable."
+      : "Loading canonical executive summary.";
 
   return (
     <div className="bg-gray-50 min-h-screen">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <LegacyExecutiveSummary
+          eyebrow="QuickBooks Diagnostics"
+          title="QuickBooks Diagnostic Detail"
+          subtitle={executiveSubtitle}
+          status={executiveStatus}
+          cards={executiveCards}
+          loading={executiveLoading && !executiveData}
+          actions={
+            <>
+              <Link
+                href={`/dashboard/bi?${preservedWindow}`}
+                className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-sm font-medium text-brand-verde ring-1 ring-white/20 transition hover:bg-white/90"
+              >
+                Open BI Executivo
+              </Link>
+              <Link
+                href="/dashboard/deals"
+                className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-white ring-1 ring-white/20 transition hover:bg-white/15"
+              >
+                Clint / CRM detail
+              </Link>
+              {executiveWindow.dateRange === "custom" && (executiveWindow.from || executiveWindow.to) ? (
+                <span className="rounded-full bg-brand-tangerina/20 px-3 py-1.5 text-sm font-medium text-white">
+                  Custom window {executiveWindow.from ?? "start"} to {executiveWindow.to ?? "now"}
+                </span>
+              ) : null}
+            </>
+          }
+        />
+
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 mt-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-4xl font-bold text-gray-900">
-                Análises QuickBooks
-              </h1>
+              <h2 className="text-3xl font-bold text-gray-900">
+                QuickBooks Detail Views
+              </h2>
               <p className="text-gray-600 mt-1">
-                Insights financeiros e métricas completas do QuickBooks
+                QuickBooks analytics, receivables forecasting, and underlying finance diagnostics for deeper inspection.
               </p>
             </div>
             <DateRangeFilter onFilterChange={() => refetch()} />

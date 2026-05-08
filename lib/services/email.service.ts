@@ -19,6 +19,8 @@ import { NotificationType, NotificationStatus } from '@prisma/client';
 import { CircuitBreaker, CircuitOpenError } from '@/lib/utils/circuit-breaker';
 import { integrationLogger, StructuredErrorData } from '@/lib/utils/logger';
 import { renderBaseLayout, BRAND_COLORS } from '@/lib/email/brand-layout';
+import type { CostBreakdown } from '@/lib/financial/cost-breakdown';
+import type { CommercialBIResponse } from '@/lib/services/commercial-bi';
 
 // ---------------------------------------------------------------------------
 // Resend client (lazy init)
@@ -165,6 +167,7 @@ export interface AdminDailyDigestData {
     arAging: Array<{ label: string; count: number; amount: number }>;
     topOverdue: Array<{ customer: string; invoiceNumber: string; amount: number; daysOverdue: number }>;
     paymentMethods: Array<{ method: string; amount: number }>;
+    costBreakdown?: CostBreakdown | null;
   };
   commercial: {
     monthlyTrend: Array<{ label: string; dealsWon: number; wonValue: number; newLeads: number; qualified: number }>;
@@ -179,6 +182,24 @@ export interface AdminDailyDigestData {
     monthlyEnrollments: Array<{ label: string; total: number; pass: number; advanced: number }>;
   };
 }
+
+export interface ExecutiveDailyDigestData extends AdminDailyDigestData {
+  aiCfo: {
+    briefing: string;
+    recommendations: string[];
+    generatedAt: Date | null;
+    dateRange: string | null;
+    isStale: boolean;
+  };
+  dataQuality: {
+    quickBooksConnected: boolean;
+    quickBooksTokenExpired: boolean;
+    quickBooksTokenExpiresAt: Date | null;
+    latestQuickBooksError: string | null;
+  };
+}
+
+export type HeadCommercialDigestData = CommercialBIResponse;
 
 export interface AdminDigestData {
   weekRange: string;
@@ -1476,6 +1497,144 @@ export class EmailService {
     );
   }
 
+  async sendHeadCommercialDailyDigest(
+    user: { name?: string | null; email: string },
+    data: HeadCommercialDigestData
+  ): Promise<void> {
+    const subject = `BI Comercial diario — ${fmtDateBR(data.dateRange.to)}`;
+    const $$ = (n: number) => `$${Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    const pct = (n: number) => `${Number(n || 0).toFixed(1)}%`;
+    const pendingTotal =
+      data.summary.pendingContracts +
+      data.summary.pendingInvoices +
+      data.summary.staleOpenDeals +
+      data.summary.unassignedOpenDeals;
+
+    const summaryStrip = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px 0;">
+        <tr>
+          ${[
+            { label: 'Pipeline aberto', val: $$(data.summary.openPipelineValue), color: BRAND_COLORS.textDark },
+            { label: 'Fechado', val: $$(data.summary.wonValue), color: BRAND_COLORS.verde },
+            { label: 'Conversao', val: pct(data.summary.conversionRate), color: BRAND_COLORS.verde },
+            { label: 'Pendencias', val: String(pendingTotal), color: pendingTotal > 0 ? ERROR_RED : BRAND_COLORS.verde },
+          ].map(({ label, val, color }) => `
+            <td width="25%" style="padding:0 6px 0 0;">
+              <div style="background:${BRAND_COLORS.creme};border:1px solid ${BRAND_COLORS.cafeLeite};border-radius:6px;padding:10px;text-align:center;">
+                <div style="font-size:11px;color:${BRAND_COLORS.textMuted};margin-bottom:4px;">${label}</div>
+                <div style="font-size:18px;font-weight:bold;color:${color};">${val}</div>
+              </div>
+            </td>
+          `).join('')}
+        </tr>
+      </table>`;
+
+    const sellersBlock = data.sellers.length > 0 ? `
+      ${sectionTitle('Performance por vendedor')}
+      ${dataTable(
+        ['Vendedor', 'Leads', 'Pipeline', 'Fechado', 'Conversao', 'Pendencias', 'Clint'],
+        data.sellers.map((seller) => {
+          const sellerPending = seller.pendingContracts + seller.pendingInvoices + seller.staleOpenDeals;
+          return tableRow([
+            `<strong>${esc(seller.sellerName)}</strong><br><span style="font-size:12px;color:${BRAND_COLORS.textMuted};">${esc(seller.sellerEmail)}</span>`,
+            `${seller.leads} <span style="font-size:11px;color:${BRAND_COLORS.textMuted};">(${seller.qualifiedLeads} qual.)</span>`,
+            $$(seller.openPipelineValue),
+            `<strong>${$$(seller.wonValue)}</strong>`,
+            pct(seller.conversionRate),
+            `<span style="color:${sellerPending > 0 ? ERROR_RED : BRAND_COLORS.verde};font-weight:bold;">${sellerPending}</span><br><span style="font-size:11px;color:${BRAND_COLORS.textMuted};">${$$(seller.pendingInvoiceAmount)}</span>`,
+            String(seller.clintLinkedDeals),
+          ]);
+        })
+      )}` : calloutBox('Nenhum vendedor ativo encontrado no BI Comercial.', 'warn');
+
+    const sourceBlock = data.sourceBreakdown.length > 0 ? `
+      ${sectionTitle('Origem dos leads')}
+      ${dataTable(
+        ['Origem', 'Leads', 'Qualificados', 'Convertidos', 'Score medio'],
+        data.sourceBreakdown.slice(0, 8).map((source) =>
+          tableRow([
+            esc(source.source),
+            String(source.leads),
+            String(source.qualified),
+            String(source.converted),
+            source.avgScore == null ? '-' : String(source.avgScore),
+          ])
+        )
+      )}` : '';
+
+    const staleDealsBlock = data.actionQueue.staleDeals.length > 0 ? `
+      ${sectionTitle('Negocios parados')}
+      ${dataTable(
+        ['Negocio', 'Vendedor', 'Valor', 'Parado ha'],
+        data.actionQueue.staleDeals.slice(0, 5).map((deal) =>
+          tableRow([esc(deal.title), esc(deal.sellerName), $$(deal.value), `${deal.daysStale} dias`])
+        )
+      )}` : '';
+
+    const pendingInvoicesBlock = data.actionQueue.pendingInvoices.length > 0 ? `
+      ${sectionTitle('Invoices pendentes')}
+      ${dataTable(
+        ['Invoice', 'Vendedor', 'Aberto', 'Atraso'],
+        data.actionQueue.pendingInvoices.slice(0, 5).map((invoice) =>
+          tableRow([
+            esc(invoice.invoiceNumber),
+            esc(invoice.sellerName),
+            `<strong>${$$(invoice.openAmount)}</strong>`,
+            invoice.daysOverdue == null ? '-' : `<span style="color:${ERROR_RED};font-weight:bold;">${invoice.daysOverdue} dias</span>`,
+          ])
+        )
+      )}` : '';
+
+    const missingProcessBlock =
+      data.actionQueue.wonWithoutContract.length > 0 || data.actionQueue.wonWithoutInvoice.length > 0
+        ? `
+          ${sectionTitle('Fechados sem proximo passo')}
+          ${dataTable(
+            ['Tipo', 'Negocio', 'Vendedor', 'Valor'],
+            [
+              ...data.actionQueue.wonWithoutContract.slice(0, 5).map((deal) =>
+                tableRow(['Sem contrato', esc(deal.title), esc(deal.sellerName), $$(deal.value)])
+              ),
+              ...data.actionQueue.wonWithoutInvoice.slice(0, 5).map((deal) =>
+                tableRow(['Sem invoice', esc(deal.title), esc(deal.sellerName), $$(deal.value)])
+              ),
+            ]
+          )}`
+        : '';
+
+    const bodyHtml = `
+      <p style="margin:0 0 16px;">Ola <strong>${esc(user.name || 'Head Comercial')}</strong>, segue o resumo comercial do time para <strong>${fmtDateBR(data.dateRange.to)}</strong>.</p>
+      ${summaryStrip}
+      ${calloutBox(
+        `<strong>${esc(data.freshness.summary)}</strong><br>
+         <span style="font-size:12px;color:${BRAND_COLORS.textMuted};">Periodo: ${fmtDateBR(data.dateRange.from)} ate ${fmtDateBR(data.dateRange.to)}</span>`,
+        data.freshness.state === 'fresh' ? 'info' : 'warn'
+      )}
+      ${sellersBlock}
+      ${sourceBlock}
+      ${staleDealsBlock}
+      ${pendingInvoicesBlock}
+      ${missingProcessBlock}
+    `;
+
+    const html = renderBaseLayout({
+      title: 'BI Comercial diario',
+      preheader: `${fmtDateBR(data.dateRange.to)} · Pipeline ${$$(data.summary.openPipelineValue)} · Fechado ${$$(data.summary.wonValue)} · ${data.summary.sellerCount} vendedores`,
+      bodyHtml,
+      ctaLabel: 'Abrir BI Comercial',
+      ctaUrl: `${APP_URL}/dashboard/commercial-bi`,
+      footerNote: `Automated commercial digest · ${fmtDateBR(data.dateRange.to)}`,
+    });
+
+    await this.sendEmailWithTracking(
+      user.email,
+      subject,
+      html,
+      NotificationType.SELLER_DAILY_DIGEST,
+      {}
+    );
+  }
+
   async sendFinanceDailyDigest(user: User, data: FinanceDigestData): Promise<void> {
     const subject = `Resumo financeiro — ${data.date}`;
 
@@ -2019,6 +2178,43 @@ export class EmailService {
         ]
       )}`;
 
+    const cost = data.financial.costBreakdown;
+    const costBreakdownBlock = cost ? `
+      ${sectionTitle(`COGS & Expense Mix — ${cost.periodLabel}`)}
+      <p style="font-size:13px;margin:0 0 8px 0;">
+        Cost mix: <strong>COGS ${pct(cost.cogsSharePct)}</strong> / <strong>OpEx ${pct(cost.expensesSharePct)}</strong>
+        &nbsp;|&nbsp; COGS:OpEx <strong>${cost.cogsToExpenseRatio == null ? 'n/a' : `${cost.cogsToExpenseRatio.toFixed(2)}x`}</strong>
+        &nbsp;|&nbsp; Gross margin <strong>${pct(cost.grossMarginPct)}</strong>
+      </p>
+      ${dataTable(
+        ['Metric', 'Amount'],
+        [
+          tableRow(['Revenue', `<strong>${$$(cost.revenue)}</strong>`]),
+          tableRow(['COGS', `<strong>${$$(cost.cogsTotal)}</strong>`]),
+          tableRow(['Operating expenses', `<strong>${$$(cost.operatingExpensesTotal)}</strong>`]),
+          tableRow(['Total cost base', `<strong>${$$(cost.totalCost)}</strong>`]),
+        ]
+      )}
+      ${cost.cogsByCategory.length > 0 ? `
+        ${sectionTitle('COGS Breakdown')}
+        ${dataTable(
+          ['Category', 'Amount', '% of COGS'],
+          cost.cogsByCategory.map((category) =>
+            tableRow([esc(category.category), `<strong>${$$(category.amount)}</strong>`, pct(category.pctOfCogs)])
+          )
+        )}
+      ` : ''}
+      ${cost.expensesByCategory.length > 0 ? `
+        ${sectionTitle('Operating Expense Breakdown')}
+        ${dataTable(
+          ['Category', 'Amount', '% of OpEx'],
+          cost.expensesByCategory.map((category) =>
+            tableRow([esc(category.category), `<strong>${$$(category.amount)}</strong>`, pct(category.pctOfExpenses)])
+          )
+        )}
+      ` : ''}
+    ` : '';
+
     // ── Annual trend (trailing 12 months) ────────────────────────────────────
     const annTrend = `
       ${sectionTitle('Annual Trend — Trailing 12 Months')}
@@ -2152,6 +2348,7 @@ export class EmailService {
       <p style="margin:0 0 16px;">Hi <strong>${esc(user.name || 'Admin')}</strong>, here is your end-of-day snapshot for <strong>${esc(data.date)}</strong>.</p>
       ${todayStrip}
       ${finTrend}
+      ${costBreakdownBlock}
       ${annTrend}
       ${arAging}
       ${topOverdueBlock}
@@ -2170,6 +2367,134 @@ export class EmailService {
       ctaLabel: 'Open BI Dashboard',
       ctaUrl: `${APP_URL}/dashboard/bi`,
       footerNote: `Automated daily digest · ${data.date}`,
+    });
+
+    await this.sendEmailWithTracking(
+      user.email,
+      subject,
+      html,
+      NotificationType.ADMIN_WEEKLY_DIGEST,
+      {}
+    );
+  }
+
+  async sendExecutiveDailyDigest(user: { name?: string | null; email: string }, data: ExecutiveDailyDigestData): Promise<void> {
+    const subject = `Resumo executivo diario - ${data.date}`;
+    const currentFinancial = data.financial.monthlyTrend[data.financial.monthlyTrend.length - 1];
+    const currentCommercial = data.commercial.monthlyTrend[data.commercial.monthlyTrend.length - 1];
+    const currentOps = data.operations.monthlyEnrollments[data.operations.monthlyEnrollments.length - 1];
+    const cfoGeneratedAt = data.aiCfo.generatedAt ? fmtDateBR(data.aiCfo.generatedAt) : null;
+    const qbNeedsReconnect = !data.dataQuality.quickBooksConnected || data.dataQuality.quickBooksTokenExpired;
+
+    const summaryStrip = `
+      <table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 18px 0;">
+        <tr>
+          ${[
+            { label: 'Receita hoje', value: fmtMoney(data.today.revenueToday), color: BRAND_COLORS.verde },
+            { label: 'MRR', value: fmtMoney(data.financial.mrr), color: BRAND_COLORS.textDark },
+            { label: 'AR aberto', value: fmtMoney(data.financial.totalAR), color: BRAND_COLORS.textDark },
+            { label: 'Inadimplencia', value: `${data.financial.delinquencyRate.toFixed(1)}%`, color: data.financial.delinquencyRate > 15 ? ERROR_RED : BRAND_COLORS.verde },
+          ].map(({ label, value, color }) => `
+            <td width="25%" style="padding:0 6px 0 0;">
+              <div style="background:${BRAND_COLORS.creme};border:1px solid ${BRAND_COLORS.cafeLeite};border-radius:6px;padding:10px;text-align:center;">
+                <div style="font-size:11px;color:${BRAND_COLORS.textMuted};margin-bottom:4px;">${label}</div>
+                <div style="font-size:17px;font-weight:bold;color:${color};">${value}</div>
+              </div>
+            </td>
+          `).join('')}
+        </tr>
+      </table>`;
+
+    const cfoBlock = `
+      ${sectionTitle('Leitura da IA CFO')}
+      ${data.aiCfo.isStale
+        ? calloutBox('O insight da IA CFO esta desatualizado ou indisponivel. O email mantem os numeros operacionais atuais e evita inventar recomendacoes novas.', 'warn')
+        : ''}
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:6px; padding:14px; font-size:14px; color:${BRAND_COLORS.textDark};">
+        <div style="white-space:pre-wrap;">${esc(data.aiCfo.briefing || 'Sem briefing recente da IA CFO.')}</div>
+        ${data.aiCfo.recommendations.length > 0
+          ? `<ul style="margin:10px 0 0 20px;">${data.aiCfo.recommendations.map((item) => `<li>${esc(item)}</li>`).join('')}</ul>`
+          : ''}
+        ${cfoGeneratedAt ? `<div style="font-size:12px;color:${BRAND_COLORS.textMuted};margin-top:10px;">Gerado em ${esc(cfoGeneratedAt)}${data.aiCfo.dateRange ? ` · ${esc(data.aiCfo.dateRange)}` : ''}</div>` : ''}
+      </div>`;
+
+    const qbWarning = qbNeedsReconnect
+      ? calloutBox(
+          `QuickBooks precisa reconectar. O token salvo expirou${data.dataQuality.quickBooksTokenExpiresAt ? ` em ${fmtDateBR(data.dataQuality.quickBooksTokenExpiresAt)}` : ''}; ate reconectar, relatorios de QB podem vir do cache ou do banco local.${data.dataQuality.latestQuickBooksError ? `<br><span style="font-size:12px;color:${BRAND_COLORS.textMuted};">Ultimo erro: ${esc(data.dataQuality.latestQuickBooksError)}</span>` : ''}`,
+          'warn'
+        )
+      : '';
+
+    const financeBlock = `
+      ${sectionTitle('Financeiro')}
+      ${dataTable(
+        ['Indicador', 'Valor'],
+        [
+          tableRow(['Receita coletada no mes', `<strong>${fmtMoney(currentFinancial?.revenue || 0)}</strong>`]),
+          tableRow(['Faturado no mes', fmtMoney(currentFinancial?.invoiced || 0)]),
+          tableRow(['Taxa de cobranca', `${Number(currentFinancial?.collectionRate || 0).toFixed(1)}%`]),
+          tableRow(['Atrasado em aberto', `<span style="color:${ERROR_RED};font-weight:bold;">${fmtMoney(data.financial.overdueAmount)}</span>`]),
+        ]
+      )}`;
+
+    const commercialBlock = `
+      ${sectionTitle('Comercial')}
+      ${dataTable(
+        ['Indicador', 'Valor'],
+        [
+          tableRow(['Deals ganhos na semana', String(data.week.dealsWonWeek)]),
+          tableRow(['Leads na semana', String(data.week.leadsWeek)]),
+          tableRow(['Receita ganha no mes', `<strong>${fmtMoney(currentCommercial?.wonValue || 0)}</strong>`]),
+          tableRow(['Top closer do mes', data.commercial.topClosers[0] ? `${esc(data.commercial.topClosers[0].name)} · ${fmtMoney(data.commercial.topClosers[0].value)}` : 'Sem deals ganhos no mes']),
+        ]
+      )}`;
+
+    const opsBlock = `
+      ${sectionTitle('Operacoes')}
+      ${dataTable(
+        ['Indicador', 'Valor'],
+        [
+          tableRow(['Alunos ativos', String(data.operations.activeStudents)]),
+          tableRow(['Novas matriculas no mes', String(currentOps?.total || 0)]),
+          tableRow(['PASS / ADVANCED', `${currentOps?.pass || 0} / ${currentOps?.advanced || 0}`]),
+          tableRow(['Tempo medio de negociacao', `${data.operations.avgNegotiationDays} dias`]),
+        ]
+      )}`;
+
+    const overdueBlock = data.financial.topOverdue.length > 0
+      ? `
+        ${sectionTitle('Atencao de cobranca')}
+        ${dataTable(
+          ['Cliente', 'Invoice', 'Valor', 'Atraso'],
+          data.financial.topOverdue.slice(0, 3).map((item) =>
+            tableRow([
+              esc(item.customer),
+              esc(item.invoiceNumber),
+              `<strong>${fmtMoney(item.amount)}</strong>`,
+              `${item.daysOverdue} dias`,
+            ])
+          )
+        )}`
+      : '';
+
+    const bodyHtml = `
+      <p style="margin:0 0 16px;">Ola <strong>${esc(user.name || 'Thais')}</strong>, segue o report executivo diario com financeiro, comercial, operacoes e leitura da IA CFO.</p>
+      ${summaryStrip}
+      ${qbWarning}
+      ${cfoBlock}
+      ${financeBlock}
+      ${commercialBlock}
+      ${opsBlock}
+      ${overdueBlock}
+    `;
+
+    const html = renderBaseLayout({
+      title: 'Resumo executivo diario',
+      preheader: `${data.date} · MRR ${fmtMoney(data.financial.mrr)} · AR ${fmtMoney(data.financial.totalAR)} · Deals semana ${data.week.dealsWonWeek}`,
+      bodyHtml,
+      ctaLabel: 'Abrir BI executivo',
+      ctaUrl: `${APP_URL}/dashboard/bi`,
+      footerNote: `Automated executive digest · ${data.date}`,
     });
 
     await this.sendEmailWithTracking(

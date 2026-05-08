@@ -19,6 +19,12 @@ export default async function DealDetailPage({
     redirect("/auth/signin");
   }
 
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id as string;
+  if (!["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole)) {
+    redirect("/dashboard");
+  }
+
   const deal = await prisma.deal.findUnique({
     where: { id: params.id },
     include: {
@@ -58,6 +64,10 @@ export default async function DealDetailPage({
 
   if (!deal) {
     notFound();
+  }
+
+  if (userRole === "COMMERCIAL" && deal.ownerId !== userId) {
+    redirect("/dashboard");
   }
 
   const totalInvoices = deal.invoices.reduce(
@@ -240,5 +250,4 @@ export default async function DealDetailPage({
     </div>
   );
 }
-
 

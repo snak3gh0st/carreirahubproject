@@ -7,12 +7,12 @@ import { toLeadSafeDto } from '../../dto';
 export const getLeadQualification = defineAiTool({
   name: 'getLeadQualification',
   description: 'Retorna os detalhes de qualificação de um lead específico, incluindo pontuação e critérios de avaliação. Use quando o usuário perguntar sobre a pontuação de um lead ou motivo de qualificação/desqualificação.',
-  allowedRoles: [UserRole.ADMIN, UserRole.COMMERCIAL],
+  allowedRoles: [UserRole.ADMIN, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL],
   inputSchema: z.object({
     leadId: z.string(),
   }),
   async handler({ leadId }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.COMMERCIAL]);
+    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL]);
     try {
       const lead = await prisma.lead.findUnique({
         where: { id: leadId },

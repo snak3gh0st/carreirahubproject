@@ -15,11 +15,17 @@ interface QbReport {
   Rows?: { Row: QbReportRow[] };
 }
 
+export interface ParsedPnlCategory {
+  category: string;
+  amount: number;
+  byMonth?: number[];
+}
+
 export interface ParsedPnL {
   months: string[];
   income: { total: number; byMonth: number[] };
-  cogs: { total: number; byMonth: number[] };
-  expenses: { total: number; byMonth: number[]; byCategory: Array<{ category: string; amount: number }> };
+  cogs: { total: number; byMonth: number[]; byCategory: ParsedPnlCategory[] };
+  expenses: { total: number; byMonth: number[]; byCategory: ParsedPnlCategory[] };
   netIncome: { total: number; byMonth: number[] };
 }
 
@@ -44,6 +50,31 @@ export interface ParsedEntitySummary {
   rows: Array<{ name: string; total: number }>;
 }
 
+function isParsedProfitAndLoss(raw: unknown): raw is ParsedPnL {
+  if (!raw || typeof raw !== "object") return false;
+  const candidate = raw as Partial<ParsedPnL>;
+  return Array.isArray(candidate.months)
+    && !!candidate.income
+    && !!candidate.cogs
+    && !!candidate.expenses
+    && !!candidate.netIncome;
+}
+
+function isParsedBalanceSheet(raw: unknown): raw is ParsedBalanceSheet {
+  if (!raw || typeof raw !== "object") return false;
+  const candidate = raw as Partial<ParsedBalanceSheet>;
+  return !!candidate.bankAccounts
+    && typeof candidate.totalAssets === "number"
+    && typeof candidate.totalLiabilities === "number"
+    && typeof candidate.totalEquity === "number";
+}
+
+function isParsedCashFlow(raw: unknown): raw is ParsedCashFlow {
+  if (!raw || typeof raw !== "object") return false;
+  const candidate = raw as Partial<ParsedCashFlow>;
+  return Array.isArray(candidate.sections) && typeof candidate.netCashChange === "number";
+}
+
 function parseNumber(value: string | undefined): number {
   if (!value || value === "") return 0;
   return parseFloat(value.replace(/,/g, "")) || 0;
@@ -56,8 +87,19 @@ function extractMonthColumns(report: QbReport): string[] {
     .map((col) => col.ColTitle);
 }
 
-function findSectionByGroup(rows: QbReportRow[], groupName: string): QbReportRow | undefined {
-  return rows.find((row) => row.group === groupName || row.Header?.ColData?.[0]?.value === groupName);
+function findSectionByGroup(rows: QbReportRow[], groupNames: string | string[]): QbReportRow | undefined {
+  const names = Array.isArray(groupNames) ? groupNames : [groupNames];
+  for (const row of rows) {
+    const headerValue = row.Header?.ColData?.[0]?.value;
+    if (names.includes(String(row.group)) || (headerValue && names.includes(headerValue))) {
+      return row;
+    }
+    if (row.Rows?.Row) {
+      const nested = findSectionByGroup(row.Rows.Row, names);
+      if (nested) return nested;
+    }
+  }
+  return undefined;
 }
 
 function flattenDataRows(rows: QbReportRow[]): QbReportRow[] {
@@ -84,26 +126,38 @@ function extractSectionTotal(section: QbReportRow | undefined, colCount: number)
   return { total, byMonth };
 }
 
-function extractCategoryBreakdown(section: QbReportRow | undefined): Array<{ category: string; amount: number }> {
+function readCategoryRow(row: QbReportRow): ParsedPnlCategory | null {
+  if (!row.ColData || row.ColData.length < 2) return null;
+
+  const name = row.ColData[0]?.value || "Other";
+  const amount = parseNumber(row.ColData[row.ColData.length - 1]?.value);
+  if (amount <= 0) return null;
+
+  const byMonth = row.ColData.length > 2
+    ? row.ColData.slice(1, row.ColData.length - 1).map((c) => parseNumber(c.value))
+    : [];
+
+  return {
+    category: name,
+    amount,
+    ...(byMonth.length > 0 ? { byMonth } : {}),
+  };
+}
+
+function extractCategoryBreakdown(section: QbReportRow | undefined): ParsedPnlCategory[] {
   if (!section?.Rows?.Row) return [];
-  const categories: Array<{ category: string; amount: number }> = [];
+  const categories: ParsedPnlCategory[] = [];
 
   for (const row of section.Rows.Row) {
-    if (row.ColData && row.ColData.length >= 2) {
-      const name = row.ColData[0]?.value || "Other";
-      const amount = parseNumber(row.ColData[row.ColData.length - 1]?.value);
-      if (amount > 0) {
-        categories.push({ category: name, amount });
-      }
+    const category = readCategoryRow(row);
+    if (category) {
+      categories.push(category);
     }
     if (row.Rows?.Row) {
       for (const subRow of row.Rows.Row) {
-        if (subRow.ColData && subRow.ColData.length >= 2) {
-          const name = subRow.ColData[0]?.value || "Other";
-          const amount = parseNumber(subRow.ColData[subRow.ColData.length - 1]?.value);
-          if (amount > 0) {
-            categories.push({ category: name, amount });
-          }
+        const subCategory = readCategoryRow(subRow);
+        if (subCategory) {
+          categories.push(subCategory);
         }
       }
     }
@@ -113,12 +167,20 @@ function extractCategoryBreakdown(section: QbReportRow | undefined): Array<{ cat
 }
 
 export function parseProfitAndLoss(raw: QbReport): ParsedPnL {
+  if (isParsedProfitAndLoss(raw)) {
+    return {
+      ...raw,
+      cogs: { ...raw.cogs, byCategory: raw.cogs.byCategory ?? [] },
+      expenses: { ...raw.expenses, byCategory: raw.expenses.byCategory ?? [] },
+    };
+  }
+
   const months = extractMonthColumns(raw);
   const rows = raw.Rows?.Row || [];
   const colCount = months.length;
 
   const incomeSection = findSectionByGroup(rows, "Income");
-  const cogsSection = findSectionByGroup(rows, "CostOfGoodsSold");
+  const cogsSection = findSectionByGroup(rows, ["COGS", "CostOfGoodsSold", "Cost of Goods Sold"]);
   const expenseSection = findSectionByGroup(rows, "Expenses");
   const netIncomeSection = findSectionByGroup(rows, "NetIncome");
 
@@ -126,56 +188,40 @@ export function parseProfitAndLoss(raw: QbReport): ParsedPnL {
   const cogs = extractSectionTotal(cogsSection, colCount);
   const expenses = extractSectionTotal(expenseSection, colCount);
   const netIncome = extractSectionTotal(netIncomeSection, colCount);
+  const cogsByCategory = extractCategoryBreakdown(cogsSection);
   const byCategory = extractCategoryBreakdown(expenseSection);
 
   return {
     months,
     income,
-    cogs,
+    cogs: { ...cogs, byCategory: cogsByCategory },
     expenses: { ...expenses, byCategory },
     netIncome,
   };
 }
 
 export function parseBalanceSheet(raw: QbReport): ParsedBalanceSheet {
+  if (isParsedBalanceSheet(raw)) {
+    return raw;
+  }
+
   const rows = raw.Rows?.Row || [];
+  const totalAssetsSection = findSectionByGroup(rows, ["TotalAssets", "Assets", "ASSETS"]);
+  const liabilitiesSection = findSectionByGroup(rows, ["Liabilities", "LIABILITIES"]);
+  const equitySection = findSectionByGroup(rows, ["Equity", "EQUITY"]);
+  const bankAccountsSection = findSectionByGroup(rows, ["BankAccounts", "Bank Accounts", "Cash and cash equivalents"]);
 
-  let totalAssets = 0;
-  let totalLiabilities = 0;
-  let totalEquity = 0;
+  const totalAssets = parseNumber(totalAssetsSection?.Summary?.ColData?.[1]?.value);
+  const totalLiabilities = parseNumber(liabilitiesSection?.Summary?.ColData?.[1]?.value);
+  const totalEquity = parseNumber(equitySection?.Summary?.ColData?.[1]?.value);
+
   const bankAccounts: Array<{ name: string; balance: number }> = [];
-
-  for (const section of rows) {
-    const sectionName = section.Header?.ColData?.[0]?.value || section.group || "";
-
-    if (sectionName === "Assets" || section.group === "Assets") {
-      totalAssets = parseNumber(section.Summary?.ColData?.[1]?.value);
-
-      if (section.Rows?.Row) {
-        for (const subSection of section.Rows.Row) {
-          const subName = subSection.Header?.ColData?.[0]?.value || "";
-          if (subName.includes("Bank") || subName.includes("Cash")) {
-            if (subSection.Rows?.Row) {
-              for (const acctRow of subSection.Rows.Row) {
-                if (acctRow.ColData && acctRow.ColData.length >= 2) {
-                  bankAccounts.push({
-                    name: acctRow.ColData[0]?.value || "Bank Account",
-                    balance: parseNumber(acctRow.ColData[1]?.value),
-                  });
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    if (sectionName === "Liabilities" || section.group === "Liabilities") {
-      totalLiabilities = parseNumber(section.Summary?.ColData?.[1]?.value);
-    }
-
-    if (sectionName === "Equity" || section.group === "Equity") {
-      totalEquity = parseNumber(section.Summary?.ColData?.[1]?.value);
+  for (const acctRow of bankAccountsSection?.Rows?.Row || []) {
+    if (acctRow.ColData && acctRow.ColData.length >= 2) {
+      bankAccounts.push({
+        name: acctRow.ColData[0]?.value || "Bank Account",
+        balance: parseNumber(acctRow.ColData[1]?.value),
+      });
     }
   }
 
@@ -190,6 +236,10 @@ export function parseBalanceSheet(raw: QbReport): ParsedBalanceSheet {
 }
 
 export function parseCashFlow(raw: QbReport): ParsedCashFlow {
+  if (isParsedCashFlow(raw)) {
+    return raw;
+  }
+
   const rows = raw.Rows?.Row || [];
   const sections = rows
     .map((row) => ({
@@ -198,11 +248,40 @@ export function parseCashFlow(raw: QbReport): ParsedCashFlow {
     }))
     .filter((row) => row.name && row.total !== 0);
 
+  const normalized = (value: string) => value.trim().toLowerCase();
+  const netCashNames = [
+    "net cash increase",
+    "net change in cash",
+    "net cash increase for period",
+    "cashincrease",
+  ];
+  const cashActivityNames = [
+    "operating activities",
+    "investing activities",
+    "financing activities",
+    "operatingactivities",
+    "investingactivities",
+    "financingactivities",
+  ];
   const netCashChange = sections.find((section) =>
-    ["Net Cash Increase", "Net Change in Cash", "Net Cash Provided by Operating Activities"].includes(section.name)
-  )?.total || sections.reduce((sum, section) => sum + section.total, 0);
+    netCashNames.includes(normalized(section.name))
+  )?.total || sections
+    .filter((section) => cashActivityNames.includes(normalized(section.name)))
+    .reduce((sum, section) => sum + section.total, 0);
 
   return { sections, netCashChange };
+}
+
+export function ensureParsedProfitAndLoss(raw: ParsedPnL | QbReport): ParsedPnL {
+  return parseProfitAndLoss(raw as QbReport);
+}
+
+export function ensureParsedBalanceSheet(raw: ParsedBalanceSheet | QbReport): ParsedBalanceSheet {
+  return parseBalanceSheet(raw as QbReport);
+}
+
+export function ensureParsedCashFlow(raw: ParsedCashFlow | QbReport): ParsedCashFlow {
+  return parseCashFlow(raw as QbReport);
 }
 
 export function parseAgingSummary(raw: QbReport): ParsedAgingSummary {

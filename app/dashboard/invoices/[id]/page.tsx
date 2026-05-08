@@ -67,7 +67,7 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
   if (!session) redirect("/auth/signin");
 
   const userRole = (session.user as any).role;
-  if (!["ADMIN", "FINANCE", "COMMERCIAL"].includes(userRole)) redirect("/dashboard");
+  if (!["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole)) redirect("/dashboard");
 
   const invoice = await prisma.invoice.findUnique({
     where: { id: params.id },
@@ -516,9 +516,6 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
           <div className="space-y-6">
             <ContractStatusCard
               contract={invoice.contract}
-              invoiceId={invoice.id}
-              customerEmail={invoice.customer?.email || ""}
-              customerName={invoice.customer?.name || ""}
             />
 
             <PaymentStatusCard

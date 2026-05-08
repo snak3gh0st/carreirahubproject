@@ -3,6 +3,8 @@ import { InvoiceStatus, UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toInvoiceSafeDto } from '../../dto';
+import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
+import { getFinancialHubExcludedCustomerIds } from '@/lib/financial/hub-exclusions-db';
 
 export const getInvoices = defineAiTool({
   name: 'getInvoices',
@@ -16,7 +18,9 @@ export const getInvoices = defineAiTool({
   async handler({ status, customerId, limit }, ctx) {
     requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.FINANCE]);
     try {
+      const excludedCustomerIds = customerId ? [] : await getFinancialHubExcludedCustomerIds();
       const where: Record<string, unknown> = {};
+      Object.assign(where, buildCustomerIdExclusionWhere(excludedCustomerIds));
       if (status) where.status = status;
       if (customerId) where.customerId = customerId;
 

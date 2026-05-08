@@ -43,6 +43,7 @@ export class QuickbooksService {
   private companyId: string;
   private baseUrl: string;
   private paymentsBaseUrl: string;
+  private environment: "production" | "sandbox";
   private circuitBreaker: CircuitBreaker;
   private paymentsCircuitBreaker: CircuitBreaker;
   private discountAccountRef: { value: string; name: string } | null = null;
@@ -60,18 +61,29 @@ export class QuickbooksService {
     // Quickbooks Sandbox: https://sandbox-quickbooks.api.intuit.com
     // Quickbooks Production: https://quickbooks.api.intuit.com
     // Set QUICKBOOKS_ENVIRONMENT=production in .env to use production API
-    const isProduction = process.env.QUICKBOOKS_ENVIRONMENT === "production";
-    this.baseUrl = isProduction
+    this.environment = process.env.QUICKBOOKS_ENVIRONMENT === "production" ? "production" : "sandbox";
+    this.baseUrl = "";
+    this.paymentsBaseUrl = "";
+    this.setEnvironment(this.environment);
+  }
+
+  private setEnvironment(environment: "production" | "sandbox") {
+    this.environment = environment;
+    this.baseUrl = environment === "production"
       ? "https://quickbooks.api.intuit.com"
       : "https://sandbox-quickbooks.api.intuit.com";
-
-    // QB Payments API uses a different base URL but same OAuth tokens.
-    // Base is /quickbooks/v4 — payment transaction endpoints live under
-    // /payments/{tokens,charges,echecks}, while customer-scoped payment
-    // method endpoints live at the root (e.g. /customers/{id}/cards).
-    this.paymentsBaseUrl = isProduction
+    this.paymentsBaseUrl = environment === "production"
       ? "https://api.intuit.com/quickbooks/v4"
       : "https://sandbox.api.intuit.com/quickbooks/v4";
+  }
+
+  private getAlternateEnvironment(): "production" | "sandbox" {
+    return this.environment === "production" ? "sandbox" : "production";
+  }
+
+  private shouldRetryWithAlternateEnvironment(status: number, errorText: string) {
+    if (status !== 403) return false;
+    return /ApplicationAuthorizationFailed|errorCode=003100|\"code\":\"3100\"/i.test(errorText);
   }
 
   /**
@@ -144,7 +156,9 @@ export class QuickbooksService {
 
   private async request(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    canRetryWithAlternateEnvironment = true,
+    tokenRefreshRetried = false,
   ): Promise<any> {
     const startTime = Date.now();
     try {
@@ -179,14 +193,12 @@ export class QuickbooksService {
           const errorText = await response.text();
           console.error(`[QuickBooks] 401 Unauthorized: ${errorText}`);
 
-          // Token expirado, tentar refresh se refresh token estiver configurado
-          if (this.refreshToken) {
+          if (this.refreshToken && !tokenRefreshRetried) {
             try {
               console.log("[QuickBooks] Attempting to refresh access token...");
               await this.refreshAccessToken();
-              return this.request(endpoint, options);
+              return this.request(endpoint, options, canRetryWithAlternateEnvironment, true);
             } catch (error) {
-              // Se refresh falhar, lançar erro informando que precisa de novo token
               throw new Error(`Quickbooks access token expired. Please update QUICKBOOKS_ACCESS_TOKEN in .env. Error: ${error instanceof Error ? error.message : String(error)}`);
             }
           } else {
@@ -196,6 +208,20 @@ export class QuickbooksService {
 
         if (!response.ok) {
           const errorText = await response.text();
+          if (canRetryWithAlternateEnvironment && this.shouldRetryWithAlternateEnvironment(response.status, errorText)) {
+            const currentEnvironment = this.environment;
+            const alternateEnvironment = this.getAlternateEnvironment();
+            console.warn(
+              `[QuickBooks] ${currentEnvironment} authorization failed for ${this.companyId}. Retrying with ${alternateEnvironment} host.`
+            );
+            this.setEnvironment(alternateEnvironment);
+            try {
+              return await this.request(endpoint, options, false);
+            } catch (retryError) {
+              this.setEnvironment(currentEnvironment);
+              throw retryError;
+            }
+          }
           console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
           const error: any = new Error(`Quickbooks API error (${response.status}): ${response.statusText}`);
           error.status = response.status;
@@ -262,7 +288,9 @@ export class QuickbooksService {
   private async paymentsRequest(
     endpoint: string,
     options: RequestInit = {},
-    requestId?: string
+    requestId?: string,
+    canRetryWithAlternateEnvironment = true,
+    tokenRefreshRetried = false,
   ): Promise<any> {
     const startTime = Date.now();
 
@@ -295,10 +323,10 @@ export class QuickbooksService {
         });
 
         if (response.status === 401) {
-          if (this.refreshToken) {
+          if (this.refreshToken && !tokenRefreshRetried) {
             console.log("[QuickBooks Payments] Attempting to refresh access token...");
             await this.refreshAccessToken();
-            return this.paymentsRequest(endpoint, options, requestId);
+            return this.paymentsRequest(endpoint, options, requestId, canRetryWithAlternateEnvironment, true);
           }
           throw new Error("QuickBooks Payments access token expired.");
         }
@@ -320,6 +348,20 @@ export class QuickbooksService {
 
         if (!response.ok) {
           const errorText = await response.text();
+          if (canRetryWithAlternateEnvironment && this.shouldRetryWithAlternateEnvironment(response.status, errorText)) {
+            const currentEnvironment = this.environment;
+            const alternateEnvironment = this.getAlternateEnvironment();
+            console.warn(
+              `[QuickBooks Payments] ${currentEnvironment} authorization failed. Retrying with ${alternateEnvironment} host.`
+            );
+            this.setEnvironment(alternateEnvironment);
+            try {
+              return await this.paymentsRequest(endpoint, options, requestId, false);
+            } catch (retryError) {
+              this.setEnvironment(currentEnvironment);
+              throw retryError;
+            }
+          }
           console.error(`[QuickBooks Payments] API Error ${response.status}: ${errorText}`);
           const error: any = new Error(`QuickBooks Payments API error (${response.status}): ${response.statusText}`);
           error.status = response.status;
@@ -1845,6 +1887,32 @@ export class QuickbooksService {
   }
 
   /**
+   * Buscar todos os Payments com paginação (para bulk imports)
+   * QuickBooks limita queries a 1000 resultados por vez
+   */
+  async getAllPaymentsPaginated(options?: {
+    startPosition?: number;
+  }): Promise<{ payments: any[]; hasMore: boolean; nextPosition: number }> {
+    const maxResults = 1000;
+    const startPosition = options?.startPosition || 1;
+
+    const query = `SELECT * FROM Payment STARTPOSITION ${startPosition} MAXRESULTS ${maxResults}`;
+    const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+
+    let payments = result.QueryResponse?.Payment || [];
+    if (!Array.isArray(payments) && payments.Id) {
+      payments = [payments];
+    }
+
+    const count = payments.length;
+    return {
+      payments,
+      hasMore: count === maxResults,
+      nextPosition: startPosition + count,
+    };
+  }
+
+  /**
    * Buscar Payments relacionados a uma Invoice
    */
   async getPaymentsByInvoice(invoiceId: string): Promise<any[]> {
@@ -2411,14 +2479,20 @@ export class QuickbooksService {
   /**
    * Fetch Profit and Loss Report from QuickBooks
    */
-  async getProfitAndLossReport(startDate: string, endDate: string): Promise<any> {
+  async getProfitAndLossReport(
+    startDate: string,
+    endDate: string,
+    options?: { summarizeColumnBy?: "Month" | null }
+  ): Promise<any> {
     await this.initialize();
     const params = new URLSearchParams({
       start_date: startDate,
       end_date: endDate,
-      summarize_column_by: "Month",
       minorversion: "73",
     });
+    if (options?.summarizeColumnBy) {
+      params.set("summarize_column_by", options.summarizeColumnBy);
+    }
     return this.request(`/reports/ProfitAndLoss?${params.toString()}`);
   }
 
@@ -2434,14 +2508,20 @@ export class QuickbooksService {
     return this.request(`/reports/BalanceSheet?${params.toString()}`);
   }
 
-  async getCashFlowReport(startDate: string, endDate: string): Promise<any> {
+  async getCashFlowReport(
+    startDate: string,
+    endDate: string,
+    options?: { summarizeColumnBy?: "Month" | null }
+  ): Promise<any> {
     await this.initialize();
     const params = new URLSearchParams({
       start_date: startDate,
       end_date: endDate,
-      summarize_column_by: "Month",
       minorversion: "73",
     });
+    if (options?.summarizeColumnBy) {
+      params.set("summarize_column_by", options.summarizeColumnBy);
+    }
     return this.request(`/reports/CashFlow?${params.toString()}`);
   }
 
@@ -2463,23 +2543,37 @@ export class QuickbooksService {
     return this.request(`/reports/AgedPayables?${params.toString()}`);
   }
 
-  async getCustomerSalesReport(startDate: string, endDate: string): Promise<any> {
+  async getCustomerSalesReport(
+    startDate: string,
+    endDate: string,
+    options?: { summarizeColumnBy?: "Month" | null }
+  ): Promise<any> {
     await this.initialize();
     const params = new URLSearchParams({
       start_date: startDate,
       end_date: endDate,
       minorversion: "73",
     });
+    if (options?.summarizeColumnBy) {
+      params.set("summarize_column_by", options.summarizeColumnBy);
+    }
     return this.request(`/reports/CustomerSales?${params.toString()}`);
   }
 
-  async getVendorExpensesReport(startDate: string, endDate: string): Promise<any> {
+  async getVendorExpensesReport(
+    startDate: string,
+    endDate: string,
+    options?: { summarizeColumnBy?: "Month" | null }
+  ): Promise<any> {
     await this.initialize();
     const params = new URLSearchParams({
       start_date: startDate,
       end_date: endDate,
       minorversion: "73",
     });
+    if (options?.summarizeColumnBy) {
+      params.set("summarize_column_by", options.summarizeColumnBy);
+    }
     return this.request(`/reports/VendorExpenses?${params.toString()}`);
   }
 }

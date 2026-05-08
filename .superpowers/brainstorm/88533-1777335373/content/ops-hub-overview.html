@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hub Operacional — Recomendações</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f0; color: #1a1a1a; }
+
+  .frame { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    background: #1a4731;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  .sidebar-logo .brand { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.05em; }
+  .sidebar-logo .sub { font-size: 10px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+  .nav-section { padding: 16px 0 8px; }
+  .nav-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.35); padding: 0 16px 6px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7);
+    cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent;
+    position: relative;
+  }
+  .nav-item:hover { color: #fff; background: rgba(255,255,255,0.07); }
+  .nav-item.active { color: #fff; background: rgba(255,255,255,0.12); border-left-color: #f97316; }
+  .nav-item .icon { width: 16px; text-align: center; font-size: 14px; }
+  .nav-badge { margin-left: auto; background: #ef4444; color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; }
+  .nav-badge.amber { background: #f59e0b; }
+  .nav-badge.blue { background: #3b82f6; }
+
+  .new-tag {
+    margin-left: auto; font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+    background: #f97316; color: #fff; padding: 1px 5px; border-radius: 3px;
+  }
+  .exists-tag {
+    margin-left: auto; font-size: 9px; font-weight: 700; letter-spacing: 0.05em;
+    background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); padding: 1px 5px; border-radius: 3px;
+  }
+
+  /* Main */
+  .main { flex: 1; overflow-y: auto; background: #f4f4f0; }
+
+  /* Top bar */
+  .topbar {
+    background: #fff; border-bottom: 1px solid #e5e5e5;
+    padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-title { font-size: 16px; font-weight: 700; color: #1a4731; }
+  .topbar-date { font-size: 12px; color: #999; }
+
+  /* Content */
+  .content { padding: 20px 24px; }
+
+  /* Alert */
+  .alert {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 12px; margin-bottom: 12px; cursor: pointer;
+  }
+  .alert.red { background: #fef2f2; border: 1px solid #fecaca; }
+  .alert.orange { background: #fff7ed; border: 1px solid #fed7aa; }
+  .alert-icon { font-size: 18px; }
+  .alert-text { flex: 1; }
+  .alert-title { font-size: 13px; font-weight: 600; }
+  .alert.red .alert-title { color: #b91c1c; }
+  .alert.orange .alert-title { color: #c2410c; }
+  .alert-sub { font-size: 11px; margin-top: 2px; }
+  .alert.red .alert-sub { color: #dc2626; }
+  .alert.orange .alert-sub { color: #ea580c; }
+
+  /* KPI row */
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: #fff; border-radius: 14px; border: 1px solid #e5e5e5; padding: 16px; }
+  .kpi-label { font-size: 11px; color: #888; font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; gap-6px; }
+  .kpi-value { font-size: 28px; font-weight: 800; line-height: 1; }
+  .kpi-sub { font-size: 10px; color: #aaa; margin-top: 4px; }
+  .kpi.green { border-color: #d1fae5; }
+  .kpi.green .kpi-value { color: #065f46; }
+  .kpi.orange { border-color: #fed7aa; }
+  .kpi.orange .kpi-value { color: #c2410c; }
+  .kpi.blue { border-color: #dbeafe; }
+  .kpi.blue .kpi-value { color: #1d4ed8; }
+  .kpi.amber { border-color: #fde68a; }
+  .kpi.amber .kpi-value { color: #92400e; }
+  .kpi.gray .kpi-value { color: #374151; }
+
+  /* Widgets grid */
+  .widgets { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .widgets-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+
+  .widget {
+    background: #fff; border-radius: 14px; border: 1px solid #e5e5e5; overflow: hidden;
+  }
+  .widget-header {
+    padding: 14px 16px 12px; border-bottom: 1px solid #f0f0f0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .widget-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #888; }
+  .widget-link { font-size: 11px; color: #1a4731; font-weight: 600; }
+  .widget-body { padding: 14px 16px; }
+
+  .new-widget { border: 2px dashed #f97316; position: relative; }
+  .new-widget::before {
+    content: "✦ RECOMENDADO";
+    position: absolute; top: -10px; left: 16px;
+    background: #f97316; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .exists-widget { border: 2px solid #e5e5e5; position: relative; }
+  .exists-widget::before {
+    content: "✓ EXISTE";
+    position: absolute; top: -10px; left: 16px;
+    background: #6b7280; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 4px;
+  }
+  .improved-widget { border: 2px solid #1a4731; position: relative; }
+  .improved-widget::before {
+    content: "↑ MELHORADO";
+    position: absolute; top: -10px; left: 16px;
+    background: #1a4731; color: #fff; font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 4px;
+  }
+
+  /* Mini list */
+  .mini-list { display: flex; flex-direction: column; gap: 8px; }
+  .mini-item { display: flex; align-items: center; gap: 10px; padding: 8px; background: #f9fafb; border-radius: 8px; }
+  .mini-avatar { width: 28px; height: 28px; background: #d1fae5; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #1a4731; flex-shrink: 0; }
+  .mini-name { font-size: 12px; font-weight: 600; color: #111; }
+  .mini-sub { font-size: 10px; color: #999; }
+  .mini-badge { margin-left: auto; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; }
+  .mini-badge.red { background: #fee2e2; color: #b91c1c; }
+  .mini-badge.amber { background: #fef3c7; color: #92400e; }
+  .mini-badge.green { background: #d1fae5; color: #065f46; }
+  .mini-badge.blue { background: #dbeafe; color: #1d4ed8; }
+
+  /* NPS */
+  .nps-score { text-align: center; padding: 10px 0; }
+  .nps-number { font-size: 42px; font-weight: 900; color: #1a4731; line-height: 1; }
+  .nps-label { font-size: 11px; color: #888; margin-top: 4px; }
+  .nps-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; margin: 12px 0 6px; gap: 2px; }
+  .nps-det { background: #ef4444; flex: 2; border-radius: 4px; }
+  .nps-pas { background: #f59e0b; flex: 1; border-radius: 4px; }
+  .nps-pro { background: #10b981; flex: 7; border-radius: 4px; }
+  .nps-legend { display: flex; gap: 10px; }
+  .nps-leg-item { font-size: 10px; color: #888; display: flex; align-items: center; gap: 4px; }
+  .nps-dot { width: 8px; height: 8px; border-radius: 99px; }
+
+  /* Bar chart */
+  .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+  .bar-phase { font-size: 11px; color: #555; width: 90px; truncate; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 20px; background: #f4f4f0; border-radius: 6px; overflow: hidden; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, #1a4731, #2d6a4f); border-radius: 6px; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; }
+  .bar-count { font-size: 10px; font-weight: 700; color: #fff; }
+
+  /* Sessions */
+  .session-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .session-item:last-child { border-bottom: none; }
+  .session-time { font-size: 11px; font-weight: 700; color: #1a4731; width: 42px; flex-shrink: 0; }
+  .session-info { flex: 1; }
+  .session-name { font-size: 12px; font-weight: 600; color: #111; }
+  .session-type { font-size: 10px; color: #888; }
+  .session-status { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 99px; }
+  .session-status.done { background: #d1fae5; color: #065f46; }
+  .session-status.today { background: #dbeafe; color: #1e40af; }
+
+  /* Forms */
+  .form-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .form-row:last-child { border-bottom: none; }
+  .form-dot { width: 8px; height: 8px; border-radius: 99px; background: #f59e0b; flex-shrink: 0; }
+  .form-dot.green { background: #10b981; }
+  .form-name { flex: 1; font-size: 12px; color: #333; }
+  .form-age { font-size: 10px; color: #aaa; }
+
+  /* Quick actions */
+  .quick-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px; }
+  .quick-btn {
+    background: #fff; border: 1px solid #e5e5e5; border-radius: 12px;
+    padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.15s;
+  }
+  .quick-btn:hover { border-color: #1a4731; }
+  .quick-btn.primary { background: #1a4731; border-color: #1a4731; }
+  .quick-btn .q-icon { font-size: 20px; margin-bottom: 5px; }
+  .quick-btn .q-label { font-size: 10px; font-weight: 700; color: #555; }
+  .quick-btn.primary .q-label { color: #fff; }
+
+  /* WhatsApp feed */
+  .msg-item { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+  .msg-item:last-child { border-bottom: none; }
+  .msg-avatar { width: 28px; height: 28px; background: #dcfce7; border-radius: 99px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #16a34a; flex-shrink: 0; }
+  .msg-bubble { background: #f0fdf4; border-radius: 8px; padding: 6px 10px; flex: 1; }
+  .msg-sender { font-size: 10px; font-weight: 700; color: #16a34a; margin-bottom: 2px; }
+  .msg-text { font-size: 11px; color: #333; }
+  .msg-time { font-size: 10px; color: #aaa; margin-top: 3px; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; padding: 12px 24px; background: #fff; border-top: 1px solid #e5e5e5; }
+  .leg-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #555; }
+  .leg-box { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
+
+  h2 { font-size: 18px; font-weight: 800; color: #1a4731; margin-bottom: 4px; }
+  .page-sub { font-size: 12px; color: #888; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="frame">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">CARREIRA USA</div>
+      <div class="sub">Hub Operacional</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Principal</div>
+      <div class="nav-item active">
+        <span class="icon">⬛</span> Dashboard
+        <span class="exists-tag">existe</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📋</span> Pipeline
+        <span class="exists-tag">existe</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📅</span> Ações do Dia
+        <span class="nav-badge">3</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Alunos</div>
+      <div class="nav-item">
+        <span class="icon">👥</span> Todos os Alunos
+        <span class="exists-tag">existe</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">🎓</span> Matricular
+        <span class="exists-tag">existe</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">🎥</span> Sessões
+        <span class="new-tag">novo</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Comunicação</div>
+      <div class="nav-item">
+        <span class="icon">💬</span> WhatsApp
+        <span class="new-tag">novo</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📄</span> Formulários
+        <span class="nav-badge amber">5</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">⭐</span> NPS & Satisfação
+        <span class="new-tag">novo</span>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Gestão</div>
+      <div class="nav-item">
+        <span class="icon">📊</span> Relatórios
+        <span class="new-tag">novo</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">🗺️</span> Coordenador
+        <span class="exists-tag">existe</span>
+      </div>
+      <div class="nav-item">
+        <span class="icon">📚</span> Guia
+        <span class="exists-tag">existe</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Olá, Ana ✦</div>
+        <div class="topbar-date">segunda-feira, 27 de abril de 2026</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Alerts -->
+      <div class="alert red">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-text">
+          <div class="alert-title">3 alunos sem sessão há 14+ dias → Ação imediata</div>
+          <div class="alert-sub">Clique para ver quem precisa de contato</div>
+        </div>
+        <span style="color:#dc2626">→</span>
+      </div>
+      <div class="alert orange">
+        <span class="alert-icon">⏸️</span>
+        <div class="alert-text">
+          <div class="alert-title">2 alunos com mentoria pausada há 7+ dias</div>
+          <div class="alert-sub">Verificar retorno ou encerramento</div>
+        </div>
+        <span style="color:#ea580c">→</span>
+      </div>
+
+      <!-- KPI -->
+      <div class="kpi-grid" style="margin-top:16px">
+        <div class="kpi green">
+          <div class="kpi-label">✅ Ativos</div>
+          <div class="kpi-value">24</div>
+          <div class="kpi-sub">em mentoria</div>
+        </div>
+        <div class="kpi orange">
+          <div class="kpi-label">⏸ Pausados</div>
+          <div class="kpi-value">2</div>
+          <div class="kpi-sub">aguardando retorno</div>
+        </div>
+        <div class="kpi blue">
+          <div class="kpi-label">🎥 Sessões</div>
+          <div class="kpi-value">11</div>
+          <div class="kpi-sub">esta semana</div>
+        </div>
+        <div class="kpi amber">
+          <div class="kpi-label">📋 Formulários</div>
+          <div class="kpi-value">5</div>
+          <div class="kpi-sub">pendentes · 78% resp.</div>
+        </div>
+        <div class="kpi gray">
+          <div class="kpi-label">🏆 Concluídos</div>
+          <div class="kpi-value">31</div>
+          <div class="kpi-sub">56% do total</div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="quick-grid">
+        <div class="quick-btn primary"><div class="q-icon">📋</div><div class="q-label">Pipeline</div></div>
+        <div class="quick-btn"><div class="q-icon">📅</div><div class="q-label">Ações do Dia</div></div>
+        <div class="quick-btn"><div class="q-icon">🎥</div><div class="q-label">Agendar Sessão</div></div>
+        <div class="quick-btn"><div class="q-icon">🎓</div><div class="q-label">Matricular</div></div>
+        <div class="quick-btn"><div class="q-icon">📄</div><div class="q-label">Formulários</div></div>
+        <div class="quick-btn"><div class="q-icon">💬</div><div class="q-label">WhatsApp</div></div>
+      </div>
+
+      <!-- Row 1: Phase dist + Next sessions (NEW) -->
+      <div class="widgets" style="margin-bottom:16px">
+        <div class="widget exists-widget">
+          <div class="widget-header">
+            <span class="widget-title">Distribuição por Fase</span>
+            <span class="widget-link">Ver Pipeline →</span>
+          </div>
+          <div class="widget-body">
+            <div class="bar-row"><span class="bar-phase">Bastão</span><div class="bar-track"><div class="bar-fill" style="width:90%"><span class="bar-count">8</span></div></div></div>
+            <div class="bar-row"><span class="bar-phase">Âncora</span><div class="bar-track"><div class="bar-fill" style="width:55%"><span class="bar-count">5</span></div></div></div>
+            <div class="bar-row"><span class="bar-phase">Visão</span><div class="bar-track"><div class="bar-fill" style="width:44%"><span class="bar-count">4</span></div></div></div>
+            <div class="bar-row"><span class="bar-phase">Pitch</span><div class="bar-track"><div class="bar-fill" style="width:33%"><span class="bar-count">3</span></div></div></div>
+            <div class="bar-row"><span class="bar-phase">Renovação</span><div class="bar-track"><div class="bar-fill" style="width:22%"><span class="bar-count">2</span></div></div></div>
+          </div>
+        </div>
+
+        <div class="widget new-widget">
+          <div class="widget-header">
+            <span class="widget-title">Próximas Sessões</span>
+            <span class="widget-link">Ver Todas →</span>
+          </div>
+          <div class="widget-body">
+            <div class="session-item">
+              <span class="session-time">09:00</span>
+              <div class="session-info">
+                <div class="session-name">Maria Fernanda</div>
+                <div class="session-type">Sessão de Bastão</div>
+              </div>
+              <span class="session-status done">Concluída</span>
+            </div>
+            <div class="session-item">
+              <span class="session-time">14:00</span>
+              <div class="session-info">
+                <div class="session-name">João Ricardo</div>
+                <div class="session-type">Sessão de Âncora</div>
+              </div>
+              <span class="session-status today">Hoje</span>
+            </div>
+            <div class="session-item">
+              <span class="session-time">16:30</span>
+              <div class="session-info">
+                <div class="session-name">Camila Sousa</div>
+                <div class="session-type">Revisão de Visão</div>
+              </div>
+              <span class="session-status today">Hoje</span>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;text-align:center">
+              <span style="font-size:11px;font-weight:700;color:#1a4731">+ Agendar nova sessão</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 2: Alunos recentes + NPS (NEW) + Formulários -->
+      <div class="widgets-3">
+        <div class="widget exists-widget">
+          <div class="widget-header">
+            <span class="widget-title">Alunos Recentes</span>
+            <span class="widget-link">Ver Todos →</span>
+          </div>
+          <div class="widget-body">
+            <div class="mini-list">
+              <div class="mini-item">
+                <div class="mini-avatar">MF</div>
+                <div><div class="mini-name">Maria Fernanda</div><div class="mini-sub">Bastão</div></div>
+                <span class="mini-badge green">Ativo</span>
+              </div>
+              <div class="mini-item">
+                <div class="mini-avatar">JR</div>
+                <div><div class="mini-name">João Ricardo</div><div class="mini-sub">Âncora</div></div>
+                <span class="mini-badge amber">Pausado</span>
+              </div>
+              <div class="mini-item">
+                <div class="mini-avatar">CS</div>
+                <div><div class="mini-name">Camila Sousa</div><div class="mini-sub">Visão</div></div>
+                <span class="mini-badge green">Ativo</span>
+              </div>
+              <div class="mini-item">
+                <div class="mini-avatar">PL</div>
+                <div><div class="mini-name">Pedro Lima</div><div class="mini-sub">Pitch</div></div>
+                <span class="mini-badge red">Sem sessão</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="widget new-widget">
+          <div class="widget-header">
+            <span class="widget-title">NPS & Satisfação</span>
+            <span class="widget-link">Ver Detalhes →</span>
+          </div>
+          <div class="widget-body">
+            <div class="nps-score">
+              <div class="nps-number">72</div>
+              <div class="nps-label">NPS Médio do Mês</div>
+            </div>
+            <div class="nps-bar">
+              <div class="nps-det"></div>
+              <div class="nps-pas"></div>
+              <div class="nps-pro"></div>
+            </div>
+            <div class="nps-legend">
+              <div class="nps-leg-item"><div class="nps-dot" style="background:#ef4444"></div>Detratores (2)</div>
+              <div class="nps-leg-item"><div class="nps-dot" style="background:#f59e0b"></div>Neutros (1)</div>
+              <div class="nps-leg-item"><div class="nps-dot" style="background:#10b981"></div>Promotores (7)</div>
+            </div>
+            <div style="margin-top:10px;padding:8px;background:#f0fdf4;border-radius:8px;font-size:11px;color:#065f46;font-weight:600;text-align:center">
+              ↑ +8 pontos vs mês anterior
+            </div>
+          </div>
+        </div>
+
+        <div class="widget improved-widget">
+          <div class="widget-header">
+            <span class="widget-title">Formulários Pendentes</span>
+            <span class="widget-link">Gerenciar →</span>
+          </div>
+          <div class="widget-body">
+            <div class="form-row">
+              <div class="form-dot"></div>
+              <div class="form-name">Onboarding · Maria F.</div>
+              <span class="form-age">3 dias</span>
+            </div>
+            <div class="form-row">
+              <div class="form-dot"></div>
+              <div class="form-name">NPS Entrada · João R.</div>
+              <span class="form-age">5 dias</span>
+            </div>
+            <div class="form-row">
+              <div class="form-dot"></div>
+              <div class="form-name">Onboarding · Camila S.</div>
+              <span class="form-age">7 dias</span>
+            </div>
+            <div class="form-row">
+              <div class="form-dot green"></div>
+              <div class="form-name" style="color:#888">NPS Saída · Pedro L.</div>
+              <span class="form-age" style="color:#10b981">Respondido</span>
+            </div>
+            <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;text-align:center">
+              <span style="font-size:11px;font-weight:700;color:#f97316">+ Atribuir Formulário</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- Legend -->
+    <div class="legend">
+      <div class="leg-item"><div class="leg-box" style="background:#6b7280"></div>Já existe no sistema</div>
+      <div class="leg-item"><div class="leg-box" style="background:#f97316"></div>Recomendado (novo)</div>
+      <div class="leg-item"><div class="leg-box" style="background:#1a4731"></div>Melhorado</div>
+    </div>
+  </div><!-- /main -->
+</div>
+
+<script>
+// No interactive selection needed here - just a recommendation view
+</script>
+</body>
+</html>

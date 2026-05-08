@@ -6,6 +6,7 @@ interface FinancialKpiRowProps {
   revenue: KPIMetric;
   collectionRate: KPIMetric;
   outstandingAR: KPIMetric;
+  overdueAR?: KPIMetric;
   mrr: KPIMetric;
   topClientConcentration: ConcentrationMetric;
   delinquencyRate?: number;
@@ -43,7 +44,8 @@ export function FinancialKpiRow(props: FinancialKpiRowProps) {
   const hasQb = props.totalExpenses !== undefined;
   const hasBreakeven = hasQb && props.burnRate !== undefined && props.burnRate > 0;
   const hasDelinquency = props.delinquencyRate !== undefined;
-  const baseCount = hasDelinquency ? 6 : 5;
+  const hasOverdueAr = props.overdueAR !== undefined;
+  const baseCount = hasDelinquency ? (hasOverdueAr ? 7 : 6) : hasOverdueAr ? 6 : 5;
   const colCount = hasBreakeven ? baseCount + 3 : hasQb ? baseCount + 2 : baseCount;
   const gridClass =
     colCount >= 8
@@ -59,9 +61,10 @@ export function FinancialKpiRow(props: FinancialKpiRowProps) {
 
   return (
     <div className={gridClass}>
-      <KpiCard title="Revenue (Collected)" metric={props.revenue} fmt="currency" />
+      <KpiCard title="Revenue" metric={props.revenue} fmt="currency" />
       <KpiCard title="Collection Rate" metric={props.collectionRate} fmt="percent" />
       <KpiCard title="Outstanding AR" metric={props.outstandingAR} fmt="currency" />
+      {props.overdueAR && <KpiCard title="Overdue AR" metric={props.overdueAR} fmt="currency" />}
       <KpiCard title="MRR" metric={props.mrr} fmt="currency" />
       <KpiCard title="Top 3 Concentration" metric={props.topClientConcentration} fmt="percent" />
 
@@ -101,7 +104,7 @@ export function FinancialKpiRow(props: FinancialKpiRowProps) {
           <div className={`mt-1 text-xl font-extrabold ${aboveBreakeven ? "text-success-600" : "text-error-600"}`}>
             {aboveBreakeven ? "+" : "-"}{formatCurrency(Math.abs(breakevenGap))}
           </div>
-          <div className="text-[11px] text-gray-400">BEP {formatCurrency(props.burnRate!)}/mo</div>
+          <div className="text-[11px] text-gray-400">Cost base {formatCurrency(props.burnRate!)}/mo</div>
         </div>
       )}
     </div>

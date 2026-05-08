@@ -4,7 +4,7 @@ import { defineAiTool, requireRole } from '../_base';
 import { toolRegistry } from '../index';
 
 const ALL_ROLES = [
-  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL,
+  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL,
 ];
 
 export const listCapabilities = defineAiTool({

@@ -19,7 +19,7 @@ export async function GET(
   }
 
   const user = session.user as any;
-  if (!["ADMIN", "FINANCE", "COMMERCIAL"].includes(user.role)) {
+  if (!["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(user.role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

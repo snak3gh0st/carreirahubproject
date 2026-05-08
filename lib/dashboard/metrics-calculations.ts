@@ -1,3 +1,6 @@
+import { getFinancialDateRange } from "@/lib/financial/bi-helpers";
+import { FinancialBISummary } from "@/lib/types/financial-bi";
+
 export interface DashboardMetricsBuildInput {
   totalLeads: number;
   qualifiedLeads: number;
@@ -27,6 +30,35 @@ export interface DashboardMetricsBuildInput {
     qualifiedLeadCount: number;
     quickbooksGapCount: number;
     autoChargeRiskCount: number;
+  };
+}
+
+export function getDashboardDateFilter(
+  dateRange: string,
+  options: {
+    now?: Date;
+    from?: string | null;
+    to?: string | null;
+  } = {}
+): { gte?: Date; lte?: Date } | undefined {
+  if (options.from && options.to) {
+    return {
+      gte: new Date(options.from),
+      lte: new Date(options.to),
+    };
+  }
+
+  if (dateRange === "allTime") {
+    return undefined;
+  }
+
+  const { startDate, endDate } = getFinancialDateRange(dateRange as Parameters<typeof getFinancialDateRange>[0], {
+    now: options.now,
+  });
+
+  return {
+    gte: startDate,
+    lte: endDate,
   };
 }
 
@@ -92,5 +124,34 @@ export function buildDashboardMetrics(input: DashboardMetricsBuildInput) {
       appliedDateRange: input.appliedDateRange,
     },
     actions,
+  };
+}
+
+export function applyCanonicalFinanceSummary(
+  metrics: ReturnType<typeof buildDashboardMetrics>,
+  summary: FinancialBISummary
+): ReturnType<typeof buildDashboardMetrics> {
+  const totalRevenue = Math.round(summary.revenue.value);
+  const totalPaid = totalRevenue;
+  const pendingAmount = Math.round(summary.outstandingAR.value);
+  const overdueAmount = Math.round(summary.overdueAR.value);
+  const collectionRate = summary.collectionRate.value.toFixed(1);
+  const derivedInvoiced =
+    summary.collectionRate.value > 0
+      ? Math.round(summary.revenue.value / (summary.collectionRate.value / 100))
+      : metrics.finance.totalInvoiced;
+
+  return {
+    ...metrics,
+    finance: {
+      ...metrics.finance,
+      totalRevenue,
+      totalPaid,
+      totalInvoiced: derivedInvoiced,
+      pendingAmount,
+      overdueAmount,
+      collectionRate,
+      revenueGrowth: summary.revenue.changePct.toFixed(1),
+    },
   };
 }

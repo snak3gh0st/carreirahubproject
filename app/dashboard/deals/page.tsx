@@ -23,6 +23,13 @@ export default async function DealsPage({
     redirect("/auth/signin");
   }
 
+  const userRole = (session.user as any).role;
+  const userId = (session.user as any).id as string;
+  if (!["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole)) {
+    redirect("/dashboard");
+  }
+
+  const whereClause = userRole === "COMMERCIAL" ? { ownerId: userId } : {};
   const currentPage = Math.max(1, parseInt(searchParams.page || "1"));
   const skip = (currentPage - 1) * ITEMS_PER_PAGE;
 
@@ -30,6 +37,7 @@ export default async function DealsPage({
     // Buscar deals com paginação
     const [deals, totalCount] = await Promise.all([
       prisma.deal.findMany({
+        where: whereClause,
         skip,
         take: ITEMS_PER_PAGE,
         orderBy: { createdAt: "desc" },
@@ -49,7 +57,7 @@ export default async function DealsPage({
           },
         },
       }),
-      prisma.deal.count(),
+      prisma.deal.count({ where: whereClause }),
     ]);
 
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -57,6 +65,7 @@ export default async function DealsPage({
     // Pipeline por status
     const pipeline = await prisma.deal.groupBy({
       by: ["status"],
+      where: whereClause,
       _count: {
         id: true,
       },
@@ -72,6 +81,7 @@ export default async function DealsPage({
 
     // Calcular valor total (todos os deals, não apenas da página)
     const allDealsValue = await prisma.deal.aggregate({
+      where: whereClause,
       _sum: {
         value: true,
       },
@@ -82,6 +92,7 @@ export default async function DealsPage({
         value: true,
       },
       where: {
+        ...whereClause,
         status: DealStatus.WON,
       },
     });
@@ -316,4 +327,3 @@ export default async function DealsPage({
     );
   }
 }
-

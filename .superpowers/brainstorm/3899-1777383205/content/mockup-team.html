@@ -1,0 +1,159 @@
+<h2>Mockup — /dashboard/team</h2>
+<p class="subtitle">Página principal com tabela de usuários e sheet lateral para criar/editar</p>
+
+<div class="mockup">
+  <div class="mockup-header">Dashboard → Equipe</div>
+  <div class="mockup-body" style="padding: 0;">
+
+    <!-- Page header -->
+    <div style="display:flex; justify-content:space-between; align-items:center; padding: 20px 24px 16px; border-bottom: 1px solid #e5e7eb;">
+      <div>
+        <div style="font-size:18px; font-weight:700; color:#1a1a1a;">Equipe</div>
+        <div style="font-size:13px; color:#6b7280;">Gerencie usuários e permissões de acesso</div>
+      </div>
+      <button class="mock-button" style="background:#1a5c3a; color:white; border:none; padding:8px 16px; border-radius:6px; font-size:13px; cursor:pointer;">+ Novo Usuário</button>
+    </div>
+
+    <!-- Filters row -->
+    <div style="display:flex; gap:8px; padding: 12px 24px; border-bottom: 1px solid #f0f0f0;">
+      <input class="mock-input" placeholder="Buscar por nome ou email..." style="flex:1; max-width:280px; font-size:13px; padding:6px 10px;" />
+      <select style="border:1px solid #d1d5db; border-radius:6px; padding:6px 10px; font-size:13px; color:#374151;">
+        <option>Todos os roles</option>
+        <option>ADMIN</option>
+        <option>SALES</option>
+        <option>SDR</option>
+        <option>FINANCE</option>
+        <option>SUPPORT</option>
+        <option>OPERATIONAL</option>
+        <option>COMMERCIAL</option>
+      </select>
+      <select style="border:1px solid #d1d5db; border-radius:6px; padding:6px 10px; font-size:13px; color:#374151;">
+        <option>Todos os status</option>
+        <option>Ativo</option>
+        <option>Inativo</option>
+      </select>
+    </div>
+
+    <!-- Table -->
+    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+      <thead>
+        <tr style="background:#f9fafb; border-bottom:1px solid #e5e7eb;">
+          <th style="text-align:left; padding:10px 24px; color:#6b7280; font-weight:600; font-size:11px; text-transform:uppercase;">Usuário</th>
+          <th style="text-align:left; padding:10px 12px; color:#6b7280; font-weight:600; font-size:11px; text-transform:uppercase;">Role</th>
+          <th style="text-align:left; padding:10px 12px; color:#6b7280; font-weight:600; font-size:11px; text-transform:uppercase;">Status</th>
+          <th style="text-align:left; padding:10px 12px; color:#6b7280; font-weight:600; font-size:11px; text-transform:uppercase;">Criado em</th>
+          <th style="text-align:right; padding:10px 24px; color:#6b7280; font-weight:600; font-size:11px; text-transform:uppercase;">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Row 1 - Admin -->
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px 24px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:#1a5c3a;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">PL</div>
+              <div>
+                <div style="font-weight:600; color:#1a1a1a;">Paulo Loureiro</div>
+                <div style="color:#9ca3af; font-size:12px;">paulo@carreirausa.com</div>
+              </div>
+            </div>
+          </td>
+          <td style="padding:12px;">
+            <span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">ADMIN</span>
+          </td>
+          <td style="padding:12px;">
+            <span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">● Ativo</span>
+          </td>
+          <td style="padding:12px;color:#6b7280;">Jan 15, 2025</td>
+          <td style="padding:12px 24px;text-align:right;">
+            <span style="color:#6b7280;font-size:12px;font-style:italic;">— você mesmo —</span>
+          </td>
+        </tr>
+        <!-- Row 2 -->
+        <tr style="border-bottom:1px solid #f3f4f6;">
+          <td style="padding:12px 24px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:#2563eb;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">MS</div>
+              <div>
+                <div style="font-weight:600; color:#1a1a1a;">Maria Silva</div>
+                <div style="color:#9ca3af; font-size:12px;">maria@carreirausa.com</div>
+              </div>
+            </div>
+          </td>
+          <td style="padding:12px;">
+            <span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">SALES</span>
+          </td>
+          <td style="padding:12px;">
+            <span style="background:#d1fae5;color:#065f46;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">● Ativo</span>
+          </td>
+          <td style="padding:12px;color:#6b7280;">Mar 3, 2025</td>
+          <td style="padding:12px 24px;text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button style="font-size:12px;padding:4px 10px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;color:#374151;">Editar</button>
+              <button style="font-size:12px;padding:4px 10px;border:1px solid #fca5a5;border-radius:4px;background:white;cursor:pointer;color:#dc2626;">Desativar</button>
+            </div>
+          </td>
+        </tr>
+        <!-- Row 3 - Inactive -->
+        <tr style="border-bottom:1px solid #f3f4f6; opacity:0.6;">
+          <td style="padding:12px 24px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:#9ca3af;color:white;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;">JC</div>
+              <div>
+                <div style="font-weight:600; color:#1a1a1a;">João Costa</div>
+                <div style="color:#9ca3af; font-size:12px;">joao@carreirausa.com</div>
+              </div>
+            </div>
+          </td>
+          <td style="padding:12px;">
+            <span style="background:#f3f4f6;color:#6b7280;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">OPERATIONAL</span>
+          </td>
+          <td style="padding:12px;">
+            <span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;">○ Inativo</span>
+          </td>
+          <td style="padding:12px;color:#6b7280;">Dec 1, 2024</td>
+          <td style="padding:12px 24px;text-align:right;">
+            <div style="display:flex;gap:6px;justify-content:flex-end;">
+              <button style="font-size:12px;padding:4px 10px;border:1px solid #d1d5db;border-radius:4px;background:white;cursor:pointer;color:#374151;">Reativar</button>
+              <button style="font-size:12px;padding:4px 10px;border:1px solid #fca5a5;border-radius:4px;background:#fff5f5;cursor:pointer;color:#dc2626;">Excluir</button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div style="margin-top:24px;">
+<div class="mockup">
+  <div class="mockup-header">Sheet Lateral — Criar Novo Usuário</div>
+  <div class="mockup-body" style="max-width:420px;">
+    <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Novo Usuário</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">Uma senha temporária será enviada por email.</div>
+
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Nome completo</label>
+      <input class="mock-input" placeholder="Ana Ferreira" style="width:100%;font-size:13px;" />
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Email</label>
+      <input class="mock-input" placeholder="ana@carreirausa.com" style="width:100%;font-size:13px;" />
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">Role</label>
+      <select style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:13px;color:#374151;">
+        <option>SALES</option>
+        <option>SDR</option>
+        <option>FINANCE</option>
+        <option>SUPPORT</option>
+        <option>OPERATIONAL</option>
+        <option>COMMERCIAL</option>
+        <option>ADMIN</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button style="flex:1;padding:9px;border:1px solid #d1d5db;border-radius:6px;background:white;font-size:13px;cursor:pointer;">Cancelar</button>
+      <button style="flex:1;padding:9px;border:none;border-radius:6px;background:#1a5c3a;color:white;font-size:13px;font-weight:600;cursor:pointer;">Criar & Enviar Convite</button>
+    </div>
+  </div>
+</div>
+</div>

@@ -6,6 +6,7 @@ import {
 
 const DEFAULT_MAX_INSTALLMENTS = 24;
 const MIN_COMBO_INSTALLMENT_AMOUNT = 300;
+const AVULSO_INSTALLMENT_THRESHOLD = 600;
 
 export interface PaymentPolicy {
   paymentRule: PaymentRule | null;
@@ -25,7 +26,8 @@ export function getProductsFromCatalogProductIds(
 }
 
 export function getPaymentPolicyForProducts(
-  products: CarreiraProduct[]
+  products: CarreiraProduct[],
+  totalAmount = 0
 ): PaymentPolicy {
   if (products.length === 0) {
     return {
@@ -62,6 +64,17 @@ export function getPaymentPolicyForProducts(
     };
   }
 
+  const avulsoOnlySelection = products.every(
+    (product) => product.category === "AVULSO"
+  );
+
+  if (avulsoOnlySelection && totalAmount > AVULSO_INSTALLMENT_THRESHOLD) {
+    return {
+      paymentRule: "MAX_2X_MIN_300",
+      maxInstallments: 2,
+    };
+  }
+
   return {
     paymentRule: "AVISTA_ONLY",
     maxInstallments: 0,
@@ -74,7 +87,7 @@ export function validatePaymentSelection(input: {
   installments: number;
   totalAmount: number;
 }): PaymentPolicy {
-  const policy = getPaymentPolicyForProducts(input.products);
+  const policy = getPaymentPolicyForProducts(input.products, input.totalAmount);
 
   if (policy.paymentRule === "AVISTA_ONLY") {
     if (input.entryAmount > 0 || input.installments > 0) {

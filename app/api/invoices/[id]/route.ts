@@ -36,6 +36,11 @@ export async function GET(
 
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
+    const canViewInvoice = ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole);
+
+    if (!canViewInvoice) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
@@ -107,6 +112,11 @@ export async function PATCH(
 
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id;
+    const canUpdateInvoice = ["ADMIN", "FINANCE", "COMMERCIAL"].includes(userRole);
+
+    if (!canUpdateInvoice) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Check if invoice exists and user has access
     const existingInvoice = await prisma.invoice.findUnique({
@@ -343,4 +353,3 @@ export async function DELETE(
     );
   }
 }
-

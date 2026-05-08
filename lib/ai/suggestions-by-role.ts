@@ -28,6 +28,13 @@ export function getSuggestionsForRole(role: string, hubSlug?: string): string[] 
         'Mostre a conversão por fonte nos últimos 30 dias',
         'Busque o lead de nome "Silva"',
       ];
+    case 'HEAD_COMERCIAL':
+      return [
+        'Compare a performance dos vendedores nos últimos 30 dias',
+        'Quais oportunidades abertas estão paradas há mais de 14 dias?',
+        'Mostre a conversão por vendedor e por fonte',
+        'Quais clientes precisam de ação comercial hoje?',
+      ];
     case 'OPERATIONAL':
       return [
         'Quais alunos estão na fase 3?',

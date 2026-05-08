@@ -13,6 +13,7 @@ import {
   getPaymentPolicyForProducts,
   validatePaymentSelection,
 } from "@/lib/invoices/payment-rules";
+import { getCatalogProductUnitPrice } from "@/lib/invoices/catalog-price";
 
 interface Customer {
   id: string;
@@ -34,6 +35,11 @@ interface InvoiceItemForm {
   unitPrice: string;
   serviceSearch: string;
   showServiceDropdown: boolean;
+}
+
+interface QuickBooksItem {
+  id: string;
+  unitPrice?: number | null;
 }
 
 
@@ -74,6 +80,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     description: "",
   });
   const [qbConnected, setQbConnected] = useState(false);
+  const [quickbooksItemsById, setQuickbooksItemsById] = useState<Record<string, QuickBooksItem>>({});
   const [items, setItems] = useState<InvoiceItemForm[]>([
     { id: `item-${Date.now()}`, catalogProductId: "", serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
   ]);
@@ -102,6 +109,15 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           const demoIds = new Set(["demo-service-1", "demo-service-2", "no-items-found", "wrong-item-types"]);
           const connected = Array.isArray(data) && data.some((d: { id: string }) => !demoIds.has(d.id));
           setQbConnected(connected);
+          if (Array.isArray(data)) {
+            const mappedItems = data.reduce((acc, item: QuickBooksItem) => {
+              if (item?.id) {
+                acc[item.id] = item;
+              }
+              return acc;
+            }, {} as Record<string, QuickBooksItem>);
+            setQuickbooksItemsById(mappedItems);
+          }
         }
       } catch {
         setQbConnected(false);
@@ -207,12 +223,6 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     );
   };
 
-  const selectedCatalogProducts = items
-    .map((item) => CARREIRA_CATALOG.find((product) => product.id === item.catalogProductId))
-    .filter(Boolean) as CarreiraProduct[];
-  const activePaymentPolicy = getPaymentPolicyForProducts(selectedCatalogProducts);
-  const activePaymentRule = activePaymentPolicy.paymentRule;
-
   const applyMentoriaPreset = (preset: "avista" | "entry30_max" | "max") => {
     setMentoriaPreset(preset);
     const currentTotal = calculateTotal();
@@ -249,7 +259,9 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           const product = CARREIRA_CATALOG.find((p) => p.id === value);
           if (product) {
             nextItem.serviceItemId = product.qbItemId;
-            nextItem.unitPrice = String(product.officialPrice);
+            nextItem.unitPrice = String(
+              getCatalogProductUnitPrice(product, quickbooksItemsById[product.qbItemId])
+            );
           }
           // Reset payment preset when product changes
           setMentoriaPreset(null);
@@ -283,6 +295,15 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       return Math.max(0, baseAmount - discountValue);
     }
   };
+
+  const selectedCatalogProducts = items
+    .map((item) => CARREIRA_CATALOG.find((product) => product.id === item.catalogProductId))
+    .filter(Boolean) as CarreiraProduct[];
+  const activePaymentPolicy = getPaymentPolicyForProducts(
+    selectedCatalogProducts,
+    calculateTotal()
+  );
+  const activePaymentRule = activePaymentPolicy.paymentRule;
 
   const generateInstallmentSchedule = () => {
     const total = calculateTotal();
@@ -766,12 +787,21 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                                           item.catalogProductId === product.id ? "bg-blue-100" : ""
                                         }`}
                                       >
-                                        <div className="flex items-center justify-between">
-                                          <span className="text-sm font-medium text-gray-900">{product.name}</span>
-                                          <span className="text-sm font-semibold text-blue-700 ml-2 shrink-0">
-                                            ${product.officialPrice.toLocaleString()}
-                                          </span>
-                                        </div>
+                                        {(() => {
+                                          const displayPrice = getCatalogProductUnitPrice(
+                                            product,
+                                            quickbooksItemsById[product.qbItemId]
+                                          );
+
+                                          return (
+                                            <div className="flex items-center justify-between">
+                                              <span className="text-sm font-medium text-gray-900">{product.name}</span>
+                                              <span className="text-sm font-semibold text-blue-700 ml-2 shrink-0">
+                                                ${displayPrice.toLocaleString()}
+                                              </span>
+                                            </div>
+                                          );
+                                        })()}
                                         {product.description && (
                                           <div className="text-xs text-gray-500 mt-0.5">{product.description}</div>
                                         )}
@@ -959,7 +989,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
               </svg>
               <div>
                 <p className="text-sm font-semibold text-amber-800">Somente à vista</p>
-                <p className="text-xs text-amber-700">Este produto não permite parcelamento (valor ≤ $600).</p>
+                <p className="text-xs text-amber-700">Parcelamento indisponível para esta seleção enquanto o total for de até $600.</p>
               </div>
             </div>
           )}

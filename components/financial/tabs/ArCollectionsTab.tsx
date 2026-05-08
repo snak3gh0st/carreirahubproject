@@ -1,9 +1,10 @@
 "use client";
 
 import { ArCollectionsData } from "@/lib/types/financial-bi";
+import { buildCollectionComparisonSummaries } from "@/lib/financial/ar-collections-helpers";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, Legend, Cell,
+  BarChart, Bar, Line, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid, Legend, Cell, ComposedChart,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
@@ -17,8 +18,57 @@ function formatK(value: number): string {
 }
 
 export function ArCollectionsTab({ data }: ArCollectionsTabProps) {
+  const latestCollectedPerformance = [...data.collectionPerformance].reverse().find((point) => point.collected > 0)
+    || data.collectionPerformance[data.collectionPerformance.length - 1];
+  const avgCollectionRate = data.collectionPerformance.length > 0
+    ? data.collectionPerformance.reduce((sum, point) => sum + point.collectionRate, 0) / data.collectionPerformance.length
+    : 0;
+  const avgDays = data.collectionPerformance.filter((point) => point.avgDaysToPayment !== null);
+  const rollingAvgDays = avgDays.length > 0
+    ? avgDays.reduce((sum, point) => sum + (point.avgDaysToPayment || 0), 0) / avgDays.length
+    : 0;
+  const comparisonSummaries = buildCollectionComparisonSummaries(data.collectionPerformance);
+  const summary2025 = comparisonSummaries.find((summary) => summary.year === "2025");
+  const summary2026 = comparisonSummaries.find((summary) => summary.year === "2026");
+
   return (
     <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <div className="rounded-lg border bg-white p-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Latest booked month</div>
+          <div className="mt-1 text-2xl font-extrabold text-gray-900">{formatK(latestCollectedPerformance?.invoiced || 0)}</div>
+          <div className="text-xs text-gray-500">Invoiced in the latest month with relevant activity</div>
+        </div>
+        <div className="rounded-lg border bg-white p-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Latest collected cash</div>
+          <div className="mt-1 text-2xl font-extrabold text-brand-verde">{formatK(latestCollectedPerformance?.collected || 0)}</div>
+          <div className="text-xs text-gray-500">Cash collected in the same comparison month</div>
+        </div>
+        <div className="rounded-lg border bg-white p-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Avg collection rate</div>
+          <div className="mt-1 text-2xl font-extrabold text-amber-600">{avgCollectionRate.toFixed(1)}%</div>
+          <div className="text-xs text-gray-500">Collected divided by invoiced across the visible 2025-2026 cohort months</div>
+        </div>
+        <div className="rounded-lg border bg-white p-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">Avg days to payment</div>
+          <div className="mt-1 text-2xl font-extrabold text-gray-900">{rollingAvgDays.toFixed(0)}d</div>
+          <div className="text-xs text-gray-500">Weighted by actual payment records, from QuickBooks booking date to payment date</div>
+        </div>
+        <div className="rounded-lg border bg-white p-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">2025 baseline</div>
+          <div className="mt-1 text-2xl font-extrabold text-slate-900">{summary2025 ? `${summary2025.avgCollectionRate.toFixed(1)}%` : "—"}</div>
+          <div className="text-xs text-gray-500">
+            {summary2025?.avgDaysToPayment != null ? `${summary2025.avgDaysToPayment.toFixed(0)}d avg pay speed` : "No payment sample"}
+          </div>
+        </div>
+        <div className="rounded-lg border bg-white p-3">
+          <div className="text-[10px] uppercase tracking-wide text-gray-500">2026 YTD</div>
+          <div className="mt-1 text-2xl font-extrabold text-slate-900">{summary2026 ? `${summary2026.avgCollectionRate.toFixed(1)}%` : "—"}</div>
+          <div className="text-xs text-gray-500">
+            {summary2026?.avgDaysToPayment != null ? `${summary2026.avgDaysToPayment.toFixed(0)}d avg pay speed` : "No payment sample"}
+          </div>
+        </div>
+      </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader><CardTitle className="text-sm">AR Aging Breakdown</CardTitle></CardHeader>
@@ -48,23 +98,73 @@ export function ArCollectionsTab({ data }: ArCollectionsTabProps) {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="text-sm">Collection Performance</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-sm">Cash Movement by Booked Month</CardTitle>
+            <p className="text-xs text-gray-500">This answers how much each booked cohort generated and how much cash actually came in during each calendar month.</p>
+          </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={data.collectionPerformance}>
+              <ComposedChart data={data.collectionPerformance}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="days" tick={{ fontSize: 11 }} />
-                <YAxis yAxisId="rate" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} />
-                <Tooltip />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(value) => {
+                    const [year, month] = String(value).split("-");
+                    return `${month}/${year.slice(2)}`;
+                  }}
+                  minTickGap={20}
+                />
+                <YAxis yAxisId="cash" tick={{ fontSize: 11 }} tickFormatter={formatK} />
+                <Tooltip formatter={(value: number, name: string) => {
+                  return [formatK(value), name];
+                }} labelFormatter={(value) => {
+                  const [year, month] = String(value).split("-");
+                  return `${month}/${year}`;
+                }} />
                 <Legend />
-                <Line yAxisId="days" type="monotone" dataKey="avgDaysToPayment" name="Avg Days to Pay" stroke="#ef4444" strokeWidth={2} dot={false} />
-                <Line yAxisId="rate" type="monotone" dataKey="collectionRate" name="Collection Rate %" stroke="#22c55e" strokeWidth={2} dot={false} />
-              </LineChart>
+                <Bar yAxisId="cash" dataKey="invoiced" name="Invoiced" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                <Bar yAxisId="cash" dataKey="collected" name="Collected" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Collection Efficiency and Payment Speed</CardTitle>
+          <p className="text-xs text-gray-500">This separates cohort effectiveness from cash timing. Orange is how much of each booked cohort has been collected so far. Red is the weighted average days between invoice booking and actual payment records.</p>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={290}>
+            <ComposedChart data={data.collectionPerformance}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11 }}
+                tickFormatter={(value) => {
+                  const [year, month] = String(value).split("-");
+                  return `${month}/${year.slice(2)}`;
+                }}
+                minTickGap={20}
+              />
+              <YAxis yAxisId="rate" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}%`} domain={[0, 100]} />
+              <YAxis yAxisId="days" orientation="right" tick={{ fontSize: 11 }} tickFormatter={(v) => `${v.toFixed(0)}d`} />
+              <Tooltip formatter={(value: number, name: string) => {
+                if (name === "Avg Days to Pay") return [value == null ? "No payment sample" : `${value.toFixed(0)}d`, name];
+                if (name === "Collection Rate %") return [`${value.toFixed(1)}%`, name];
+                return [String(value), name];
+              }} labelFormatter={(value) => {
+                const [year, month] = String(value).split("-");
+                return `${month}/${year}`;
+              }} />
+              <Legend />
+              <Line yAxisId="rate" type="monotone" dataKey="collectionRate" name="Collection Rate %" stroke="#f97316" strokeWidth={3} dot={{ r: 3 }} />
+              <Line yAxisId="days" type="monotone" connectNulls={false} dataKey="avgDaysToPayment" name="Avg Days to Pay" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 2 }} strokeDasharray="5 4" />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader><CardTitle className="text-sm">Overdue Invoices ({data.overdueInvoices.length})</CardTitle></CardHeader>
         <CardContent>

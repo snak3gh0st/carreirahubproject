@@ -1,0 +1,46 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  buildClintDealWriteData,
+  extractClintOwnerEmail,
+} from "../lib/services/clint-sync.service";
+
+test("buildClintDealWriteData preserves Clint owner and external timestamps", () => {
+  const syncTimestamp = new Date("2026-05-05T16:00:00.000Z");
+  const data = buildClintDealWriteData(
+    {
+      id: "deal-1",
+      name: "PASS - Cliente",
+      value: "2500" as any,
+      status: "WON",
+      created_at: "2026-03-30T18:54:34.649755+00:00",
+      updated_at: "2026-04-16T03:24:10.956023+00:00",
+      user: {
+        email: "Jessica.Reis@CarreiraUSA.com",
+        full_name: "Jessica Barreto",
+      },
+    },
+    {
+      customerId: "customer-1",
+      userIdByEmail: new Map([["jessica.reis@carreirausa.com", "seller-1"]]),
+      syncTimestamp,
+    },
+  );
+
+  assert.equal(data.title, "PASS - Cliente");
+  assert.equal(Number(data.value), 2500);
+  assert.equal(data.status, "WON");
+  assert.equal(data.customerId, "customer-1");
+  assert.equal(data.ownerId, "seller-1");
+  assert.equal(data.createdAt?.toISOString(), "2026-03-30T18:54:34.649Z");
+  assert.equal(data.updatedAt?.toISOString(), "2026-04-16T03:24:10.956Z");
+  assert.equal(data.lastClintSyncAt.toISOString(), syncTimestamp.toISOString());
+});
+
+test("extractClintOwnerEmail normalizes owner email from Clint deal user payload", () => {
+  assert.equal(
+    extractClintOwnerEmail({ user: { email: " Comercial@CarreiraUSA.com " } } as any),
+    "comercial@carreirausa.com",
+  );
+});

@@ -21,7 +21,7 @@ describe('DocuSign template signer sequence', () => {
         routingOrder: signer.routingOrder,
       })),
       [
-        { name: 'Thais', email: 'people@carreirausa.com', routingOrder: '1' },
+        { name: 'Thais', email: 'thais.mei@carreirausa.com', routingOrder: '1' },
         { name: 'Nadya', email: 'people@carreirausa.com', routingOrder: '2' },
         { name: 'Diego Milan', email: 'juridico@carreirausa.com', routingOrder: '3' },
         { name: 'Client Example', email: 'client@example.com', routingOrder: '4' },

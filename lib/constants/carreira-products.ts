@@ -10,7 +10,7 @@ export interface CarreiraProduct {
   qbItemId: string;       // QuickBooks item ID used in invoice line items
   name: string;
   category: ProductCategory;
-  officialPrice: number;  // price from Tabela de Valores (overrides QB price)
+  officialPrice: number;  // fallback price when QuickBooks does not return a unit price
   paymentRule: PaymentRule;
   maxInstallments?: number;
   description?: string;
@@ -80,11 +80,31 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
     maxInstallments: 2,
     description: "Sessão Bússola + Construção de Material — Advanced",
   },
+  {
+    id: "combo-material-i",
+    qbItemId: "96",
+    name: "Construção de Material I",
+    category: "COMBO",
+    officialPrice: 950,
+    paymentRule: "MAX_2X_MIN_300",
+    maxInstallments: 2,
+    description: "Construção de Material + Sessão Bússola — Early Career / Pass",
+  },
+  {
+    id: "combo-material-ii",
+    qbItemId: "97",
+    name: "Construção de Material II",
+    category: "COMBO",
+    officialPrice: 1500,
+    paymentRule: "MAX_2X_MIN_300",
+    maxInstallments: 2,
+    description: "Construção de Material + Sessão Bússola — Advanced",
+  },
 
   // ── Produtos Avulsos ────────────────────────────────────────────────────
   {
     id: "avulso-bussola",
-    qbItemId: "1010000251",
+    qbItemId: "68",
     name: "Sessão Bússola",
     category: "AVULSO",
     officialPrice: 300,
@@ -93,7 +113,7 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
   },
   {
     id: "avulso-ingles",
-    qbItemId: "1010000051",
+    qbItemId: "94",
     name: "Teste de Inglês",
     category: "AVULSO",
     officialPrice: 90,
@@ -102,7 +122,7 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
   },
   {
     id: "avulso-mock",
-    qbItemId: "1010000101",
+    qbItemId: "67",
     name: "Mock Interview",
     category: "AVULSO",
     officialPrice: 197,
@@ -111,7 +131,7 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
   },
   {
     id: "avulso-analise-gravada",
-    qbItemId: "1010000262",
+    qbItemId: "60",
     name: "Análise de Entrevista Gravada",
     category: "AVULSO",
     officialPrice: 297,
@@ -120,7 +140,7 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
   },
   {
     id: "avulso-analise-vagas",
-    qbItemId: "1010000241",
+    qbItemId: "69",
     name: "Análise de Vagas",
     category: "AVULSO",
     officialPrice: 297,
@@ -129,7 +149,7 @@ export const CARREIRA_CATALOG: CarreiraProduct[] = [
   },
   {
     id: "avulso-negociacao",
-    qbItemId: "1010000122",
+    qbItemId: "63",
     name: "Negociação de Salário",
     category: "AVULSO",
     officialPrice: 187,

@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
+import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
+import { getFinancialHubExcludedCustomerIds } from '@/lib/financial/hub-exclusions-db';
 
 export const getPaymentsTimeline = defineAiTool({
   name: 'getPaymentsTimeline',
@@ -17,7 +19,11 @@ export const getPaymentsTimeline = defineAiTool({
     requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.FINANCE]);
     try {
       const where: Record<string, unknown> = {};
-      if (customerId) where.customerId = customerId;
+      if (customerId) {
+        where.customerId = customerId;
+      } else {
+        Object.assign(where, buildCustomerIdExclusionWhere(await getFinancialHubExcludedCustomerIds()));
+      }
       if (startDate || endDate) {
         const dateFilter: Record<string, Date> = {};
         if (startDate) dateFilter.gte = new Date(startDate);

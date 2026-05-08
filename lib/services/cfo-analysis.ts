@@ -5,9 +5,17 @@ import { integrationLogger } from "@/lib/utils/logger";
 import { buildQbCfoReportNarrative, QbCfoReportPacket } from "@/lib/financial/qb-cfo-report-packet";
 import { getCfoModelCandidates, modelSupportsJsonResponseFormat } from "@/lib/services/cfo-models";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let _openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  return _openai;
+}
 
 const AI_MODEL = process.env.AI_MODEL;
 
@@ -146,6 +154,13 @@ Respond with this exact JSON structure:
 - Compare to industry benchmarks where relevant (services businesses typically target 15-25% net margin, 90%+ collection rate, <30 DSO).`;
 
 export async function generateCfoAnalysis(input: CfoAnalysisInput): Promise<{ briefing: string; recommendations: string[] }> {
+  if (!process.env.OPENAI_API_KEY) {
+    return {
+      briefing: "AI analysis temporarily unavailable. Rule-based insights are shown below.",
+      recommendations: [],
+    };
+  }
+
   const top3Text = input.topThreeClients
     .map((c) => `${c.name} (${c.percentage.toFixed(0)}%)`)
     .join(", ");
@@ -175,7 +190,7 @@ Write the briefing and recommendations as JSON.`;
 
     for (const model of getCfoModelCandidates(AI_MODEL)) {
       try {
-        const completion = await openai.chat.completions.create({
+        const completion = await getOpenAI().chat.completions.create({
           model,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },

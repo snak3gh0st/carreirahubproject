@@ -3,8 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { AutoChargeStatus, ContractStatus, LeadStatus, DealStatus, InvoiceStatus } from "@prisma/client";
-import { subDays, startOfYear } from "date-fns";
-import { buildDashboardMetrics } from "@/lib/dashboard/metrics-calculations";
+import {
+  applyCanonicalFinanceSummary,
+  buildDashboardMetrics,
+  getDashboardDateFilter,
+} from "@/lib/dashboard/metrics-calculations";
+import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
+import { getFinancialBIData } from "@/lib/services/financial-bi";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +28,8 @@ export async function GET(request: NextRequest) {
     }
     const userRole = (session.user as any).role as string;
     const userId = (session.user as any).id as string;
+    const isIndividualCommercial = userRole === "COMMERCIAL";
+    const canUseCanonicalFinance = userRole === "ADMIN" || userRole === "FINANCE";
 
     // Parse query parameters for filters
     const url = new URL(request.url);
@@ -36,34 +44,12 @@ export async function GET(request: NextRequest) {
     const today = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const yearStart = startOfYear(now);
 
-    let dateFilter: { gte?: Date; lte?: Date } | undefined;
-
-    if (fromDate && toDate) {
-      dateFilter = {
-        gte: new Date(fromDate),
-        lte: new Date(toDate),
-      };
-    } else {
-      switch (dateRange) {
-        case "last7":
-          dateFilter = { gte: subDays(now, 7) };
-          break;
-        case "last30":
-          dateFilter = { gte: subDays(now, 30) };
-          break;
-        case "last90":
-          dateFilter = { gte: subDays(now, 90) };
-          break;
-        case "thisYear":
-          dateFilter = { gte: yearStart };
-          break;
-        case "allTime":
-        default:
-          dateFilter = undefined; // No date filter
-      }
-    }
+    const dateFilter = getDashboardDateFilter(dateRange, {
+      now,
+      from: fromDate,
+      to: toDate,
+    });
 
     // Parse invoice status filter
     const invoiceStatuses = invoiceStatus
@@ -72,11 +58,11 @@ export async function GET(request: NextRequest) {
 
     // Build where clauses with filters
     const invoiceWhereInvoiceStatus = invoiceStatuses ? { status: { in: invoiceStatuses } } : {};
-    const invoiceOwnerWhere = userRole === "COMMERCIAL" ? { ownerId: userId } : {};
-    const dealOwnerWhere = userRole === "COMMERCIAL" ? { ownerId: userId } : {};
-    const leadOwnerWhere = userRole === "COMMERCIAL" ? { createdById: userId } : {};
+    const invoiceOwnerWhere = isIndividualCommercial ? { ownerId: userId } : {};
+    const dealOwnerWhere = isIndividualCommercial ? { ownerId: userId } : {};
+    const leadOwnerWhere = isIndividualCommercial ? { createdById: userId } : {};
     const customerOwnerWhere =
-      userRole === "COMMERCIAL"
+      isIndividualCommercial
         ? {
             OR: [
               { createdById: userId },
@@ -93,6 +79,18 @@ export async function GET(request: NextRequest) {
     // For revenue metrics, filter by when payment was received (paidAt), not when invoice was created
     // This ensures "Last 30 Days" shows revenue RECEIVED in last 30 days, not invoices CREATED in last 30 days
     const invoiceWherePaidAt = dateFilter ? { paidAt: dateFilter } : {};
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerIdExclusionWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
+    const customerVisibilityWhere =
+      excludedCustomerIds.length > 0 ? { id: { notIn: excludedCustomerIds } } : {};
+
+    const financialSummaryPromise =
+      canUseCanonicalFinance
+        ? getFinancialBIData(dateRange as any, fromDate || undefined, toDate || undefined, "revenue").catch((error) => {
+            console.error("[Dashboard Metrics] Failed to load canonical financial summary:", error);
+            return null;
+          })
+        : Promise.resolve(null);
     
     // Batch the reads into a single transaction so duplicate requests don't fan out into
     // a large burst of concurrent DB connections.
@@ -122,7 +120,7 @@ export async function GET(request: NextRequest) {
       prisma.lead.count({ where: { ...leadOwnerWhere, ...leadWhereCreatedAt, status: LeadStatus.QUALIFIED } }),
       prisma.deal.groupBy({
         by: ["status"],
-        where: { ...dealOwnerWhere, ...dealWhereCreatedAt },
+        where: { ...dealOwnerWhere, ...dealWhereCreatedAt, ...customerIdExclusionWhere },
         orderBy: { status: "asc" },
         _count: { _all: true },
         _sum: { value: true },
@@ -130,6 +128,7 @@ export async function GET(request: NextRequest) {
       prisma.deal.count({
         where: {
           ...dealOwnerWhere,
+          ...customerIdExclusionWhere,
           status: DealStatus.WON,
           createdAt: { gte: startOfMonth },
         },
@@ -137,6 +136,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           ...invoiceWhereInvoiceStatus,
           ...invoiceWhereCreatedAt,
         },
@@ -144,6 +144,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.aggregate({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           ...invoiceWhereInvoiceStatus,
           ...invoiceWhereCreatedAt,
         },
@@ -155,6 +156,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.aggregate({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           ...invoiceWhereInvoiceStatus,
           ...invoiceWherePaidAt,
           status: { in: [InvoiceStatus.PAID, InvoiceStatus.PARTIALLY_PAID] },
@@ -166,7 +168,8 @@ export async function GET(request: NextRequest) {
       prisma.payment.aggregate({
         where: {
           ...(dateFilter ? { paymentDate: dateFilter } : {}),
-          ...(userRole === "COMMERCIAL" ? { invoice: { ownerId: userId } } : {}),
+          ...customerIdExclusionWhere,
+          ...(isIndividualCommercial ? { invoice: { ownerId: userId } } : {}),
         },
         _count: { _all: true },
         _sum: { amount: true },
@@ -175,6 +178,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.aggregate({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           ...invoiceWhereInvoiceStatus,
           status: { notIn: [InvoiceStatus.PAID, InvoiceStatus.VOID] },
           dueDate: { lt: today },
@@ -188,6 +192,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           status: InvoiceStatus.PAID,
           paidAt: {
             gte: lastMonth,
@@ -198,6 +203,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           status: InvoiceStatus.PAID,
           paidAt: {
             gte: startOfMonth,
@@ -207,24 +213,28 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           status: { in: [InvoiceStatus.SENT, InvoiceStatus.OVERDUE, InvoiceStatus.PARTIALLY_PAID] },
         },
       }),
       prisma.invoice.count({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           status: InvoiceStatus.PARTIALLY_PAID,
         },
       }),
       prisma.contract.count({
         where: {
-          ...(userRole === "COMMERCIAL" ? { deal: { ownerId: userId } } : {}),
+          ...customerIdExclusionWhere,
+          ...(isIndividualCommercial ? { deal: { ownerId: userId } } : {}),
           status: { in: [ContractStatus.SENT_FOR_SIGNATURE, ContractStatus.VIEWED] },
         },
       }),
       prisma.deal.count({
         where: {
           ...dealOwnerWhere,
+          ...customerIdExclusionWhere,
           status: DealStatus.OPEN,
         },
       }),
@@ -237,28 +247,34 @@ export async function GET(request: NextRequest) {
       prisma.customer.count({
         where: {
           ...customerOwnerWhere,
+          ...customerVisibilityWhere,
           quickbooks_id: null,
         },
       }),
       prisma.invoice.count({
         where: {
           ...invoiceOwnerWhere,
+          ...customerIdExclusionWhere,
           autoChargeStatus: { in: [AutoChargeStatus.FAILED, AutoChargeStatus.RETRY_PENDING] },
         },
       }),
       prisma.customer.count({
         where: {
           ...customerOwnerWhere,
+          ...customerVisibilityWhere,
           ...(dateFilter ? { createdAt: dateFilter } : {}),
         },
       }),
       prisma.customer.count({
         where: {
           ...customerOwnerWhere,
+          ...customerVisibilityWhere,
           createdAt: { gte: startOfMonth },
         },
       }),
     ]);
+
+    const financialSummary = await financialSummaryPromise;
 
     // Calculate financial metrics
     const totalDeals = dealSummary.reduce((sum, deal) => sum + getGroupCount(deal._count), 0);
@@ -283,7 +299,7 @@ export async function GET(request: NextRequest) {
     const pendingAmount = totalInvoiced - totalPaid;
     const collectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0;
 
-    const metrics = buildDashboardMetrics({
+    let metrics = buildDashboardMetrics({
       totalLeads,
       qualifiedLeads,
       totalDeals,
@@ -317,6 +333,10 @@ export async function GET(request: NextRequest) {
         autoChargeRiskCount,
       },
     });
+
+    if (financialSummary?.summary && canUseCanonicalFinance) {
+      metrics = applyCanonicalFinanceSummary(metrics, financialSummary.summary);
+    }
 
     return NextResponse.json(metrics);
   } catch (error) {

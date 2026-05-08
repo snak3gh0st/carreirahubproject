@@ -105,7 +105,7 @@ function MonthlyProjectionTable({
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center justify-between">
-          <span>Projeção Mensal de Recebíveis (6 meses)</span>
+          <span>Pipeline de Recebimento (carteira já vendida)</span>
           {hasBreakeven && (
             <span className="text-[11px] font-normal text-gray-500">
               Breakeven mensal:{" "}
@@ -113,6 +113,7 @@ function MonthlyProjectionTable({
             </span>
           )}
         </CardTitle>
+        <p className="text-xs text-gray-500">Mostra apenas o que já foi vendido e ainda pode entrar em caixa, com cenários esperado e conservador.</p>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
@@ -208,6 +209,120 @@ function MonthlyProjectionTable({
   );
 }
 
+function SalesForecastTable({
+  salesForecast,
+  monthlyBreakeven,
+}: {
+  salesForecast: NonNullable<ReceivablesProjectionData["salesForecast"]>;
+  monthlyBreakeven: number;
+}) {
+  const hasBreakeven = monthlyBreakeven > 0;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm flex items-center justify-between">
+          <span>Projeção de Novas Vendas e Entrada Total</span>
+          <span className="text-[11px] font-normal text-gray-500">
+            Média fechada:{" "}
+            <span className="font-bold text-slate-700">{fmt(salesForecast.avgProjectedSales)}</span>
+            {" "}vendas /{" "}
+            <span className="font-bold text-green-700">{fmt(salesForecast.avgProjectedCashIn)}</span>
+            {" "}cash-in
+          </span>
+        </CardTitle>
+        <p className="text-xs text-gray-500">
+          Este forecast usa a média dos meses fechados para projetar novas vendas, soma isso ao pipeline de recebimento e mede o gap total contra o breakeven.
+        </p>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-lg border bg-slate-50 p-3 text-center">
+            <div className="text-[10px] uppercase text-slate-500">Realization rate</div>
+            <div className="mt-1 text-xl font-extrabold text-slate-900">{(salesForecast.realizationRate * 100).toFixed(1)}%</div>
+          </div>
+          <div className="rounded-lg border bg-blue-50 p-3 text-center">
+            <div className="text-[10px] uppercase text-blue-600">Avg projected sales</div>
+            <div className="mt-1 text-xl font-extrabold text-blue-700">{fmt(salesForecast.avgProjectedSales)}</div>
+          </div>
+          <div className="rounded-lg border bg-green-50 p-3 text-center">
+            <div className="text-[10px] uppercase text-green-600">Avg projected cash-in</div>
+            <div className="mt-1 text-xl font-extrabold text-green-700">{fmt(salesForecast.avgProjectedCashIn)}</div>
+          </div>
+          <div className="rounded-lg border bg-purple-50 p-3 text-center">
+            <div className="text-[10px] uppercase text-purple-600">Monthly breakeven</div>
+            <div className="mt-1 text-xl font-extrabold text-purple-700">{fmt(monthlyBreakeven)}</div>
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={salesForecast.monthly} barGap={2}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="monthLabel" tick={{ fontSize: 10 }} />
+              <YAxis tickFormatter={fmt} tick={{ fontSize: 10 }} />
+              <Tooltip formatter={(v: number) => fmt(v)} />
+              <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="existingReceivables" name="Existing Receivables" fill="#93c5fd" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="projectedCashIn" name="Projected New Sales Cash-In" fill="#22c55e" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="totalExpectedInflow" name="Total Expected Inflow" fill="#1d4ed8" radius={[3, 3, 0, 0]} />
+              {hasBreakeven && (
+                <ReferenceLine
+                  y={monthlyBreakeven}
+                  stroke="#7c3aed"
+                  strokeDasharray="6 3"
+                  strokeWidth={2}
+                  label={{ value: `Breakeven ${fmt(monthlyBreakeven)}`, fill: "#7c3aed", fontSize: 10, position: "insideTopRight" }}
+                />
+              )}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b bg-gray-50 text-left text-[10px] uppercase tracking-wide text-gray-500">
+                <th className="px-2 py-2">Mês</th>
+                <th className="px-2 py-2 text-right">Vendas Proj.</th>
+                <th className="px-2 py-2 text-right">Cash-In Novo</th>
+                <th className="px-2 py-2 text-right">Recebíveis Exist.</th>
+                <th className="px-2 py-2 text-right">Entrada Total</th>
+                <th className="px-2 py-2 text-right">Conservador</th>
+                {hasBreakeven && <th className="px-2 py-2 text-center">Gap vs BEP</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {salesForecast.monthly.map((row, index) => (
+                <tr key={row.month} className={`border-b transition hover:bg-gray-50 ${index === 0 ? "bg-indigo-50 font-medium" : ""}`}>
+                  <td className="px-2 py-2">
+                    {row.monthLabel}
+                    {index === 0 && <span className="ml-1 rounded bg-indigo-200 px-1 text-[9px] text-indigo-700">atual</span>}
+                  </td>
+                  <td className="px-2 py-2 text-right text-blue-700">{fmt(row.projectedSales)}</td>
+                  <td className="px-2 py-2 text-right text-green-700">{fmt(row.projectedCashIn)}</td>
+                  <td className="px-2 py-2 text-right text-slate-700">{fmt(row.existingReceivables)}</td>
+                  <td className="px-2 py-2 text-right font-semibold">{fmt(row.totalExpectedInflow)}</td>
+                  <td className="px-2 py-2 text-right text-amber-600">{fmt(row.conservativeTotalInflow)}</td>
+                  {hasBreakeven && (
+                    <td className="px-2 py-2 text-center">
+                      {row.gapToBreakeven >= 0 ? (
+                        <span className="rounded bg-green-100 px-1.5 py-0.5 text-[9px] font-bold text-green-700">+{fmt(row.gapToBreakeven)}</span>
+                      ) : (
+                        <span className="rounded bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700">-{fmt(Math.abs(row.gapToBreakeven))}</span>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function CashFlowTab({ data, receivablesProjection }: CashFlowTabProps) {
   return (
     <div className="space-y-6">
@@ -254,6 +369,12 @@ export function CashFlowTab({ data, receivablesProjection }: CashFlowTabProps) {
             rows={receivablesProjection.monthlyProjection}
             monthlyBreakeven={receivablesProjection.monthlyBreakeven}
           />
+          {receivablesProjection.salesForecast && (
+            <SalesForecastTable
+              salesForecast={receivablesProjection.salesForecast}
+              monthlyBreakeven={receivablesProjection.monthlyBreakeven}
+            />
+          )}
         </div>
       )}
 

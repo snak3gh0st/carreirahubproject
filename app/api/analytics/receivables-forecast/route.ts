@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 import { addDays, format, differenceInDays, subDays, startOfMonth, startOfYear } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +133,8 @@ export async function GET(request: NextRequest) {
     const dateFilter = startDate && endDate
       ? { gte: startDate, lte: endDate }
       : undefined;
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
 
     // ==========================================
     // STEP 1: Analyze Customer Payment Patterns
@@ -142,6 +146,7 @@ export async function GET(request: NextRequest) {
         status: "PAID",
         paidAt: { not: null },
         ...(dateFilter && { paidAt: dateFilter }),
+        ...customerVisibilityWhere,
       },
       select: {
         id: true,
@@ -163,7 +168,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Check if we have Payment table data (more reliable than invoice.paidAt)
-    const paymentCount = await prisma.payment.count();
+    const paymentCount = await prisma.payment.count({
+      where: customerVisibilityWhere,
+    });
     const usePaymentTable = paymentCount > 0;
 
     // Build customer payment patterns using Payment table if available
@@ -186,6 +193,7 @@ export async function GET(request: NextRequest) {
             status: "PAID",
           },
           ...(dateFilter && { paymentDate: dateFilter }),
+          ...customerVisibilityWhere,
         },
         select: {
           customerId: true,
@@ -298,6 +306,7 @@ export async function GET(request: NextRequest) {
       by: ["customerId"],
       where: {
         status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
+        ...customerVisibilityWhere,
       },
       _sum: { amount: true },
     });
@@ -335,6 +344,7 @@ export async function GET(request: NextRequest) {
     const openInvoices = await prisma.invoice.findMany({
       where: {
         status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] },
+        ...customerVisibilityWhere,
       },
       select: {
         id: true,

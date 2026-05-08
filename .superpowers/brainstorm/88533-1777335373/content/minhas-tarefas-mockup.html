@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Minhas Tarefas — Mockup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f4f4f0; color: #1a1a1a; }
+
+  .frame { display: flex; height: 100vh; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 200px; background: #1a4731; display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .sidebar-logo { padding: 18px 14px 14px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .sidebar-logo .brand { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: 0.05em; }
+  .nav-item {
+    display: flex; align-items: center; gap: 9px; padding: 9px 14px;
+    font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.6);
+    border-left: 3px solid transparent; cursor: pointer;
+  }
+  .nav-item.active { color: #fff; background: rgba(255,255,255,0.12); border-left-color: #f97316; }
+  .nav-item .badge { margin-left: auto; background: #f97316; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 99px; }
+
+  /* Main */
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  /* Top bar */
+  .topbar {
+    background: #fff; border-bottom: 1px solid #e5e5e5;
+    padding: 14px 24px; display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .topbar-left h1 { font-size: 18px; font-weight: 800; color: #1a4731; }
+  .topbar-left p { font-size: 12px; color: #888; margin-top: 2px; }
+  .phase-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f0fdf4; border: 1px solid #86efac; border-radius: 99px;
+    padding: 5px 12px; font-size: 12px; font-weight: 700; color: #15803d;
+  }
+  .phase-dot { width: 8px; height: 8px; border-radius: 99px; background: #22c55e; }
+
+  /* Stats bar */
+  .stats-bar {
+    background: #fff; border-bottom: 1px solid #f0f0f0;
+    padding: 12px 24px; display: flex; gap: 24px; flex-shrink: 0;
+  }
+  .stat { display: flex; align-items: center; gap: 8px; }
+  .stat-value { font-size: 22px; font-weight: 800; color: #1a4731; }
+  .stat-label { font-size: 11px; color: #888; }
+  .stat-divider { width: 1px; background: #e5e5e5; }
+
+  /* Content */
+  .content { padding: 20px 24px; flex: 1; display: flex; gap: 16px; }
+
+  /* Student queue */
+  .queue { flex: 1; display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+  .queue-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .queue-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #888; }
+
+  .student-card {
+    background: #fff; border-radius: 12px; border: 1px solid #e5e5e5;
+    overflow: hidden; cursor: pointer; transition: all 0.15s;
+  }
+  .student-card:hover { border-color: #1a4731; box-shadow: 0 2px 8px rgba(26,71,49,0.08); }
+  .student-card.active { border-color: #1a4731; box-shadow: 0 2px 12px rgba(26,71,49,0.12); }
+
+  .student-card-header { padding: 12px 14px; display: flex; align-items: center; gap: 10px; }
+  .s-avatar {
+    width: 36px; height: 36px; border-radius: 10px; background: #d1fae5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: #1a4731; flex-shrink: 0;
+  }
+  .s-avatar.orange { background: #ffedd5; color: #c2410c; }
+  .s-avatar.red { background: #fee2e2; color: #b91c1c; }
+  .s-name { font-size: 13px; font-weight: 700; color: #111; }
+  .s-sub { font-size: 11px; color: #888; margin-top: 1px; }
+  .s-right { margin-left: auto; text-align: right; flex-shrink: 0; }
+  .s-progress-text { font-size: 11px; font-weight: 700; }
+  .s-progress-text.done { color: #16a34a; }
+  .s-progress-text.mid { color: #d97706; }
+  .s-progress-text.low { color: #dc2626; }
+  .s-days { font-size: 10px; color: #aaa; margin-top: 2px; }
+
+  .s-progress-bar { margin: 0 14px 12px; }
+  .s-bar-track { height: 5px; background: #f0f0f0; border-radius: 99px; overflow: hidden; }
+  .s-bar-fill { height: 100%; border-radius: 99px; background: #22c55e; }
+  .s-bar-fill.mid { background: #f59e0b; }
+  .s-bar-fill.low { background: #ef4444; }
+
+  /* Alert tag */
+  .alert-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 700; padding: 2px 7px; border-radius: 99px; }
+  .alert-tag.red { background: #fee2e2; color: #b91c1c; }
+  .alert-tag.amber { background: #fef3c7; color: #92400e; }
+
+  /* Detail panel */
+  .detail { flex: 1; }
+  .detail-card {
+    background: #fff; border-radius: 14px; border: 1px solid #e5e5e5; overflow: hidden;
+    position: sticky; top: 0;
+  }
+  .detail-header { padding: 16px 20px; border-bottom: 1px solid #f0f0f0; display: flex; align-items: center; gap: 12px; }
+  .detail-avatar {
+    width: 44px; height: 44px; border-radius: 12px; background: #d1fae5;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; color: #1a4731; flex-shrink: 0;
+  }
+  .detail-name { font-size: 16px; font-weight: 800; color: #111; }
+  .detail-sub { font-size: 12px; color: #888; margin-top: 2px; }
+  .detail-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn { display: inline-flex; align-items: center; gap-6px; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; }
+  .btn-primary { background: #1a4731; color: #fff; }
+  .btn-ghost { background: #f4f4f0; color: #555; }
+
+  /* Checklist */
+  .checklist-section { padding: 16px 20px; }
+  .cl-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #888; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+  .cl-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f9f9f9; }
+  .cl-item:last-child { border-bottom: none; }
+  .cl-check {
+    width: 18px; height: 18px; border-radius: 5px; border: 2px solid #d1d5db;
+    flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .cl-check.done { background: #1a4731; border-color: #1a4731; color: #fff; font-size: 11px; }
+  .cl-check.done::after { content: "✓"; color: #fff; font-size: 11px; font-weight: 700; }
+  .cl-text { flex: 1; }
+  .cl-task { font-size: 13px; color: #111; font-weight: 500; }
+  .cl-task.done { color: #888; text-decoration: line-through; }
+  .cl-meta { font-size: 10px; color: #aaa; margin-top: 2px; }
+  .cl-tag { display: inline-block; font-size: 9px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+  .cl-tag.session { background: #dbeafe; color: #1d4ed8; }
+  .cl-tag.form { background: #fef3c7; color: #92400e; }
+  .cl-tag.whatsapp { background: #dcfce7; color: #15803d; }
+  .cl-tag.doc { background: #f3e8ff; color: #7e22ce; }
+
+  /* Progress ring summary */
+  .progress-summary { display: flex; align-items: center; gap: 10px; padding: 12px 20px; background: #f9fafb; border-top: 1px solid #f0f0f0; }
+  .prog-text { font-size: 12px; color: #555; flex: 1; }
+  .prog-pct { font-size: 20px; font-weight: 800; color: #1a4731; }
+  .prog-bar-wrap { flex: 1; }
+  .prog-bar-track { height: 8px; background: #e5e5e5; border-radius: 99px; overflow: hidden; }
+  .prog-bar-fill { height: 100%; background: linear-gradient(90deg, #1a4731, #22c55e); border-radius: 99px; }
+
+  /* Session quick log */
+  .session-log { padding: 14px 20px; border-top: 1px solid #f0f0f0; }
+  .log-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: #888; margin-bottom: 10px; }
+  .log-input {
+    width: 100%; border: 1px solid #e5e5e5; border-radius: 8px; padding: 8px 12px;
+    font-size: 12px; color: #333; resize: none; outline: none;
+  }
+  .log-input:focus { border-color: #1a4731; }
+  .log-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+  .log-btn { padding: 6px 12px; background: #1a4731; color: #fff; border-radius: 7px; font-size: 11px; font-weight: 700; cursor: pointer; }
+  .log-hint { font-size: 10px; color: #aaa; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="brand">CARREIRA USA</div>
+    </div>
+    <div style="padding-top:8px">
+      <div class="nav-item">⬛ Dashboard</div>
+      <div class="nav-item">📋 Pipeline</div>
+      <div class="nav-item">📅 Ações do Dia</div>
+      <div class="nav-item active">✅ Minhas Tarefas <span class="badge">8</span></div>
+      <div class="nav-item">👥 Alunos</div>
+      <div class="nav-item">🎥 Sessões</div>
+      <div class="nav-item">📄 Formulários</div>
+      <div class="nav-item">⭐ NPS</div>
+      <div class="nav-item">📚 Guia</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>Minhas Tarefas</h1>
+        <p>Alunos sob sua responsabilidade</p>
+      </div>
+      <div class="phase-pill">
+        <span class="phase-dot"></span>
+        Fase: Bastão
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-value">8</div>
+        <div class="stat-label">Alunos na Fase</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-value" style="color:#d97706">3</div>
+        <div class="stat-label">Checklists incompletos</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-value" style="color:#dc2626">2</div>
+        <div class="stat-label">Precisam de atenção</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat">
+        <div class="stat-value" style="color:#16a34a">5</div>
+        <div class="stat-label">Em dia</div>
+      </div>
+    </div>
+
+    <!-- Content: queue + detail -->
+    <div class="content">
+
+      <!-- Queue -->
+      <div class="queue">
+        <div class="queue-header">
+          <span class="queue-title">Fila de Alunos</span>
+          <span style="font-size:11px;color:#888">ordenado por prioridade</span>
+        </div>
+
+        <!-- Student 1 — needs attention -->
+        <div class="student-card" onclick="selectStudent(this, 1)">
+          <div class="student-card-header">
+            <div class="s-avatar red">PL</div>
+            <div>
+              <div class="s-name">Pedro Lima <span class="alert-tag red">⚠ 14 dias</span></div>
+              <div class="s-sub">Iniciado 12 Mar · 0 sessões</div>
+            </div>
+            <div class="s-right">
+              <div class="s-progress-text low">1/8</div>
+              <div class="s-days">tarefas</div>
+            </div>
+          </div>
+          <div class="s-progress-bar">
+            <div class="s-bar-track"><div class="s-bar-fill low" style="width:12%"></div></div>
+          </div>
+        </div>
+
+        <!-- Student 2 — selected/active -->
+        <div class="student-card active" onclick="selectStudent(this, 2)">
+          <div class="student-card-header">
+            <div class="s-avatar orange">JR</div>
+            <div>
+              <div class="s-name">João Ricardo <span class="alert-tag amber">⚑ 7 dias</span></div>
+              <div class="s-sub">Iniciado 5 Abr · 1 sessão</div>
+            </div>
+            <div class="s-right">
+              <div class="s-progress-text mid">4/8</div>
+              <div class="s-days">tarefas</div>
+            </div>
+          </div>
+          <div class="s-progress-bar">
+            <div class="s-bar-track"><div class="s-bar-fill mid" style="width:50%"></div></div>
+          </div>
+        </div>
+
+        <!-- Student 3 -->
+        <div class="student-card" onclick="selectStudent(this, 3)">
+          <div class="student-card-header">
+            <div class="s-avatar">MF</div>
+            <div>
+              <div class="s-name">Maria Fernanda</div>
+              <div class="s-sub">Iniciado 18 Abr · 2 sessões</div>
+            </div>
+            <div class="s-right">
+              <div class="s-progress-text done">7/8</div>
+              <div class="s-days">tarefas</div>
+            </div>
+          </div>
+          <div class="s-progress-bar">
+            <div class="s-bar-track"><div class="s-bar-fill" style="width:87%"></div></div>
+          </div>
+        </div>
+
+        <!-- Student 4 -->
+        <div class="student-card" onclick="selectStudent(this, 4)">
+          <div class="student-card-header">
+            <div class="s-avatar">CS</div>
+            <div>
+              <div class="s-name">Camila Sousa</div>
+              <div class="s-sub">Iniciado 20 Abr · 1 sessão</div>
+            </div>
+            <div class="s-right">
+              <div class="s-progress-text done">6/8</div>
+              <div class="s-days">tarefas</div>
+            </div>
+          </div>
+          <div class="s-progress-bar">
+            <div class="s-bar-track"><div class="s-bar-fill" style="width:75%"></div></div>
+          </div>
+        </div>
+
+        <!-- Student 5 -->
+        <div class="student-card" onclick="selectStudent(this, 4)">
+          <div class="student-card-header">
+            <div class="s-avatar">AL</div>
+            <div>
+              <div class="s-name">Ana Lima</div>
+              <div class="s-sub">Iniciado 21 Abr · 1 sessão</div>
+            </div>
+            <div class="s-right">
+              <div class="s-progress-text done">5/8</div>
+              <div class="s-days">tarefas</div>
+            </div>
+          </div>
+          <div class="s-progress-bar">
+            <div class="s-bar-track"><div class="s-bar-fill" style="width:62%"></div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Detail panel — João Ricardo selected -->
+      <div class="detail">
+        <div class="detail-card">
+
+          <div class="detail-header">
+            <div class="detail-avatar orange">JR</div>
+            <div>
+              <div class="detail-name">João Ricardo</div>
+              <div class="detail-sub">Fase Bastão · Iniciado 5 Abr · Programa CAREER</div>
+            </div>
+            <div class="detail-actions">
+              <div class="btn btn-ghost">💬 WhatsApp</div>
+              <div class="btn btn-ghost">Ver Perfil →</div>
+            </div>
+          </div>
+
+          <!-- Checklist -->
+          <div class="checklist-section">
+            <div class="cl-section-title">
+              Checklist da Fase Bastão
+              <span style="font-size:11px;font-weight:800;color:#d97706">4 de 8 concluídas</span>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check done"></div>
+              <div class="cl-text">
+                <div class="cl-task done">Boas-vindas enviada por WhatsApp</div>
+                <div class="cl-meta"><span class="cl-tag whatsapp">WhatsApp</span> · Concluído 5 Abr</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check done"></div>
+              <div class="cl-text">
+                <div class="cl-task done">Formulário de Onboarding atribuído</div>
+                <div class="cl-meta"><span class="cl-tag form">Formulário</span> · Concluído 6 Abr</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check done"></div>
+              <div class="cl-text">
+                <div class="cl-task done">Formulário de Onboarding respondido</div>
+                <div class="cl-meta"><span class="cl-tag form">Formulário</span> · Respondido 8 Abr</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check done"></div>
+              <div class="cl-text">
+                <div class="cl-task done">1ª Sessão de Bastão realizada</div>
+                <div class="cl-meta"><span class="cl-tag session">Sessão</span> · Realizada 10 Abr</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check"></div>
+              <div class="cl-text">
+                <div class="cl-task">2ª Sessão de Bastão realizada</div>
+                <div class="cl-meta"><span class="cl-tag session">Sessão</span> · Pendente</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check"></div>
+              <div class="cl-text">
+                <div class="cl-task">Resumo do Bastão enviado ao aluno</div>
+                <div class="cl-meta"><span class="cl-tag whatsapp">WhatsApp</span> · Pendente</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check"></div>
+              <div class="cl-text">
+                <div class="cl-task">Documento de Visão revisado e aprovado</div>
+                <div class="cl-meta"><span class="cl-tag doc">Documento</span> · Pendente</div>
+              </div>
+            </div>
+
+            <div class="cl-item">
+              <div class="cl-check"></div>
+              <div class="cl-text">
+                <div class="cl-task">Aluno avançado para fase Âncora</div>
+                <div class="cl-meta"><span class="cl-tag session">Avanço</span> · Aguardando itens anteriores</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="progress-summary">
+            <div class="prog-pct">50%</div>
+            <div class="prog-bar-wrap">
+              <div class="prog-bar-track"><div class="prog-bar-fill" style="width:50%"></div></div>
+              <div style="font-size:10px;color:#aaa;margin-top:4px">4 de 8 tarefas completas</div>
+            </div>
+          </div>
+
+          <!-- Session quick log -->
+          <div class="session-log">
+            <div class="log-title">Registrar Sessão Rápida</div>
+            <textarea class="log-input" rows="2" placeholder="Resumo da sessão (ex: discutimos objetivos de carreira, próximos passos...)"></textarea>
+            <div class="log-actions">
+              <div class="log-btn">✓ Registrar Sessão</div>
+              <span class="log-hint">Marca automaticamente "2ª Sessão" como concluída</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function selectStudent(card, id) {
+  document.querySelectorAll('.student-card').forEach(c => c.classList.remove('active'));
+  card.classList.add('active');
+}
+</script>
+</body>
+</html>

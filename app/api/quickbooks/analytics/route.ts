@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
-import { prisma } from "@/lib/db";
+import { isFinancialHubExcludedCustomer } from "@/lib/financial/hub-exclusions";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +65,11 @@ export async function GET(request: NextRequest) {
       email: customer.PrimaryEmailAddr?.Address || "",
       phone: customer.PrimaryPhone?.FreeFormNumber || "",
       qbId: customer.Id,
+    })).filter((customer) => !isFinancialHubExcludedCustomer({
+      name: customer.name,
+      email: customer.email,
     }));
+    const visibleCustomerIds = new Set(customersData.map((customer) => customer.qbId));
 
     // Process invoices data
     const invoicesData = (qbInvoices.invoices || []).map((invoice: any) => ({
@@ -78,7 +82,7 @@ export async function GET(request: NextRequest) {
       dueDate: invoice.DueDate,
       txnDate: invoice.TxnDate,
       qbId: invoice.Id,
-    }));
+    })).filter((invoice: any) => visibleCustomerIds.has(invoice.customerId));
 
     // Calculate receivables
     const totalReceivables = invoicesData.reduce((sum, inv) => sum + (inv.balance || 0), 0);

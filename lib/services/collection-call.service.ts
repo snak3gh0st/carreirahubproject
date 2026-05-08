@@ -3,9 +3,17 @@ import { retellService, RetellWebhookEvent } from "./retell.service";
 import { CollectionCallStatus, CollectionCallOutcome, InvoiceStatus } from "@prisma/client";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let _openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  return _openai;
+}
 
 const AI_MODEL = process.env.AI_MODEL || "gpt-4-turbo-preview";
 
@@ -437,7 +445,7 @@ export class CollectionCallService {
     }
 
     try {
-      const response = await openai.chat.completions.create({
+      const response = await getOpenAI().chat.completions.create({
         model: AI_MODEL,
         messages: [
           {

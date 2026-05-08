@@ -8,6 +8,7 @@ import {
   parseEntitySummaryReport,
 } from "@/lib/services/qb-report-parser";
 import { buildQbCfoReportPacket, QbCfoReportPacket } from "@/lib/financial/qb-cfo-report-packet";
+import { buildQbReportWindow } from "@/lib/financial/qb-window";
 import { format } from "date-fns";
 
 const QB_CFO_REPORT_TYPES = [
@@ -22,13 +23,7 @@ const QB_CFO_REPORT_TYPES = [
 
 export type QbCfoReportType = (typeof QB_CFO_REPORT_TYPES)[number];
 
-function buildReportWindow() {
-  const now = new Date();
-  return {
-    now,
-    startDate: new Date("2025-01-01"),
-  };
-}
+export const buildReportWindow = buildQbReportWindow;
 
 export async function refreshQbCfoReports(): Promise<void> {
   const { now, startDate } = buildReportWindow();
@@ -36,7 +31,7 @@ export async function refreshQbCfoReports(): Promise<void> {
   const today = format(now, "yyyy-MM-dd");
 
   const reportResults = await Promise.all([
-    quickbooksService.getProfitAndLossReport(start, today).then((raw) => ({
+    quickbooksService.getProfitAndLossReport(start, today, { summarizeColumnBy: "Month" }).then((raw) => ({
       reportType: "ProfitAndLoss" as const,
       data: parseProfitAndLoss(raw),
       parameters: { startDate: start, endDate: today },
@@ -46,7 +41,7 @@ export async function refreshQbCfoReports(): Promise<void> {
       data: parseBalanceSheet(raw),
       parameters: { asOfDate: today },
     })),
-    quickbooksService.getCashFlowReport(start, today).then((raw) => ({
+    quickbooksService.getCashFlowReport(start, today, { summarizeColumnBy: "Month" }).then((raw) => ({
       reportType: "CashFlow" as const,
       data: parseCashFlow(raw),
       parameters: { startDate: start, endDate: today },

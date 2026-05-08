@@ -166,11 +166,11 @@ export default function ContractDetailPage() {
     try {
       const response = await fetch(`/api/contracts/${contractId}/resend`, { method: 'POST' });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to send reminder');
-      setMessage({ type: 'success', text: 'Lembrete enviado com sucesso' });
+      if (!response.ok) throw new Error(data.error || 'Failed to resend DocuSign notification');
+      setMessage({ type: 'success', text: 'Notificacao do DocuSign reenviada com sucesso' });
       fetchContract();
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Falha ao enviar lembrete' });
+      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Falha ao reenviar notificacao do DocuSign' });
     } finally {
       setActionLoading(null);
     }
@@ -269,7 +269,7 @@ export default function ContractDetailPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 bg-white text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 border border-gray-200 disabled:opacity-50 transition-colors shadow-sm"
                 >
                   <RefreshCw className={`h-4 w-4 ${actionLoading === 'resend' ? 'animate-spin' : ''}`} />
-                  {actionLoading === 'resend' ? 'Enviando...' : 'Enviar Lembrete'}
+                  {actionLoading === 'resend' ? 'Enviando...' : 'Reenviar notificacao DocuSign'}
                 </button>
               )}
             </div>

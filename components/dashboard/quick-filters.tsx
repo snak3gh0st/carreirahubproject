@@ -15,8 +15,10 @@ import { useEffect, useState, useTransition } from "react";
  */
 
 const DATE_RANGES = [
+  { value: "thisMonth", label: "MTD" },
   { value: "last7", label: "Últimos 7 Dias" },
   { value: "last30", label: "Últimos 30 Dias" },
+  { value: "lastMonth", label: "Mês Passado" },
   { value: "thisYear", label: "Este Ano" },
   { value: "allTime", label: "Todo o Período" },
 ];
@@ -100,9 +102,9 @@ export function QuickFilters({ isLoading = false }: QuickFiltersProps) {
 
       <p className="mt-4 text-xs text-gray-500">
         As métricas atualizam automaticamente ao selecionar um período.
-        Para filtros avançados, acesse a{" "}
-        <a href="/dashboard/insights" className="text-primary-600 hover:text-primary-700 font-medium">
-          página de Insights
+        Para BI executivo, acesse o{" "}
+        <a href="/dashboard/bi" className="text-primary-600 hover:text-primary-700 font-medium">
+          BI Executivo
         </a>
         .
       </p>

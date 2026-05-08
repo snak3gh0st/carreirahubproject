@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     }
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id as string;
-    const allowedRoles = ['ADMIN', 'FINANCE', 'COMMERCIAL'];
+    const allowedRoles = ['ADMIN', 'FINANCE', 'COMMERCIAL', 'HEAD_COMERCIAL'];
     if (!allowedRoles.includes(userRole)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
     }
     const userRole = (session.user as any).role;
     const userId = (session.user as any).id as string;
-    const allowedRoles = ['ADMIN', 'FINANCE', 'COMMERCIAL'];
+    const allowedRoles = ['ADMIN', 'FINANCE', 'COMMERCIAL', 'HEAD_COMERCIAL'];
     if (!allowedRoles.includes(userRole)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

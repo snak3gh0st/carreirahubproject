@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { startOfMonth, subMonths, subDays, startOfYear, format } from "date-fns";
+import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +90,10 @@ export async function GET(request: NextRequest) {
 
     // Calculate date 12 months ago for revenue trend (or use date filter)
     const revenueTrendStartDate = startDate || subMonths(startOfMonth(now), 12);
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerIdExclusionWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
+    const customerVisibilityWhere =
+      excludedCustomerIds.length > 0 ? { id: { notIn: excludedCustomerIds } } : {};
 
     // Parallel queries for better performance
     const [
@@ -117,6 +123,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.aggregate({
         where: {
           status: "PAID",
+          ...customerIdExclusionWhere,
           ...(dateFilter && {
             paidAt: dateFilter,
           }),
@@ -130,6 +137,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.aggregate({
         where: {
           status: "OVERDUE",
+          ...customerIdExclusionWhere,
           ...(dateFilter && {
             createdAt: dateFilter,
           }),
@@ -145,6 +153,7 @@ export async function GET(request: NextRequest) {
           status: {
             notIn: ["DRAFT", "VOID"], // Exclude drafts and voids from calculation
           },
+          ...customerIdExclusionWhere,
           ...(dateFilter && {
             createdAt: dateFilter,
           }),
@@ -160,6 +169,7 @@ export async function GET(request: NextRequest) {
           status: {
             notIn: ["DRAFT", "VOID"],
           },
+          ...customerIdExclusionWhere,
           ...(dateFilter && {
             paidAt: dateFilter,
           }),
@@ -173,6 +183,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.findMany({
         where: {
           createdAt: activeCustomersDateFilter,
+          ...customerIdExclusionWhere,
         },
         distinct: ["customerId"],
         select: {
@@ -183,11 +194,10 @@ export async function GET(request: NextRequest) {
       // Invoice Status Distribution (grouped by status) - filter by createdAt
       prisma.invoice.groupBy({
         by: ["status"],
-        where: dateFilter
-          ? {
-              createdAt: dateFilter,
-            }
-          : undefined,
+        where: {
+          ...(dateFilter ? { createdAt: dateFilter } : {}),
+          ...customerIdExclusionWhere,
+        },
         _count: {
           id: true,
         },
@@ -203,6 +213,7 @@ export async function GET(request: NextRequest) {
             gte: revenueTrendStartDate,
             ...(endDate && { lte: endDate }),
           },
+          ...customerIdExclusionWhere,
         },
         select: {
           paymentDate: true,
@@ -217,6 +228,7 @@ export async function GET(request: NextRequest) {
       dateFilter
         ? prisma.customer.findMany({
             where: {
+              ...customerVisibilityWhere,
               invoices: {
                 some: {
                   status: "PAID",
@@ -242,6 +254,7 @@ export async function GET(request: NextRequest) {
           })
         : prisma.customer.findMany({
             where: {
+              ...customerVisibilityWhere,
               qbTotalPaid: {
                 gt: 0,
               },

@@ -1,0 +1,113 @@
+<h2>BI Unico: cockpit CEO-first</h2>
+<p class="subtitle">Escolha a estrutura que melhor equilibra leitura executiva, decisao rapida e profundidade analitica.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Executive Flight Deck</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;">
+            <div class="placeholder" style="height:120px;background:linear-gradient(135deg,#0f172a,#1e3a8a);color:#fff;border:none;">
+              CEO Briefing + business health score
+            </div>
+            <div class="placeholder" style="height:120px;background:#fff7ed;border-color:#fdba74;">Decision queue</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px;">
+            <div class="placeholder" style="height:88px;">Cash</div>
+            <div class="placeholder" style="height:88px;">Net margin</div>
+            <div class="placeholder" style="height:88px;">Revenue trend</div>
+            <div class="placeholder" style="height:88px;">AR risk</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:10px;">
+            <div class="placeholder" style="height:160px;">Cash and runway</div>
+            <div class="placeholder" style="height:160px;">Growth drivers</div>
+            <div class="placeholder" style="height:160px;">Client concentration</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Executive Flight Deck</h3>
+      <p>Melhor para CEO: abre com saude do negocio, traduz em decisoes e so depois explica as causas.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Financial Control Tower</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:12px;">
+            <div class="placeholder" style="height:88px;">Revenue</div>
+            <div class="placeholder" style="height:88px;">Collected</div>
+            <div class="placeholder" style="height:88px;">Expenses</div>
+            <div class="placeholder" style="height:88px;">Net income</div>
+            <div class="placeholder" style="height:88px;">Runway</div>
+          </div>
+          <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:12px;">
+            <div class="placeholder" style="height:170px;">P&L and cash flow detail</div>
+            <div class="placeholder" style="height:170px;">Risk watchlist</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div class="placeholder" style="height:130px;">AR aging</div>
+            <div class="placeholder" style="height:130px;">Top customers</div>
+            <div class="placeholder" style="height:130px;">Payment behavior</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Financial Control Tower</h3>
+      <p>Mais forte para finance/CFO. Excelente profundidade, mas menos imediata para leitura de CEO no primeiro scroll.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. Compact Board Snapshot</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div class="placeholder" style="height:120px;background:#f8fafc;">Briefing</div>
+            <div class="placeholder" style="height:120px;background:#fef2f2;">Top risks</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+            <div class="placeholder" style="height:90px;">Cash</div>
+            <div class="placeholder" style="height:90px;">Growth</div>
+            <div class="placeholder" style="height:90px;">AR</div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;">
+            <div class="placeholder" style="height:160px;">Revenue + margin</div>
+            <div class="placeholder" style="height:160px;">Customers + concentration</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Compact Board Snapshot</h3>
+      <p>Mais enxuto e elegante. Bom para consumo rapido, mas corre risco de esconder explicacoes que o CEO vai querer abrir logo.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Minha recomendacao</h4>
+      <ul>
+        <li><strong>A</strong> porque traduz KPI em decisao executiva sem perder a profundidade financeira.</li>
+        <li>Unifica melhor os blocos hoje espalhados em <code>/dashboard/financial</code>, <code>/dashboard/bi</code> e <code>/dashboard/insights</code>.</li>
+        <li>Permite que o topo responda: "estamos saudaveis ou nao?" antes de mostrar analises.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>O que muda</h4>
+      <ul>
+        <li>Menos tabs por dominio, mais narrativa executiva.</li>
+        <li>KPIs duplicados somem e viram uma unica camada de verdade.</li>
+        <li>O restante entra como blocos explicativos e drill-down, nao como paginas paralelas.</li>
+      </ul>
+    </div>
+  </div>
+</div>

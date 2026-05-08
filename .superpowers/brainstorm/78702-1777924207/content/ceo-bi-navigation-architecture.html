@@ -1,0 +1,90 @@
+<h2>Arquitetura do cockpit executivo</h2>
+<p class="subtitle">Todas suportam finanças, comercial, operação e IA. A diferença é como o CEO lê, compara e aprofunda.</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">A. Single long page</div>
+        <div class="mockup-body">
+          <div class="placeholder" style="height:84px;background:#e0f2fe;border-color:#7dd3fc;">Hero executivo + health band</div>
+          <div class="placeholder" style="height:92px;margin-top:10px;">Cash and margin</div>
+          <div class="placeholder" style="height:92px;margin-top:10px;">Revenue and pipeline</div>
+          <div class="placeholder" style="height:92px;margin-top:10px;">Operations and delivery</div>
+          <div class="placeholder" style="height:92px;margin-top:10px;">AI and team usage</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Single long page</h3>
+      <p>Simples de construir e ler, mas perde foco quando o cockpit cresce e obriga muito scroll para comparar blocos.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">B. Executive home + area tabs</div>
+        <div class="mockup-body">
+          <div class="placeholder" style="height:84px;background:#dcfce7;border-color:#86efac;">Hero executivo + health band</div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
+            <div class="placeholder" style="height:42px;">Finance</div>
+            <div class="placeholder" style="height:42px;">Sales</div>
+            <div class="placeholder" style="height:42px;">Ops</div>
+            <div class="placeholder" style="height:42px;">AI</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:10px;margin-top:10px;">
+            <div class="placeholder" style="height:170px;">Default executive overview</div>
+            <div class="placeholder" style="height:170px;">Decision queue</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Executive home + area tabs</h3>
+      <p><strong>Recomendado.</strong> O CEO abre numa home única, entende a saúde geral e aprofunda por área sem perder contexto.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup">
+        <div class="mockup-header">C. Executive home + right drill-down</div>
+        <div class="mockup-body">
+          <div style="display:grid;grid-template-columns:1.3fr .9fr;gap:10px;">
+            <div>
+              <div class="placeholder" style="height:84px;background:#ede9fe;border-color:#c4b5fd;">Hero executivo</div>
+              <div class="placeholder" style="height:176px;margin-top:10px;">Core KPI canvas</div>
+              <div class="placeholder" style="height:88px;margin-top:10px;">Alert strip</div>
+            </div>
+            <div class="placeholder" style="height:370px;">Persistent drill-down rail</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Executive home + drill-down lateral</h3>
+      <p>Ótimo para power users, mas mais complexo e pode sobrecarregar a primeira leitura executiva em telas menores.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>Por que eu recomendo B</h4>
+      <ul>
+        <li>Melhor prática para BI executivo: uma home única de saúde geral, depois aprofundamento por domínio.</li>
+        <li>Evita tabs demais logo no topo e evita a fadiga de uma página infinita.</li>
+        <li>Escala melhor com o seu escopo, porque IA e operação entram como áreas sem poluir a leitura inicial.</li>
+      </ul>
+    </div>
+    <div class="cons">
+      <h4>Trade-off</h4>
+      <ul>
+        <li>Exige uma hierarquia bem definida do que fica sempre visível na home.</li>
+        <li>As áreas precisam herdar a mesma linguagem executiva para não parecerem produtos separados.</li>
+      </ul>
+    </div>
+  </div>
+</div>

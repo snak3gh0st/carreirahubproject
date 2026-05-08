@@ -25,7 +25,7 @@ import { useEffect, useState } from "react";
  * Main Dashboard - Quick Overview & Actions
  *
  * Shows high-level KPIs and quick navigation buttons
- * Detailed analytics and filters are in the Insights tab
+ * The executive cockpit is the primary BI entry point.
  */
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -145,6 +145,10 @@ export default function DashboardPage() {
       ? "ultimos 30 dias"
       : dateRange === "last90"
       ? "ultimos 90 dias"
+      : dateRange === "thisMonth"
+      ? "mes atual"
+      : dateRange === "lastMonth"
+      ? "mes passado"
       : dateRange === "allTime"
       ? "todo o periodo"
       : "este ano";
@@ -169,6 +173,10 @@ export default function DashboardPage() {
   const userName = session?.user?.name || "Usuário";
   const firstName = userName.split(" ")[0]; // Get first name only
   const userRole = (session?.user as any)?.role;
+
+  if (userRole === "HEAD_COMERCIAL") {
+    redirect("/dashboard/commercial-bi");
+  }
 
   // COMMERCIAL users see simplified dashboard
   if (userRole === "COMMERCIAL") {
@@ -347,8 +355,8 @@ export default function DashboardPage() {
                   <h2 className="text-lg font-semibold text-gray-900">Painel financeiro</h2>
                   <p className="text-sm text-gray-500">Atalhos para rotinas de cobranca e conciliacao.</p>
                 </div>
-                <Link href="/dashboard/financial" className="text-sm font-semibold text-brand-verde hover:underline">
-                  Abrir BI financeiro
+                <Link href="/dashboard/bi" className="text-sm font-semibold text-brand-verde hover:underline">
+                  Abrir BI Executivo
                 </Link>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -499,7 +507,7 @@ export default function DashboardPage() {
               </div>
             </Link>
             <Link
-              href="/dashboard/insights"
+              href="/dashboard/bi"
               className="group block bg-white rounded-lg border border-gray-200 p-6 hover:border-brand-caramelo hover:shadow-md transition-all duration-200"
             >
               <div className="flex items-start gap-4">
@@ -508,10 +516,10 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    Ver Relatórios
+                    Abrir BI Executivo
                   </h3>
                   <p className="text-base text-gray-500">
-                    Insights e análises do negócio
+                    BI unificado com QuickBooks, Clint e visão operacional
                   </p>
                 </div>
               </div>

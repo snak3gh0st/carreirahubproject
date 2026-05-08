@@ -120,6 +120,30 @@ export default function QBEmailStatusPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
+          <h3 className="text-sm font-medium text-yellow-800">Fila na Janela</h3>
+          <p className="text-3xl font-bold mt-2 text-yellow-900">
+            {data.queueStats?.pendingDueSoon ?? 0}
+          </p>
+          <p className="text-sm text-yellow-700 mt-1">Invoices do QB dentro da janela de envio</p>
+        </div>
+        <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg">
+          <h3 className="text-sm font-medium text-orange-800">Atrasadas sem tentativa</h3>
+          <p className="text-3xl font-bold mt-2 text-orange-900">
+            {data.queueStats?.stalePastDue ?? 0}
+          </p>
+          <p className="text-sm text-orange-700 mt-1">Backlog historico sem tentativa local</p>
+        </div>
+        <div className="bg-gray-50 border border-gray-200 p-6 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700">Voidadas no QB</h3>
+          <p className="text-3xl font-bold mt-2 text-gray-900">
+            {data.emailStats?.voidedNotFound ?? 0}
+          </p>
+          <p className="text-sm text-gray-600 mt-1">Invoices marcadas como ausentes no QuickBooks</p>
+        </div>
+      </div>
+
       {/* Recent Email Logs */}
       <div className="bg-white rounded-lg shadow mb-6">
         <div className="px-6 py-4 bg-gray-50 border-b">
@@ -157,7 +181,9 @@ export default function QBEmailStatusPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span
                         className={`px-2 py-1 rounded text-xs font-medium ${
-                          log.action === "invoice_email_sent"
+                          log.action === "invoice_email_sent" ||
+                          log.action === "scheduled_invoice_sent" ||
+                          log.action === "scheduled_installment_sent"
                             ? "bg-blue-100 text-blue-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
@@ -229,6 +255,9 @@ export default function QBEmailStatusPage() {
                     Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                    Envio
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                     Ações
                   </th>
                 </tr>
@@ -256,9 +285,12 @@ export default function QBEmailStatusPage() {
                           {inv.status}
                         </span>
                         <span className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                          {inv.approvalStatus}
+                          {inv.emailSentAt ? "Enviado" : `${inv.emailSendAttempts ?? 0} tentativa(s)`}
                         </span>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {inv.emailSentAt ? new Date(inv.emailSentAt).toLocaleString() : (inv.lastEmailSendError || "Nao enviado")}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <a
@@ -285,7 +317,13 @@ export default function QBEmailStatusPage() {
         </h2>
         <ol className="list-decimal list-inside space-y-2 text-sm text-blue-900">
           <li>
-            <strong>Verifique as estatísticas acima</strong> - Se "Emails Enviados" &gt; 0, a API foi chamada
+            <strong>Verifique as estatísticas acima</strong> - Se "Emails Enviados" &gt; 0, o endpoint de envio do QuickBooks foi chamado
+          </li>
+          <li>
+            <strong>Fila na Janela</strong> - Mostra invoices que já deveriam estar elegíveis para envio automático
+          </li>
+          <li>
+            <strong>Atrasadas sem tentativa</strong> - Indica backlog histórico/importado sem confirmação de tentativa local
           </li>
           <li>
             <strong>Modo Sandbox</strong> - Emails NÃO são enviados de verdade, apenas simulados

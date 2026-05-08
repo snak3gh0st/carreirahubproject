@@ -1,0 +1,111 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  chooseInvoiceSyncMatch,
+  collectPaginatedQuickBooksRecords,
+  findLinkedQuickBooksInvoiceId,
+  isQuickBooksInvoiceMarkedMissing,
+  mergeQuickBooksInvoiceMetadata,
+  resolveLocalCustomerIdForPayment,
+} from "../lib/quickbooks/sync-helpers";
+
+test("collectPaginatedQuickBooksRecords fetches all pages until hasMore is false", async () => {
+  const calls: number[] = [];
+
+  const records = await collectPaginatedQuickBooksRecords(async (startPosition) => {
+    calls.push(startPosition);
+
+    if (startPosition === 1) {
+      return {
+        records: [{ id: "p1" }, { id: "p2" }],
+        hasMore: true,
+        nextPosition: 3,
+      };
+    }
+
+    return {
+      records: [{ id: "p3" }],
+      hasMore: false,
+      nextPosition: 4,
+    };
+  });
+
+  assert.deepEqual(calls, [1, 3]);
+  assert.deepEqual(records, [{ id: "p1" }, { id: "p2" }, { id: "p3" }]);
+});
+
+test("findLinkedQuickBooksInvoiceId scans all payment lines", () => {
+  const qbPayment = {
+    Line: [
+      { LinkedTxn: [{ TxnType: "CreditMemo", TxnId: "cm_1" }] },
+      { LinkedTxn: [{ TxnType: "Invoice", TxnId: "inv_42" }] },
+    ],
+  };
+
+  assert.equal(findLinkedQuickBooksInvoiceId(qbPayment), "inv_42");
+});
+
+test("resolveLocalCustomerIdForPayment falls back to the linked local invoice customer id", () => {
+  const customerId = resolveLocalCustomerIdForPayment({
+    linkedInvoiceCustomerId: "customer_local_123",
+    linkedInvoiceQbCustomerId: undefined,
+    customerByQbId: new Map([["qb_customer_1", { id: "customer_local_999" }]]),
+  });
+
+  assert.equal(customerId, "customer_local_123");
+});
+
+test("chooseInvoiceSyncMatch prefers a direct QuickBooks id match before doc number and draft fallbacks", () => {
+  const result = chooseInvoiceSyncMatch({
+    existingByQuickBooksId: { id: "local-qb" },
+    existingByDocNumber: { id: "local-doc" },
+    draftFallback: { id: "local-draft" },
+  });
+
+  assert.deepEqual(result, {
+    record: { id: "local-qb" },
+    strategy: "quickbooks_id",
+  });
+});
+
+test("chooseInvoiceSyncMatch falls back to doc number before draft when QuickBooks ids drift", () => {
+  const result = chooseInvoiceSyncMatch({
+    existingByQuickBooksId: null,
+    existingByDocNumber: { id: "local-doc" },
+    draftFallback: { id: "local-draft" },
+  });
+
+  assert.deepEqual(result, {
+    record: { id: "local-doc" },
+    strategy: "doc_number",
+  });
+});
+
+test("mergeQuickBooksInvoiceMetadata preserves existing installment data while updating quickbooks metadata", () => {
+  const result = mergeQuickBooksInvoiceMetadata(
+    {
+      program: { installments: 6 },
+      quickbooks: { syncDate: "2026-05-01T00:00:00.000Z", missingInQb: true },
+    },
+    {
+      missingInQb: false,
+      relinkedAt: "2026-05-04T00:00:00.000Z",
+    },
+  );
+
+  assert.deepEqual(result, {
+    program: { installments: 6 },
+    quickbooks: {
+      syncDate: "2026-05-01T00:00:00.000Z",
+      missingInQb: false,
+      relinkedAt: "2026-05-04T00:00:00.000Z",
+    },
+  });
+});
+
+test("isQuickBooksInvoiceMarkedMissing detects invoices previously flagged as absent from QuickBooks", () => {
+  assert.equal(isQuickBooksInvoiceMarkedMissing({ quickbooks: { missingInQb: true } }), true);
+  assert.equal(isQuickBooksInvoiceMarkedMissing({ quickbooks: { missingInQbAt: "2026-05-04T00:00:00.000Z" } }), true);
+  assert.equal(isQuickBooksInvoiceMarkedMissing({ quickbooks: { missingInQb: false } }), false);
+});

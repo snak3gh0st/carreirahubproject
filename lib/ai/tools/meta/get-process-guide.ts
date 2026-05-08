@@ -4,7 +4,7 @@ import { defineAiTool, requireRole } from '../_base';
 import { OPS_WORKFLOW_DEFINITIONS } from '@/lib/ops/workflow';
 
 const ALL_ROLES = [
-  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL,
+  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL,
 ];
 
 const PROGRAM_CONTEXT =

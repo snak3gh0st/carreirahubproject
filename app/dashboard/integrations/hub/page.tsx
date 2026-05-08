@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getEffectiveSyncTimestamps } from "@/lib/integrations/sync-health";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -7,7 +8,7 @@ import Link from "next/link";
 /**
  * Integration Hub Dashboard
  *
- * Central view of all integrations (QuickBooks, Pipedrive)
+ * Central view of all integrations (QuickBooks, Clint CRM)
  * Shows connection status, sync statistics, and recent activity
  */
 export default async function IntegrationHubPage() {
@@ -24,15 +25,18 @@ export default async function IntegrationHubPage() {
   }
 
   // Get system config
-  const systemConfig = await prisma.systemConfig.findUnique({
-    where: { id: "system" },
-  });
+  const [systemConfig, effectiveSyncs] = await Promise.all([
+    prisma.systemConfig.findUnique({
+      where: { id: "system" },
+    }),
+    getEffectiveSyncTimestamps(),
+  ]);
 
   // Get sync statistics
   const [
     totalCustomers,
     qbCustomers,
-    pipedriveCustomers,
+    clintCustomers,
     totalInvoices,
     qbInvoices,
     totalPayments,
@@ -86,8 +90,8 @@ export default async function IntegrationHubPage() {
     systemConfig?.quickbooks_token_expires_at &&
     new Date(systemConfig.quickbooks_token_expires_at) > new Date();
 
-  // Pipedrive status
-  const pipedriveConfigured = !!process.env.PIPEDRIVE_API_TOKEN;
+  // Clint CRM status
+  const clintConfigured = !!process.env.CLINT_API_KEY;
 
   return (
     <div className="container mx-auto p-6">
@@ -140,7 +144,9 @@ export default async function IntegrationHubPage() {
               <span className="font-medium">
                 {systemConfig?.last_qb_sync
                   ? new Date(systemConfig.last_qb_sync).toLocaleString()
-                  : "Nunca"}
+                  : effectiveSyncs.quickbooksLastSync
+                    ? new Date(effectiveSyncs.quickbooksLastSync).toLocaleString()
+                    : "Nunca"}
               </span>
             </div>
             <div className="flex justify-between">
@@ -179,25 +185,25 @@ export default async function IntegrationHubPage() {
           </div>
         </div>
 
-        {/* Pipedrive */}
+        {/* Clint CRM */}
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Pipedrive</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Clint CRM</h3>
             <span
               className={`px-2 py-1 rounded-full text-xs font-medium ${
-                pipedriveConfigured
+                clintConfigured
                   ? "bg-green-100 text-green-800"
                   : "bg-red-100 text-red-800"
               }`}
             >
-              {pipedriveConfigured ? "Configurado" : "Não Configurado"}
+              {clintConfigured ? "Configurado" : "Não Configurado"}
             </span>
           </div>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-500">Chave API:</span>
+              <span className="text-gray-500">Chave API Clint:</span>
               <span className="font-medium">
-                {pipedriveConfigured ? "Configurado" : "Ausente"}
+                {clintConfigured ? "Configurado" : "Ausente"}
               </span>
             </div>
             <div className="flex justify-between">
@@ -214,7 +220,9 @@ export default async function IntegrationHubPage() {
               <span className="font-medium">
                 {systemConfig?.last_clint_sync
                   ? new Date(systemConfig.last_clint_sync).toLocaleString()
-                  : "Nunca"}
+                  : effectiveSyncs.clintLastSync
+                    ? new Date(effectiveSyncs.clintLastSync).toLocaleString()
+                    : "Nunca"}
               </span>
             </div>
             {errorsByService.PIPEDRIVE && (
@@ -247,8 +255,8 @@ export default async function IntegrationHubPage() {
                 <span className="font-medium">{qbCustomers}</span>
               </div>
               <div className="flex justify-between text-blue-600">
-                <span>Pipedrive:</span>
-                <span className="font-medium">{pipedriveCustomers}</span>
+                <span>Clint:</span>
+                <span className="font-medium">{clintCustomers}</span>
               </div>
             </div>
           </div>

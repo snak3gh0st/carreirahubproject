@@ -19,6 +19,7 @@ type TeamUser = {
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
   COMMERCIAL: "Comercial",
+  HEAD_COMERCIAL: "Head Comercial",
   FINANCE: "Financeiro",
   OPERATIONAL: "Operacional",
 };
@@ -26,11 +27,12 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: "bg-yellow-100 text-yellow-800",
   COMMERCIAL: "bg-indigo-100 text-indigo-800",
+  HEAD_COMERCIAL: "bg-sky-100 text-sky-800",
   FINANCE: "bg-green-100 text-green-800",
   OPERATIONAL: "bg-gray-100 text-gray-800",
 };
 
-const ALL_ROLES = ["ADMIN", "COMMERCIAL", "FINANCE", "OPERATIONAL"];
+const ALL_ROLES = ["ADMIN", "HEAD_COMERCIAL", "COMMERCIAL", "FINANCE", "OPERATIONAL"];
 
 export function TeamClient({ initialUsers, currentUserId }: { initialUsers: TeamUser[]; currentUserId: string }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
@@ -139,6 +141,7 @@ export function TeamClient({ initialUsers, currentUserId }: { initialUsers: Team
     const map: Record<string, string> = {
       ADMIN: "bg-yellow-600",
       COMMERCIAL: "bg-indigo-600",
+      HEAD_COMERCIAL: "bg-sky-600",
       FINANCE: "bg-green-600",
       OPERATIONAL: "bg-gray-600",
     };

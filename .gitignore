@@ -22,6 +22,14 @@
 .DS_Store
 *.pem
 
+# SSH keys
+chub
+chub.pub
+
+# env backups
+.env*.bak*
+.env.local.bak*
+
 # debug
 npm-debug.log*
 yarn-debug.log*

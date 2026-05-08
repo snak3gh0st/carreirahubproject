@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { emailService, FinanceDigestData } from '@/lib/services/email.service';
 import { differenceInDays, endOfDay, startOfDay, subDays } from 'date-fns';
+import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
+import { getFinancialHubExcludedCustomerIds } from '@/lib/financial/hub-exclusions-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +35,8 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
     const dateLabel = now.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerIdExclusionWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
 
     const recipients = await prisma.user.findMany({
       where: { active: true, role: 'FINANCE' },
@@ -49,7 +53,7 @@ export async function POST(request: NextRequest) {
     // ---------------------------------------------------------------------
 
     const overdueInvoices = await prisma.invoice.findMany({
-      where: { status: 'OVERDUE' },
+      where: { status: 'OVERDUE', ...customerIdExclusionWhere },
       select: { id: true, amount: true, dueDate: true },
     });
 
@@ -67,6 +71,7 @@ export async function POST(request: NextRequest) {
       where: {
         status: 'SENT',
         dueDate: { gte: startOfDay(now), lte: endOfDay(now) },
+        ...customerIdExclusionWhere,
       },
       select: { amount: true },
     });
@@ -115,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     const staleCutoff = subDays(now, 180);
     const staleAgg = await prisma.invoice.aggregate({
-      where: { status: 'OVERDUE', dueDate: { lte: staleCutoff } },
+      where: { status: 'OVERDUE', dueDate: { lte: staleCutoff }, ...customerIdExclusionWhere },
       _count: { _all: true },
       _sum: { amount: true },
     });

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import {
+  buildCustomerIdExclusionWhere,
+  buildNullableCustomerIdExclusionWhere,
+} from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 import { InvoiceStatus, DealStatus } from "@prisma/client";
 import { startOfMonth, subMonths, subDays, startOfYear, format } from "date-fns";
 
@@ -87,6 +92,9 @@ export async function GET(request: NextRequest) {
     const dateFilter = startDate && endDate
       ? { gte: startDate, lte: endDate }
       : undefined;
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
+    const nullableDealCustomerVisibilityWhere = buildNullableCustomerIdExclusionWhere(excludedCustomerIds);
 
     // Build customer segment filter
     // Segment definitions:
@@ -104,7 +112,7 @@ export async function GET(request: NextRequest) {
       if (segment === "active") {
         // Customers with invoices in last 90 days
         const activeCustomers = await prisma.invoice.findMany({
-          where: { createdAt: { gte: ninetyDaysAgo } },
+          where: { createdAt: { gte: ninetyDaysAgo }, ...customerVisibilityWhere },
           distinct: ["customerId"],
           select: { customerId: true },
         });
@@ -115,6 +123,7 @@ export async function GET(request: NextRequest) {
         const inactiveCustomers = await prisma.invoice.findMany({
           where: {
             createdAt: { gte: oneEightyDaysAgo, lt: ninetyDaysAgo },
+            ...customerVisibilityWhere,
           },
           distinct: ["customerId"],
           select: { customerId: true },
@@ -124,7 +133,7 @@ export async function GET(request: NextRequest) {
       } else if (segment === "churned") {
         // Customers with last invoice >180 days ago
         const churnedCustomers = await prisma.invoice.findMany({
-          where: { createdAt: { lt: oneEightyDaysAgo } },
+          where: { createdAt: { lt: oneEightyDaysAgo }, ...customerVisibilityWhere },
           distinct: ["customerId"],
           select: { customerId: true },
         });
@@ -176,6 +185,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: "PAID" }),
           ...(dateFilter && { paidAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amountPaid: true },
       }),
@@ -186,6 +196,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: "OVERDUE" }),
           ...(dateFilter && { createdAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amount: true },
       }),
@@ -196,6 +207,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { notIn: ["DRAFT", "VOID"] } }),
           ...(dateFilter && { createdAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amount: true },
       }),
@@ -206,6 +218,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["PAID", "PARTIALLY_PAID"] } }),
           ...(dateFilter && { paidAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amountPaid: true },
       }),
@@ -216,6 +229,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } }),
           ...(dateFilter && { createdAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amount: true },
       }),
@@ -226,6 +240,7 @@ export async function GET(request: NextRequest) {
           createdAt: dateFilter || { gte: subDays(now, 90) },
           ...(invoiceStatusWhereClause && { status: invoiceStatusWhereClause }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         distinct: ["customerId"],
         select: { customerId: true },
@@ -236,6 +251,7 @@ export async function GET(request: NextRequest) {
         where: {
           ...(dateFilter && { createdAt: dateFilter }),
           ...(customerIdFilter && { id: customerIdFilter }),
+          ...(excludedCustomerIds.length > 0 ? { id: { ...(customerIdFilter ?? {}), notIn: excludedCustomerIds } } : {}),
         },
       }),
 
@@ -244,6 +260,7 @@ export async function GET(request: NextRequest) {
         where: {
           ...(dateFilter && { createdAt: dateFilter }),
           ...(dealStatusWhereClause && { status: dealStatusWhereClause }),
+          ...nullableDealCustomerVisibilityWhere,
         },
       }),
 
@@ -252,6 +269,7 @@ export async function GET(request: NextRequest) {
         where: {
           ...(dealStatusWhereClause ? { status: dealStatusWhereClause } : { status: "WON" }),
           ...(dateFilter && { createdAt: dateFilter }),
+          ...nullableDealCustomerVisibilityWhere,
         },
       }),
 
@@ -270,6 +288,7 @@ export async function GET(request: NextRequest) {
           ...(dateFilter && { createdAt: dateFilter }),
           ...(invoiceStatusWhereClause && { status: invoiceStatusWhereClause }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _count: { id: true },
         _sum: { amount: true },
@@ -281,6 +300,7 @@ export async function GET(request: NextRequest) {
         where: {
           ...(dateFilter && { createdAt: dateFilter }),
           ...(dealStatusWhereClause && { status: dealStatusWhereClause }),
+          ...nullableDealCustomerVisibilityWhere,
         },
         _count: { id: true },
         _sum: { value: true },
@@ -295,6 +315,7 @@ export async function GET(request: NextRequest) {
             ...(endDate && { lte: endDate }),
           },
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         select: { paidAt: true, amountPaid: true },
         orderBy: { paidAt: "asc" },
@@ -309,6 +330,7 @@ export async function GET(request: NextRequest) {
           },
           ...(invoiceStatusWhereClause && { status: invoiceStatusWhereClause }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         select: { createdAt: true },
       }),
@@ -320,6 +342,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["PAID", "PARTIALLY_PAID"] } }),
           ...(dateFilter && { paidAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         _sum: { amountPaid: true },
         orderBy: { _sum: { amountPaid: "desc" } },
@@ -328,7 +351,12 @@ export async function GET(request: NextRequest) {
         // Get customer details for these groups
         const customerIds = invoiceGroups.map(ig => ig.customerId);
         const customers = await prisma.customer.findMany({
-          where: { id: { in: customerIds } },
+          where: {
+            id: {
+              in: customerIds,
+              ...(excludedCustomerIds.length > 0 ? { notIn: excludedCustomerIds } : {}),
+            },
+          },
           select: { id: true, name: true, email: true },
         });
 
@@ -347,6 +375,7 @@ export async function GET(request: NextRequest) {
         by: ["status"],
         where: {
           ...(dealStatusWhereClause ? { status: dealStatusWhereClause } : { status: { in: ["OPEN", "WON", "LOST"] } }),
+          ...nullableDealCustomerVisibilityWhere,
         },
         _count: { id: true },
         _sum: { value: true },
@@ -357,6 +386,7 @@ export async function GET(request: NextRequest) {
         where: {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { in: ["OVERDUE", "SENT", "PARTIALLY_PAID"] } }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         select: {
           amount: true,
@@ -377,6 +407,7 @@ export async function GET(request: NextRequest) {
           ...(invoiceStatusWhereClause ? { status: invoiceStatusWhereClause } : { status: { notIn: ["DRAFT", "VOID"] } }),
           ...(dateFilter && { createdAt: dateFilter }),
           ...(customerIdFilter && { customerId: customerIdFilter }),
+          ...customerVisibilityWhere,
         },
         select: {
           lineItems: true,

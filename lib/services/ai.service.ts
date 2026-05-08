@@ -5,9 +5,17 @@ import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let _openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+
+  return _openai;
+}
 
 const AI_MODEL = process.env.AI_MODEL || "gpt-4-turbo-preview";
 const AI_TEMPERATURE = parseFloat(process.env.AI_TEMPERATURE || "0.7");
@@ -100,7 +108,7 @@ export class AIService {
           { role: "user", content: message },
         ];
 
-        const completion = await openai.chat.completions.create({
+        const completion = await getOpenAI().chat.completions.create({
           model: AI_MODEL,
           messages,
           temperature: AI_TEMPERATURE,
@@ -248,7 +256,7 @@ export class AIService {
         { role: "user", content: dataFormat },
       ];
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: AI_MODEL,
         messages,
         temperature: 0.3, // Lower temperature for more consistent scoring
@@ -303,7 +311,11 @@ export class AIService {
    */
   async extractIntent(message: string): Promise<string> {
     try {
-      const completion = await openai.chat.completions.create({
+      if (!process.env.OPENAI_API_KEY) {
+        return "outro";
+      }
+
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
@@ -392,4 +404,3 @@ export class AIService {
 }
 
 export const aiService = new AIService();
-

@@ -66,6 +66,7 @@ export async function GET(request: NextRequest) {
           grant_type: "authorization_code",
           code: code,
           redirect_uri:
+            process.env.QUICKBOOKS_REDIRECT_URI ||
             `${process.env.NODE_ENV === "production" ? "https" : "http"}://${request.headers.get("host")}/api/quickbooks/auth/callback`,
         }).toString(),
       }

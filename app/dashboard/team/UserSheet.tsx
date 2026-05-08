@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-const ALL_ROLES = ["COMMERCIAL", "FINANCE", "OPERATIONAL", "ADMIN"] as const;
+const ALL_ROLES = ["COMMERCIAL", "HEAD_COMERCIAL", "FINANCE", "OPERATIONAL", "ADMIN"] as const;
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
   COMMERCIAL: "Comercial",
+  HEAD_COMERCIAL: "Head Comercial",
   FINANCE: "Financeiro",
   OPERATIONAL: "Operacional",
 };

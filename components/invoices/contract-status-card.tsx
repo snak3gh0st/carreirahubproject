@@ -20,39 +20,35 @@ interface Contract {
 
 interface ContractStatusCardProps {
   contract: Contract | null;
-  invoiceId: string;
-  customerEmail: string;
-  customerName: string;
 }
 
 export function ContractStatusCard({
   contract,
-  invoiceId,
-  customerEmail,
-  customerName,
 }: ContractStatusCardProps) {
   const [isResending, setIsResending] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   const handleResendContract = async () => {
+    if (!contract) return;
+
     setIsResending(true);
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}/resend-contract`, {
+      const response = await fetch(`/api/contracts/${contract.id}/resend`, {
         method: "POST",
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Falha ao reenviar o contrato");
+        throw new Error(data.error || "Falha ao reenviar notificacao do DocuSign");
       }
 
-      setMessage({ type: "success", text: "Lembrete do contrato enviado com sucesso" });
+      setMessage({ type: "success", text: "Notificacao do DocuSign reenviada com sucesso" });
     } catch (error) {
       setMessage({
         type: "error",
-        text: error instanceof Error ? error.message : "Falha ao reenviar o contrato",
+        text: error instanceof Error ? error.message : "Falha ao reenviar notificacao do DocuSign",
       });
     } finally {
       setIsResending(false);
@@ -75,6 +71,9 @@ export function ContractStatusCard({
         (new Date(contract.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
       )
     : null;
+  const canResend =
+    contract.status === ContractStatus.SENT_FOR_SIGNATURE ||
+    contract.status === ContractStatus.VIEWED;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -141,13 +140,13 @@ export function ContractStatusCard({
 
       {/* Actions */}
       <div className="mt-4 pt-4 border-t space-y-2">
-        {contract.status === ContractStatus.SENT_FOR_SIGNATURE && (
+        {canResend && (
           <button
             onClick={handleResendContract}
             disabled={isResending}
             className="w-full px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition disabled:opacity-50"
           >
-            {isResending ? "Enviando..." : "Reenviar lembrete do contrato"}
+            {isResending ? "Enviando..." : "Reenviar notificacao DocuSign"}
           </button>
         )}
 

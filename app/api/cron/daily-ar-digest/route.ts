@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { emailService, DailyDigestEmail } from "@/lib/services/email.service";
 import { differenceInDays } from "date-fns";
+import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +48,8 @@ export async function POST(request: NextRequest) {
     console.log("[DailyARDigest] Starting daily digest send...");
 
     const now = new Date();
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerIdExclusionWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
     const results: Array<{ email: string; success: boolean; error?: string }> =
       [];
 
@@ -69,6 +73,7 @@ export async function POST(request: NextRequest) {
     const overdueInvoices = await prisma.invoice.findMany({
       where: {
         status: "OVERDUE",
+        ...customerIdExclusionWhere,
       },
       select: {
         id: true,
@@ -89,6 +94,7 @@ export async function POST(request: NextRequest) {
       where: {
         status: "SENT",
         dueDate: { lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) }, // Due within 7 days
+        ...customerIdExclusionWhere,
       },
       select: {
         id: true,
@@ -109,6 +115,7 @@ export async function POST(request: NextRequest) {
       where: {
         status: "OVERDUE",
         dueDate: { lte: new Date(now.getTime() - 180 * 24 * 60 * 60 * 1000) },
+        ...customerIdExclusionWhere,
       },
       select: {
         id: true,

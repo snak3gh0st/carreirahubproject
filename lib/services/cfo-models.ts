@@ -4,5 +4,5 @@ export function getCfoModelCandidates(preferredModel?: string): string[] {
 }
 
 export function modelSupportsJsonResponseFormat(model: string): boolean {
-  return model.includes("turbo-preview") || model.includes("4.1") || model.includes("4o") || model.includes("5");
+  return model.includes("turbo-preview") || model.includes("4.1") || model.includes("4o") || model.startsWith("gpt-5");
 }

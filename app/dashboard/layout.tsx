@@ -41,7 +41,7 @@ export default async function DashboardLayout({
   const userId = (session.user as any).id;
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
-  const isTeamRole = ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL"].includes(userRole);
+  const isTeamRole = ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole);
 
   return (
     <div data-portal="dashboard" className="min-h-screen bg-gray-50">

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { buildCustomerIdExclusionWhere } from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +22,15 @@ export async function GET(request: NextRequest) {
     // Get revenue data (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
 
     const invoicesByDay = await prisma.invoice.groupBy({
       by: ["createdAt"],
       where: {
         createdAt: { gte: thirtyDaysAgo },
         status: "PAID",
+        ...customerVisibilityWhere,
       },
       _sum: {
         amount: true,
@@ -41,6 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Get invoice status distribution with overdue calculation
     const allInvoices = await prisma.invoice.findMany({
+      where: customerVisibilityWhere,
       select: {
         status: true,
         dueDate: true,

@@ -116,6 +116,32 @@ type TemplateEnvelopeSigner = {
   };
 };
 
+export function isContractResendableStatus(status: string): boolean {
+  return status === "SENT_FOR_SIGNATURE" || status === "VIEWED";
+}
+
+export function buildEnvelopeResendRequest(envelopeId: string): {
+  endpoint: string;
+  method: "PUT";
+  body: {
+    envelopeId: string;
+  };
+} {
+  const normalizedEnvelopeId = envelopeId.trim();
+
+  if (!normalizedEnvelopeId) {
+    throw new Error("Envelope ID is required");
+  }
+
+  return {
+    endpoint: `/envelopes/${normalizedEnvelopeId}?resend_envelope=true`,
+    method: "PUT",
+    body: {
+      envelopeId: normalizedEnvelopeId,
+    },
+  };
+}
+
 export function buildTemplateEnvelopeSigners(params: {
   clientEmail: string;
   clientName: string;
@@ -123,7 +149,7 @@ export function buildTemplateEnvelopeSigners(params: {
   clientTextTabs: DocuSignTextTab[];
 }): TemplateEnvelopeSigner[] {
   const thaisName = getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_NAME', 'Thais');
-  const thaisEmail = getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_EMAIL', 'people@carreirausa.com');
+  const thaisEmail = getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_EMAIL', 'thais.mei@carreirausa.com');
   const witnessOneName = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS1_NAME', 'Nadya');
   const witnessOneEmail = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS1_EMAIL', 'people@carreirausa.com');
   const witnessTwoName = getTrimmedEnv('DOCUSIGN_SIGNER_WITNESS2_NAME', 'Diego Milan');
@@ -1096,7 +1122,7 @@ export class DocuSignService {
               },
             },
             {
-              email: getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_EMAIL', 'people@carreirausa.com'),
+              email: getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_EMAIL', 'thais.mei@carreirausa.com'),
               name: getTrimmedEnv('DOCUSIGN_SIGNER_THAIS_NAME', 'Thais'),
               recipientId: '2',
               routingOrder: '2',
@@ -1350,6 +1376,14 @@ export class DocuSignService {
       statusDateTime: result.statusChangedDateTime || new Date().toISOString(),
       signedDateTime: result.completedDateTime,
     };
+  }
+
+  async resendEnvelope(envelopeId: string): Promise<void> {
+    const request = buildEnvelopeResendRequest(envelopeId);
+    await this.apiRequest(request.endpoint, {
+      method: request.method,
+      body: JSON.stringify(request.body),
+    });
   }
 
   /**

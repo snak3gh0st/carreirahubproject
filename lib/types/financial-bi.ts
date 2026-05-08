@@ -30,6 +30,7 @@ export interface FinancialBISummary {
   revenue: KPIMetric;
   collectionRate: KPIMetric;
   outstandingAR: KPIMetric;
+  overdueAR: KPIMetric;
   mrr: KPIMetric;
   topClientConcentration: ConcentrationMetric;
   delinquencyRate?: number;
@@ -40,14 +41,14 @@ export interface FinancialBISummary {
 
 export interface RevenueGrowthData {
   invoicedVsCollected: Array<{ month: string; invoiced: number; collected: number }>;
-  revenueByService: Array<{ service: string; amount: number }>;
-  mrrTrend: Array<{ month: string; mrr: number; arr: number }>;
+  revenueByService: Array<{ service: string; amount: number; invoiceCount: number }>;
+  mrrTrend: Array<{ month: string; mrr: number; arr: number; actualMrr: number; actualArr: number }>;
   momGrowth: Array<{ month: string; growthPct: number }>;
 }
 
 export interface ArCollectionsData {
   agingBreakdown: Array<{ bucket: string; count: number; amount: number }>;
-  collectionPerformance: Array<{ month: string; avgDaysToPayment: number; collectionRate: number }>;
+  collectionPerformance: Array<{ month: string; avgDaysToPayment: number | null; collectionRate: number; invoiced: number; collected: number }>;
   overdueInvoices: OverdueInvoiceRow[];
 }
 
@@ -113,10 +114,22 @@ export interface PnLData {
     amount: number;
     pctOfTotal: number;
   }>;
+  cogsByCategory: Array<{
+    category: string;
+    amount: number;
+    pctOfTotal: number;
+  }>;
   burnRate: number;
   prevBurnRate: number;
   cashOnHand: number;
   runwayMonths: number;
+  totalAssets?: number;
+  totalLiabilities?: number;
+  totalEquity?: number;
+  netCashChange?: number;
+  operatingCashFlow?: number;
+  investingCashFlow?: number;
+  financingCashFlow?: number;
   lastFetchedAt: string;
 }
 
@@ -151,6 +164,21 @@ export interface ReceivablesProjectionData {
   upcomingNext7Days: number;
   upcomingNext30Days: number;
   monthlyBreakeven: number;
+  salesForecast?: {
+    avgProjectedSales: number;
+    avgProjectedCashIn: number;
+    realizationRate: number;
+    monthly: Array<{
+      month: string;
+      monthLabel: string;
+      projectedSales: number;
+      projectedCashIn: number;
+      existingReceivables: number;
+      totalExpectedInflow: number;
+      conservativeTotalInflow: number;
+      gapToBreakeven: number;
+    }>;
+  };
 }
 
 export interface FinancialBIResponse {
@@ -170,4 +198,12 @@ export interface FinancialBIResponse {
 }
 
 export type TabParam = "all" | "revenue" | "ar" | "cashflow" | "customers" | "pnl";
-export type DateRangeParam = "last7" | "last30" | "last90" | "thisYear" | "allTime" | "custom";
+export type DateRangeParam =
+  | "last7"
+  | "last30"
+  | "last90"
+  | "thisMonth"
+  | "lastMonth"
+  | "thisYear"
+  | "allTime"
+  | "custom";

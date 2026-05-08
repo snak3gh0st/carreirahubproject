@@ -26,12 +26,22 @@ export async function GET(request: NextRequest) {
       where: { id: 'system' },
     });
 
-    // Get recent invoice email logs
+    const now = new Date();
+    const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    // Get recent invoice email logs using the current scheduled-send actions.
     const emailLogs = await prisma.integrationLog.findMany({
       where: {
-        service: 'quickbooks',
+        service: { in: ['quickbooks', 'QUICKBOOKS'] },
         action: {
-          in: ['invoice_email_sent', 'invoice_email_failed'],
+          in: [
+            'scheduled_invoice_sent',
+            'scheduled_installment_sent',
+            'scheduled_invoice_send_failed',
+            'scheduled_invoice_voided_not_found',
+            'invoice_email_sent',
+            'invoice_email_failed',
+          ],
         },
       },
       orderBy: {
@@ -40,12 +50,12 @@ export async function GET(request: NextRequest) {
       take: 20,
     });
 
-    // Get recent invoice creation logs
+    // Get recent invoice creation/sync logs
     const creationLogs = await prisma.integrationLog.findMany({
       where: {
-        service: 'quickbooks',
+        service: { in: ['quickbooks', 'QUICKBOOKS'] },
         action: {
-          in: ['invoice_created_and_sent', 'invoice_synced_on_approval'],
+          in: ['invoice_created_and_sent', 'invoice_synced_on_approval', 'SYNC'],
         },
       },
       orderBy: {
@@ -53,11 +63,48 @@ export async function GET(request: NextRequest) {
       },
       take: 20,
     });
+
+    const [pendingDueSoon, pendingTotal, stalePastDue] = await Promise.all([
+      prisma.invoice.count({
+        where: {
+          quickbooks_invoice_id: { not: null },
+          emailSentAt: null,
+          status: { notIn: ['PAID', 'VOID'] },
+          customer: { email: { not: '' } },
+          dueDate: { lte: sevenDaysOut },
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          quickbooks_invoice_id: { not: null },
+          emailSentAt: null,
+          status: { notIn: ['PAID', 'VOID'] },
+          customer: { email: { not: '' } },
+        },
+      }),
+      prisma.invoice.count({
+        where: {
+          quickbooks_invoice_id: { not: null },
+          emailSentAt: null,
+          emailSendAttempts: 0,
+          status: { notIn: ['PAID', 'VOID'] },
+          customer: { email: { not: '' } },
+          dueDate: { lt: now },
+        },
+      }),
+    ]);
 
     // Count successes and failures
     const emailStats = {
-      sent: emailLogs.filter((log) => log.status === 'SUCCESS').length,
-      failed: emailLogs.filter((log) => log.status === 'ERROR').length,
+      sent: emailLogs.filter((log) =>
+        log.status === 'SUCCESS' &&
+        ['scheduled_invoice_sent', 'scheduled_installment_sent', 'invoice_email_sent'].includes(log.action)
+      ).length,
+      failed: emailLogs.filter((log) =>
+        log.status === 'ERROR' &&
+        ['scheduled_invoice_send_failed', 'invoice_email_failed'].includes(log.action)
+      ).length,
+      voidedNotFound: emailLogs.filter((log) => log.action === 'scheduled_invoice_voided_not_found').length,
     };
 
     // Get recent invoices with QB IDs
@@ -106,17 +153,22 @@ export async function GET(request: NextRequest) {
         customerEmail: inv.customer.email,
         amount: inv.amount,
         status: inv.status,
+        emailSentAt: inv.emailSentAt,
+        emailSendAttempts: inv.emailSendAttempts,
+        lastEmailSendError: inv.lastEmailSendError,
         createdAt: inv.createdAt,
       })),
+      queueStats: {
+        pendingDueSoon,
+        pendingTotal,
+        stalePastDue,
+      },
       instructions: {
         howToVerify: [
-          '1. Check emailStats above - if sent > 0, the API call was made',
-          '2. If in SANDBOX mode, emails will NOT be sent to real addresses',
-          '3. To send real emails, switch to PRODUCTION mode:',
-          '   - Set QUICKBOOKS_ENVIRONMENT=production in .env',
-          '   - Reconnect OAuth at /api/quickbooks/auth/connect',
-          '   - Create a new invoice',
-          '4. Check recentEmailLogs for any errors',
+          '1. Check emailStats above - if sent > 0, the QuickBooks send endpoint was called successfully',
+          '2. queueStats.pendingDueSoon shows invoices already inside the send window',
+          '3. queueStats.stalePastDue highlights overdue invoices with no send attempt recorded locally',
+          '4. If in SANDBOX mode, emails will NOT be sent to real addresses',
         ],
         testEmailSend: [
           '1. Create a new invoice (Finance/Admin role)',

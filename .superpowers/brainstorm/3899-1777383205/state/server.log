@@ -1,0 +1,4 @@
+{"type":"server-started","port":52540,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:52540","screen_dir":"/Users/pauloloureiro/Dev/SigmaProjects/carreirahubproject/.superpowers/brainstorm/3899-1777383205/content","state_dir":"/Users/pauloloureiro/Dev/SigmaProjects/carreirahubproject/.superpowers/brainstorm/3899-1777383205/state"}
+{"type":"screen-added","file":"/Users/pauloloureiro/Dev/SigmaProjects/carreirahubproject/.superpowers/brainstorm/3899-1777383205/content/approaches.html"}
+{"type":"screen-added","file":"/Users/pauloloureiro/Dev/SigmaProjects/carreirahubproject/.superpowers/brainstorm/3899-1777383205/content/mockup-team.html"}
+{"type":"server-stopped","reason":"idle timeout"}

@@ -3,6 +3,8 @@ import { InvoiceStatus, UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toInvoiceSafeDto } from '../../dto';
+import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
+import { getFinancialHubExcludedCustomerIds } from '@/lib/financial/hub-exclusions-db';
 
 export const getOverdueInvoices = defineAiTool({
   name: 'getOverdueInvoices',
@@ -15,9 +17,11 @@ export const getOverdueInvoices = defineAiTool({
   async handler({ minDaysOverdue, limit }, ctx) {
     requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.FINANCE]);
     try {
+      const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
       const cutoff = new Date(Date.now() - (minDaysOverdue ?? 1) * 86_400_000);
       const invoices = await prisma.invoice.findMany({
         where: {
+          ...buildCustomerIdExclusionWhere(excludedCustomerIds),
           status: { in: [InvoiceStatus.SENT, InvoiceStatus.OVERDUE, InvoiceStatus.PARTIALLY_PAID] },
           dueDate: { lt: cutoff },
         },

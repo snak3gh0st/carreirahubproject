@@ -183,7 +183,7 @@ export default function SyncStatusPage() {
         <div>
           <h1 className="text-3xl font-bold">Status de Sincronização das Integrações</h1>
           <p className="text-gray-600 mt-1">
-            Monitore a saúde das integrações QuickBooks e Pipedrive • {syncStatus.timeframe}
+            Monitore a saúde das integrações QuickBooks e Clint CRM • {syncStatus.timeframe}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -334,11 +334,11 @@ export default function SyncStatusPage() {
 
       {/* Integration Health Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Pipedrive Card */}
+        {/* Clint CRM Card */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">Pipedrive</h3>
+              <h3 className="text-xl font-semibold">Clint CRM</h3>
               <StatusIndicator status={syncStatus.pipedrive.status} />
             </div>
 
@@ -384,7 +384,7 @@ export default function SyncStatusPage() {
               href="/dashboard/settings/integrations?source=pipedrive"
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
-              Configurar Pipedrive →
+              Configurar Clint →
             </Link>
           </div>
         </div>

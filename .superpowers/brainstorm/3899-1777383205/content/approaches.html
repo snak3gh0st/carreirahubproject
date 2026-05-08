@@ -1,0 +1,40 @@
+<h2>Abordagens para a Área de Gestão de Equipe</h2>
+<p class="subtitle">Escolha o padrão de UX que preferir para criar, editar e remover usuários</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Tabela + Modal</h3>
+      <p>Tudo em uma página. Botão "Novo Usuário" abre modal. Edição e desativação também via modal. Compacto, sem navegação.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Uma única rota</li><li>Sem perda de contexto</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Modal pode ficar apertado</li><li>Difícil expandir depois</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tabela + Sheet Lateral ⭐ Recomendado</h3>
+      <p>Lista de usuários principal. Clicar em "Novo" ou em um usuário abre um painel lateral (sheet) deslizante com o formulário. Segue o padrão já usado no projeto.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Contexto sempre visível</li><li>Espaço generoso para o form</li><li>Padrão moderno de admin</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Levemente mais complexo de implementar</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Lista + Páginas Separadas</h3>
+      <p>Padrão CRUD clássico: <code>/team</code> lista usuários, <code>/team/new</code> cria, <code>/team/[id]/edit</code> edita. Simples e direto.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Prós</h4><ul><li>Mais simples de implementar</li><li>URLs diretas</li></ul></div>
+        <div class="cons"><h4>Contras</h4><ul><li>Navegar para editar perde contexto da lista</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

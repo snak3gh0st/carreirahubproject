@@ -1,0 +1,251 @@
+<style>
+  .legacy-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-top: 20px;
+  }
+  .legacy-screen {
+    border: 1px solid #d7ddd9;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #f5f7f6;
+    box-shadow: 0 8px 30px rgba(25, 39, 36, 0.06);
+  }
+  .legacy-topbar {
+    padding: 18px 18px 0 18px;
+    background: linear-gradient(180deg, #eef2f0 0%, #f5f7f6 100%);
+  }
+  .legacy-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #b85d24;
+    background: #fff3eb;
+    border: 1px solid #ffd8bf;
+  }
+  .legacy-header {
+    margin-top: 14px;
+    padding: 18px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #2f443f 0%, #3c544d 100%);
+    color: white;
+  }
+  .legacy-header h3 {
+    margin: 0;
+    font-size: 28px;
+    line-height: 1.05;
+    color: #ffffff;
+  }
+  .legacy-header p {
+    margin: 10px 0 0 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: rgba(255,255,255,0.82);
+  }
+  .legacy-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .legacy-pill {
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.14);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .legacy-pill.subtle {
+    color: #d7e0dc;
+    background: rgba(255,255,255,0.06);
+  }
+  .legacy-body {
+    padding: 18px;
+  }
+  .legacy-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .legacy-card {
+    background: white;
+    border: 1px solid #e5e9e7;
+    border-radius: 18px;
+    padding: 14px;
+  }
+  .legacy-card .k {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #70807a;
+  }
+  .legacy-card .v {
+    margin-top: 10px;
+    font-size: 26px;
+    font-weight: 700;
+    color: #243531;
+  }
+  .legacy-card .s {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #66756f;
+  }
+  .legacy-strip {
+    display: grid;
+    gap: 10px;
+  }
+  .legacy-strip .item {
+    background: white;
+    border: 1px solid #e5e9e7;
+    border-radius: 18px;
+    padding: 14px;
+  }
+  .legacy-strip .item strong {
+    display: block;
+    color: #243531;
+    margin-bottom: 6px;
+  }
+  .callout {
+    margin-top: 22px;
+  }
+  @media (max-width: 1100px) {
+    .legacy-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<h2>Legacy BI Polish Direction</h2>
+<p class="subtitle">Recommended `A`: keep legacy pages clearly secondary to the CEO cockpit, but improve readability, contrast, and fallback framing so they feel intentional instead of washed out.</p>
+
+<div class="legacy-grid">
+  <div class="legacy-screen">
+    <div class="legacy-topbar">
+      <div class="legacy-badge">Legacy Finance Surface</div>
+      <div class="legacy-header">
+        <h3>Financial Detail</h3>
+        <p>This page is still useful for deeper analysis, but the cockpit remains the primary BI entry point. The framing is now readable, calmer, and more decisive.</p>
+        <div class="legacy-actions">
+          <div class="legacy-pill">Open Cockpit</div>
+          <div class="legacy-pill subtle">Admin BI Legacy</div>
+        </div>
+      </div>
+    </div>
+    <div class="legacy-body">
+      <div class="legacy-row">
+        <div class="legacy-card">
+          <div class="k">Revenue Pace</div>
+          <div class="v">$169k</div>
+          <div class="s">Current period collections</div>
+        </div>
+        <div class="legacy-card">
+          <div class="k">AR at Risk</div>
+          <div class="v">$530k</div>
+          <div class="s">Still a critical detail layer</div>
+        </div>
+        <div class="legacy-card">
+          <div class="k">Runway</div>
+          <div class="v">0.0 mo</div>
+          <div class="s">Uses stronger contrast to flag urgency</div>
+        </div>
+      </div>
+      <div class="legacy-strip">
+        <div class="item"><strong>Why this is better</strong>Fallback context is clear, but the visual weight stays below the cockpit.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legacy-screen">
+    <div class="legacy-topbar">
+      <div class="legacy-badge">Legacy QuickBooks Insights</div>
+      <div class="legacy-header">
+        <h3>QuickBooks Analysis</h3>
+        <p>The old Insights page keeps its analytical depth, but the top layer becomes clearer and more legible, with stronger header contrast and cleaner action hierarchy.</p>
+        <div class="legacy-actions">
+          <div class="legacy-pill">Open Cockpit</div>
+          <div class="legacy-pill subtle">Admin BI Legacy</div>
+        </div>
+      </div>
+    </div>
+    <div class="legacy-body">
+      <div class="legacy-row">
+        <div class="legacy-card">
+          <div class="k">Receivables</div>
+          <div class="v">$204k</div>
+          <div class="s">Deeper operational forecast</div>
+        </div>
+        <div class="legacy-card">
+          <div class="k">Expected Risk</div>
+          <div class="v">$42k</div>
+          <div class="s">Color is reserved for actual warnings</div>
+        </div>
+        <div class="legacy-card">
+          <div class="k">Confidence</div>
+          <div class="v">68%</div>
+          <div class="s">Readable support metrics, not just chart clutter</div>
+        </div>
+      </div>
+      <div class="legacy-strip">
+        <div class="item"><strong>Why this is better</strong>The page still serves analysts, but stops feeling visually weaker than the data deserves.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legacy-screen">
+    <div class="legacy-topbar">
+      <div class="legacy-badge">Legacy Admin BI</div>
+      <div class="legacy-header">
+        <h3>Commercial and Ops Detail</h3>
+        <p>The admin legacy page should become a structured supporting surface with a stronger top frame, better KPI readability, and clearer tab hierarchy.</p>
+        <div class="legacy-actions">
+          <div class="legacy-pill">Back to Cockpit</div>
+          <div class="legacy-pill subtle">Operational Detail</div>
+        </div>
+      </div>
+    </div>
+    <div class="legacy-body">
+      <div class="legacy-row">
+        <div class="legacy-card">
+          <div class="k">Active Students</div>
+          <div class="v">87</div>
+          <div class="s">More breathing room and cleaner labels</div>
+        </div>
+        <div class="legacy-card">
+          <div class="k">Deals Won</div>
+          <div class="v">11</div>
+          <div class="s">Secondary UI still feels high quality</div>
+        </div>
+        <div class="legacy-card">
+          <div class="k">Lead Conversion</div>
+          <div class="v">14.2%</div>
+          <div class="s">Clearer type contrast and tab focus</div>
+        </div>
+      </div>
+      <div class="legacy-strip">
+        <div class="item"><strong>Why this is better</strong>The page feels intentionally “supporting” instead of old or abandoned.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section callout">
+  <div class="options">
+    <div class="option" data-choice="approve-a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Proceed with this polish direction</h3>
+        <p>Higher contrast headers, stronger fallback framing, cleaner legacy surfaces, and visual hierarchy that stays below the CEO cockpit.</p>
+      </div>
+    </div>
+  </div>
+</div>

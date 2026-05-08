@@ -1,5 +1,10 @@
 // lib/services/admin-bi.ts
 import { prisma } from "@/lib/db";
+import {
+  buildCustomerIdExclusionWhere,
+  buildNullableCustomerIdExclusionWhere,
+} from "@/lib/financial/hub-exclusions";
+import { getFinancialHubExcludedCustomerIds } from "@/lib/financial/hub-exclusions-db";
 import { differenceInMonths, differenceInDays, subMonths, subDays, startOfMonth, format, subYears } from "date-fns";
 
 export interface AdminBIDateRange {
@@ -15,9 +20,9 @@ export function getAdminBIDateRange(
   const now = new Date();
   switch (preset) {
     case "last30":
-      return { startDate: subDays(now, 30), endDate: now };
+      return { startDate: subDays(now, 29), endDate: now };
     case "last90":
-      return { startDate: subDays(now, 90), endDate: now };
+      return { startDate: subDays(now, 89), endDate: now };
     case "thisYear":
       return {
         startDate: new Date(now.getFullYear(), 0, 1),
@@ -25,7 +30,7 @@ export function getAdminBIDateRange(
       };
     case "custom":
       return {
-        startDate: from ? new Date(from) : subDays(now, 30),
+        startDate: from ? new Date(from) : subDays(now, 29),
         endDate: to ? new Date(to) : now,
       };
     case "allTime":
@@ -38,8 +43,11 @@ export function getAdminBIDateRange(
 
 export async function getAdminBIKpis(range: AdminBIDateRange) {
   const { startDate, endDate } = range;
-  const prevStart = subDays(startDate, differenceInDays(endDate, startDate));
+  const prevStart = subDays(startDate, differenceInDays(endDate, startDate) + 1);
   const prevEnd = subDays(startDate, 1);
+  const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+  const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
+  const nullableDealCustomerVisibilityWhere = buildNullableCustomerIdExclusionWhere(excludedCustomerIds);
 
   const [
     activeEnrollments,
@@ -54,23 +62,23 @@ export async function getAdminBIKpis(range: AdminBIDateRange) {
     convertedLeads,
     allLeadsInPeriod,
   ] = await Promise.all([
-    prisma.mentorshipEnrollment.count({ where: { status: "ACTIVE" } }),
-    prisma.mentorshipEnrollment.count({ where: { status: { in: ["COMPLETED", "PAUSED"] } } }),
+    prisma.mentorshipEnrollment.count({ where: { status: "ACTIVE", ...customerVisibilityWhere } }),
+    prisma.mentorshipEnrollment.count({ where: { status: { in: ["COMPLETED", "PAUSED"] }, ...customerVisibilityWhere } }),
     prisma.mentorshipEnrollment.findMany({
-      where: { startDate: { gte: new Date("2020-01-01") } },
+      where: { startDate: { gte: new Date("2020-01-01") }, ...customerVisibilityWhere },
       select: { startDate: true, endDate: true, status: true },
     }),
-    prisma.deal.count({ where: { status: "WON", updatedAt: { gte: startDate, lte: endDate } } }),
-    prisma.deal.count({ where: { status: "WON", updatedAt: { gte: prevStart, lte: prevEnd } } }),
-    prisma.deal.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
-    prisma.deal.count({ where: { createdAt: { gte: prevStart, lte: prevEnd } } }),
+    prisma.deal.count({ where: { status: "WON", updatedAt: { gte: startDate, lte: endDate }, ...nullableDealCustomerVisibilityWhere } }),
+    prisma.deal.count({ where: { status: "WON", updatedAt: { gte: prevStart, lte: prevEnd }, ...nullableDealCustomerVisibilityWhere } }),
+    prisma.deal.count({ where: { createdAt: { gte: startDate, lte: endDate }, ...nullableDealCustomerVisibilityWhere } }),
+    prisma.deal.count({ where: { createdAt: { gte: prevStart, lte: prevEnd }, ...nullableDealCustomerVisibilityWhere } }),
     prisma.invoice.aggregate({
-      where: { status: "OVERDUE" },
+      where: { status: "OVERDUE", ...customerVisibilityWhere },
       _sum: { amount: true },
       _count: true,
     }),
     prisma.invoice.aggregate({
-      where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] } },
+      where: { status: { in: ["SENT", "OVERDUE", "PARTIALLY_PAID"] }, ...customerVisibilityWhere },
       _sum: { amount: true },
       _count: true,
     }),
@@ -131,12 +139,15 @@ export async function getAdminBIKpis(range: AdminBIDateRange) {
 
 export async function getCloserPerformance(range: AdminBIDateRange) {
   const { startDate, endDate } = range;
+  const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+  const nullableDealCustomerVisibilityWhere = buildNullableCustomerIdExclusionWhere(excludedCustomerIds);
 
   const wonDeals = await prisma.deal.findMany({
     where: {
       status: "WON",
       updatedAt: { gte: startDate, lte: endDate },
       ownerId: { not: null },
+      ...nullableDealCustomerVisibilityWhere,
     },
     select: {
       value: true,
@@ -151,6 +162,7 @@ export async function getCloserPerformance(range: AdminBIDateRange) {
     where: {
       createdAt: { gte: startDate, lte: endDate },
       ownerId: { not: null },
+      ...nullableDealCustomerVisibilityWhere,
     },
     select: { status: true, ownerId: true, owner: { select: { name: true } } },
   });
@@ -219,19 +231,23 @@ export async function getCloserPerformance(range: AdminBIDateRange) {
 // ── Programs ─────────────────────────────────────────────────
 
 export async function getProgramsData(range: AdminBIDateRange) {
-  const { startDate, endDate } = range;
+  void range;
+  const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+  const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
 
   const [enrollmentsByProgram, enrollmentsByMonth, statusBreakdown] = await Promise.all([
     prisma.mentorshipEnrollment.groupBy({
       by: ["programType"],
+      where: customerVisibilityWhere,
       _count: { id: true },
     }),
     prisma.mentorshipEnrollment.findMany({
-      where: { startDate: { gte: subMonths(new Date(), 11) } },
+      where: { startDate: { gte: subMonths(new Date(), 11) }, ...customerVisibilityWhere },
       select: { startDate: true, programType: true, status: true },
     }),
     prisma.mentorshipEnrollment.groupBy({
       by: ["status"],
+      where: customerVisibilityWhere,
       _count: { id: true },
     }),
   ]);
@@ -269,7 +285,9 @@ export async function getProgramsData(range: AdminBIDateRange) {
 // ── Customer Demographics ────────────────────────────────────
 
 export async function getCustomerDemographics() {
+  const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
   const customers = await prisma.customer.findMany({
+    where: excludedCustomerIds.length > 0 ? { id: { notIn: excludedCustomerIds } } : undefined,
     select: {
       dateOfBirth: true,
       country: true,
@@ -405,14 +423,17 @@ export async function getLeadFunnel(range: AdminBIDateRange) {
 
 export async function getSalesSeasonality() {
   const since = subMonths(new Date(), 11);
+  const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+  const customerVisibilityWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
+  const nullableDealCustomerVisibilityWhere = buildNullableCustomerIdExclusionWhere(excludedCustomerIds);
 
   const [deals, payments] = await Promise.all([
     prisma.deal.findMany({
-      where: { status: "WON", updatedAt: { gte: startOfMonth(since) } },
+      where: { status: "WON", updatedAt: { gte: startOfMonth(since) }, ...nullableDealCustomerVisibilityWhere },
       select: { value: true, updatedAt: true },
     }),
     prisma.payment.findMany({
-      where: { paymentDate: { gte: startOfMonth(since) } },
+      where: { paymentDate: { gte: startOfMonth(since) }, ...customerVisibilityWhere },
       select: { amount: true, paymentDate: true, paymentMethod: true },
     }),
   ]);

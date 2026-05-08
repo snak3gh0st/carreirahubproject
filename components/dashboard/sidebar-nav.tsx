@@ -43,25 +43,25 @@ interface NavItem {
 const navigationSections: NavSection[] = [
   {
     title: "Visão Geral",
-    roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+    roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
     items: [
       {
         href: "/dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
-        roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+        roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/ai",
         label: "IA",
         icon: Sparkles,
-        roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+        roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
     ],
   },
   {
     title: "IA & Análises",
-    roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+    roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
     items: [
       {
         href: "/dashboard/admin/ai",
@@ -79,7 +79,13 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/commercial/ai",
         label: "Pulso do Pipeline",
         icon: Sparkles,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
+      },
+      {
+        href: "/dashboard/commercial-bi",
+        label: "BI Comercial",
+        icon: BarChart3,
+        roles: ["ADMIN", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/operational/ai",
@@ -91,25 +97,25 @@ const navigationSections: NavSection[] = [
   },
   {
     title: "Vendas & Leads",
-    roles: ["ADMIN", "COMMERCIAL"],
+    roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
     items: [
       {
         href: "/dashboard/leads",
         label: "Leads",
         icon: Users,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/conversations",
         label: "Conversas",
         icon: MessageSquare,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/deals",
         label: "Negócios",
         icon: Briefcase,
-        roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+        roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/invoices/new",
@@ -119,9 +125,9 @@ const navigationSections: NavSection[] = [
       },
       {
         href: "/dashboard/invoices",
-        label: "Minhas Faturas",
+        label: "Faturas",
         icon: FileText,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/contracts/new",
@@ -151,7 +157,7 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/contracts/new",
         label: "Criar Contrato",
         icon: FilePlus,
-        roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+        roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/invoices/new",
@@ -175,7 +181,7 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/customers",
         label: "Clientes",
         icon: Building2,
-        roles: ["ADMIN", "FINANCE", "COMMERCIAL"],
+        roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/customers/new",
@@ -193,13 +199,13 @@ const navigationSections: NavSection[] = [
   },
   {
     title: "Comercial",
-    roles: ["ADMIN", "COMMERCIAL"],
+    roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
     items: [
       {
         href: "/dashboard/customers/new",
         label: "Criar Cliente",
         icon: Users,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/invoices/new",
@@ -209,9 +215,9 @@ const navigationSections: NavSection[] = [
       },
       {
         href: "/dashboard/invoices",
-        label: "Minhas Faturas",
+        label: "Faturas",
         icon: FileText,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/contracts/new",

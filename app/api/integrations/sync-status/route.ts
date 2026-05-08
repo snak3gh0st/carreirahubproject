@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { UserRole } from "@prisma/client";
+import { getEffectiveSyncTimestamps } from "@/lib/integrations/sync-health";
 
 export const dynamic = "force-dynamic";
 
@@ -30,15 +31,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get system config for last sync times
-    const systemConfig = await prisma.systemConfig.findUnique({
-      where: { id: "system" },
-      select: {
-        last_qb_sync: true,
-        last_clint_sync: true,
-        quickbooks_is_authenticated: true,
-      },
-    });
+    // Get system config for auth state plus effective sync timestamps
+    const [systemConfig, effectiveSyncs] = await Promise.all([
+      prisma.systemConfig.findUnique({
+        where: { id: "system" },
+        select: {
+          quickbooks_is_authenticated: true,
+        },
+      }),
+      getEffectiveSyncTimestamps(),
+    ]);
 
     // Get recent integration logs (last 24 hours)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -54,7 +56,11 @@ export async function GET(request: NextRequest) {
       // Pipedrive success count
       prisma.integrationLog.count({
         where: {
-          service: { contains: "PIPEDRIVE" },
+          OR: [
+            { service: { contains: "PIPEDRIVE" } },
+            { service: { contains: "CLINT" } },
+            { service: { contains: "clint" } },
+          ],
           status: "SUCCESS",
           createdAt: { gte: oneDayAgo },
         },
@@ -63,7 +69,11 @@ export async function GET(request: NextRequest) {
       // Pipedrive error count
       prisma.integrationLog.count({
         where: {
-          service: { contains: "PIPEDRIVE" },
+          OR: [
+            { service: { contains: "PIPEDRIVE" } },
+            { service: { contains: "CLINT" } },
+            { service: { contains: "clint" } },
+          ],
           status: "ERROR",
           createdAt: { gte: oneDayAgo },
         },
@@ -141,7 +151,7 @@ export async function GET(request: NextRequest) {
       success: true,
       syncStatus: {
         pipedrive: {
-          lastSync: systemConfig?.last_clint_sync,
+          lastSync: effectiveSyncs.clintLastSync,
           successRate: pipedriveSuccessRate,
           successCount: pipedriveSuccessCount,
           errorCount: pipedriveErrorCount,
@@ -149,7 +159,7 @@ export async function GET(request: NextRequest) {
           status: pipedriveSuccessRate >= 95 ? "healthy" : pipedriveSuccessRate >= 80 ? "warning" : "error",
         },
         quickbooks: {
-          lastSync: systemConfig?.last_qb_sync,
+          lastSync: effectiveSyncs.quickbooksLastSync,
           isAuthenticated: systemConfig?.quickbooks_is_authenticated || false,
           successRate: quickbooksSuccessRate,
           successCount: quickbooksSuccessCount,

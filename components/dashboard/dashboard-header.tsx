@@ -19,18 +19,19 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
   const navLinks = [
-    { href: "/dashboard", label: "Dashboard", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
-    { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "COMMERCIAL"] },
-    { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "COMMERCIAL"] },
-    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
-    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
+    { href: "/dashboard", label: "Dashboard", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
+    { href: "/dashboard/leads", label: "Leads", roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"] },
+    { href: "/dashboard/conversations", label: "Conversas", roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"] },
+    { href: "/dashboard/deals", label: "Negócios", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
+    { href: "/dashboard/bi", label: "BI Executivo", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/commercial-bi", label: "BI Comercial", roles: ["ADMIN", "HEAD_COMERCIAL"] },
+    { href: "/dashboard/invoices", label: "Faturas", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
     { href: "/dashboard/payments", label: "Pagamentos", roles: ["ADMIN", "FINANCE"] },
-    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
-    { href: "/dashboard/contracts", label: "Contratos", roles: ["ADMIN", "FINANCE", "COMMERCIAL"] },
-    { href: "/dashboard/insights", label: "Insights", roles: ["ADMIN", "FINANCE"] },
+    { href: "/dashboard/customers", label: "Clientes", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
+    { href: "/dashboard/contracts", label: "Contratos", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
     { href: "/dashboard/support", label: "Suporte", roles: ["ADMIN"] },
     { href: "/dashboard/integrations", label: "Integrações", roles: ["ADMIN", "FINANCE"] },
-    { href: "/", label: "Início", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "OPERATIONAL"] },
+    { href: "/", label: "Início", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL", "OPERATIONAL"] },
   ]
 
   const visibleLinks = navLinks.filter((link) => link.roles.includes(userRole))
@@ -61,7 +62,7 @@ export function DashboardHeader({ session, userRole }: DashboardHeaderProps) {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-1 flex-1">
-            {visibleLinks.slice(0, 5).map((link) => (
+            {visibleLinks.slice(0, 6).map((link) => (
               <NavLink key={link.href} href={link.href} label={link.label} />
             ))}
           </nav>

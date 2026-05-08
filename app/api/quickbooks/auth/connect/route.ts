@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // URL de callback - deve ser registrada no Intuit Developer Portal
     const redirectUri =
       process.env.QUICKBOOKS_REDIRECT_URI ||
-      "https://carreirausa.sigmaintel.io/api/quickbooks/oauth/callback";
+      "https://app.carreirausa.com/api/quickbooks/oauth/callback";
 
     // Configurar state para CSRF protection
     const state = Buffer.from(
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Guardar state em cookie (será validado no callback)
     const response = NextResponse.redirect(
-      `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&response_type=code&scope=com.intuit.quickbooks.accounting%20com.intuit.quickbooks.payment&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}&realm_id=`
+      `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&response_type=code&scope=com.intuit.quickbooks.accounting%20com.intuit.quickbooks.payment&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
     );
 
     // Salvar state em cookie seguro

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { emailService, AdminDailyDigestData } from '@/lib/services/email.service';
+import { emailService, ExecutiveDailyDigestData } from '@/lib/services/email.service';
+import { buildCustomerIdExclusionWhere } from '@/lib/financial/hub-exclusions';
+import {
+  getExecutiveDailyDigestEmail,
+  isCfoInsightStale,
+  parseCfoRecommendations,
+} from '@/lib/services/executive-daily-digest';
+import { getFinancialHubExcludedCustomerIds } from '@/lib/financial/hub-exclusions-db';
+import { buildCostBreakdownFromParsedPnl } from '@/lib/financial/cost-breakdown';
+import { ensureParsedProfitAndLoss } from '@/lib/services/qb-report-parser';
 import {
   format, startOfDay, startOfWeek, startOfMonth, endOfMonth,
   subMonths, differenceInDays,
@@ -12,7 +21,7 @@ export async function GET(request: NextRequest) { return POST(request); }
 
 /**
  * POST /api/cron/daily-bi-digest
- * Daily 18h BRT (21h UTC) — all active ADMIN users.
+ * Daily 18h BRT (21h UTC) — executive report for Thais only.
  * Schedule: 0 21 * * *
  *
  * Revenue source of truth: invoice.amountPaid + paidAt (QB sync writes here directly).
@@ -29,14 +38,23 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const todayStart = startOfDay(now);
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-    const testEmail = new URL(request.url).searchParams.get('testEmail');
+    const searchParams = new URL(request.url).searchParams;
+    const testEmail = searchParams.get('testEmail');
+    const recipientEmail = getExecutiveDailyDigestEmail(testEmail);
+    const executiveRecipient = testEmail
+      ? { id: 'test-executive', name: 'Thais', email: recipientEmail }
+      : await prisma.user.findFirst({
+          where: { active: true, email: { equals: recipientEmail, mode: 'insensitive' } },
+          select: { id: true, name: true, email: true },
+        });
 
-    const dbRecipients = await prisma.user.findMany({
-      where: { active: true, role: 'ADMIN' },
-      select: { id: true, name: true, email: true },
-    });
-    const recipients = testEmail ? [{ id: 'test', name: 'Admin', email: testEmail }] : dbRecipients;
-    if (!recipients.length) return NextResponse.json({ success: true, sent: 0, message: 'No ADMIN users' });
+    const recipients = executiveRecipient ? [executiveRecipient] : [];
+    if (!recipients.length) {
+      return NextResponse.json({ success: true, sent: 0, message: `No active executive recipient found for ${recipientEmail}` });
+    }
+
+    const excludedCustomerIds = await getFinancialHubExcludedCustomerIds();
+    const customerIdExclusionWhere = buildCustomerIdExclusionWhere(excludedCustomerIds);
 
     // ── Month buckets ─────────────────────────────────────────────────────────
     // Trend table: [M-2, M-1, M0 (current, may be partial)]
@@ -70,25 +88,29 @@ export async function POST(request: NextRequest) {
       allEnrollments,
       activeStudents,
       monthWonDealsRaw,
+      pnlCache,
+      latestCfoInsight,
+      systemConfig,
+      latestQuickBooksError,
     ] = await Promise.all([
       // PAID invoices — source of truth for revenue (QB sync writes amountPaid+paidAt directly)
       prisma.invoice.findMany({
-        where: { status: 'PAID', paidAt: { gte: since12Months } },
+        where: { status: 'PAID', paidAt: { gte: since12Months }, ...customerIdExclusionWhere },
         select: { paidAt: true, amountPaid: true, paymentMethod: true },
       }),
       // all non-void invoices created in last 12 months (for invoiced amounts)
       prisma.invoice.findMany({
-        where: { createdAt: { gte: since12Months }, status: { not: 'VOID' } },
+        where: { createdAt: { gte: since12Months }, status: { not: 'VOID' }, ...customerIdExclusionWhere },
         select: { createdAt: true, amount: true, amountPaid: true, status: true },
       }),
       // open invoices for AR aging
       prisma.invoice.findMany({
-        where: { status: { in: ['SENT', 'OVERDUE', 'PARTIALLY_PAID'] } },
+        where: { status: { in: ['SENT', 'OVERDUE', 'PARTIALLY_PAID'] }, ...customerIdExclusionWhere },
         select: { id: true, amount: true, dueDate: true, status: true, customer: { select: { name: true } }, invoiceNumber: true },
       }),
       // deals last 12 months
       prisma.deal.findMany({
-        where: { createdAt: { gte: since12Months } },
+        where: { createdAt: { gte: since12Months }, ...customerIdExclusionWhere },
         select: { status: true, value: true, createdAt: true, updatedAt: true, ownerId: true, owner: { select: { name: true } } },
       }),
       // leads last 12 months
@@ -98,22 +120,48 @@ export async function POST(request: NextRequest) {
       }),
       // top 6 overdue by amount
       prisma.invoice.findMany({
-        where: { status: 'OVERDUE' },
+        where: { status: 'OVERDUE', ...customerIdExclusionWhere },
         orderBy: { amount: 'desc' },
         take: 6,
         select: { amount: true, dueDate: true, invoiceNumber: true, customer: { select: { name: true } } },
       }),
       // enrollments last 12 months
       prisma.mentorshipEnrollment.findMany({
-        where: { startDate: { gte: since12Months } },
+        where: { startDate: { gte: since12Months }, ...customerIdExclusionWhere },
         select: { startDate: true, programType: true, status: true },
       }),
       // active students (all time)
-      prisma.mentorshipEnrollment.count({ where: { status: 'ACTIVE' } }),
+      prisma.mentorshipEnrollment.count({ where: { status: 'ACTIVE', ...customerIdExclusionWhere } }),
       // WON deals this month for top closers
       prisma.deal.findMany({
-        where: { status: 'WON', updatedAt: { gte: months[2].start }, ownerId: { not: null } },
+        where: { status: 'WON', updatedAt: { gte: months[2].start }, ownerId: { not: null }, ...customerIdExclusionWhere },
         select: { value: true, ownerId: true, updatedAt: true, owner: { select: { name: true } } },
+      }),
+      prisma.qbReportCache.findUnique({
+        where: { reportType: 'ProfitAndLoss' },
+        select: { data: true },
+      }),
+      prisma.cfoInsight.findFirst({
+        orderBy: { generatedAt: 'desc' },
+        select: { briefing: true, recommendations: true, dateRange: true, generatedAt: true },
+      }),
+      prisma.systemConfig.findUnique({
+        where: { id: 'system' },
+        select: {
+          quickbooks_access_token: true,
+          quickbooks_refresh_token: true,
+          quickbooks_token_expires_at: true,
+          quickbooks_is_authenticated: true,
+        },
+      }),
+      prisma.integrationLog.findFirst({
+        where: {
+          service: { in: ['quickbooks', 'QUICKBOOKS'] },
+          status: 'ERROR',
+          error: { not: null },
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { error: true },
       }),
     ]);
 
@@ -250,6 +298,18 @@ export async function POST(request: NextRequest) {
       .map(([method, amount]) => ({ method, amount }))
       .sort((a, b) => b.amount - a.amount);
 
+    let costBreakdown: ExecutiveDailyDigestData['financial']['costBreakdown'] = null;
+    if (pnlCache) {
+      try {
+        costBreakdown = buildCostBreakdownFromParsedPnl(
+          ensureParsedProfitAndLoss(JSON.parse(pnlCache.data)),
+          { now },
+        );
+      } catch (error) {
+        console.error('[DailyBIDigest] Failed to build COGS/expense breakdown:', error);
+      }
+    }
+
     // ── Today / week quick stats ──────────────────────────────────────────────
     const dealsWonToday = allDeals.filter(d => d.status === 'WON' && d.updatedAt >= todayStart).length;
     const dealsWonWeek = allDeals.filter(d => d.status === 'WON' && d.updatedAt >= weekStart).length;
@@ -266,7 +326,10 @@ export async function POST(request: NextRequest) {
       : 0;
 
     // ── Compose data ──────────────────────────────────────────────────────────
-    const digestData: AdminDailyDigestData = {
+    const qbTokenExpiresAt = systemConfig?.quickbooks_token_expires_at ?? null;
+    const qbTokenExpired = qbTokenExpiresAt ? qbTokenExpiresAt <= now : true;
+
+    const digestData: ExecutiveDailyDigestData = {
       date: format(now, 'EEEE, MMM d yyyy'),
       today: { revenueToday, dealsWonToday, leadsToday },
       week: { dealsWonWeek, leadsWeek },
@@ -281,6 +344,7 @@ export async function POST(request: NextRequest) {
         arAging: agingBuckets,
         topOverdue,
         paymentMethods,
+        costBreakdown,
       },
       commercial: {
         monthlyTrend: monthlyCommercial,
@@ -294,18 +358,35 @@ export async function POST(request: NextRequest) {
         avgNegotiationDays,
         monthlyEnrollments,
       },
+      aiCfo: {
+        briefing: latestCfoInsight?.briefing ?? 'Sem briefing recente da IA CFO.',
+        recommendations: parseCfoRecommendations(latestCfoInsight?.recommendations),
+        generatedAt: latestCfoInsight?.generatedAt ?? null,
+        dateRange: latestCfoInsight?.dateRange ?? null,
+        isStale: isCfoInsightStale(latestCfoInsight?.generatedAt, now),
+      },
+      dataQuality: {
+        quickBooksConnected: Boolean(
+          systemConfig?.quickbooks_is_authenticated &&
+          systemConfig?.quickbooks_access_token &&
+          systemConfig?.quickbooks_refresh_token
+        ),
+        quickBooksTokenExpired: qbTokenExpired,
+        quickBooksTokenExpiresAt: qbTokenExpiresAt,
+        latestQuickBooksError: latestQuickBooksError?.error ? latestQuickBooksError.error.slice(0, 240) : null,
+      },
     };
 
     let sent = 0, failed = 0;
-    const results: Array<{ email: string; status: 'sent' | 'failed'; error?: string }> = [];
+    const results: Array<{ email: string; audience: 'executive'; status: 'sent' | 'failed'; error?: string }> = [];
     for (const user of recipients) {
       try {
-        await emailService.sendAdminDailyDigest(user, digestData);
+        await emailService.sendExecutiveDailyDigest(user, digestData);
         sent++;
-        results.push({ email: user.email, status: 'sent' });
+        results.push({ email: user.email, audience: 'executive', status: 'sent' });
       } catch (err) {
         failed++;
-        results.push({ email: user.email, status: 'failed', error: err instanceof Error ? err.message : String(err) });
+        results.push({ email: user.email, audience: 'executive', status: 'failed', error: err instanceof Error ? err.message : String(err) });
       }
     }
 
