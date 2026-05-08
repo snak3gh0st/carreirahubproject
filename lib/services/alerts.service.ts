@@ -427,74 +427,84 @@ export class AlertsService {
     try {
       const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
-      // Find invoices pending approval for > 48 hours
+      // Fetch rule once up front — avoids N repeated lookups inside the loop
+      const rule = await prisma.alertRule.findUnique({
+        where: { name: "Invoice Pending Approval" },
+      });
+      if (!rule) return;
+
+      // Only DRAFT invoices older than 48h (pending approval = not yet sent/approved)
       const pendingInvoices = await prisma.invoice.findMany({
         where: {
+          status: InvoiceStatus.DRAFT,
           createdAt: { lt: fortyEightHoursAgo },
         },
         include: {
           customer: true,
           owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
+            select: { id: true, name: true, email: true },
           },
         },
       });
 
+      if (pendingInvoices.length === 0) {
+        // Auto-resolve stale alerts — no pending invoices remain
+        await prisma.alert.updateMany({
+          where: {
+            ruleId: rule.id,
+            status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
+          },
+          data: { status: AlertStatus.RESOLVED, resolvedAt: new Date() },
+        });
+        return;
+      }
+
+      // Single batch query to find which invoice IDs already have an active alert
+      const pendingIds = pendingInvoices.map((inv) => inv.id);
+      const existingAlerts = await prisma.alert.findMany({
+        where: {
+          ruleId: rule.id,
+          invoiceId: { in: pendingIds },
+          status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
+        },
+        select: { invoiceId: true },
+      });
+      const alertedIds = new Set(existingAlerts.map((a) => a.invoiceId));
+
       for (const invoice of pendingInvoices) {
+        if (alertedIds.has(invoice.id)) continue;
+
         const hoursPending = Math.floor(
           (Date.now() - new Date(invoice.createdAt).getTime()) / (1000 * 60 * 60)
         );
 
-        // Check if active alert already exists
-        const existingAlert = await prisma.alert.findFirst({
-          where: {
+        await prisma.alert.create({
+          data: {
+            ruleId: rule.id,
+            title: `Invoice Awaiting Approval: ${invoice.invoiceNumber || "Draft"}`,
+            description: `Invoice for ${invoice.customer?.name || "Unknown Customer"} created by ${invoice.owner?.name || "Unknown"} is awaiting approval for ${hoursPending} hours. Amount: $${Number(invoice.amount).toFixed(2)}`,
+            severity: hoursPending > 72 ? AlertSeverity.HIGH : AlertSeverity.MEDIUM,
             invoiceId: invoice.id,
-            rule: { name: "Invoice Pending Approval" },
-            status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
+            customerId: invoice.customerId,
+            data: {
+              hoursPending,
+              amount: invoice.amount,
+              customerName: invoice.customer?.name,
+              ownerName: invoice.owner?.name,
+              createdAt: invoice.createdAt.toISOString(),
+            },
           },
         });
-
-        if (!existingAlert) {
-          const rule = await prisma.alertRule.findUnique({
-            where: { name: "Invoice Pending Approval" },
-          });
-
-          if (rule) {
-            await prisma.alert.create({
-              data: {
-                ruleId: rule.id,
-                title: `Invoice Awaiting Approval: ${invoice.invoiceNumber || "Draft"}`,
-                description: `Invoice for ${invoice.customer?.name || "Unknown Customer"} created by ${invoice.owner?.name || "Unknown"} is awaiting approval for ${hoursPending} hours. Amount: $${Number(invoice.amount).toFixed(2)}`,
-                severity: hoursPending > 72 ? AlertSeverity.HIGH : AlertSeverity.MEDIUM,
-                invoiceId: invoice.id,
-                customerId: invoice.customerId,
-                data: {
-                  hoursPending,
-                  amount: invoice.amount,
-                  customerName: invoice.customer?.name,
-                  ownerName: invoice.owner?.name,
-                  createdAt: invoice.createdAt.toISOString(),
-                },
-              },
-            });
-          }
-        }
       }
 
-      // Auto-resolve alerts for invoices that are now approved or rejected
+      // Auto-resolve alerts whose invoices moved out of DRAFT (approved/sent/paid)
       await prisma.alert.updateMany({
         where: {
-          rule: { name: "Invoice Pending Approval" },
+          ruleId: rule.id,
           status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
+          invoice: { status: { not: InvoiceStatus.DRAFT } },
         },
-        data: {
-          status: AlertStatus.RESOLVED,
-          resolvedAt: new Date(),
-        },
+        data: { status: AlertStatus.RESOLVED, resolvedAt: new Date() },
       });
     } catch (error) {
       console.error("[AlertsService] Error checking pending approval invoices:", error);
