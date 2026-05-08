@@ -195,6 +195,9 @@ function getConnectionOptions() {
     return {
       host: url.hostname,
       port: parseInt(url.port || "6379"),
+      username: url.username || undefined,
+      password: url.password || undefined,
+      connectTimeout: 5000,
       maxRetriesPerRequest: null,
     };
   } catch (error) {
