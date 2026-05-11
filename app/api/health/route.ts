@@ -38,16 +38,29 @@ export async function GET() {
   }
 
   // --- QuickBooks token ---
+  // Non-critical for container health: token expiring auto-refreshes on next
+  // QB API call. We report state for visibility but do NOT flip allOk, so
+  // Docker HEALTHCHECK (which keys off HTTP status) doesn't loop-kill the
+  // container when QB happens to be in transient state.
   try {
     const config = await prisma.systemConfig.findUnique({ where: { id: "system" } });
     if (!config?.quickbooks_access_token) {
       checks.qb_token = { ok: false, detail: "No QB token configured" };
-      allOk = false;
     } else {
       const expiresAt = config.quickbooks_token_expires_at;
       if (expiresAt && expiresAt < new Date()) {
-        checks.qb_token = { ok: false, detail: `Expired at ${expiresAt.toISOString()}` };
-        allOk = false;
+        // Try to refresh proactively
+        try {
+          const { quickbooksService } = await import("@/lib/services/quickbooks.service");
+          await quickbooksService.refreshAccessTokenDirect();
+          checks.qb_token = { ok: true, detail: "refreshed during health check" };
+        } catch (refreshErr) {
+          const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr);
+          checks.qb_token = {
+            ok: false,
+            detail: `Expired at ${expiresAt.toISOString()}; refresh failed: ${msg.slice(0, 120)}`,
+          };
+        }
       } else {
         checks.qb_token = {
           ok: true,
@@ -57,15 +70,17 @@ export async function GET() {
     }
   } catch (err) {
     checks.qb_token = { ok: false, detail: err instanceof Error ? err.message : String(err) };
-    allOk = false;
   }
 
   // --- Digisac ---
+  // Non-critical for container health (same reasoning as qb_token above):
+  // missing config or transient API failure should surface as a warning, not
+  // kill the container. Critical infra checks (DB, Redis) above remain the
+  // only allOk-blocking signals.
   try {
     const config = getDigisacConfig();
     if (!config.enabled) {
       checks.digisac = { ok: false, detail: `Missing: ${config.missing.join(", ")}` };
-      allOk = false;
     } else {
       const res = await fetch(`${config.apiBaseUrl}/services/${config.serviceId}`, {
         headers: { Authorization: `Bearer ${config.apiToken}` },
@@ -73,14 +88,12 @@ export async function GET() {
       });
       if (!res.ok) {
         checks.digisac = { ok: false, detail: `API ${res.status}` };
-        allOk = false;
       } else {
         checks.digisac = { ok: true, detail: `service ${config.serviceId}` };
       }
     }
   } catch (err) {
     checks.digisac = { ok: false, detail: err instanceof Error ? err.message : String(err) };
-    allOk = false;
   }
 
   const status = allOk ? 200 : 503;
