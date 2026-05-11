@@ -9,13 +9,17 @@ function isAuthorized(request: NextRequest) {
   const secret = process.env.DIGISAC_WEBHOOK_SECRET?.trim();
   if (!secret) return true;
 
+  // Digisac does not send signing headers — primary auth path is the
+  // query param `?secret=...` in the webhook URL itself. Header forms
+  // are kept for manual/replayed calls.
+  const querySecret = request.nextUrl.searchParams.get("secret")?.trim();
   const auth = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "").trim();
   const explicitSecret =
     request.headers.get("x-digisac-secret") ??
     request.headers.get("x-webhook-secret") ??
     request.headers.get("x-api-key");
 
-  return auth === secret || explicitSecret === secret;
+  return querySecret === secret || auth === secret || explicitSecret === secret;
 }
 
 export async function POST(request: NextRequest) {

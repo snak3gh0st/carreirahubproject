@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getDigisacConfig } from "@/lib/services/digisac.service";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,29 @@ export async function GET() {
     }
   } catch (err) {
     checks.qb_token = { ok: false, detail: err instanceof Error ? err.message : String(err) };
+    allOk = false;
+  }
+
+  // --- Digisac ---
+  try {
+    const config = getDigisacConfig();
+    if (!config.enabled) {
+      checks.digisac = { ok: false, detail: `Missing: ${config.missing.join(", ")}` };
+      allOk = false;
+    } else {
+      const res = await fetch(`${config.apiBaseUrl}/services/${config.serviceId}`, {
+        headers: { Authorization: `Bearer ${config.apiToken}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) {
+        checks.digisac = { ok: false, detail: `API ${res.status}` };
+        allOk = false;
+      } else {
+        checks.digisac = { ok: true, detail: `service ${config.serviceId}` };
+      }
+    }
+  } catch (err) {
+    checks.digisac = { ok: false, detail: err instanceof Error ? err.message : String(err) };
     allOk = false;
   }
 

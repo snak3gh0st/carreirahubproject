@@ -24,6 +24,7 @@
     "test:quickbooks": "npx tsx scripts/test-quickbooks.ts",
     "test:pipedrive": "npx tsx scripts/test-pipedrive.ts",
     "test:workflow": "npx tsx scripts/test-invoice-workflow.ts",
+    "test:digisac": "npx tsx scripts/test-digisac.ts",
     "test:docusign": "npx tsx scripts/test-docusign.ts",
     "test:docusign-prod": "npx tsx scripts/test-docusign-prod.ts",
     "docusign:consent": "npx tsx scripts/docusign-consent-url.ts",

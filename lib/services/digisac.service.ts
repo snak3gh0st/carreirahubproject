@@ -93,6 +93,9 @@ export function normalizePhone(value: string | null | undefined) {
 export function formatDigisacPhone(value: string, defaultCountryCode = getDigisacConfig().defaultCountryCode) {
   const digits = normalizePhone(value);
   if (!digits) return "";
+  // US numbers in NANP format start with 1 + 10 digits (11 total) and already include the country code.
+  // Brazilian DDDs never start with 1, so this discriminates safely.
+  if (digits.length === 11 && digits.startsWith("1")) return digits;
   if (digits.length <= 11 && defaultCountryCode) return `${defaultCountryCode}${digits}`;
   return digits;
 }
