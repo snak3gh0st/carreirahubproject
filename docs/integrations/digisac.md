@@ -6,11 +6,11 @@ WhatsApp operacional para o Hub Operacional. Mensagens trocadas com alunos apare
 
 | Variável | Exemplo | Descrição |
 |---|---|---|
-| `DIGISAC_API_BASE_URL` | `https://suaempresa.digisac.me/api/v1` | URL base da API REST do Digisac. Não inclua barra no final. |
-| `DIGISAC_API_TOKEN` | `eyJhbGc...` | Bearer token de acesso à API. |
-| `DIGISAC_SERVICE_ID` | `srv_abc123` | ID do service (canal WhatsApp) que envia as mensagens. |
-| `DIGISAC_WEBHOOK_SECRET` | `<random>` | Segredo enviado pelo Digisac no header de cada webhook. Use o mesmo nos 3 ambientes se for prático, ou um por ambiente. |
-| `DIGISAC_WORKSPACE_URL` | `https://suaempresa.digisac.me` | Opcional. Usado pra montar link "abrir no Digisac" no card. Default: deriva de `DIGISAC_API_BASE_URL`. |
+| `DIGISAC_API_BASE_URL` | `https://carreirausa.digisac.co/api/v1` | URL base da API REST do Digisac. Não inclua barra no final. |
+| `DIGISAC_API_TOKEN` | Token pessoal gerado em **Meus dados → Tokens de acesso pessoal** | Bearer token de acesso à API. |
+| `DIGISAC_SERVICE_ID` | UUID de uma conexão WhatsApp | ID do service (canal WhatsApp) que envia as mensagens. Visível em **Configurações → Conexões** ou via `GET /api/v1/services`. |
+| `DIGISAC_WEBHOOK_SECRET` | `<random>` | Validado pelo nosso webhook handler. **Digisac não envia secret automaticamente** — é incluído como query param `?secret=...` na URL cadastrada (ver seção Webhook). |
+| `DIGISAC_WORKSPACE_URL` | `https://carreirausa.digisac.co` | Opcional. Usado pra montar link "abrir no Digisac" no card. Default: deriva de `DIGISAC_API_BASE_URL`. |
 | `DIGISAC_DEFAULT_COUNTRY_CODE` | `55` | DDI default pra prefixar números sem código de país. |
 
 ## Configurar em cada ambiente
@@ -18,10 +18,10 @@ WhatsApp operacional para o Hub Operacional. Mensagens trocadas com alunos apare
 ### Local
 ```bash
 # .env.local
-DIGISAC_API_BASE_URL="https://suaempresa.digisac.me/api/v1"
-DIGISAC_API_TOKEN="..."
-DIGISAC_SERVICE_ID="..."
-DIGISAC_WEBHOOK_SECRET="..."
+DIGISAC_API_BASE_URL="https://carreirausa.digisac.co/api/v1"
+DIGISAC_API_TOKEN="..."                 # Meus dados → Tokens de acesso pessoal
+DIGISAC_SERVICE_ID="..."                # UUID de uma conexão WhatsApp ativa
+DIGISAC_WEBHOOK_SECRET="$(openssl rand -hex 32)"   # qualquer string random
 ```
 
 Validar:
@@ -65,15 +65,38 @@ curl -s https://app.carreirausa.com/api/health | jq '.checks.digisac'
 
 ## Cadastrar webhook no painel Digisac
 
-1. Painel Digisac → **Settings** → **Webhooks** → **Add**
-2. URL:
-   - Local (com ngrok): `https://<id>.ngrok.app/api/webhooks/digisac`
-   - Vercel prod: `https://carreirausa.sigmaintel.io/api/webhooks/digisac`
-   - Swarm prod: `https://app.carreirausa.com/api/webhooks/digisac`
-3. Eventos: subscrever pelo menos `message.received` (e `message.sent` se quiser auditoria de eco)
-4. Header de autenticação: adicionar `Authorization: Bearer <DIGISAC_WEBHOOK_SECRET>`
-   - Aceita também: `x-digisac-secret`, `x-webhook-secret`, `x-api-key`
-5. Salvar e disparar teste pelo próprio painel — confirmar `200 OK`
+> **Importante:** a Digisac não envia secret no header de webhook nem suporta HMAC. Pra evitar
+> que qualquer pessoa que descubra a URL injete mensagens fake, **incluímos o secret como query
+> param na própria URL** — `…?secret=<DIGISAC_WEBHOOK_SECRET>`. Nosso handler valida esse param.
+> Se preferir cadastrar via API, ver "Cadastrar via API REST" abaixo.
+
+### Pelo painel
+
+1. Painel Digisac → **Meus dados** → **Webhooks** → **Criar webhook**
+2. Nome: `carreirahub-<ambiente>` (ex `carreirahub-prod`)
+3. URL — sempre com `?secret=$DIGISAC_WEBHOOK_SECRET` no final:
+   - Local (com ngrok): `https://<id>.ngrok.app/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
+   - Vercel prod: `https://carreirausa.sigmaintel.io/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
+   - Swarm prod: `https://app.carreirausa.com/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
+4. Eventos: marcar **`message.created`** (essencial — entrega novas mensagens). Opcional: `message.updated` (status de entrega/leitura).
+5. Salvar. Disparar teste pelo próprio painel e confirmar HTTP `200 OK`.
+
+### Cadastrar via API REST (alternativa)
+
+```bash
+curl -X POST "$DIGISAC_API_BASE_URL/me/webhooks" \
+  -H "Authorization: Bearer $DIGISAC_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "active": true,
+    "name": "carreirahub-prod",
+    "url": "https://carreirausa.sigmaintel.io/api/webhooks/digisac?secret='"$DIGISAC_WEBHOOK_SECRET"'",
+    "events": ["message.created"],
+    "type": "general"
+  }'
+```
+
+Listar webhooks existentes: `curl -H "Authorization: Bearer $DIGISAC_API_TOKEN" "$DIGISAC_API_BASE_URL/me/webhooks"`
 
 ## Comandos de diagnóstico
 
@@ -101,8 +124,8 @@ Resultado: mensagem do aluno só aparece no card se o telefone do `Customer` bat
 |---|---|---|
 | `/api/health` → `digisac.ok: false detail: "Missing: ..."` | Env var faltando | Olhar quais vars estão na mensagem |
 | `/api/health` → `digisac.ok: false detail: "API 401"` | Token revogado ou expirado | Renovar token no painel Digisac, atualizar env, redeploy |
-| `/api/health` → `digisac.ok: false detail: "API 404"` | `DIGISAC_SERVICE_ID` errado | `npm run test:digisac` e ler o body; pode ser necessário trocar `/services/{id}` por `/services` no health check |
+| `/api/health` → `digisac.ok: false detail: "API 404"` | `DIGISAC_SERVICE_ID` errado | `curl -H "Authorization: Bearer $DIGISAC_API_TOKEN" "$DIGISAC_API_BASE_URL/services"` lista os service IDs disponíveis |
 | Envio do card retorna `503 Digisac nao configurado` | App em prod sem env var | Mesma checagem do health, e redeploy se acabou de configurar |
 | Resposta do aluno não aparece no card | Telefone do Customer não bate com o do WhatsApp | `IntegrationLog` filtrar `service=DIGISAC action=WEBHOOK_MESSAGE_RECEIVED`. Se a mensagem foi gravada, é o auto-match; ajustar `Customer.phone` |
-| Webhook retorna 401 | `DIGISAC_WEBHOOK_SECRET` divergente | Comparar valor no painel Digisac vs `.env` do ambiente |
+| Webhook retorna 401 | Query param `?secret=` na URL cadastrada não bate com `DIGISAC_WEBHOOK_SECRET` do ambiente | Comparar `?secret=` da URL no painel Digisac com o env var ativo no servidor |
 | Mensagem enviada não chega no celular | Service ID errado ou número fora do canal | `npm run test:digisac --to=<num> --text=oi` e ler o response body |
