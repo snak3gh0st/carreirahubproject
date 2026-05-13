@@ -101,6 +101,8 @@ function getConnectionOptions() {
     return {
       host: url.hostname,
       port: parseInt(url.port || "6379"),
+      username: url.username ? decodeURIComponent(url.username) : undefined,
+      password: url.password ? decodeURIComponent(url.password) : undefined,
       maxRetriesPerRequest: null,
     };
   } catch {
