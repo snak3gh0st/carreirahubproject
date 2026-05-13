@@ -174,6 +174,10 @@ export default function DashboardPage() {
   const firstName = userName.split(" ")[0]; // Get first name only
   const userRole = (session?.user as any)?.role;
 
+  if (userRole === "EXECUTIVE") {
+    redirect("/dashboard/executive");
+  }
+
   if (userRole === "HEAD_COMERCIAL") {
     redirect("/dashboard/commercial-bi");
   }

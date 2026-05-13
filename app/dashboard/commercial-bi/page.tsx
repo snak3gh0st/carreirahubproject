@@ -387,7 +387,10 @@ export default async function CommercialBIPage({ searchParams }: CommercialBIPag
   }
 
   const role = String((session.user as any)?.role ?? "");
-  if (role !== "ADMIN" && role !== "HEAD_COMERCIAL") {
+  // D-10: EXECUTIVE may deep-dive into the commercial BI from the executive
+  // landing. Middleware (D-09) already enforces the perimeter; this is the
+  // belt-and-suspenders layer 2.
+  if (role !== "ADMIN" && role !== "HEAD_COMERCIAL" && role !== "EXECUTIVE") {
     redirect("/dashboard");
   }
 
