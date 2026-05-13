@@ -4,118 +4,54 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import {
-  LayoutDashboard,
-  FileText,
-  Users,
-  Users2,
-  Briefcase,
-  CreditCard,
-  FileSignature,
-  ClipboardList,
-  LogOut,
-  HeadphonesIcon,
-  GraduationCap,
-  Sparkles,
-  PieChart,
-  BarChart3,
-} from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import { LogOut, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { APP_VERSION } from "@/lib/changelog";
 import { NewsNotification } from "./news-notification";
 import { Logo } from "@/components/brand/Logo";
 import { getAiHubForRole } from "@/lib/ai/hub-config";
+import {
+  getSidebarSectionsFor,
+  type HubContext,
+  type SidebarSection,
+} from "@/lib/sidebar/role-config";
 
-interface NavItem {
-  href: string;
-  label: string;
-  icon: React.ElementType;
-  roles: string[];
-  sectionBefore?: string;
+/**
+ * Derive hub context from URL pathname. Pure function — placed outside the
+ * component so it isn't re-allocated on every render.
+ *
+ * - `/dashboard/commercial/*` → "commercial"
+ * - `/dashboard/financial/*`  → "financial"
+ * - `/dashboard/admin/*`      → "admin"
+ * - `/dashboard/executive/*`  → null (handled by SIDEBAR_BY_ROLE.EXECUTIVE fallback)
+ * - `/dashboard` (root) and all other paths → null (legacy URL)
+ */
+function deriveHubFromPathname(pathname: string | null): HubContext | null {
+  if (!pathname) return null;
+  if (pathname.startsWith("/dashboard/commercial")) return "commercial";
+  if (pathname.startsWith("/dashboard/financial")) return "financial";
+  if (pathname.startsWith("/dashboard/admin")) return "admin";
+  return null;
 }
 
-const mainNavItems: NavItem[] = [
-  {
-    href: "/dashboard",
-    label: "Início",
-    icon: LayoutDashboard,
-    roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/invoices",
-    label: "Faturas",
-    icon: FileText,
-    roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/leads",
-    label: "Leads",
-    icon: Users,
-    roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/deals",
-    label: "Negócios",
-    icon: Briefcase,
-    roles: ["ADMIN", "FINANCE", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/customers",
-    label: "Clientes",
-    icon: Users,
-    roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/payments",
-    label: "Pagamentos",
-    icon: CreditCard,
-    roles: ["ADMIN", "FINANCE"],
-  },
-  {
-    href: "/dashboard/contracts",
-    label: "Contratos",
-    icon: FileSignature,
-    roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/forms",
-    label: "Formulários",
-    icon: ClipboardList,
-    roles: ["ADMIN"],
-  },
-  {
-    href: "/dashboard/team",
-    label: "Equipe",
-    icon: Users2,
-    roles: ["ADMIN"],
-    sectionBefore: "Admin",
-  },
-  {
-    href: "/dashboard/bi",
-    label: "BI Executivo",
-    icon: PieChart,
-    roles: ["ADMIN", "FINANCE"],
-    sectionBefore: "Intelligence",
-  },
-  {
-    href: "/dashboard/commercial-bi",
-    label: "BI Comercial",
-    icon: BarChart3,
-    roles: ["ADMIN", "HEAD_COMERCIAL"],
-  },
-  {
-    href: "/dashboard/support",
-    label: "Suporte",
-    icon: HeadphonesIcon,
-    roles: ["ADMIN"],
-  },
-  {
-    href: "/ops/enroll",
-    label: "Matricular",
-    icon: GraduationCap,
-    roles: ["ADMIN", "OPERATIONAL"],
-  },
-];
+/**
+ * Resolve a lucide-react icon by export name. Returns a fallback Square icon
+ * (and warns in dev) when the name is unknown — keeps render bulletproof
+ * against data-config typos.
+ */
+function resolveIcon(
+  name: string
+): React.ComponentType<{ className?: string }> {
+  const Icon = (LucideIcons as unknown as Record<string, unknown>)[name];
+  if (typeof Icon === "function" || (typeof Icon === "object" && Icon !== null)) {
+    return Icon as React.ComponentType<{ className?: string }>;
+  }
+  if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+    console.warn(`[ProfessionalSidebar] Unknown lucide icon: ${name}`);
+  }
+  return LucideIcons.Square as React.ComponentType<{ className?: string }>;
+}
 
 interface ProfessionalSidebarProps {
   userRole: string;
@@ -126,7 +62,7 @@ interface ProfessionalSidebarProps {
 export function ProfessionalSidebar({
   userRole,
   userName = "User",
-  userEmail = ""
+  userEmail = "",
 }: ProfessionalSidebarProps) {
   const pathname = usePathname();
 
@@ -137,9 +73,13 @@ export function ProfessionalSidebar({
     return pathname.startsWith(href);
   };
 
-  const visibleNavItems = mainNavItems.filter((item) =>
-    item.roles.includes(userRole)
-  );
+  // Resolve sections from the role + hub-context resolver. Hub is derived from
+  // the URL pathname prefix (`/dashboard/{hub}/*`). Unknown roles get empty
+  // array (no crash — the role guard at layout level should already redirect).
+  // Legacy `/dashboard/*` URLs (hub === null) fall back to current behavior.
+  const hub = deriveHubFromPathname(pathname);
+  const sections: SidebarSection[] = getSidebarSectionsFor(userRole, hub);
+
   const aiHub = getAiHubForRole(userRole);
   const aiNavItem = aiHub
     ? {
@@ -170,62 +110,69 @@ export function ProfessionalSidebar({
         </Link>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-4 space-y-1">
-        {visibleNavItems.map((item) => {
-          const Icon = item.icon;
-          const active = isActive(item.href);
+      {/* Navigation — driven by SIDEBAR_BY_ROLE (D-01) */}
+      <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+        {sections.map((section) => (
+          <React.Fragment key={section.label}>
+            <div className="pt-3 pb-1 px-4">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">
+                {section.label}
+              </p>
+            </div>
+            {section.items.map((item) => {
+              const Icon = resolveIcon(item.icon);
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={`${section.label}::${item.href}`}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
+                    active
+                      ? "bg-brand-tangerina text-white font-semibold shadow-lg"
+                      : "text-white font-normal hover:bg-white/10"
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      "h-5 w-5 transition-colors",
+                      active
+                        ? "text-white"
+                        : "text-white/70 group-hover:text-white"
+                    )}
+                  />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </React.Fragment>
+        ))}
 
-          return (
-            <React.Fragment key={item.href}>
-              {item.sectionBefore && (
-                <div className="pt-3 pb-1 px-4">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">
-                    {item.sectionBefore}
-                  </p>
-                </div>
-              )}
-              <Link
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
-                  active
-                    ? "bg-brand-tangerina text-white font-semibold shadow-lg"
-                    : "text-white font-normal hover:bg-white/10"
-                )}
-              >
-                <Icon className={cn(
-                  "h-5 w-5 transition-colors",
-                  active ? "text-white" : "text-white/70 group-hover:text-white"
-                )} />
-                <span>{item.label}</span>
-              </Link>
-            </React.Fragment>
-          );
-        })}
-        {aiNavItem && (
+        {aiNavItem &&
           (() => {
             const AiIcon = aiNavItem.icon;
-
             return (
               <Link
                 href={aiNavItem.href}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group",
+                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group mt-2",
                   isActive(aiNavItem.href)
                     ? "bg-brand-tangerina text-white font-semibold shadow-lg"
                     : "text-white font-normal hover:bg-white/10"
                 )}
               >
-                <AiIcon className={cn(
-                  "h-5 w-5 transition-colors",
-                  isActive(aiNavItem.href) ? "text-white" : "text-white/70 group-hover:text-white"
-                )} />
+                <AiIcon
+                  className={cn(
+                    "h-5 w-5 transition-colors",
+                    isActive(aiNavItem.href)
+                      ? "text-white"
+                      : "text-white/70 group-hover:text-white"
+                  )}
+                />
                 <span>{aiNavItem.label}</span>
               </Link>
             );
-          })()
-        )}
+          })()}
       </nav>
 
       {/* Bottom Section */}
