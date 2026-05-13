@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getExpectedQuickBooksRealmId } from "@/lib/quickbooks/master-company";
 
 /**
  * GET /api/quickbooks/auth/connect
@@ -35,10 +36,20 @@ export async function GET(request: NextRequest) {
       Math.random().toString() + Date.now().toString()
     ).toString("base64");
 
+    const expectedRealmId = getExpectedQuickBooksRealmId();
+
     // Guardar state em cookie (será validado no callback)
-    const response = NextResponse.redirect(
-      `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&response_type=code&scope=com.intuit.quickbooks.accounting%20com.intuit.quickbooks.payment&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
+    const authUrl = new URL("https://appcenter.intuit.com/connect/oauth2");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set(
+      "scope",
+      "com.intuit.quickbooks.accounting com.intuit.quickbooks.payment"
     );
+    authUrl.searchParams.set("redirect_uri", redirectUri);
+    authUrl.searchParams.set("state", state);
+
+    const response = NextResponse.redirect(authUrl);
 
     // Salvar state em cookie seguro
     // sameSite: "lax" permite que o cookie seja enviado no redirect de volta do QuickBooks
@@ -50,10 +61,21 @@ export async function GET(request: NextRequest) {
       path: "/",
     });
 
+    if (expectedRealmId) {
+      response.cookies.set("qb_expected_realm", expectedRealmId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 600,
+        path: "/",
+      });
+    }
+
     console.log("[QuickBooks Auth] Iniciando fluxo OAuth");
     console.log(`[QuickBooks Auth] Client ID: ${clientId}`);
     console.log(`[QuickBooks Auth] Redirect URI: ${redirectUri}`);
     console.log(`[QuickBooks Auth] Environment: ${environment}`);
+    console.log(`[QuickBooks Auth] Expected Realm: ${expectedRealmId || "not set"}`);
 
     return response;
   } catch (error) {

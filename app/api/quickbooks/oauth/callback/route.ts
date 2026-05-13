@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getExpectedQuickBooksRealmId } from "@/lib/quickbooks/master-company";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,9 @@ export async function GET(request: NextRequest) {
 
     // Validar state (CSRF protection)
     const storedState = request.cookies.get("qb_oauth_state")?.value;
+    const expectedRealmId =
+      request.cookies.get("qb_expected_realm")?.value ||
+      getExpectedQuickBooksRealmId();
     console.log("[QuickBooks Auth] State from URL:", state);
     console.log("[QuickBooks Auth] State from cookie:", storedState);
     console.log("[QuickBooks Auth] All cookies:", request.cookies.getAll().map(c => c.name));
@@ -53,6 +57,27 @@ export async function GET(request: NextRequest) {
         { error: "Código de autorização ausente" },
         { status: 400 }
       );
+    }
+
+    if (expectedRealmId && expectedRealmId !== realmId) {
+      console.error(
+        "[QuickBooks Auth] Realm retornado pela Intuit não bate com a empresa esperada",
+        { expectedRealmId, receivedRealmId: realmId }
+      );
+
+      const response = NextResponse.json(
+        {
+          error: "Empresa QuickBooks incorreta",
+          message:
+            "A Intuit devolveu uma empresa diferente da empresa Carreira USA esperada. Entre no QuickBooks correto e refaça a conexão.",
+          expectedRealmId,
+          receivedRealmId: realmId,
+        },
+        { status: 400 }
+      );
+      response.cookies.delete("qb_oauth_state");
+      response.cookies.delete("qb_expected_realm");
+      return response;
     }
 
     const clientId = process.env.QUICKBOOKS_CLIENT_ID;
@@ -145,6 +170,7 @@ export async function GET(request: NextRequest) {
       new URL("/dashboard/integrations?qb_auth=success", request.url)
     );
     response.cookies.delete("qb_oauth_state");
+    response.cookies.delete("qb_expected_realm");
 
     return response;
   } catch (error) {
