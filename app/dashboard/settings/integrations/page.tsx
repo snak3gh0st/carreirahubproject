@@ -13,27 +13,18 @@ interface IntegrationStatus {
     companyId: string | null;
     tokenExpiresAt: string | null;
   };
-  pipedrive: {
-    isConfigured: boolean;
-    companyDomain: string | null;
-    tokenStatus: 'valid' | 'invalid' | 'unchecked';
-  };
   secrets: {
     quickbooks: boolean;
-    pipedrive: boolean;
     cron: boolean;
   };
   lastSync: {
     quickbooks: string | null;
-    pipedrive: string | null;
   };
 }
 
 export default function IntegrationsPage() {
   const [status, setStatus] = useState<IntegrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [disconnectResult, setDisconnectResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -94,23 +85,6 @@ export default function IntegrationsPage() {
       });
     } finally {
       setDisconnecting(false);
-    }
-  };
-
-  const handleTestPipedrive = async () => {
-    try {
-      setTesting(true);
-      const response = await fetch('/api/pipedrive/test');
-      const data = await response.json();
-      setTestResult(data);
-    } catch (error) {
-      setTestResult({
-        status: 'error',
-        message: 'Erro ao testar conexão',
-        details: error,
-      });
-    } finally {
-      setTesting(false);
     }
   };
 
@@ -211,52 +185,6 @@ export default function IntegrationsPage() {
         </CardContent>
       </Card>
 
-      {/* Pipedrive */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pipedrive</CardTitle>
-          <CardDescription>Sincronização de leads e deals</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-semibold">Status da Configuração</p>
-              <p className="text-sm text-gray-600">
-                {status?.pipedrive.isConfigured ? (
-                  <span className="text-green-600">✓ Configurado</span>
-                ) : (
-                  <span className="text-red-600">✗ Não configurado</span>
-                )}
-              </p>
-            </div>
-            <Button onClick={handleTestPipedrive} disabled={testing || !status?.pipedrive.isConfigured}>
-              {testing ? 'Testando...' : 'Testar Conexão'}
-            </Button>
-          </div>
-
-          {status?.pipedrive.isConfigured && (
-            <div>
-              <p className="text-sm text-gray-600">
-                Domain: <span className="font-mono">{status.pipedrive.companyDomain}</span>
-              </p>
-            </div>
-          )}
-
-          {testResult && (
-            <Alert className={testResult.status === 'success' ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}>
-              <AlertDescription>
-                {testResult.message}
-                {testResult.user && (
-                  <div className="mt-2 text-sm">
-                    Usuário: {testResult.user.name} ({testResult.user.email})
-                  </div>
-                )}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
-
       {/* Webhook Secrets */}
       <Card>
         <CardHeader>
@@ -264,21 +192,11 @@ export default function IntegrationsPage() {
           <CardDescription>Segurança dos webhooks</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <p className="text-sm font-semibold">QuickBooks</p>
               <p className="text-sm text-gray-600">
                 {status?.secrets.quickbooks ? (
-                  <span className="text-green-600">✓ Configurado</span>
-                ) : (
-                  <span className="text-amber-600">⚠ Não configurado</span>
-                )}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-semibold">Pipedrive</p>
-              <p className="text-sm text-gray-600">
-                {status?.secrets.pipedrive ? (
                   <span className="text-green-600">✓ Configurado</span>
                 ) : (
                   <span className="text-amber-600">⚠ Não configurado</span>
@@ -304,7 +222,7 @@ export default function IntegrationsPage() {
           <Alert className="border-blue-200 bg-blue-50">
             <AlertDescription className="text-sm">
               Secrets são chaves criptografadas usadas para validar webhooks. Depois de gerar, você precisa
-              configurá-los no Intuit Developer Portal e Pipedrive.
+              configurá-los no Intuit Developer Portal.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -325,14 +243,6 @@ export default function IntegrationsPage() {
                 : 'Nenhuma sincronização ainda'}
             </p>
           </div>
-          <div>
-            <p className="text-sm font-semibold">Pipedrive</p>
-            <p className="text-sm text-gray-600">
-              {status?.lastSync.pipedrive
-                ? `Última sincronização: ${new Date(status.lastSync.pipedrive).toLocaleString()}`
-                : 'Nenhuma sincronização ainda'}
-            </p>
-          </div>
         </CardContent>
       </Card>
 
@@ -344,9 +254,8 @@ export default function IntegrationsPage() {
         <CardContent>
           <ol className="space-y-2 list-decimal list-inside text-sm">
             <li>Conectar QuickBooks clicando no botão "Conectar"</li>
-            <li>Testar a conexão do Pipedrive clicando em "Testar Conexão"</li>
             <li>Gerar secrets de webhook para maior segurança</li>
-            <li>Configurar os webhooks em cada plataforma com as URLs fornecidas</li>
+            <li>Configurar os webhooks no Intuit Developer Portal com as URLs fornecidas</li>
             <li>Verificar os logs de sincronização no dashboard</li>
           </ol>
         </CardContent>
