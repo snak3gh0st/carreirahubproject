@@ -15,11 +15,26 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-# shellcheck source=/dev/null
-source "$ENV_FILE"
+read_env_var() {
+  local key="$1"
+  local value
+  value="$(grep -m1 "^${key}=" "$ENV_FILE" | cut -d= -f2- || true)"
+  value="${value%$'\r'}"
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+  printf '%s' "$value"
+}
 
-APP_URL="${NEXT_PUBLIC_APP_URL:-https://app.carreirausa.com}"
-SECRET="${CRON_SECRET:?CRON_SECRET not set in $ENV_FILE}"
+APP_URL="$(read_env_var NEXT_PUBLIC_APP_URL)"
+APP_URL="${APP_URL:-https://app.carreirausa.com}"
+SECRET="$(read_env_var CRON_SECRET)"
+
+if [[ -z "$SECRET" ]]; then
+  echo "[cron] ERROR: CRON_SECRET not set in $ENV_FILE" >&2
+  exit 1
+fi
 
 ENDPOINT="${APP_URL}/api/cron/${ROUTE}"
 
