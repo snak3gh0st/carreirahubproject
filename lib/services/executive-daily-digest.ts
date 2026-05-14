@@ -1,4 +1,4 @@
-export const DEFAULT_EXECUTIVE_DAILY_DIGEST_EMAIL = "thais@carreirausa.com";
+export const DEFAULT_EXECUTIVE_DAILY_DIGEST_EMAIL = "thais.mei@carreirausa.com";
 
 export function getExecutiveDailyDigestEmail(
   testEmail?: string | null,

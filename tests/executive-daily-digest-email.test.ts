@@ -76,8 +76,8 @@ function baseDigestData(): ExecutiveDailyDigestData {
 }
 
 test("executive digest defaults to Thais and supports manual test override", () => {
-  assert.equal(DEFAULT_EXECUTIVE_DAILY_DIGEST_EMAIL, "thais@carreirausa.com");
-  assert.equal(getExecutiveDailyDigestEmail(), "thais@carreirausa.com");
+  assert.equal(DEFAULT_EXECUTIVE_DAILY_DIGEST_EMAIL, "thais.mei@carreirausa.com");
+  assert.equal(getExecutiveDailyDigestEmail(), "thais.mei@carreirausa.com");
   assert.equal(getExecutiveDailyDigestEmail("qa@example.com"), "qa@example.com");
   assert.equal(getExecutiveDailyDigestEmail(null, "ceo@example.com"), "ceo@example.com");
 });
@@ -110,7 +110,7 @@ test("sendExecutiveDailyDigest renders a concise all-area report with AI CFO con
   };
 
   await service.sendExecutiveDailyDigest(
-    { name: "Thais", email: "thais@carreirausa.com" },
+    { name: "Thais", email: "thais.mei@carreirausa.com" },
     baseDigestData(),
   );
 

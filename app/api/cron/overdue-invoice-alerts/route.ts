@@ -8,13 +8,15 @@ import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = "force-dynamic";
 
+const OVERDUE_OWNER_ALERT_ROLE = "COMMERCIAL";
+
 /**
  * POST /api/cron/overdue-invoice-alerts
  *
  * Cron job que envia alertas imediatos quando faturas ficam em atraso.
  * Roda a cada 6 horas para detectar novas faturas overdue.
  *
- * Envia email para o owner da fatura (ou para FINANCE team se não tiver owner).
+ * Envia email para o owner comercial da fatura (ou para FINANCE/ADMIN se não tiver owner comercial).
  *
  * Configurar no vercel.json:
  * {
@@ -67,6 +69,8 @@ export const POST = withCronTelemetry("overdue-invoice-alerts", async (request) 
             id: true,
             email: true,
             name: true,
+            role: true,
+            active: true,
           },
         },
       },
@@ -99,7 +103,11 @@ export const POST = withCronTelemetry("overdue-invoice-alerts", async (request) 
         dueDate: new Date(inv.dueDate),
       };
 
-      if (inv.owner) {
+      if (
+        inv.owner?.active &&
+        inv.owner.email &&
+        inv.owner.role === OVERDUE_OWNER_ALERT_ROLE
+      ) {
         const ownerId = inv.owner.id;
         if (!invoicesByOwner.has(ownerId)) {
           invoicesByOwner.set(ownerId, {
@@ -110,6 +118,7 @@ export const POST = withCronTelemetry("overdue-invoice-alerts", async (request) 
         }
         invoicesByOwner.get(ownerId)!.invoices.push(invoiceData);
       } else {
+        // Non-commercial owners, including EXECUTIVE users, should not receive collection alerts.
         unownedInvoices.push(invoiceData);
       }
     });
