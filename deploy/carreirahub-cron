@@ -1,62 +1,45 @@
 SHELL=/bin/bash
-# CarreiraHub cron jobs — reference/fallback only.
-# Active setup uses systemd timers (/etc/systemd/system/carreirahub-cron@*.timer)
-# with /usr/local/bin/carreirahub-cron wrapper. See deploy/README for details.
+MAILTO=""
+
+# CarreiraHub cron jobs - /etc/cron.d fallback only.
 #
-# If re-installing as crontab: DO NOT use `source .env` — the .env has a
-# multi-line RSA key that breaks bash source. Use grep to extract vars.
+# The active production scheduler is systemd:
+#   systemctl list-timers 'carreirahub-cron@*'
+#
+# Install this file only if systemd timers are intentionally disabled:
+#   sudo install -m 0644 deploy/carreirahub-cron /etc/cron.d/carreirahub
 
-# Every 5 min
-*/5 * * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/process-queue' >> /var/log/carreirahub-cron.log 2>&1
+# Queue processing
+*/5 * * * * root /opt/carreirahub/run-cron.sh process-queue >> /var/log/carreirahub-cron.log 2>&1
 
-# Every hour
-0 * * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/evaluate-alerts' >> /var/log/carreirahub-cron.log 2>&1
+# Queue and alert monitoring
+0 * * * * root /opt/carreirahub/run-cron.sh evaluate-alerts >> /var/log/carreirahub-cron.log 2>&1
+0 */4 * * * root /opt/carreirahub/run-cron.sh monitor-queues >> /var/log/carreirahub-cron.log 2>&1
+0 */6 * * * root /opt/carreirahub/run-cron.sh overdue-invoice-alerts >> /var/log/carreirahub-cron.log 2>&1
 
-# Every 4 hours
-0 */4 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/monitor-queues' >> /var/log/carreirahub-cron.log 2>&1
+# Billing and QuickBooks
+30 0 * * * root /opt/carreirahub/run-cron.sh auto-charge-invoices >> /var/log/carreirahub-cron.log 2>&1
+0 2 * * * root /opt/carreirahub/run-cron.sh refresh-quickbooks-token >> /var/log/carreirahub-cron.log 2>&1
+0 2 * * * root /opt/carreirahub/run-cron.sh overdue-invoices >> /var/log/carreirahub-cron.log 2>&1
+0 3 * * * root /opt/carreirahub/run-cron.sh clint-sync >> /var/log/carreirahub-cron.log 2>&1
+0 9 * * * root /opt/carreirahub/run-cron.sh send-scheduled-invoices >> /var/log/carreirahub-cron.log 2>&1
+0 10 * * * root /opt/carreirahub/run-cron.sh invoice-payment-reminder >> /var/log/carreirahub-cron.log 2>&1
 
-# Every 6 hours
-0 */6 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/overdue-invoice-alerts' >> /var/log/carreirahub-cron.log 2>&1
+# Contracts and collections
+0 1 * * * root /opt/carreirahub/run-cron.sh contract-expiration >> /var/log/carreirahub-cron.log 2>&1
+0 7 * * * root /opt/carreirahub/run-cron.sh contract-renewal-reminder >> /var/log/carreirahub-cron.log 2>&1
+0 13 * * * root /opt/carreirahub/run-cron.sh collection-calls >> /var/log/carreirahub-cron.log 2>&1
 
-# Daily 00:30 UTC
-30 0 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/auto-charge-invoices' >> /var/log/carreirahub-cron.log 2>&1
+# Digests
+0 8 * * * root /opt/carreirahub/run-cron.sh cfo-analysis >> /var/log/carreirahub-cron.log 2>&1
+0 8 * * * root /opt/carreirahub/run-cron.sh seller-digest >> /var/log/carreirahub-cron.log 2>&1
+0 8 * * * root /opt/carreirahub/run-cron.sh finance-digest >> /var/log/carreirahub-cron.log 2>&1
+0 8 * * * root /opt/carreirahub/run-cron.sh health-digest >> /var/log/carreirahub-cron.log 2>&1
+15 8 * * * root /opt/carreirahub/run-cron.sh ops-daily-digest >> /var/log/carreirahub-cron.log 2>&1
+0 8 * * 1 root /opt/carreirahub/run-cron.sh admin-digest >> /var/log/carreirahub-cron.log 2>&1
+0 9 * * * root /opt/carreirahub/run-cron.sh daily-ar-digest >> /var/log/carreirahub-cron.log 2>&1
+15 9 * * * root /opt/carreirahub/run-cron.sh form-completion-reminder >> /var/log/carreirahub-cron.log 2>&1
+0 21 * * * root /opt/carreirahub/run-cron.sh daily-bi-digest >> /var/log/carreirahub-cron.log 2>&1
 
-# Daily 01:00 UTC
-0 1 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/contract-expiration' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 02:00 UTC (refresh token + overdue invoices run at same time)
-0 2 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/refresh-quickbooks-token' >> /var/log/carreirahub-cron.log 2>&1
-0 2 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/overdue-invoices' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 03:00 UTC
-0 3 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/clint-sync' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 07:00 UTC
-0 7 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/contract-renewal-reminder' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 08:00 UTC (multiple digests)
-0 8 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/cfo-analysis' >> /var/log/carreirahub-cron.log 2>&1
-0 8 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/seller-digest' >> /var/log/carreirahub-cron.log 2>&1
-0 8 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/finance-digest' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 08:15 UTC
-15 8 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/ops-daily-digest' >> /var/log/carreirahub-cron.log 2>&1
-
-# Weekly Monday 08:00 UTC
-0 8 * * 1 root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/admin-digest' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 09:00 UTC
-0 9 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/send-scheduled-invoices' >> /var/log/carreirahub-cron.log 2>&1
-0 9 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/daily-ar-digest' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 09:15 UTC
-15 9 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/form-completion-reminder' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 10:00 UTC
-0 10 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/invoice-payment-reminder' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 13:00 UTC
-0 13 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/collection-calls' >> /var/log/carreirahub-cron.log 2>&1
-
-# Daily 21:00 UTC
-0 21 * * * root bash -c 'CRON_SECRET=$(grep -m1 '^CRON_SECRET=' /opt/carreirahub/.env | cut -d= -f2-) && curl -sf -m 300 -H "Authorization: Bearer $CRON_SECRET" https://app.carreirausa.com/api/cron/daily-bi-digest' >> /var/log/carreirahub-cron.log 2>&1
+# Telegram watcher
+*/10 * * * * root /opt/carreirahub/cron-watch.sh >> /var/log/carreirahub-watch.log 2>&1
