@@ -13,7 +13,7 @@ test("defines stable public hub links", () => {
   assert.equal(HUB_LINKS.comercial.path, "/dashboard");
   assert.equal(HUB_LINKS.financeiro.path, "/dashboard/financial");
   assert.equal(HUB_LINKS.executivo.path, "/dashboard/executive");
-  assert.equal(HUB_LINKS.admin.path, "/dashboard");
+  assert.equal(HUB_LINKS.admin.path, "/dashboard/admin");
   assert.equal(HUB_LINKS.cliente.path, "/hub/login");
 });
 

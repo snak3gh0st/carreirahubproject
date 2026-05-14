@@ -114,6 +114,7 @@ const HUB_EXECUTIVO_ITEMS: SidebarItem[] = [
 // (settings/integrations, debug/qb-email-status). Point ADMIN at the existing
 // deepest entry points so the sidebar links resolve to a real route.
 const ADMIN_META_ITEMS: SidebarItem[] = [
+  { href: "/dashboard/admin", label: "System Health", icon: "Activity" },
   { href: "/dashboard/team", label: "Equipe", icon: "Users2" },
   { href: "/dashboard/settings/integrations", label: "Settings", icon: "Settings" },
   { href: "/dashboard/webhooks", label: "Webhooks", icon: "Webhook" },
