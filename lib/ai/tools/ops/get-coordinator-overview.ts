@@ -1,15 +1,15 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
+import { OPERATIONAL_AI_ROLES } from '../role-groups';
 
 export const getCoordinatorOverview = defineAiTool({
   name: 'getCoordinatorOverview',
   description: 'Retorna uma visão geral do coordenador: total de alunos ativos, distribuição por fase e por status, e contagem de atrasados. Use quando o usuário quiser um resumo executivo do programa de mentoria.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
+  allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({}),
   async handler(_args, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
+    requireRole(ctx.user.role, OPERATIONAL_AI_ROLES);
     try {
       const [totalActive, byStatus, byPhaseRaw, overdueCount] = await Promise.all([
         prisma.mentorshipEnrollment.count({ where: { status: 'ACTIVE' } }),

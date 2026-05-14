@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
+import { isOperationalManagerRole } from "@/lib/roles";
 
 const bodySchema = z.object({
   assignedPhases: z.array(z.string()),
@@ -18,7 +19,7 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const callerRole = (session.user as any).role;
-  if (callerRole !== "ADMIN") {
+  if (!isOperationalManagerRole(callerRole)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

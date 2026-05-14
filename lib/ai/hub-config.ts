@@ -6,6 +6,7 @@ export type AiRole =
   | "ADMIN"
   | "FINANCE"
   | "OPERATIONAL"
+  | "HEAD_OPERACIONAL"
   | "COMMERCIAL"
   | "HEAD_COMERCIAL"
   | "SALES"
@@ -76,6 +77,7 @@ export const ROLE_TO_HUB: Readonly<Record<AiRole, AiHubSlug>> = {
   ADMIN: "admin",
   FINANCE: "financial",
   OPERATIONAL: "operational",
+  HEAD_OPERACIONAL: "operational",
   COMMERCIAL: "commercial",
   HEAD_COMERCIAL: "commercial",
   SALES: "commercial",
@@ -87,6 +89,7 @@ export const ROLE_TO_ROUTE: Readonly<Record<AiRole, string>> = {
   ADMIN: AI_HUBS.ADMIN_EXECUTIVE.routePath,
   FINANCE: AI_HUBS.FINANCIAL.routePath,
   OPERATIONAL: AI_HUBS.OPERATIONAL.routePath,
+  HEAD_OPERACIONAL: AI_HUBS.OPERATIONAL.routePath,
   COMMERCIAL: AI_HUBS.COMMERCIAL.routePath,
   HEAD_COMERCIAL: AI_HUBS.COMMERCIAL.routePath,
   SALES: AI_HUBS.COMMERCIAL.routePath,

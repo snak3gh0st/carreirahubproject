@@ -8,11 +8,12 @@ import {
 } from "@/lib/ops/digisac-store";
 import { getDigisacConfig, sendDigisacMessage } from "@/lib/services/digisac.service";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 function canUseOps(role: string | undefined) {
-  return role === "ADMIN" || role === "OPERATIONAL";
+  return isOperationalAccessRole(role);
 }
 
 function serializeDate(value: Date | null | undefined) {

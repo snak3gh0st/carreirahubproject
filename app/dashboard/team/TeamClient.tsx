@@ -22,6 +22,7 @@ const ROLE_LABELS: Record<string, string> = {
   HEAD_COMERCIAL: "Head Comercial",
   FINANCE: "Financeiro",
   OPERATIONAL: "Operacional",
+  HEAD_OPERACIONAL: "Head Operacional",
 };
 
 const ROLE_COLORS: Record<string, string> = {
@@ -30,9 +31,10 @@ const ROLE_COLORS: Record<string, string> = {
   HEAD_COMERCIAL: "bg-sky-100 text-sky-800",
   FINANCE: "bg-green-100 text-green-800",
   OPERATIONAL: "bg-gray-100 text-gray-800",
+  HEAD_OPERACIONAL: "bg-emerald-100 text-emerald-800",
 };
 
-const ALL_ROLES = ["ADMIN", "HEAD_COMERCIAL", "COMMERCIAL", "FINANCE", "OPERATIONAL"];
+const ALL_ROLES = ["ADMIN", "HEAD_COMERCIAL", "COMMERCIAL", "FINANCE", "HEAD_OPERACIONAL", "OPERATIONAL"];
 
 export function TeamClient({ initialUsers, currentUserId }: { initialUsers: TeamUser[]; currentUserId: string }) {
   const [users, setUsers] = useState<TeamUser[]>(initialUsers);
@@ -144,6 +146,7 @@ export function TeamClient({ initialUsers, currentUserId }: { initialUsers: Team
       HEAD_COMERCIAL: "bg-sky-600",
       FINANCE: "bg-green-600",
       OPERATIONAL: "bg-gray-600",
+      HEAD_OPERACIONAL: "bg-emerald-600",
     };
     return map[role] ?? "bg-gray-500";
   };

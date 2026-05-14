@@ -142,6 +142,9 @@ export const SIDEBAR_BY_ROLE: Readonly<Record<UserRole, SidebarSection[]>> = {
   OPERATIONAL: [
     { label: "Hub Operacional", items: HUB_OPERACIONAL_ITEMS },
   ],
+  HEAD_OPERACIONAL: [
+    { label: "Hub Operacional", items: HUB_OPERACIONAL_ITEMS },
+  ],
   EXECUTIVE: [
     { label: "Hub Executivo", items: HUB_EXECUTIVO_ITEMS },
   ],

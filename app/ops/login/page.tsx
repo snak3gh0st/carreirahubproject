@@ -4,6 +4,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { Logo } from "@/components/brand/Logo";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export default function OpsLoginPage() {
   const { data: session, status } = useSession();
@@ -17,7 +18,7 @@ export default function OpsLoginPage() {
   useEffect(() => {
     if (status === "authenticated" && session) {
       const role = (session.user as any).role;
-      if (role === "OPERATIONAL" || role === "ADMIN") {
+      if (isOperationalAccessRole(role)) {
         router.replace("/ops");
       } else {
         router.replace("/?error=access_denied");

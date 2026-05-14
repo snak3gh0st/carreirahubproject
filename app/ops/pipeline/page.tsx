@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { PipelineBoard } from "./PipelineBoard";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const metadata = { title: "Alunos por Area | Ops Hub" };
 
@@ -10,7 +11,7 @@ export default async function PipelinePage() {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect("/ops/login");
   const role = (session.user as { role?: string }).role as string;
-  if (role !== "ADMIN" && role !== "OPERATIONAL") redirect("/ops");
+  if (!isOperationalAccessRole(role)) redirect("/ops");
 
   const currentUserId = (session.user as { id?: string }).id as string;
   const currentUserName = (session.user as { name?: string | null }).name ?? "";

@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { OpsSidebar } from "@/components/ops/ops-sidebar";
 import { OpsQueryProvider } from "./OpsQueryProvider";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export default async function OpsLayout({
   children,
@@ -21,7 +22,7 @@ export default async function OpsLayout({
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
 
-  if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+  if (!isOperationalAccessRole(userRole)) {
     redirect("/?error=access_denied");
   }
 

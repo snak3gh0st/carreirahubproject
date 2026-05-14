@@ -49,12 +49,13 @@ describe('toolRegistry — Plan 02 population', () => {
     'listCapabilities',
     'explainDataModel',
     'getCurrentDate',
+    'getProcessGuide',
     'searchCustomers',
     'searchStudents',
   ];
 
-  it('has exactly 20 tools registered', () => {
-    assert.strictEqual(toolRegistry.length, 20, `Expected 20 tools, got ${toolRegistry.length}`);
+  it('has exactly 21 tools registered', () => {
+    assert.strictEqual(toolRegistry.length, 21, `Expected 21 tools, got ${toolRegistry.length}`);
   });
 
   for (const name of ALL_TOOL_NAMES) {
@@ -84,19 +85,20 @@ describe('toolRegistry — Plan 02 population', () => {
     }
   });
 
-  it('leads tools accessible to ADMIN, SALES, SDR', () => {
+  it('leads tools accessible to ADMIN and commercial roles', () => {
     const leadsTools = ['getLeadsByStatus', 'getLeadQualification', 'getLeadsBySource'];
     for (const name of leadsTools) {
       const tool = toolRegistry.find(t => t.name === name)!;
       assert.ok(tool.allowedRoles.includes('ADMIN' as any), `${name}: ADMIN should be allowed`);
-      assert.ok(tool.allowedRoles.includes('SALES' as any), `${name}: SALES should be allowed`);
-      assert.ok(tool.allowedRoles.includes('SDR' as any), `${name}: SDR should be allowed`);
+      assert.ok(tool.allowedRoles.includes('COMMERCIAL' as any), `${name}: COMMERCIAL should be allowed`);
+      assert.ok(tool.allowedRoles.includes('HEAD_COMERCIAL' as any), `${name}: HEAD_COMERCIAL should be allowed`);
+      assert.ok(!tool.allowedRoles.includes('FINANCE' as any), `${name}: FINANCE should NOT be allowed`);
     }
   });
 
   it('meta tools accessible to all roles', () => {
-    const metaTools = ['listCapabilities', 'explainDataModel', 'getCurrentDate'];
-    const allRoles = ['ADMIN', 'SALES', 'SDR', 'FINANCE', 'SUPPORT', 'OPERATIONAL', 'COMMERCIAL'];
+    const metaTools = ['listCapabilities', 'explainDataModel', 'getCurrentDate', 'getProcessGuide'];
+    const allRoles = ['ADMIN', 'FINANCE', 'OPERATIONAL', 'HEAD_OPERACIONAL', 'COMMERCIAL', 'HEAD_COMERCIAL'];
     for (const name of metaTools) {
       const tool = toolRegistry.find(t => t.name === name)!;
       for (const role of allRoles) {

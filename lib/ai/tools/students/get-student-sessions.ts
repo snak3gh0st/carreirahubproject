@@ -1,18 +1,18 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
+import { OPERATIONAL_AI_ROLES } from '../role-groups';
 
 export const getStudentSessions = defineAiTool({
   name: 'getStudentSessions',
   description: 'Lista as sessões de mentoria de um aluno em ordem cronológica inversa. Use quando o usuário perguntar sobre sessões realizadas, frequência de atendimento ou progresso nas sessões.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
+  allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({
     enrollmentId: z.string(),
     limit: z.number().int().min(1).max(50).default(20),
   }),
   async handler({ enrollmentId, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
+    requireRole(ctx.user.role, OPERATIONAL_AI_ROLES);
     try {
       const sessions = await prisma.mentorshipSession.findMany({
         where: { enrollmentId },

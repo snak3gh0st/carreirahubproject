@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole } from "@/lib/roles";
 import { getTemplate } from "@/lib/hub/form-templates";
 import {
   ArrowUpRight,
@@ -138,7 +139,7 @@ export default async function OpsCustomerDetailPage({
   if (!session?.user) redirect("/ops/login");
 
   const role = (session.user as { role?: string }).role;
-  if (!["ADMIN", "OPERATIONAL"].includes(role ?? "")) {
+  if (!isOperationalAccessRole(role)) {
     redirect("/ops");
   }
 

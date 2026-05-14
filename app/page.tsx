@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/Logo";
 import { PortalCard } from "@/components/portal-selector/portal-card";
 import { AccessDeniedBanner } from "@/components/portal-selector/access-denied-banner";
 import { Users, DollarSign, ClipboardCheck, ShieldCheck, LineChart } from "lucide-react";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export default async function PortalSelectorPage({
   searchParams,
@@ -27,6 +28,7 @@ export default async function PortalSelectorPage({
       redirect("/dashboard");
       break;
     case "OPERATIONAL":
+    case "HEAD_OPERACIONAL":
       redirect("/ops");
       break;
     // ADMIN, EXECUTIVE, anything else: fall through to render the multi-card portal
@@ -75,7 +77,7 @@ export default async function PortalSelectorPage({
         <PortalCard
           title="Hub Operacional"
           description="Onboarding, formularios e entregas"
-          href={session && (userRole === "OPERATIONAL" || userRole === "ADMIN") ? "/ops" : "/ops/login"}
+          href={session && isOperationalAccessRole(userRole) ? "/ops" : "/ops/login"}
           icon={<ClipboardCheck className="h-7 w-7" />}
         />
         {isAdmin && (

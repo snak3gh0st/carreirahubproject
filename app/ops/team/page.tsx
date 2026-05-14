@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { UsersRound } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalManagerRole, OPERATIONAL_TEAM_ROLES } from "@/lib/roles";
 import { PhaseAssignment } from "../coordinator/PhaseAssignment";
 import { OpsTeamClient } from "./OpsTeamClient";
 
@@ -14,10 +15,10 @@ export default async function OpsTeamPage() {
   if (!session?.user) redirect("/ops/login");
 
   const role = (session.user as any).role as string;
-  if (role !== "ADMIN") redirect("/ops");
+  if (!isOperationalManagerRole(role)) redirect("/ops");
 
   const users = await prisma.user.findMany({
-    where: { role: "OPERATIONAL" },
+    where: { role: { in: [...OPERATIONAL_TEAM_ROLES] } },
     select: {
       id: true,
       name: true,

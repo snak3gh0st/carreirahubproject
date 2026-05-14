@@ -8,7 +8,7 @@
  *   List:    npm run user:list
  *   Change Password: npm run user:password <email> <new-password>
  *
- * Available Roles: ADMIN, FINANCE, SALES, SDR, SUPPORT, OPERATIONAL, COMMERCIAL
+ * Available Roles: ADMIN, FINANCE, SALES, SDR, SUPPORT, OPERATIONAL, HEAD_OPERACIONAL, COMMERCIAL
  *
  * Examples:
  *   npm run user:create-secure "John Finance" FINANCE senha123
@@ -34,6 +34,7 @@ const VALID_ROLES: UserRole[] = [
   "SDR",
   "SUPPORT",
   "OPERATIONAL",
+  "HEAD_OPERACIONAL",
   "COMMERCIAL",
 ];
 

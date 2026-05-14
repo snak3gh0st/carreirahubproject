@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET() {
   }
 
   const userRole = (session.user as any).role;
-  if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+  if (!isOperationalAccessRole(userRole)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

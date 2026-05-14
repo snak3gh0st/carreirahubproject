@@ -182,6 +182,10 @@ export default function DashboardPage() {
     redirect("/dashboard/commercial-bi");
   }
 
+  if (userRole === "OPERATIONAL" || userRole === "HEAD_OPERACIONAL") {
+    redirect("/ops");
+  }
+
   // COMMERCIAL users see simplified dashboard
   if (userRole === "COMMERCIAL") {
     return (

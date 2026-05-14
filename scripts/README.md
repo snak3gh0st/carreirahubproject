@@ -21,7 +21,7 @@ node scripts/create-test-user.js email@example.com "Nome do Usuário" ADMIN
 - `name` (opcional): Nome do usuário (padrão: `Admin User`)
 - `role` (opcional): Role do usuário (padrão: `ADMIN`)
 
-**Roles disponíveis:** `ADMIN`, `SALES`, `SDR`, `FINANCE`, `SUPPORT`, `OPERATIONAL`
+**Roles disponíveis:** `ADMIN`, `SALES`, `SDR`, `FINANCE`, `SUPPORT`, `OPERATIONAL`, `HEAD_OPERACIONAL`
 
 ---
 

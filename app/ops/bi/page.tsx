@@ -15,6 +15,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "BI Operacional | Ops Hub" };
@@ -37,7 +38,7 @@ export default async function OpsBiPage() {
   if (!session?.user) redirect("/ops/login");
 
   const role = (session.user as any).role as string;
-  if (!["ADMIN", "OPERATIONAL"].includes(role)) redirect("/ops");
+  if (!isOperationalAccessRole(role)) redirect("/ops");
 
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());

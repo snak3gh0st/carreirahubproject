@@ -18,6 +18,7 @@ import {
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
+import { isOperationalManagerRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function OpsHomePage() {
     ? await prisma.user.findUnique({ where: { id: userId }, select: { assignedPhases: true } })
     : null;
 
-  const phaseScope = role === "ADMIN"
+  const phaseScope = isOperationalManagerRole(role)
     ? {}
     : { currentPhase: { key: { in: userRecord?.assignedPhases ?? [] } } };
 

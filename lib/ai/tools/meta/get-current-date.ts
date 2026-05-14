@@ -1,18 +1,14 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
-
-const ALL_ROLES = [
-  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL,
-];
+import { ALL_AI_ROLES } from '../role-groups';
 
 export const getCurrentDate = defineAiTool({
   name: 'getCurrentDate',
   description: 'Retorna a data e hora atual no fuso horário de Nova York (ET). Use quando o usuário perguntar que dia é hoje, que horas são, ou quando precisar de referência de data para qualquer cálculo.',
-  allowedRoles: ALL_ROLES,
+  allowedRoles: ALL_AI_ROLES,
   inputSchema: z.object({}),
   async handler(_args, ctx) {
-    requireRole(ctx.user.role, ALL_ROLES);
+    requireRole(ctx.user.role, ALL_AI_ROLES);
     const now = new Date();
     return {
       iso: now.toISOString(),

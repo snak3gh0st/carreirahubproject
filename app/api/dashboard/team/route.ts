@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { authService } from "@/lib/services/auth.service";
 import { emailService } from "@/lib/services/email.service";
 import { UserRole } from "@prisma/client";
+import { isOperationalManagerRole, isOperationalTeamRole, OPERATIONAL_TEAM_ROLES } from "@/lib/roles";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
@@ -12,13 +13,18 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user as any).role !== UserRole.ADMIN) {
+    const sessionRole = (session?.user as any)?.role as string | undefined;
+    if (!session || (sessionRole !== UserRole.ADMIN && !isOperationalManagerRole(sessionRole))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const role = searchParams.get("role") || "";
+    const roles = (searchParams.get("roles") || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
     const status = searchParams.get("status") || "";
 
     const where: any = {};
@@ -28,8 +34,14 @@ export async function GET(request: NextRequest) {
         { email: { contains: search, mode: "insensitive" } },
       ];
     }
-    if (role && Object.values(UserRole).includes(role as UserRole)) {
+    if (roles.length > 0) {
+      const validRoles = roles.filter((candidate) => Object.values(UserRole).includes(candidate as UserRole));
+      where.role = { in: validRoles as UserRole[] };
+    } else if (role && Object.values(UserRole).includes(role as UserRole)) {
       where.role = role as UserRole;
+    }
+    if (sessionRole !== UserRole.ADMIN) {
+      where.role = { in: [...OPERATIONAL_TEAM_ROLES] };
     }
     if (status === "active") where.active = true;
     if (status === "inactive") where.active = false;
@@ -50,7 +62,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session || (session.user as any).role !== UserRole.ADMIN) {
+    const sessionRole = (session?.user as any)?.role as string | undefined;
+    if (!session || (sessionRole !== UserRole.ADMIN && !isOperationalManagerRole(sessionRole))) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -65,6 +78,9 @@ export async function POST(request: NextRequest) {
     }
     if (!Object.values(UserRole).includes(role as UserRole)) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+    }
+    if (sessionRole !== UserRole.ADMIN && !isOperationalTeamRole(role)) {
+      return NextResponse.json({ error: "Role not permitted for operational manager" }, { status: 403 });
     }
 
     const normalizedEmail = email.toLowerCase().trim();

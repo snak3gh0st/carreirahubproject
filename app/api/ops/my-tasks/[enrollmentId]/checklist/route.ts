@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
+import { isOperationalAccessRole } from "@/lib/roles";
 import { z } from "zod";
 
 const bodySchema = z.object({
@@ -21,7 +22,7 @@ export async function POST(
 
   const userRole = (session.user as any).role;
   const userId = (session.user as any).id;
-  if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+  if (!isOperationalAccessRole(userRole)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

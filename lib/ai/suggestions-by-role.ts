@@ -36,6 +36,7 @@ export function getSuggestionsForRole(role: string, hubSlug?: string): string[] 
         'Quais clientes precisam de ação comercial hoje?',
       ];
     case 'OPERATIONAL':
+    case 'HEAD_OPERACIONAL':
       return [
         'Quais alunos estão na fase 3?',
         'Mostre o daily action view',

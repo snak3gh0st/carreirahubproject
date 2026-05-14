@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/mentorship.service";
 import { prisma } from "@/lib/db";
 import { slackService } from "@/lib/services/slack.service";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export async function POST(
   req: NextRequest,
@@ -17,7 +18,7 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as any).role as string;
-  if (role !== "ADMIN" && role !== "OPERATIONAL") {
+  if (!isOperationalAccessRole(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
   const userId = (session.user as any).id as string;

@@ -1,7 +1,7 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
+import { OPERATIONAL_AI_ROLES } from '../role-groups';
 
 const SLA_DAYS_PER_PHASE = 7;
 
@@ -12,12 +12,12 @@ function daysBetween(a: Date, b: Date): number {
 export const getStudentNextActions = defineAiTool({
   name: 'getStudentNextActions',
   description: 'Calcula as próximas ações recomendadas para um aluno com base no SLA da fase atual. Use quando o usuário perguntar o que deve ser feito a seguir para um aluno específico.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
+  allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({
     enrollmentId: z.string(),
   }),
   async handler({ enrollmentId }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
+    requireRole(ctx.user.role, OPERATIONAL_AI_ROLES);
     try {
       const enrollment = await prisma.mentorshipEnrollment.findUnique({
         where: { id: enrollmentId },
