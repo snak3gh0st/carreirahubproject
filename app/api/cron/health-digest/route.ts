@@ -115,6 +115,7 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
   const since15m = new Date(now - 15 * 60 * 1000);
   const since60m = new Date(now - 60 * 60 * 1000);
   const since24h = new Date(now - 24 * 60 * 60 * 1000);
+  const invoiceSendWindowEnd = new Date(now + 7 * 24 * 60 * 60 * 1000);
 
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const healthPromise: Promise<HealthPayload> = fetch(`${baseUrl}/api/health`, {
@@ -137,7 +138,8 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     circuitBreakers,
     queueSummary,
     recentErrors,
-    sentEmailNullCount,
+    dueWindowEmailPendingCount,
+    futureScheduledEmailPendingCount,
     overdueCandidateCount,
     staleAutoChargeCount,
     wrongRealmIgnoredCount,
@@ -188,9 +190,19 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     }),
     prisma.invoice.count({
       where: {
+        status: { notIn: [InvoiceStatus.PAID, InvoiceStatus.VOID] },
+        emailSentAt: null,
+        quickbooks_invoice_id: { not: null },
+        emailSendAttempts: { lt: 5 },
+        dueDate: { lte: invoiceSendWindowEnd },
+      },
+    }),
+    prisma.invoice.count({
+      where: {
         status: InvoiceStatus.SENT,
         emailSentAt: null,
         quickbooks_invoice_id: { not: null },
+        dueDate: { gt: invoiceSendWindowEnd },
       },
     }),
     prisma.invoice.count({
@@ -228,7 +240,9 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     0
   );
   const hasFinanceWarnings =
-    overdueCandidateCount > 0 || staleAutoChargeCount > 0;
+    overdueCandidateCount > 0 ||
+    staleAutoChargeCount > 0 ||
+    dueWindowEmailPendingCount > 0;
 
   const statusEmoji =
     health.ok &&
@@ -310,7 +324,12 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
   lines.push(
     `${staleAutoChargeCount > 0 ? "⚠️" : "🟢"} auto-charge retry stale/skipped: ${staleAutoChargeCount}`
   );
-  lines.push(`ℹ️ SENT with no Hub emailSentAt: ${sentEmailNullCount}`);
+  lines.push(
+    `${dueWindowEmailPendingCount > 0 ? "⚠️" : "🟢"} invoice emails due in 7d not sent: ${dueWindowEmailPendingCount}`
+  );
+  lines.push(
+    `ℹ️ future scheduled invoices not emailed yet: ${futureScheduledEmailPendingCount}`
+  );
 
   const errServices = Object.entries(logs24h.byService)
     .filter(([, v]) => v.err > 0)
@@ -355,7 +374,8 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     invoiceSignals: {
       overdueCandidateCount,
       staleAutoChargeCount,
-      sentEmailNullCount,
+      dueWindowEmailPendingCount,
+      futureScheduledEmailPendingCount,
     },
   });
 });
