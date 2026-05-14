@@ -1,6 +1,7 @@
 import { Queue } from "bullmq";
 import { prisma } from "@/lib/db";
 import { isRedisConfigured } from "@/lib/utils/queue";
+import { resolveBullQueueName } from "@/lib/utils/queue-names";
 
 /**
  * Queue Monitoring Service
@@ -147,7 +148,8 @@ export async function monitorQueue(
 
   try {
     const connectionOptions = getConnectionOptions();
-    const queue = new Queue(queueName, { connection: connectionOptions });
+    const bullQueueName = resolveBullQueueName(queueName);
+    const queue = new Queue(bullQueueName, { connection: connectionOptions });
 
     // Get jobs in various states (only check relevant states for efficiency)
     const [delayedJobs, waitingJobs, activeJobs] = await Promise.all([

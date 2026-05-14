@@ -1,6 +1,11 @@
 import { Queue, Worker } from "bullmq";
 import { prisma } from "@/lib/db";
 import { isRedisConfigured } from "@/lib/utils/queue";
+import {
+  ACTIVE_QUEUE_KEYS,
+  type QueueKey,
+  resolveBullQueueName,
+} from "@/lib/utils/queue-names";
 
 /**
  * Queue Processor for Vercel Serverless Environment
@@ -342,7 +347,8 @@ export async function processQueue(
     };
 
     const connectionOptions = getConnectionOptions();
-    const queue = new Queue(queueName, { connection: connectionOptions });
+    const bullQueueName = resolveBullQueueName(queueName);
+    const queue = new Queue(bullQueueName, { connection: connectionOptions });
 
     // Get waiting jobs from queue (up to max)
     const jobs = await queue.getWaiting(0, maxJobsPerRun - 1);
@@ -516,14 +522,14 @@ export async function processAllQueues(): Promise<{
   const queueOrder = [
     "whatsappMessages",
     "invoiceApproval",
-    "pipedriveReverseSync",
-    "pipedriveSync",
     "leadQualification",
     "invoiceGeneration",
     "contractGeneration",
     "quickbooksSync",
     "bulkImport",
-  ];
+  ].filter((queueName): queueName is QueueKey =>
+    ACTIVE_QUEUE_KEYS.includes(queueName as QueueKey)
+  );
 
   console.log(`[QUEUE] Starting queue processing (max 8 seconds)`);
 

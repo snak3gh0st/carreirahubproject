@@ -1,4 +1,5 @@
 import { Queue, Worker, QueueEvents } from "bullmq";
+import { QUEUE_NAMES } from "@/lib/utils/queue-names";
 
 /**
  * Queue Service (BullMQ)
@@ -100,13 +101,13 @@ function initQueues() {
   const connectionOptions = getConnectionOptions();
 
   _queues = {
-    leadQualification: new Queue("lead-qualification", { connection: connectionOptions }),
-    whatsappMessages: new Queue("whatsapp-messages", { connection: connectionOptions }),
-    invoiceGeneration: new Queue("invoice-generation", { connection: connectionOptions }),
-    invoiceApproval: new Queue("invoice-approval", { connection: connectionOptions }),
-    contractGeneration: new Queue("contract-generation", { connection: connectionOptions }),
-    quickbooksSync: new Queue("quickbooks-sync", { connection: connectionOptions }),
-    bulkImport: new Queue("bulk-import", { connection: connectionOptions }),
+    leadQualification: new Queue(QUEUE_NAMES.leadQualification, { connection: connectionOptions }),
+    whatsappMessages: new Queue(QUEUE_NAMES.whatsappMessages, { connection: connectionOptions }),
+    invoiceGeneration: new Queue(QUEUE_NAMES.invoiceGeneration, { connection: connectionOptions }),
+    invoiceApproval: new Queue(QUEUE_NAMES.invoiceApproval, { connection: connectionOptions }),
+    contractGeneration: new Queue(QUEUE_NAMES.contractGeneration, { connection: connectionOptions }),
+    quickbooksSync: new Queue(QUEUE_NAMES.quickbooksSync, { connection: connectionOptions }),
+    bulkImport: new Queue(QUEUE_NAMES.bulkImport, { connection: connectionOptions }),
   };
 
   return _queues;
@@ -118,13 +119,13 @@ function initQueueEvents() {
   const connectionOptions = getConnectionOptions();
 
   _queueEvents = {
-    leadQualification: new QueueEvents("lead-qualification", { connection: connectionOptions }),
-    whatsappMessages: new QueueEvents("whatsapp-messages", { connection: connectionOptions }),
-    invoiceGeneration: new QueueEvents("invoice-generation", { connection: connectionOptions }),
-    invoiceApproval: new QueueEvents("invoice-approval", { connection: connectionOptions }),
-    contractGeneration: new QueueEvents("contract-generation", { connection: connectionOptions }),
-    quickbooksSync: new QueueEvents("quickbooks-sync", { connection: connectionOptions }),
-    bulkImport: new QueueEvents("bulk-import", { connection: connectionOptions }),
+    leadQualification: new QueueEvents(QUEUE_NAMES.leadQualification, { connection: connectionOptions }),
+    whatsappMessages: new QueueEvents(QUEUE_NAMES.whatsappMessages, { connection: connectionOptions }),
+    invoiceGeneration: new QueueEvents(QUEUE_NAMES.invoiceGeneration, { connection: connectionOptions }),
+    invoiceApproval: new QueueEvents(QUEUE_NAMES.invoiceApproval, { connection: connectionOptions }),
+    contractGeneration: new QueueEvents(QUEUE_NAMES.contractGeneration, { connection: connectionOptions }),
+    quickbooksSync: new QueueEvents(QUEUE_NAMES.quickbooksSync, { connection: connectionOptions }),
+    bulkImport: new QueueEvents(QUEUE_NAMES.bulkImport, { connection: connectionOptions }),
   };
 
   return _queueEvents;
@@ -332,7 +333,7 @@ export function initializeWorkers() {
 
   // Worker para qualificação de leads
   new Worker(
-    "lead-qualification",
+    QUEUE_NAMES.leadQualification,
     async (job) => {
       const { leadId } = job.data;
       const { sdrService } = await import("@/lib/services/sdr.service");
@@ -343,7 +344,7 @@ export function initializeWorkers() {
 
   // Worker para mensagens WhatsApp
   new Worker(
-    "whatsapp-messages",
+    QUEUE_NAMES.whatsappMessages,
     async (job) => {
       const { phone, message, leadId } = job.data;
       const { whatsappService } = await import("@/lib/services/whatsapp.service");
@@ -354,7 +355,7 @@ export function initializeWorkers() {
 
   // Worker para geração de invoices
   new Worker(
-    "invoice-generation",
+    QUEUE_NAMES.invoiceGeneration,
     async (job) => {
       const { dealId, customerId, amount, currency } = job.data;
       // TODO: Implementar lógica de geração de invoice
@@ -365,7 +366,7 @@ export function initializeWorkers() {
 
   // Worker para geração de contratos
   new Worker(
-    "contract-generation",
+    QUEUE_NAMES.contractGeneration,
     async (job) => {
       const { dealId, customerId, customerEmail, customerName } = job.data;
       // TODO: Implementar lógica de geração de contrato
@@ -376,7 +377,7 @@ export function initializeWorkers() {
 
   // Worker para sincronização QuickBooks
   new Worker(
-    "quickbooks-sync",
+    QUEUE_NAMES.quickbooksSync,
     async (job) => {
       const { quickbooksSyncService } = await import("@/lib/services/quickbooks-sync.service");
       await quickbooksSyncService.sync(job.data);
@@ -386,7 +387,7 @@ export function initializeWorkers() {
 
   // Worker for invoice approval workflow
   new Worker(
-    "invoice-approval",
+    QUEUE_NAMES.invoiceApproval,
     async (job) => {
       const { invoiceId, action, userId, reason } = job.data;
       // Note: Approval workflow removed in quick-012, this queue processor is deprecated
@@ -398,7 +399,7 @@ export function initializeWorkers() {
 
   // Worker for bulk import
   new Worker(
-    "bulk-import",
+    QUEUE_NAMES.bulkImport,
     async (job) => {
       const { importId, source, type } = job.data;
 
@@ -436,4 +437,3 @@ export function initializeWorkers() {
     }
   );
 }
-

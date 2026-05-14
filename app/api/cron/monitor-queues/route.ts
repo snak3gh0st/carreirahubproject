@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { monitorAllQueues } from "@/lib/utils/queue-monitor";
 import { prisma } from "@/lib/db";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
+import { ACTIVE_QUEUE_KEYS } from "@/lib/utils/queue-names";
 
 export const dynamic = "force-dynamic";
 
@@ -45,18 +46,7 @@ export const GET = withCronTelemetry("monitor-queues", async (request) => {
 
     console.log("[CRON] Starting queue monitoring");
 
-    // All 9 queues
-    const queueNames = [
-      "leadQualification",
-      "whatsappMessages",
-      "pipedriveSync",
-      "invoiceGeneration",
-      "contractGeneration",
-      "quickbooksSync",
-      "pipedriveReverseSync",
-      "invoiceApproval",
-      "bulkImport",
-    ];
+    const queueNames = ACTIVE_QUEUE_KEYS;
 
     // Monitoring thresholds (from plan: 24h stale, 5 failures, 5min stuck)
     const monitoringResults = await monitorAllQueues(queueNames, {
