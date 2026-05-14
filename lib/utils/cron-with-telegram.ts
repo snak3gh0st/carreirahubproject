@@ -7,6 +7,18 @@ interface CronResult {
   [key: string]: unknown;
 }
 
+export function getCronFailureMessage(body: CronResult, status: number) {
+  if (typeof body.error === "string" && body.error.trim()) {
+    return body.error;
+  }
+
+  if (typeof body.message === "string" && body.message.trim()) {
+    return body.message;
+  }
+
+  return `HTTP ${status}`;
+}
+
 export function withCronTelemetry(
   cronName: string,
   handler: (request: NextRequest) => Promise<NextResponse>
@@ -34,7 +46,7 @@ export function withCronTelemetry(
       const failed = body.success === false || response.status >= 400;
       if (failed) {
         status = "ERROR";
-        errorMsg = typeof body.error === "string" ? body.error : `HTTP ${response.status}`;
+        errorMsg = getCronFailureMessage(body, response.status);
         await telegramService.alertCronError(cronName, new Error(errorMsg), {
           Route: request.nextUrl.pathname,
           Status: response.status,

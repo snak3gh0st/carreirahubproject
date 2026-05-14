@@ -19,10 +19,11 @@ export const GET = withCronTelemetry("collection-calls", async (_request) => {
     if (!collectionCallService.isConfigured()) {
       console.log("[COLLECTION_CALLS_CRON] Service not configured, skipping");
       return NextResponse.json({
-        success: false,
+        success: true,
         message: "Collection call service is not configured",
         initiated: 0,
         skipped: 0,
+        configured: false,
       });
     }
 
