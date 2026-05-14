@@ -1,19 +1,19 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toStudentSafeDto } from '../../dto';
+import { OPERATIONAL_AI_ROLES } from '../role-groups';
 
 export const getStudentsByPhase = defineAiTool({
   name: 'getStudentsByPhase',
   description: 'Lista alunos ativos em uma fase específica do programa de mentoria. Use quando o usuário perguntar quais alunos estão em determinada fase, ou quantos alunos estão em cada etapa do programa.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
+  allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({
     phaseKey: z.string(),
     limit: z.number().int().min(1).max(100).default(50),
   }),
   async handler({ phaseKey, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
+    requireRole(ctx.user.role, OPERATIONAL_AI_ROLES);
     try {
       const enrollments = await prisma.mentorshipEnrollment.findMany({
         where: {

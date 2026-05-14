@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { mentorshipService, MentorshipError } from "@/lib/services/mentorship.service";
+import { isOperationalAccessRole } from "@/lib/roles";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
   const userRole = (session.user as any).role;
   const userId = (session.user as any).id;
 
-  if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+  if (!isOperationalAccessRole(userRole)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

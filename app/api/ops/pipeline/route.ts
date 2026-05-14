@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -9,7 +10,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as any).role as string;
-  if (role !== "ADMIN" && role !== "OPERATIONAL") {
+  if (!isOperationalAccessRole(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole, shouldScopeOperationalWork } from "@/lib/roles";
 import {
   SLA_DAYS_PER_PHASE,
   SLA_WARNING_DAYS,
@@ -19,7 +20,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const role = (session.user as any).role as string;
-  if (role !== "ADMIN" && role !== "OPERATIONAL") {
+  if (!isOperationalAccessRole(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -28,7 +29,7 @@ export async function GET() {
   const enrollments = await prisma.mentorshipEnrollment.findMany({
     where: {
       status: "ACTIVE",
-      ...(role !== "ADMIN" ? { assignedToId: userId } : {}),
+      ...(shouldScopeOperationalWork(role) ? { assignedToId: userId } : {}),
     },
     include: {
       customer: { select: { id: true, name: true, qbBalance: true } },

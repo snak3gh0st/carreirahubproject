@@ -31,7 +31,7 @@ export function OpsTeamClient({ initialUsers }: { initialUsers: OpsUser[] }) {
   }, [search, users]);
 
   async function refresh() {
-    const res = await fetch("/api/dashboard/team?role=OPERATIONAL");
+    const res = await fetch("/api/dashboard/team?roles=HEAD_OPERACIONAL,OPERATIONAL");
     if (!res.ok) return;
     const data = await res.json();
     setUsers(data.users ?? []);

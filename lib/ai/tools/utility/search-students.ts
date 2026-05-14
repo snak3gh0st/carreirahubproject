@@ -1,19 +1,19 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toStudentSafeDto } from '../../dto';
+import { OPERATIONAL_AI_ROLES } from '../role-groups';
 
 export const searchStudents = defineAiTool({
   name: 'searchStudents',
   description: 'Busca alunos matriculados por nome ou email (busca parcial, insensível a maiúsculas). Use quando o usuário quiser encontrar um aluno específico para ver seu perfil, sessões ou próximas ações.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
+  allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({
     query: z.string().min(2),
     limit: z.number().int().min(1).max(50).default(20),
   }),
   async handler({ query, limit }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
+    requireRole(ctx.user.role, OPERATIONAL_AI_ROLES);
     try {
       const enrollments = await prisma.mentorshipEnrollment.findMany({
         where: {

@@ -1,10 +1,6 @@
 import { z } from 'zod';
-import { UserRole } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
-
-const ALL_ROLES = [
-  UserRole.ADMIN, UserRole.FINANCE, UserRole.OPERATIONAL, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL,
-];
+import { ALL_AI_ROLES } from '../role-groups';
 
 const DATA_MODEL_DOCS: Record<string, string> = {
   leads: `
@@ -87,12 +83,12 @@ Para detalhes completos de uma fase específica (checklist, responsável, próxi
 export const explainDataModel = defineAiTool({
   name: 'explainDataModel',
   description: 'Explica o modelo de dados do sistema e as relações entre entidades. Use quando o usuário tiver dúvidas sobre como os dados estão estruturados, o que é um lead versus cliente, como as faturas se relacionam com contratos, ou quais são as fases/processos do programa de mentoria.',
-  allowedRoles: ALL_ROLES,
+  allowedRoles: ALL_AI_ROLES,
   inputSchema: z.object({
     entity: z.enum(['leads', 'students', 'invoices', 'contracts', 'deals', 'process']).optional(),
   }),
   async handler({ entity }, ctx) {
-    requireRole(ctx.user.role, ALL_ROLES);
+    requireRole(ctx.user.role, ALL_AI_ROLES);
     const doc = entity ? (DATA_MODEL_DOCS[entity] ?? DATA_MODEL_DOCS.general) : DATA_MODEL_DOCS.general;
     return { entity: entity ?? 'general', documentation: doc.trim() };
   },

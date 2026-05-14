@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
+import { isOperationalAccessRole, isOperationalManagerRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -13,14 +14,14 @@ export async function GET() {
 
   const userId = (session.user as any).id;
   const userRole = (session.user as any).role;
-  if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+  if (!isOperationalAccessRole(userRole)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
 
   // ADMIN sees all active enrollments; others see only their assigned phases.
-  const phaseFilter = userRole === "ADMIN"
+  const phaseFilter = isOperationalManagerRole(userRole)
     ? {}
     : { currentPhase: { key: { in: user.assignedPhases } } };
 

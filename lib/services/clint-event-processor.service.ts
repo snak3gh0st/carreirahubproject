@@ -14,6 +14,7 @@ import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service"
 import { slackService } from "@/lib/services/slack.service";
 import { MentorshipError, mentorshipService } from "@/lib/services/mentorship.service";
 import { integrationLogger } from "@/lib/utils/logger";
+import { OPERATIONAL_TEAM_ROLES } from "@/lib/roles";
 import type { ClintContact, ClintDeal } from "@/lib/services/clint.service";
 
 export class ClintEventProcessor {
@@ -224,23 +225,23 @@ export class ClintEventProcessor {
     }
 
     // Prefer an active ops user assigned to the entry phase, then fall back to
-    // the first active operational user.
+    // the first active operational team member.
     const opsUser = await prisma.user.findFirst({
-      where: { role: "OPERATIONAL", active: true, assignedPhases: { has: "bastao" } },
+      where: { role: { in: [...OPERATIONAL_TEAM_ROLES] }, active: true, assignedPhases: { has: "bastao" } },
       select: { id: true },
       orderBy: { createdAt: "asc" },
     }) ?? await prisma.user.findFirst({
-      where: { role: "OPERATIONAL", active: true },
+      where: { role: { in: [...OPERATIONAL_TEAM_ROLES] }, active: true },
       select: { id: true },
       orderBy: { createdAt: "asc" },
     });
 
     if (!opsUser) {
-      console.error("[ClintEvent] No OPERATIONAL user found — cannot create enrollment");
+      console.error("[ClintEvent] No operational user found — cannot create enrollment");
       await integrationLogger.logError(
         "clint-event",
         "trigger_onboarding",
-        new Error("No OPERATIONAL user found"),
+        new Error("No operational user found"),
         { errorCode: "NO_OPS_USER", category: "validation" },
         { customerId: customer.id }
       );

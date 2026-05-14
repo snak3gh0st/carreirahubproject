@@ -2,20 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/ops/users
- * Returns users filtered by roles (query param: roles=ADMIN,OPERATIONAL).
- * Gated to ADMIN role for full access; OPERATIONAL users get a limited view.
+ * Returns users filtered by roles (query param: roles=ADMIN,HEAD_OPERACIONAL,OPERATIONAL).
+ * Gated to operational access roles.
  */
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userRole = (session.user as any).role as string;
-  if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+  if (!isOperationalAccessRole(userRole)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

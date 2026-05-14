@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { UserRole } from "@prisma/client";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 /**
  * Unified middleware for admin dashboard (NextAuth) and client hub (custom JWT).
@@ -27,7 +28,7 @@ const routeRoleMap: { prefix: string; roles: UserRole[] }[] = [
   { prefix: "/dashboard/insights", roles: ["ADMIN", "FINANCE", "EXECUTIVE"] },
   { prefix: "/dashboard/integrations", roles: ["ADMIN", "FINANCE"] },
   { prefix: "/dashboard/support", roles: ["ADMIN", "COMMERCIAL"] },
-  { prefix: "/dashboard/forms", roles: ["ADMIN", "COMMERCIAL"] },
+  { prefix: "/dashboard/forms", roles: ["ADMIN", "COMMERCIAL", "OPERATIONAL", "HEAD_OPERACIONAL"] },
   { prefix: "/dashboard/tests", roles: ["ADMIN", "COMMERCIAL"] },
   { prefix: "/dashboard/customers", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
   { prefix: "/dashboard/deals", roles: ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"] },
@@ -66,7 +67,7 @@ const OPS_PUBLIC_PATHS = ["/ops/login"];
 //   1. Prefix-allowlisted portals/system routes (separate auth or no auth):
 //      - /api/auth/      (NextAuth — sign-in must stay reachable)
 //      - /api/hub/       (Client portal: ClientUser + custom JWT; EXECUTIVE NextAuth token doesn't authenticate here anyway)
-//      - /api/ops/       (Ops portal: separate ADMIN|OPERATIONAL guard; EXECUTIVE can't reach anyway)
+//      - /api/ops/       (Ops portal: separate operational guard; EXECUTIVE can't reach anyway)
 //      - /api/webhooks/  (external webhooks — no session at all)
 //   2. Exact-match POST allowlist for the CEO Brief persona conversation:
 //      - POST /api/dashboard/ai/chat
@@ -155,7 +156,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── Ops portal: NextAuth with OPERATIONAL/ADMIN role ───────
+  // ── Ops portal: NextAuth with operational access roles ─────
   if (pathname.startsWith("/ops") || pathname.startsWith("/api/ops")) {
     const token = await getToken({ req: request });
 
@@ -164,7 +165,7 @@ export async function middleware(request: NextRequest) {
     }
 
     const userRole = token.role as UserRole;
-    if (!["ADMIN", "OPERATIONAL"].includes(userRole)) {
+    if (!isOperationalAccessRole(userRole)) {
       console.log(`[MIDDLEWARE] Ops access denied: ${userRole} -> ${pathname}`);
       return NextResponse.redirect(new URL("/?error=access_denied", request.url));
     }

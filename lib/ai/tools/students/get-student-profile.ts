@@ -1,18 +1,19 @@
 import { z } from 'zod';
-import { InvoiceStatus, UserRole } from '@prisma/client';
+import { InvoiceStatus } from '@prisma/client';
 import { defineAiTool, requireRole } from '../_base';
 import { prisma } from '@/lib/db';
 import { toStudentSafeDto } from '../../dto';
+import { OPERATIONAL_AI_ROLES } from '../role-groups';
 
 export const getStudentProfile = defineAiTool({
   name: 'getStudentProfile',
   description: 'Retorna o perfil completo de um aluno: fase atual, sessões, faturas abertas e histórico de transições. Use quando o usuário perguntar sobre um aluno específico.',
-  allowedRoles: [UserRole.ADMIN, UserRole.OPERATIONAL],
+  allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({
     enrollmentId: z.string(),
   }),
   async handler({ enrollmentId }, ctx) {
-    requireRole(ctx.user.role, [UserRole.ADMIN, UserRole.OPERATIONAL]);
+    requireRole(ctx.user.role, OPERATIONAL_AI_ROLES);
     try {
       const enrollment = await prisma.mentorshipEnrollment.findUnique({
         where: { id: enrollmentId },

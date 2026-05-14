@@ -21,7 +21,7 @@ interface Phase {
 function useOpsUsers() {
   return useQuery<{ users: OpsUser[] }>({
     queryKey: ["coordinator-users"],
-    queryFn: () => fetch("/api/ops/users?roles=ADMIN,OPERATIONAL").then((r) => r.json()),
+    queryFn: () => fetch("/api/ops/users?roles=ADMIN,HEAD_OPERACIONAL,OPERATIONAL").then((r) => r.json()),
   });
 }
 

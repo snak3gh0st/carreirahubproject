@@ -12,6 +12,7 @@ import {
   ListChecks,
   UsersRound,
 } from "lucide-react";
+import { isOperationalManagerRole } from "@/lib/roles";
 
 interface NavItem {
   href: string;
@@ -33,7 +34,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
     { href: "/ops/pipeline", label: "Alunos", icon: ListChecks },
     { href: "/ops/enroll", label: "Matrículas", icon: GraduationCap },
     { href: "/ops/bi", label: "BI", icon: BarChart3 },
-    ...(userRole === "ADMIN"
+    ...(isOperationalManagerRole(userRole)
       ? [
           { href: "/ops/team", label: "Gestão", icon: UsersRound },
         ]

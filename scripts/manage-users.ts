@@ -7,7 +7,7 @@
  *   Update:  npm run user:manage update <email> <field> <value>
  *   List:    npm run user:manage list
  *
- * Available Roles: ADMIN, FINANCE, SALES, SDR, SUPPORT, OPERATIONAL, COMMERCIAL
+ * Available Roles: ADMIN, FINANCE, SALES, SDR, SUPPORT, OPERATIONAL, HEAD_OPERACIONAL, COMMERCIAL
  *
  * Examples:
  *   npm run user:manage create "John Finance" FINANCE
@@ -29,6 +29,7 @@ const VALID_ROLES: UserRole[] = [
   "SDR",
   "SUPPORT",
   "OPERATIONAL",
+  "HEAD_OPERACIONAL",
   "COMMERCIAL",
 ];
 

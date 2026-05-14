@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { ProfessionalSidebar } from "@/components/dashboard/professional-sidebar";
 import { SupportChatBubble } from "@/components/support/support-chat-bubble";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function DashboardLayout({
   const userId = (session.user as any).id;
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
-  const isTeamRole = ["ADMIN", "OPERATIONAL", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole);
+  const isTeamRole = isOperationalAccessRole(userRole) || ["FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole);
 
   return (
     <div data-portal="dashboard" className="min-h-screen bg-gray-50">

@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
 function canUseOps(role: string | undefined) {
-  return role === "ADMIN" || role === "OPERATIONAL";
+  return isOperationalAccessRole(role);
 }
 
 function isMissingCommentsTable(error: unknown) {

@@ -22,6 +22,7 @@ test("getAiHubForRole maps sales family to commercial", () => {
 
 test("getAiHubForRole maps support family to operational", () => {
   assert.equal(getAiHubForRole("OPERATIONAL")?.slug, "operational");
+  assert.equal(getAiHubForRole("HEAD_OPERACIONAL")?.slug, "operational");
   assert.equal(getAiHubForRole("SUPPORT")?.slug, "operational");
 });
 
@@ -33,6 +34,7 @@ test("getAiRouteForRole returns the canonical hub routes", () => {
   assert.equal(getAiRouteForRole("FINANCE"), "/dashboard/financial/ai");
   assert.equal(getAiRouteForRole("SALES"), "/dashboard/commercial/ai");
   assert.equal(getAiRouteForRole("HEAD_COMERCIAL"), "/dashboard/commercial/ai");
+  assert.equal(getAiRouteForRole("HEAD_OPERACIONAL"), "/dashboard/operational/ai");
   assert.equal(getAiRouteForRole("ADMIN"), "/dashboard/admin/ai");
 });
 
