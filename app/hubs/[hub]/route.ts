@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getHubLink } from "@/lib/hub-links";
+import { buildHubRedirectUrl, getHubLink } from "@/lib/hub-links";
 
 export function GET(
   request: NextRequest,
@@ -7,6 +7,9 @@ export function GET(
 ) {
   const hub = getHubLink(params.hub);
   const target = hub?.path ?? "/";
+  const fallbackBaseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
 
-  return NextResponse.redirect(new URL(target, request.url));
+  return NextResponse.redirect(
+    buildHubRedirectUrl(target, request.url, request.headers, fallbackBaseUrl)
+  );
 }

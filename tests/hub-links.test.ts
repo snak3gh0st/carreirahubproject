@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { HUB_LINKS, buildSafeCallbackUrl, getHubLink } from "../lib/hub-links";
+import {
+  HUB_LINKS,
+  buildHubRedirectUrl,
+  buildSafeCallbackUrl,
+  getHubLink,
+} from "../lib/hub-links";
 
 test("defines stable public hub links", () => {
   assert.equal(HUB_LINKS.operacional.path, "/ops");
@@ -26,4 +31,33 @@ test("keeps sign-in callback urls internal", () => {
   assert.equal(buildSafeCallbackUrl("https://evil.example/dashboard"), "/dashboard");
   assert.equal(buildSafeCallbackUrl("//evil.example/dashboard"), "/dashboard");
   assert.equal(buildSafeCallbackUrl(null), "/dashboard");
+});
+
+test("builds hub redirects from forwarded public host before container host", () => {
+  const headers = new Headers({
+    "x-forwarded-host": "app.carreirausa.com",
+    "x-forwarded-proto": "https",
+    host: "0.0.0.0:3000",
+  });
+
+  assert.equal(
+    buildHubRedirectUrl("/hub/login", "https://0.0.0.0:3000/hubs/cliente", headers).toString(),
+    "https://app.carreirausa.com/hub/login"
+  );
+});
+
+test("falls back to configured public base when only container host is available", () => {
+  const headers = new Headers({
+    host: "0.0.0.0:3000",
+  });
+
+  assert.equal(
+    buildHubRedirectUrl(
+      "/dashboard/financial",
+      "https://0.0.0.0:3000/hubs/financeiro",
+      headers,
+      "https://app.carreirausa.com"
+    ).toString(),
+    "https://app.carreirausa.com/dashboard/financial"
+  );
 });

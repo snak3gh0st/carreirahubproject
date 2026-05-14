@@ -43,3 +43,25 @@ export function buildSafeCallbackUrl(
   }
   return callbackUrl;
 }
+
+export function buildHubRedirectUrl(
+  path: string,
+  requestUrl: string,
+  headers?: Pick<Headers, "get">,
+  fallbackBaseUrl?: string | null
+) {
+  const forwardedHost = headers?.get("x-forwarded-host");
+  const host = forwardedHost || headers?.get("host");
+  const forwardedProto = headers?.get("x-forwarded-proto");
+
+  if (host && !host.startsWith("0.0.0.0")) {
+    const proto = forwardedProto || new URL(requestUrl).protocol.replace(":", "") || "https";
+    return new URL(path, `${proto}://${host}`);
+  }
+
+  if (fallbackBaseUrl) {
+    return new URL(path, fallbackBaseUrl);
+  }
+
+  return new URL(path, requestUrl);
+}
