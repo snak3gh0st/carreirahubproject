@@ -343,7 +343,7 @@ export async function GET(request: NextRequest) {
       {
         status: "ok",
         message: "QuickBooks webhook endpoint is active",
-        url: "https://carreirausa.sigmaintel.io/api/webhooks/quickbooks",
+        url: "https://app.carreirausa.com/api/webhooks/quickbooks",
         timestamp: new Date().toISOString(),
       },
       {

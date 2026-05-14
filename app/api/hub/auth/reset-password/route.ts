@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Send reset email
-      const baseUrl = process.env.NEXTAUTH_URL || "https://carreirausa.sigmaintel.io";
+      const baseUrl = process.env.NEXTAUTH_URL || "https://app.carreirausa.com";
       const resetUrl = `${baseUrl}/hub/set-password?token=${resetToken}`;
       try {
         const { notificationService } = await import("@/lib/services/notification.service");

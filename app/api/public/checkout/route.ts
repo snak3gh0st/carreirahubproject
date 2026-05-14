@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
         },
       });
       console.log(`[PUBLIC_CHECKOUT] ClientUser created for ${normalizedEmail}`);
-      const baseUrl = process.env.NEXTAUTH_URL || "https://carreirausa.sigmaintel.io";
+      const baseUrl = process.env.NEXTAUTH_URL || "https://app.carreirausa.com";
       const loginUrl = `${baseUrl}/hub/login?account=created&next=${encodeURIComponent(`/hub/pay/${invoice.id}`)}`;
       emailService.sendWelcomeWithTempPassword({
         customerName: customer.name,
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Return payment URL
-    const baseUrl = process.env.NEXTAUTH_URL || "https://carreirausa.sigmaintel.io";
+    const baseUrl = process.env.NEXTAUTH_URL || "https://app.carreirausa.com";
     const paymentUrl = `${baseUrl}/payment-v2/${invoice.id}`;
 
     return NextResponse.json(

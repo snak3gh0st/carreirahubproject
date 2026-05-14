@@ -64,7 +64,7 @@ function getBaseUrl(): string {
   return (
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXTAUTH_URL ||
-    'https://carreirausa.sigmaintel.io'
+    'https://app.carreirausa.com'
   ).replace(/\/$/, '');
 }
 

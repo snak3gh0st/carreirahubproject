@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
 
     const redirectUri =
       process.env.QUICKBOOKS_REDIRECT_URI ||
-      "https://carreirausa.sigmaintel.io/api/quickbooks/oauth/callback";
+      "https://app.carreirausa.com/api/quickbooks/oauth/callback";
 
     const tokenResponse = await fetch(
       "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer",

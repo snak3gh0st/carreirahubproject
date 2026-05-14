@@ -1,17 +1,18 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
 import { Logo } from "@/components/brand/Logo";
+import { buildSafeCallbackUrl } from "@/lib/hub-links";
 
 function SignInForm() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const callbackUrl = buildSafeCallbackUrl(searchParams.get("callbackUrl"));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +24,7 @@ function SignInForm() {
         email,
         password,
         redirect: false,
-        callbackUrl: "/dashboard",
+        callbackUrl,
       });
 
       if (result?.error) {

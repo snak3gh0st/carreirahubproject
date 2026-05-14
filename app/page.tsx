@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { Logo } from "@/components/brand/Logo";
 import { PortalCard } from "@/components/portal-selector/portal-card";
 import { AccessDeniedBanner } from "@/components/portal-selector/access-denied-banner";
-import { Users, DollarSign, ClipboardCheck, ShieldCheck, LineChart } from "lucide-react";
+import { Users, DollarSign, ClipboardCheck, ShieldCheck, LineChart, UserRound } from "lucide-react";
+import { HUB_LINKS } from "@/lib/hub-links";
 import { isOperationalAccessRole } from "@/lib/roles";
 
 export default async function PortalSelectorPage({
@@ -36,9 +37,12 @@ export default async function PortalSelectorPage({
 
   const isAdmin = userRole === "ADMIN";
   const showExecutive = isAdmin || userRole === "EXECUTIVE";
-  const extraCards = (isAdmin ? 1 : 0) + (showExecutive ? 1 : 0);
+  const showClientHub = isAdmin;
+  const extraCards = (isAdmin ? 1 : 0) + (showExecutive ? 1 : 0) + (showClientHub ? 1 : 0);
   const gridColsClass =
-    extraCards === 2
+    extraCards >= 3
+      ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 max-w-7xl"
+      : extraCards === 2
       ? "md:grid-cols-5 max-w-6xl"
       : extraCards === 1
         ? "md:grid-cols-4 max-w-5xl"
@@ -65,26 +69,26 @@ export default async function PortalSelectorPage({
         <PortalCard
           title="Hub Comercial"
           description="Vendas, leads e gestao de clientes"
-          href={session ? "/dashboard" : "/auth/signin"}
+          href={HUB_LINKS.comercial.path}
           icon={<Users className="h-7 w-7" />}
         />
         <PortalCard
           title="Hub Financeiro"
           description="Invoices, pagamentos e acompanhamento"
-          href={session ? "/dashboard" : "/auth/signin"}
+          href={HUB_LINKS.financeiro.path}
           icon={<DollarSign className="h-7 w-7" />}
         />
         <PortalCard
           title="Hub Operacional"
           description="Onboarding, formularios e entregas"
-          href={session && isOperationalAccessRole(userRole) ? "/ops" : "/ops/login"}
+          href={isOperationalAccessRole(userRole) ? HUB_LINKS.operacional.path : "/ops/login"}
           icon={<ClipboardCheck className="h-7 w-7" />}
         />
         {isAdmin && (
           <PortalCard
             title="Hub Admin"
             description="Visao consolidada e configuracoes"
-            href="/dashboard"
+            href={HUB_LINKS.admin.path}
             icon={<ShieldCheck className="h-7 w-7" />}
           />
         )}
@@ -92,8 +96,16 @@ export default async function PortalSelectorPage({
           <PortalCard
             title="Hub Executivo"
             description="Visao executiva e indicadores (CEO)"
-            href="/dashboard/executive"
+            href={HUB_LINKS.executivo.path}
             icon={<LineChart className="h-7 w-7" />}
+          />
+        )}
+        {showClientHub && (
+          <PortalCard
+            title="Hub do Cliente"
+            description="Portal dedicado de alunos e pagamentos"
+            href={HUB_LINKS.cliente.path}
+            icon={<UserRound className="h-7 w-7" />}
           />
         )}
       </div>

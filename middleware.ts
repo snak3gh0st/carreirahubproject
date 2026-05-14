@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { UserRole } from "@prisma/client";
+import { buildSafeCallbackUrl } from "@/lib/hub-links";
 import { isOperationalAccessRole } from "@/lib/roles";
 
 /**
@@ -125,7 +126,14 @@ export async function middleware(request: NextRequest) {
     const token = await getToken({ req: request });
 
     if (!token) {
-      return NextResponse.redirect(new URL("/auth/signin", request.url));
+      const signInUrl = new URL("/auth/signin", request.url);
+      if (pathname.startsWith("/dashboard")) {
+        signInUrl.searchParams.set(
+          "callbackUrl",
+          buildSafeCallbackUrl(`${pathname}${request.nextUrl.search}`)
+        );
+      }
+      return NextResponse.redirect(signInUrl);
     }
 
     const userRole = token.role as UserRole;

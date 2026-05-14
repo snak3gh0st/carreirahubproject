@@ -27,28 +27,12 @@ DIGISAC_WEBHOOK_SECRET="$(openssl rand -hex 32)"   # qualquer string random
 Validar:
 ```bash
 npm run test:digisac
+curl -s http://localhost:3000/api/health | jq '.checks.digisac'
 ```
 
-### Vercel
-```bash
-# Repetir pra cada ambiente alvo (preview e production):
-for var in DIGISAC_API_BASE_URL DIGISAC_API_TOKEN DIGISAC_SERVICE_ID DIGISAC_WEBHOOK_SECRET; do
-  vercel env add "$var" preview
-  vercel env add "$var" production
-done
-```
+### Produção antiga Vercel (desativado)
 
-Env vars não propagam pra deploys existentes — trigger um redeploy:
-```bash
-vercel --prod
-# ou push do merge commit pra rodar o build automático
-```
-
-Validar:
-```bash
-curl -s https://carreirausa.sigmaintel.io/api/health | jq '.checks.digisac'
-# esperado: { "ok": true, "detail": "service <id>" }
-```
+Não cadastrar novos webhooks na URL antiga `carreirausa.sigmaintel.io`. Produção canônica roda no Swarm em `https://app.carreirausa.com`.
 
 ### Swarm (`ssh carreirausa`)
 ```bash
@@ -63,6 +47,8 @@ Validar:
 curl -s https://app.carreirausa.com/api/health | jq '.checks.digisac'
 ```
 
+Esperado: `{ "ok": true, "detail": "service <id>" }`.
+
 ## Cadastrar webhook no painel Digisac
 
 > **Importante:** a Digisac não envia secret no header de webhook nem suporta HMAC. Pra evitar
@@ -76,8 +62,7 @@ curl -s https://app.carreirausa.com/api/health | jq '.checks.digisac'
 2. Nome: `carreirahub-<ambiente>` (ex `carreirahub-prod`)
 3. URL — sempre com `?secret=$DIGISAC_WEBHOOK_SECRET` no final:
    - Local (com ngrok): `https://<id>.ngrok.app/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
-   - Vercel prod: `https://carreirausa.sigmaintel.io/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
-   - Swarm prod: `https://app.carreirausa.com/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
+   - Produção: `https://app.carreirausa.com/api/webhooks/digisac?secret=$DIGISAC_WEBHOOK_SECRET`
 4. Eventos: marcar **`message.created`** (essencial — entrega novas mensagens). Opcional: `message.updated` (status de entrega/leitura).
 5. Salvar. Disparar teste pelo próprio painel e confirmar HTTP `200 OK`.
 
@@ -90,7 +75,7 @@ curl -X POST "$DIGISAC_API_BASE_URL/me/webhooks" \
   -d '{
     "active": true,
     "name": "carreirahub-prod",
-    "url": "https://carreirausa.sigmaintel.io/api/webhooks/digisac?secret='"$DIGISAC_WEBHOOK_SECRET"'",
+    "url": "https://app.carreirausa.com/api/webhooks/digisac?secret='"$DIGISAC_WEBHOOK_SECRET"'",
     "events": ["message.created"],
     "type": "general"
   }'
