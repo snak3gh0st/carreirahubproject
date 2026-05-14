@@ -3,6 +3,8 @@ import { monitorAllQueues } from "@/lib/utils/queue-monitor";
 import { prisma } from "@/lib/db";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/cron/monitor-queues
  *

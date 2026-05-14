@@ -11,18 +11,22 @@ export function PortalCard({ title, description, href, icon }: PortalCardProps) 
   return (
     <Link
       href={href}
-      className="group flex flex-col items-center gap-4 p-8 bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-xl hover:border-brand-tangerina/30 transition-all duration-300"
+      className="group flex h-full min-h-[238px] flex-col items-center justify-between rounded-lg border border-gray-200 bg-white p-7 text-center shadow-sm transition-all duration-300 hover:border-brand-tangerina/40 hover:shadow-xl"
     >
-      <div className="w-14 h-14 rounded-xl bg-brand-verde/10 flex items-center justify-center text-brand-verde group-hover:bg-brand-verde group-hover:text-white transition-colors duration-300">
-        {icon}
+      <div className="flex flex-1 flex-col items-center">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-verde/10 text-brand-verde transition-colors duration-300 group-hover:bg-brand-verde group-hover:text-white">
+          {icon}
+        </div>
+        <div className="mt-5 flex flex-1 flex-col items-center">
+          <h2 className="flex min-h-[28px] items-center text-lg font-display font-semibold leading-tight text-brand-verde">
+            {title}
+          </h2>
+          <p className="mt-2 flex min-h-[42px] max-w-[17rem] items-start text-sm leading-5 text-gray-500">
+            {description}
+          </p>
+        </div>
       </div>
-      <div className="text-center">
-        <h2 className="text-lg font-display font-semibold text-brand-verde">
-          {title}
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">{description}</p>
-      </div>
-      <span className="px-5 py-2.5 rounded-xl bg-brand-tangerina text-white text-sm font-semibold group-hover:opacity-90 transition">
+      <span className="mt-6 inline-flex h-10 min-w-28 items-center justify-center rounded-md bg-brand-tangerina px-5 text-sm font-semibold text-white transition group-hover:opacity-90">
         Acessar
       </span>
     </Link>

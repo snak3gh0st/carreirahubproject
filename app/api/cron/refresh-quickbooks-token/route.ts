@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET/POST /api/cron/refresh-quickbooks-token
  *

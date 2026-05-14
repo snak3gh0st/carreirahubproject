@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { clintSyncService } from "@/lib/services/clint-sync.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
+export const dynamic = "force-dynamic";
+
 export const GET = withCronTelemetry("clint-sync", async (request) => {
   const start = Date.now();
   try {

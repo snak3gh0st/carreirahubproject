@@ -38,15 +38,14 @@ export default async function PortalSelectorPage({
   const isAdmin = userRole === "ADMIN";
   const showExecutive = isAdmin || userRole === "EXECUTIVE";
   const showClientHub = isAdmin;
-  const extraCards = (isAdmin ? 1 : 0) + (showExecutive ? 1 : 0) + (showClientHub ? 1 : 0);
+  const visibleCardCount =
+    3 + (isAdmin ? 1 : 0) + (showExecutive ? 1 : 0) + (showClientHub ? 1 : 0);
   const gridColsClass =
-    extraCards >= 3
-      ? "md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 max-w-7xl"
-      : extraCards === 2
-      ? "md:grid-cols-5 max-w-6xl"
-      : extraCards === 1
-        ? "md:grid-cols-4 max-w-5xl"
-        : "md:grid-cols-3 max-w-3xl";
+    visibleCardCount >= 6
+      ? "sm:grid-cols-2 lg:grid-cols-3 max-w-5xl"
+      : visibleCardCount === 4
+        ? "sm:grid-cols-2 lg:grid-cols-4 max-w-6xl"
+        : "sm:grid-cols-2 lg:grid-cols-3 max-w-4xl";
 
   return (
     <div className="min-h-screen bg-brand-creme flex flex-col items-center justify-center p-4">
@@ -65,7 +64,7 @@ export default async function PortalSelectorPage({
       {searchParams?.error === "access_denied" && <AccessDeniedBanner />}
 
       {/* Portal Cards */}
-      <div className={`grid grid-cols-1 ${gridColsClass} gap-6 w-full`}>
+      <div className={`grid w-full auto-rows-fr grid-cols-1 items-stretch gap-5 ${gridColsClass}`}>
         <PortalCard
           title="Hub Comercial"
           description="Vendas, leads e gestao de clientes"
