@@ -8,6 +8,10 @@ import { ToastContainer } from "@/components/ui/toast"
 import { blaak, neueMontreal } from "@/lib/fonts"
 import "./globals.css"
 
+// This app is fully runtime-backed. Avoid static prerender trying to execute
+// Prisma-backed dashboard/hub pages during Docker builds.
+export const dynamic = "force-dynamic"
+
 export const metadata: Metadata = {
   title: "Carreira AI Hub",
   description: "Middleware proprietário para Carreira U.S.A",
@@ -50,4 +54,3 @@ export default function RootLayout({
     </html>
   )
 }
-

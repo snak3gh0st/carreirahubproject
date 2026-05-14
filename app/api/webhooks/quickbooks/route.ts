@@ -119,11 +119,48 @@ export async function POST(request: NextRequest) {
 
     console.log("[QuickBooks Webhook] Signature validated successfully");
 
+    const expectedRealmId =
+      config?.quickbooks_company_id || process.env.QUICKBOOKS_REALM_ID;
+
     // QuickBooks webhook payload structure can contain multiple entities
     const eventNotifications = body.eventNotifications || [];
     let entitiesEnqueued = 0;
+    let notificationsIgnoredWrongRealm = 0;
 
     for (const notification of eventNotifications) {
+      const notificationRealmId = notification.realmId
+        ? String(notification.realmId)
+        : null;
+
+      if (
+        expectedRealmId &&
+        notificationRealmId &&
+        notificationRealmId !== expectedRealmId
+      ) {
+        const ignoredEntityCount =
+          notification.dataChangeEvent?.entities?.length || 0;
+
+        console.warn(
+          `[QuickBooks Webhook] Ignoring realm ${notificationRealmId}; expected ${expectedRealmId}`
+        );
+
+        await prisma.integrationLog.create({
+          data: {
+            service: "QUICKBOOKS",
+            action: "WEBHOOK_WRONG_REALM_IGNORED",
+            status: "SUCCESS",
+            payload: {
+              expectedRealmId,
+              receivedRealmId: notificationRealmId,
+              ignoredEntityCount,
+            } as any,
+          },
+        }).catch(() => {});
+
+        notificationsIgnoredWrongRealm++;
+        continue;
+      }
+
       const dataChangeEvent = notification.dataChangeEvent;
 
       if (dataChangeEvent) {
@@ -235,6 +272,7 @@ export async function POST(request: NextRequest) {
         status: "accepted",
         message: `QuickBooks webhook accepted, ${entitiesEnqueued} entities enqueued`,
         entitiesEnqueued,
+        notificationsIgnoredWrongRealm,
       },
       { status: 200 }
     );

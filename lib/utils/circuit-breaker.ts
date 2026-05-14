@@ -15,6 +15,10 @@
 
 import { prisma } from "@/lib/db";
 
+function isBuildPhase(): boolean {
+  return process.env.NEXT_BUILD === "true" || process.env.NEXT_PHASE === "phase-production-build";
+}
+
 export class CircuitOpenError extends Error {
   constructor(serviceName: string, lastErrorMessage?: string) {
     super(
@@ -58,10 +62,13 @@ export class CircuitBreaker {
     this.thresholdSuccesses = options?.thresholdSuccesses ?? 2;
     this.timeoutMs = options?.timeoutMs ?? 60000;
 
-    // Load state from database on instantiation
-    this.loadStateFromDatabase().catch((err) => {
-      console.error(`[CircuitBreaker] Failed to load state for ${serviceName}:`, err);
-    });
+    // Service singletons can be imported while Next is compiling route chunks.
+    // Build-time imports must not touch the runtime database.
+    if (!isBuildPhase()) {
+      this.loadStateFromDatabase().catch((err) => {
+        console.error(`[CircuitBreaker] Failed to load state for ${serviceName}:`, err);
+      });
+    }
   }
 
   /**
