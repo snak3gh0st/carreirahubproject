@@ -178,7 +178,7 @@ const QUEUE_CONFIG: QueueConfig = {
   whatsappMessages: { maxJobs: 5, timeoutMs: 5000 },
   invoiceGeneration: { maxJobs: 2, timeoutMs: 5000 },
   contractGeneration: { maxJobs: 2, timeoutMs: 5000 },
-  quickbooksSync: { maxJobs: 1, timeoutMs: 5000 },
+  quickbooksSync: { maxJobs: 5, timeoutMs: 20000 },
   invoiceApproval: { maxJobs: 3, timeoutMs: 5000 },
   bulkImport: { maxJobs: 1, timeoutMs: 5000 },
 };
@@ -253,6 +253,11 @@ const queueHandlers: {
   },
 
   quickbooksSync: async (job: any) => {
+    if (job.name === "process-webhook") {
+      await processQuickBooksWebhookJob(job.data);
+      return;
+    }
+
     const { quickbooksSyncService } = await import(
       "@/lib/services/quickbooks-sync.service"
     );
@@ -300,6 +305,92 @@ const queueHandlers: {
     }
   },
 };
+
+async function processQuickBooksWebhookJob(data: any): Promise<void> {
+  const entity = data?.payload?.entity;
+  const webhookEventId = data?.webhookEventId;
+  const entityName = String(entity?.name || "").toLowerCase();
+  const entityId = entity?.id ? String(entity.id) : null;
+
+  if (webhookEventId) {
+    await prisma.webhookEvent.update({
+      where: { id: webhookEventId },
+      data: {
+        status: "processing",
+        updated_at: new Date(),
+      },
+    }).catch(() => undefined);
+  }
+
+  try {
+    let result: { success: boolean; error?: string } | null = null;
+    let action = "WEBHOOK_ENTITY_SKIPPED";
+
+    if (entityName === "invoice" && entityId) {
+      const { quickbooksSyncService } = await import(
+        "@/lib/services/quickbooks-sync.service"
+      );
+      result = await quickbooksSyncService.syncSingleInvoice(entityId);
+      action = "WEBHOOK_INVOICE_SYNCED";
+    } else if (entityName === "payment" && entityId) {
+      const { quickbooksSyncService } = await import(
+        "@/lib/services/quickbooks-sync.service"
+      );
+      result = await quickbooksSyncService.syncSinglePayment(entityId);
+      action = "WEBHOOK_PAYMENT_SYNCED";
+    } else if (entityName === "customer" && entityId) {
+      const { quickbooksSyncService } = await import(
+        "@/lib/services/quickbooks-sync.service"
+      );
+      result = await quickbooksSyncService.syncSingleCustomer(entityId);
+      action = "WEBHOOK_CUSTOMER_SYNCED";
+    }
+
+    if (result && !result.success) {
+      throw new Error(result.error || `QuickBooks webhook ${entityName || "entity"} sync failed`);
+    }
+
+    if (webhookEventId) {
+      await prisma.webhookEvent.update({
+        where: { id: webhookEventId },
+        data: {
+          status: "success",
+          processed_at: new Date(),
+          last_error: null,
+          updated_at: new Date(),
+        },
+      });
+    }
+
+    await prisma.integrationLog.create({
+      data: {
+        service: "QUICKBOOKS",
+        action,
+        status: "SUCCESS",
+        payload: {
+          webhookEventId,
+          eventType: data?.eventType,
+          entity,
+        },
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (webhookEventId) {
+      await prisma.webhookEvent.update({
+        where: { id: webhookEventId },
+        data: {
+          status: "failed",
+          last_error: message,
+          updated_at: new Date(),
+        },
+      }).catch(() => undefined);
+    }
+
+    throw error;
+  }
+}
 
 /**
  * Process a single queue: fetch waiting jobs and execute handlers
@@ -512,7 +603,7 @@ export async function processAllQueues(): Promise<{
     };
   }
 
-  const timer = new ExecutionTimer(8000);
+  const timer = new ExecutionTimer(60000);
   const queueResults: Record<string, any> = {};
   let totalJobsProcessed = 0;
   let totalJobsFailed = 0;
@@ -520,12 +611,12 @@ export async function processAllQueues(): Promise<{
 
   // Queue processing order: high-priority lightweight first, heavy last
   const queueOrder = [
+    "quickbooksSync",
     "whatsappMessages",
     "invoiceApproval",
     "leadQualification",
     "invoiceGeneration",
     "contractGeneration",
-    "quickbooksSync",
     "bulkImport",
   ].filter((queueName): queueName is QueueKey =>
     ACTIVE_QUEUE_KEYS.includes(queueName as QueueKey)
