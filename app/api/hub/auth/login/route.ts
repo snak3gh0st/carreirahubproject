@@ -8,8 +8,46 @@ import {
   HubJwtPayload,
 } from "@/lib/hub-auth";
 import { checkRateLimit } from "@/lib/hub-rate-limit";
+import {
+  ACCESS_AUDIT_ACTIONS,
+  createAccessAuditLog,
+  getAuditHost,
+  getAuditIp,
+} from "@/lib/admin/access-audit";
 
 export const dynamic = "force-dynamic";
+
+async function auditHubLogin(
+  request: NextRequest,
+  input: {
+    action: string;
+    outcome: "success" | "failure";
+    statusCode: number;
+    email?: string | null;
+    clientUserId?: string | null;
+    customerId?: string | null;
+    error?: string | null;
+    metadata?: Record<string, string | number | boolean | null | undefined>;
+  }
+) {
+  await createAccessAuditLog({
+    action: input.action,
+    actorType: "client",
+    outcome: input.outcome,
+    email: input.email,
+    clientUserId: input.clientUserId,
+    customerId: input.customerId,
+    method: request.method,
+    path: request.nextUrl.pathname,
+    statusCode: input.statusCode,
+    ip: getAuditIp(request.headers),
+    userAgent: request.headers.get("user-agent"),
+    host: getAuditHost(request.headers),
+    source: "hub-auth",
+    error: input.error,
+    metadata: input.metadata,
+  });
+}
 
 /**
  * POST /api/hub/auth/login
@@ -35,6 +73,15 @@ export async function POST(request: NextRequest) {
     const { email, password } = body as { email?: string; password?: string };
 
     if (!email || !password) {
+      if (email) {
+        await auditHubLogin(request, {
+          action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_FAILED,
+          outcome: "failure",
+          statusCode: 400,
+          email: email.toLowerCase().trim(),
+          error: "missing_credentials",
+        });
+      }
       return NextResponse.json(
         { error: "Email and password are required" },
         { status: 400 }
@@ -46,6 +93,13 @@ export async function POST(request: NextRequest) {
     // ── 1. Rate limit ──────────────────────────────────────────
     const rateResult = await checkRateLimit(normalizedEmail);
     if (!rateResult.allowed) {
+      await auditHubLogin(request, {
+        action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_FAILED,
+        outcome: "failure",
+        statusCode: 429,
+        email: normalizedEmail,
+        error: "rate_limited",
+      });
       return NextResponse.json(
         { error: "Too many login attempts. Please try again later." },
         { status: 429 }
@@ -59,6 +113,13 @@ export async function POST(request: NextRequest) {
     });
 
     if (!clientUser) {
+      await auditHubLogin(request, {
+        action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_FAILED,
+        outcome: "failure",
+        statusCode: 401,
+        email: normalizedEmail,
+        error: "client_user_not_found",
+      });
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
@@ -67,6 +128,15 @@ export async function POST(request: NextRequest) {
 
     // ── 3. Account lockout ─────────────────────────────────────
     if (clientUser.lockedUntil && clientUser.lockedUntil > new Date()) {
+      await auditHubLogin(request, {
+        action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_FAILED,
+        outcome: "failure",
+        statusCode: 423,
+        email: clientUser.email,
+        clientUserId: clientUser.id,
+        customerId: clientUser.customerId,
+        error: "account_locked",
+      });
       return NextResponse.json(
         { error: "Account locked. Please try again later or reset your password." },
         { status: 423 }
@@ -79,6 +149,15 @@ export async function POST(request: NextRequest) {
       clientUser.tempPasswordExpiresAt &&
       clientUser.tempPasswordExpiresAt < new Date()
     ) {
+      await auditHubLogin(request, {
+        action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_FAILED,
+        outcome: "failure",
+        statusCode: 401,
+        email: clientUser.email,
+        clientUserId: clientUser.id,
+        customerId: clientUser.customerId,
+        error: "temporary_password_expired",
+      });
       return NextResponse.json(
         {
           error: "Your temporary password has expired. Please request a password reset.",
@@ -108,6 +187,20 @@ export async function POST(request: NextRequest) {
         data: updateData,
       });
 
+      await auditHubLogin(request, {
+        action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_FAILED,
+        outcome: "failure",
+        statusCode: 401,
+        email: clientUser.email,
+        clientUserId: clientUser.id,
+        customerId: clientUser.customerId,
+        error: "invalid_password",
+        metadata: {
+          failedLoginCount: newFailedCount,
+          lockedAfterAttempt: newFailedCount >= 10,
+        },
+      });
+
       return NextResponse.json(
         { error: "Invalid email or password" },
         { status: 401 }
@@ -122,6 +215,19 @@ export async function POST(request: NextRequest) {
         failedLoginCount: 0,
         lockedUntil: null,
         lastLoginAt: new Date(),
+      },
+    });
+
+    await auditHubLogin(request, {
+      action: ACCESS_AUDIT_ACTIONS.CLIENT_LOGIN_SUCCESS,
+      outcome: "success",
+      statusCode: 200,
+      email: clientUser.email,
+      clientUserId: clientUser.id,
+      customerId: clientUser.customerId,
+      metadata: {
+        mustResetPw: clientUser.mustResetPw,
+        language: clientUser.language,
       },
     });
 

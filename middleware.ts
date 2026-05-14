@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { NextFetchEvent } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { UserRole } from "@prisma/client";
 import { buildSafeCallbackUrl } from "@/lib/hub-links";
@@ -15,6 +16,7 @@ import { isOperationalAccessRole } from "@/lib/roles";
 // ── Admin route-to-role mapping (unchanged from original) ────
 
 const routeRoleMap: { prefix: string; roles: UserRole[] }[] = [
+  { prefix: "/dashboard/admin", roles: ["ADMIN"] },
   { prefix: "/dashboard/executive", roles: ["ADMIN", "EXECUTIVE"] },
   { prefix: "/dashboard/commercial/leads", roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"] },
   { prefix: "/dashboard/settings", roles: ["ADMIN"] },
@@ -86,7 +88,114 @@ const EXECUTIVE_POST_CHAT_ALLOWLIST = [
   "/api/dashboard/ai/conversations",
 ];
 
-export async function middleware(request: NextRequest) {
+const AUDIT_SKIP_PREFIXES = [
+  "/_next/",
+  "/api/auth/session",
+  "/api/cron/",
+  "/api/health",
+  "/api/internal/access-audit",
+  "/api/webhooks/",
+  "/favicon.ico",
+];
+
+const AUDIT_PREFIXES = [
+  "/dashboard",
+  "/api/dashboard",
+  "/ops",
+  "/api/ops",
+  "/hub",
+  "/api/hub",
+];
+
+function isMiddlewareAuditablePath(pathname: string) {
+  if (AUDIT_SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return false;
+  }
+  return AUDIT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+function auditSecret() {
+  return (
+    process.env.ACCESS_AUDIT_SECRET ||
+    process.env.CRON_SECRET ||
+    process.env.NEXTAUTH_SECRET
+  );
+}
+
+function getRequestIp(request: NextRequest) {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return (
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
+    forwarded ||
+    undefined
+  );
+}
+
+function queueAccessAudit(
+  request: NextRequest,
+  event: NextFetchEvent,
+  input: {
+    action?: string;
+    actorType: "internal" | "client" | "anonymous" | "system";
+    outcome?: "success" | "failure" | "blocked";
+    statusCode?: number;
+    userId?: string;
+    clientUserId?: string;
+    customerId?: string;
+    email?: string;
+    role?: string;
+    actorName?: string;
+    routeType?: string;
+    error?: string;
+  }
+) {
+  const { pathname, search } = request.nextUrl;
+  if (!isMiddlewareAuditablePath(pathname)) return;
+
+  const secret = auditSecret();
+  if (!secret) return;
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || request.url;
+  const url = new URL("/api/internal/access-audit", baseUrl);
+  const payload = {
+    action: input.action || "ENDPOINT_ACCESS",
+    actorType: input.actorType,
+    outcome: input.outcome || "success",
+    statusCode: input.statusCode || 200,
+    userId: input.userId,
+    clientUserId: input.clientUserId,
+    customerId: input.customerId,
+    email: input.email,
+    role: input.role,
+    actorName: input.actorName,
+    routeType: input.routeType,
+    method: request.method,
+    path: `${pathname}${search}`,
+    ip: getRequestIp(request),
+    userAgent: request.headers.get("user-agent") || undefined,
+    host: request.headers.get("x-forwarded-host") || request.headers.get("host") || undefined,
+    error: input.error,
+  };
+
+  event.waitUntil(
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-access-audit-secret": secret,
+      },
+      body: JSON.stringify(payload),
+    }).catch((error) => {
+      console.warn(
+        "[MIDDLEWARE] Access audit failed:",
+        error instanceof Error ? error.message : String(error)
+      );
+    })
+  );
+}
+
+export async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
   // ── EXECUTIVE write-block (D-12 LITERAL /api/* — layer 1) ───
@@ -113,6 +222,17 @@ export async function middleware(request: NextRequest) {
         console.log(
           `[MIDDLEWARE] EXECUTIVE write blocked: ${request.method} ${pathname}`
         );
+        queueAccessAudit(request, event, {
+          action: "ENDPOINT_DENIED",
+          actorType: "internal",
+          outcome: "blocked",
+          statusCode: 403,
+          userId: typeof apiToken.id === "string" ? apiToken.id : undefined,
+          email: typeof apiToken.email === "string" ? apiToken.email : undefined,
+          role: "EXECUTIVE",
+          routeType: "api",
+          error: "executive_write_block",
+        });
         return NextResponse.json(
           { error: "forbidden", reason: "role_not_permitted" },
           { status: 403 }
@@ -126,6 +246,14 @@ export async function middleware(request: NextRequest) {
     const token = await getToken({ req: request });
 
     if (!token) {
+      queueAccessAudit(request, event, {
+        action: "ENDPOINT_DENIED",
+        actorType: "anonymous",
+        outcome: "blocked",
+        statusCode: 302,
+        routeType: pathname.startsWith("/api/dashboard") ? "dashboard_api" : "dashboard",
+        error: "missing_session",
+      });
       const signInUrl = new URL("/auth/signin", request.url);
       if (pathname.startsWith("/dashboard")) {
         signInUrl.searchParams.set(
@@ -143,6 +271,18 @@ export async function middleware(request: NextRequest) {
         if (pathname.startsWith(route.prefix)) {
           if (!route.roles.includes(userRole)) {
             console.log(`[MIDDLEWARE] Access denied: ${userRole} -> ${pathname}`);
+            queueAccessAudit(request, event, {
+              action: "ENDPOINT_DENIED",
+              actorType: "internal",
+              outcome: "blocked",
+              statusCode: 302,
+              userId: typeof token.id === "string" ? token.id : undefined,
+              email: typeof token.email === "string" ? token.email : undefined,
+              role: userRole,
+              actorName: typeof token.name === "string" ? token.name : undefined,
+              routeType: "dashboard",
+              error: "role_not_permitted",
+            });
             // D-13: UI routes redirect (not 403). EXECUTIVE lands on their own hub
             // (which they can read) instead of /dashboard (which they cannot).
             // ?error=role_not_permitted is the hook for a future toast component.
@@ -156,6 +296,17 @@ export async function middleware(request: NextRequest) {
       }
     }
 
+    queueAccessAudit(request, event, {
+      action: "ENDPOINT_ACCESS",
+      actorType: "internal",
+      outcome: "success",
+      statusCode: 200,
+      userId: typeof token.id === "string" ? token.id : undefined,
+      email: typeof token.email === "string" ? token.email : undefined,
+      role: userRole,
+      actorName: typeof token.name === "string" ? token.name : undefined,
+      routeType: pathname.startsWith("/api/dashboard") ? "dashboard_api" : "dashboard",
+    });
     return NextResponse.next();
   }
 
@@ -169,15 +320,46 @@ export async function middleware(request: NextRequest) {
     const token = await getToken({ req: request });
 
     if (!token) {
+      queueAccessAudit(request, event, {
+        action: "ENDPOINT_DENIED",
+        actorType: "anonymous",
+        outcome: "blocked",
+        statusCode: 302,
+        routeType: pathname.startsWith("/api/ops") ? "ops_api" : "ops",
+        error: "missing_session",
+      });
       return NextResponse.redirect(new URL("/ops/login", request.url));
     }
 
     const userRole = token.role as UserRole;
     if (!isOperationalAccessRole(userRole)) {
       console.log(`[MIDDLEWARE] Ops access denied: ${userRole} -> ${pathname}`);
+      queueAccessAudit(request, event, {
+        action: "ENDPOINT_DENIED",
+        actorType: "internal",
+        outcome: "blocked",
+        statusCode: 302,
+        userId: typeof token.id === "string" ? token.id : undefined,
+        email: typeof token.email === "string" ? token.email : undefined,
+        role: userRole,
+        actorName: typeof token.name === "string" ? token.name : undefined,
+        routeType: pathname.startsWith("/api/ops") ? "ops_api" : "ops",
+        error: "role_not_permitted",
+      });
       return NextResponse.redirect(new URL("/?error=access_denied", request.url));
     }
 
+    queueAccessAudit(request, event, {
+      action: "ENDPOINT_ACCESS",
+      actorType: "internal",
+      outcome: "success",
+      statusCode: 200,
+      userId: typeof token.id === "string" ? token.id : undefined,
+      email: typeof token.email === "string" ? token.email : undefined,
+      role: userRole,
+      actorName: typeof token.name === "string" ? token.name : undefined,
+      routeType: pathname.startsWith("/api/ops") ? "ops_api" : "ops",
+    });
     return NextResponse.next();
   }
 
@@ -196,18 +378,44 @@ export async function middleware(request: NextRequest) {
       // Skip CSRF for login and reset-password (pre-auth endpoints)
       const skipCsrf = pathname.includes("/auth/login") || pathname.includes("/auth/reset-password");
       if (!skipCsrf && !verifyCsrf(request)) {
+        queueAccessAudit(request, event, {
+          action: "ENDPOINT_DENIED",
+          actorType: "anonymous",
+          outcome: "blocked",
+          statusCode: 403,
+          routeType: "hub_api",
+          error: "csrf_failed",
+        });
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
 
     const result = await verifyHubRequest(request);
     if (!result) {
+      queueAccessAudit(request, event, {
+        action: "ENDPOINT_DENIED",
+        actorType: "anonymous",
+        outcome: "blocked",
+        statusCode: pathname.startsWith("/api/hub") ? 401 : 302,
+        routeType: pathname.startsWith("/api/hub") ? "hub_api" : "hub",
+        error: "missing_or_invalid_hub_session",
+      });
       if (pathname.startsWith("/api/hub")) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
       return NextResponse.redirect(new URL("/hub/login", request.url));
     }
 
+    queueAccessAudit(request, event, {
+      action: "ENDPOINT_ACCESS",
+      actorType: "client",
+      outcome: "success",
+      statusCode: 200,
+      clientUserId: result.payload.clientUserId,
+      customerId: result.payload.customerId,
+      email: result.payload.email,
+      routeType: pathname.startsWith("/api/hub") ? "hub_api" : "hub",
+    });
     return result.response;
   }
 

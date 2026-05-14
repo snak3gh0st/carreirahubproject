@@ -17,7 +17,7 @@ export const HUB_LINKS = {
   },
   admin: {
     label: "Hub Admin",
-    path: "/dashboard",
+    path: "/dashboard/admin",
   },
   cliente: {
     label: "Hub do Cliente",
