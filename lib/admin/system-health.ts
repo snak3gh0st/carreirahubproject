@@ -304,7 +304,7 @@ async function getInfrastructureChecks(now: Date) {
       ? "critical"
       : qbMinutesLeft !== null && qbMinutesLeft <= 0
         ? "critical"
-        : qbMinutesLeft !== null && qbMinutesLeft < 120
+        : qbMinutesLeft !== null && qbMinutesLeft < 15
           ? "warning"
           : "healthy";
 
