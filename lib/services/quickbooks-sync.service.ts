@@ -681,17 +681,11 @@ export class QuickBooksSyncService {
         } as any,
       };
 
-      let payment;
-      if (existingPayment) {
-        payment = await prisma.payment.update({
-          where: { id: existingPayment.id },
-          data: paymentData,
-        });
-      } else {
-        payment = await prisma.payment.create({
-          data: paymentData,
-        });
-      }
+      const payment = await prisma.payment.upsert({
+        where: { quickbooks_payment_id: qbPaymentId },
+        update: paymentData,
+        create: paymentData,
+      });
 
       // Update customer balance
       await this.updateCustomerBalance(customerId);
