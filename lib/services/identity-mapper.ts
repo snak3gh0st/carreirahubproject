@@ -34,16 +34,41 @@ export interface CustomerData {
  * Regra crítica: Nunca criar duplicatas. Email é chave única.
  */
 export class IdentityMapperService {
+  private async findByAnyExternalId(externalIds: ExternalIds): Promise<Customer | null> {
+    const externalWhere = [
+      externalIds.clint_contact_id ? { clint_contact_id: externalIds.clint_contact_id } : null,
+      externalIds.quickbooks_id ? { quickbooks_id: externalIds.quickbooks_id } : null,
+      externalIds.docusign_id ? { docusign_id: externalIds.docusign_id } : null,
+      externalIds.trello_id ? { trello_id: externalIds.trello_id } : null,
+      externalIds.cloudtalk_id ? { cloudtalk_id: externalIds.cloudtalk_id } : null,
+      externalIds.google_contact_id ? { google_contact_id: externalIds.google_contact_id } : null,
+    ].filter(Boolean);
+
+    if (externalWhere.length === 0) {
+      return null;
+    }
+
+    return prisma.customer.findFirst({
+      where: { OR: externalWhere as any },
+    });
+  }
+
   /**
    * Reconciliar ou criar Customer baseado em email e IDs externos
    */
   async reconcileCustomer(data: CustomerData): Promise<Customer> {
     const { email, name, phone, dateOfBirth, ssn, passport, cpf, address, city, state, zipCode, country, externalIds = {}, metadata } = data;
 
-    // Buscar Customer existente por email
-    let customer = await prisma.customer.findUnique({
-      where: { email },
-    });
+    // External provider IDs are more stable than email. Clint/QuickBooks may
+    // change or omit email, so look up provider IDs first to avoid duplicate
+    // records and unique constraint failures.
+    let customer = await this.findByAnyExternalId(externalIds);
+
+    if (!customer) {
+      customer = await prisma.customer.findUnique({
+        where: { email },
+      });
+    }
 
     if (customer) {
       // Customer existe: atualizar IDs externos e fill empty fields.
