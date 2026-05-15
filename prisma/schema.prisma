@@ -50,7 +50,6 @@ model Customer {
   phone                String?
   clint_contact_id     String?          @unique
   quickbooks_id        String?          @unique
-  trello_id            String?          @unique
   cloudtalk_id         String?
   google_contact_id    String?
   metadata             Json?

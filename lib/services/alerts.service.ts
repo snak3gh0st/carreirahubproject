@@ -1,11 +1,58 @@
 import { prisma } from "@/lib/db";
-import { Alert, AlertStatus, AlertSeverity, InvoiceStatus } from "@prisma/client";
+import { Alert, AlertStatus, AlertSeverity, InvoiceStatus, Prisma } from "@prisma/client";
 
 interface AlertCheckResult {
   shouldAlert: boolean;
   title: string;
   description: string;
   data: Record<string, any>;
+}
+
+type InactiveCustomerAlertInput = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+const CUSTOMER_CHURN_RULE_NAME = "Customer Churn Warning";
+const ALERT_CREATE_BATCH_SIZE = 500;
+
+export function buildInactiveCustomerAlertRows({
+  ruleId,
+  customers,
+  existingAlertCustomerIds,
+  lastInvoiceByCustomerId,
+  now,
+}: {
+  ruleId: string;
+  customers: InactiveCustomerAlertInput[];
+  existingAlertCustomerIds: Set<string>;
+  lastInvoiceByCustomerId: Map<string, Date>;
+  now: Date;
+}): Prisma.AlertCreateManyInput[] {
+  return customers
+    .filter((customer) => !existingAlertCustomerIds.has(customer.id))
+    .map((customer) => {
+      const lastInvoiceDate = lastInvoiceByCustomerId.get(customer.id);
+      const daysSinceActivity = lastInvoiceDate
+        ? Math.floor((now.getTime() - lastInvoiceDate.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      return {
+        ruleId,
+        title: `Inactive Customer: ${customer.name}`,
+        description: `${customer.name} has had no invoices for 60+ days. Last invoice: ${
+          daysSinceActivity ? `${daysSinceActivity} days ago` : "Never"
+        }. Consider reaching out for re-engagement.`,
+        severity: AlertSeverity.LOW,
+        customerId: customer.id,
+        data: {
+          customerName: customer.name,
+          customerEmail: customer.email,
+          daysSinceActivity,
+        },
+      };
+    });
 }
 
 /**
@@ -267,7 +314,13 @@ export class AlertsService {
    */
   async checkInactiveCustomers(): Promise<void> {
     try {
-      const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const sixtyDaysAgo = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000);
+
+      const rule = await prisma.alertRule.findUnique({
+        where: { name: CUSTOMER_CHURN_RULE_NAME },
+      });
+      if (!rule) return;
 
       // Find customers with no recent invoices
       const inactiveCustomers = await prisma.customer.findMany({
@@ -278,53 +331,68 @@ export class AlertsService {
             },
           },
         },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
       });
 
-      for (const customer of inactiveCustomers) {
-        // Check if alert already exists
-        const existingAlert = await prisma.alert.findFirst({
-          where: {
-            customerId: customer.id,
-            rule: { name: "Customer Churn Warning" },
-            status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
-          },
+      if (inactiveCustomers.length === 0) {
+        return;
+      }
+
+      const inactiveCustomerIds = inactiveCustomers.map((customer) => customer.id);
+      const existingAlerts = await prisma.alert.findMany({
+        where: {
+          ruleId: rule.id,
+          customerId: { in: inactiveCustomerIds },
+          status: { in: [AlertStatus.ACTIVE, AlertStatus.ACKNOWLEDGED] },
+        },
+        select: { customerId: true },
+      });
+      const existingAlertCustomerIds = new Set(
+        existingAlerts
+          .map((alert) => alert.customerId)
+          .filter((customerId): customerId is string => Boolean(customerId))
+      );
+
+      const customersNeedingAlerts = inactiveCustomers.filter(
+        (customer) => !existingAlertCustomerIds.has(customer.id)
+      );
+      if (customersNeedingAlerts.length === 0) {
+        return;
+      }
+
+      const lastInvoiceRows = await prisma.invoice.groupBy({
+        by: ["customerId"],
+        where: {
+          customerId: { in: customersNeedingAlerts.map((customer) => customer.id) },
+        },
+        _max: { createdAt: true },
+      });
+      const lastInvoiceByCustomerId = new Map(
+        lastInvoiceRows
+          .filter((row) => Boolean(row._max.createdAt))
+          .map((row) => [row.customerId, row._max.createdAt as Date])
+      );
+
+      const alertRows = buildInactiveCustomerAlertRows({
+        ruleId: rule.id,
+        customers: inactiveCustomers,
+        existingAlertCustomerIds,
+        lastInvoiceByCustomerId,
+        now,
+      });
+
+      console.log(
+        `[AlertsService] Customer churn candidates: ${inactiveCustomers.length}, existing active alerts: ${existingAlertCustomerIds.size}, creating: ${alertRows.length}`
+      );
+
+      for (let index = 0; index < alertRows.length; index += ALERT_CREATE_BATCH_SIZE) {
+        await prisma.alert.createMany({
+          data: alertRows.slice(index, index + ALERT_CREATE_BATCH_SIZE),
         });
-
-        if (!existingAlert) {
-          const rule = await prisma.alertRule.findUnique({
-            where: { name: "Customer Churn Warning" },
-          });
-
-          if (rule) {
-            // Get last invoice date
-            const lastInvoice = await prisma.invoice.findFirst({
-              where: { customerId: customer.id },
-              orderBy: { createdAt: "desc" },
-              select: { createdAt: true },
-            });
-
-            const daysSinceActivity = lastInvoice
-              ? Math.floor(
-                  (Date.now() - new Date(lastInvoice.createdAt).getTime()) / (1000 * 60 * 60 * 24)
-                )
-              : null;
-
-            await prisma.alert.create({
-              data: {
-                ruleId: rule.id,
-                title: `Inactive Customer: ${customer.name}`,
-                description: `${customer.name} has had no invoices for 60+ days. Last invoice: ${daysSinceActivity ? `${daysSinceActivity} days ago` : "Never"}. Consider reaching out for re-engagement.`,
-                severity: AlertSeverity.LOW,
-                customerId: customer.id,
-                data: {
-                  customerName: customer.name,
-                  customerEmail: customer.email,
-                  daysSinceActivity,
-                },
-              },
-            });
-          }
-        }
       }
     } catch (error) {
       console.error("[AlertsService] Error checking inactive customers:", error);

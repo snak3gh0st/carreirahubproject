@@ -29,8 +29,8 @@ Visão geral das 11 fases operacionais em sequência:
 1. **Bastão** — Passagem comercial → suporte; início oficial da jornada do aluno.
 2. **Cadastro** — Registro no portal, envio do manual inicial, acesso ao hub.
 3. **Teste de Inglês** — Avaliação CEFR (A1–C2) realizada por Mônica/Leka; resultado registrado no sistema.
-4. **Onboarding** — Envio dos links Notion + Trello; aluno recebe orientação inicial.
-5. **Board** — Aluno monta o board Trello (prazo: 7 dias); Dária acompanha.
+4. **Onboarding** — Envio dos links do Hub do Cliente e materiais iniciais; aluno recebe orientação inicial.
+5. **Plano de Ação** — Aluno organiza as tarefas iniciais no Hub (prazo: 7 dias); Dária acompanha.
 6. **Bússola** — Sessão introdutória de direcionamento de carreira.
 7. **Raio X** — Deep-dive profissional: histórico, objetivos, gaps identificados.
 8. **Material** — Equipe escreve currículo, cover letter e LinkedIn (prazo: 15 dias úteis).

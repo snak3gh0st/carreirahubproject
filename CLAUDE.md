@@ -99,10 +99,9 @@ npm run lint                   # Run ESLint
 **Critical Rule**: Email is the unique key across all systems. Never create duplicate customers.
 
 The `IdentityMapperService` (lib/services/identity-mapper.ts) reconciles customer data from multiple external systems:
-- Pipedrive (CRM)
 - QuickBooks (Finance)
-- Stripe (Payments)
-- Trello, CloudTalk, Google Contacts
+- Clint (CRM)
+- DocuSign, CloudTalk, Google Contacts
 
 **Usage Pattern**:
 ```typescript

@@ -5,7 +5,6 @@ export interface ExternalIds {
   clint_contact_id?: string;
   quickbooks_id?: string;
   docusign_id?: string;
-  trello_id?: string;
   cloudtalk_id?: string;
   google_contact_id?: string;
 }
@@ -27,8 +26,22 @@ export interface CustomerData {
   metadata?: any;
 }
 
-function isUniqueConstraintError(error: unknown) {
-  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002";
+export function isUniqueConstraintError(error: unknown) {
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as {
+      code?: string;
+      message?: string;
+      meta?: { target?: unknown };
+      cause?: unknown;
+    };
+
+    if (candidate.code === "P2002") return true;
+    if (Array.isArray(candidate.meta?.target) && candidate.meta.target.length > 0) return true;
+    if (candidate.cause && isUniqueConstraintError(candidate.cause)) return true;
+  }
+
+  const message = error instanceof Error ? error.message : String(error);
+  return /P2002|Unique constraint failed/i.test(message);
 }
 
 /**
@@ -43,7 +56,6 @@ export class IdentityMapperService {
       externalIds.clint_contact_id ? { clint_contact_id: externalIds.clint_contact_id } : null,
       externalIds.quickbooks_id ? { quickbooks_id: externalIds.quickbooks_id } : null,
       externalIds.docusign_id ? { docusign_id: externalIds.docusign_id } : null,
-      externalIds.trello_id ? { trello_id: externalIds.trello_id } : null,
       externalIds.cloudtalk_id ? { cloudtalk_id: externalIds.cloudtalk_id } : null,
       externalIds.google_contact_id ? { google_contact_id: externalIds.google_contact_id } : null,
     ].filter(Boolean);
@@ -110,9 +122,6 @@ export class IdentityMapperService {
       if (externalIds.docusign_id && !existingCustomer.docusign_id) {
         updates.docusign_id = externalIds.docusign_id;
       }
-      if (externalIds.trello_id && !existingCustomer.trello_id) {
-        updates.trello_id = externalIds.trello_id;
-      }
       if (externalIds.cloudtalk_id && !existingCustomer.cloudtalk_id) {
         updates.cloudtalk_id = externalIds.cloudtalk_id;
       }
@@ -160,7 +169,6 @@ export class IdentityMapperService {
             lastClintSyncAt: externalIds.clint_contact_id ? syncDate : undefined,
             quickbooks_id: externalIds.quickbooks_id,
             docusign_id: externalIds.docusign_id,
-            trello_id: externalIds.trello_id,
             cloudtalk_id: externalIds.cloudtalk_id,
             google_contact_id: externalIds.google_contact_id,
             metadata: metadata || {},
@@ -173,6 +181,15 @@ export class IdentityMapperService {
 
         const conflictingCustomer =
           await this.findByAnyExternalId(externalIds) ??
+          (externalIds.clint_contact_id
+            ? await prisma.customer.findUnique({ where: { clint_contact_id: externalIds.clint_contact_id } })
+            : null) ??
+          (externalIds.quickbooks_id
+            ? await prisma.customer.findUnique({ where: { quickbooks_id: externalIds.quickbooks_id } })
+            : null) ??
+          (externalIds.docusign_id
+            ? await prisma.customer.findUnique({ where: { docusign_id: externalIds.docusign_id } })
+            : null) ??
           await prisma.customer.findUnique({ where: { email } });
 
         if (!conflictingCustomer) {
@@ -190,7 +207,7 @@ export class IdentityMapperService {
    * Buscar Customer por ID externo
    */
   async findByExternalId(
-    service: "clint" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
+    service: "clint" | "quickbooks" | "docusign" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer | null> {
     const where: any = {};
@@ -204,9 +221,6 @@ export class IdentityMapperService {
         break;
       case "docusign":
         where.docusign_id = String(externalId);
-        break;
-      case "trello":
-        where.trello_id = String(externalId);
         break;
       case "cloudtalk":
         where.cloudtalk_id = String(externalId);
@@ -224,7 +238,7 @@ export class IdentityMapperService {
    */
   async addExternalId(
     customerId: string,
-    service: "clint" | "quickbooks" | "docusign" | "trello" | "cloudtalk" | "google_contact",
+    service: "clint" | "quickbooks" | "docusign" | "cloudtalk" | "google_contact",
     externalId: string | number
   ): Promise<Customer> {
     const updates: any = {};
@@ -238,9 +252,6 @@ export class IdentityMapperService {
         break;
       case "docusign":
         updates.docusign_id = String(externalId);
-        break;
-      case "trello":
-        updates.trello_id = String(externalId);
         break;
       case "cloudtalk":
         updates.cloudtalk_id = String(externalId);

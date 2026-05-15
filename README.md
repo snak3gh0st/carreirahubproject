@@ -130,17 +130,16 @@ const customer = await identityMapper.reconcileCustomer({
   email: "user@example.com",
   name: "John Doe",
   externalIds: {
-    pipedrive_id: 123,
+    clint_contact_id: "CLINT123",
     quickbooks_id: "QB456"
   }
 });
 ```
 
 **Sigma Identity Mapper** reconciles customer data from:
-- Pipedrive (CRM)
 - QuickBooks (Finance)
-- Stripe (Payments)
-- Trello, CloudTalk, Google Contacts
+- Clint (CRM)
+- DocuSign, CloudTalk, Google Contacts
 
 This pattern eliminates duplicate customer records across disparate systems, ensuring a true Single Source of Truth.
 

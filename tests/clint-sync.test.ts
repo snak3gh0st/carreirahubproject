@@ -6,6 +6,7 @@ import {
   buildClintDealWriteData,
   extractClintOwnerEmail,
 } from "../lib/services/clint-sync.service";
+import { isUniqueConstraintError } from "../lib/services/identity-mapper";
 
 test("buildSyncableClintContacts dedupes by Clint id and email", () => {
   const contacts = buildSyncableClintContacts([
@@ -62,5 +63,15 @@ test("extractClintOwnerEmail normalizes owner email from Clint deal user payload
   assert.equal(
     extractClintOwnerEmail({ user: { email: " Comercial@CarreiraUSA.com " } } as any),
     "comercial@carreirausa.com",
+  );
+});
+
+test("isUniqueConstraintError detects wrapped Prisma unique errors", () => {
+  assert.equal(isUniqueConstraintError({ code: "P2002" }), true);
+  assert.equal(
+    isUniqueConstraintError(
+      new Error("Invalid `prisma.customer.create()` invocation:\n\nUnique constraint failed on the fields: (`clint_contact_id`)")
+    ),
+    true,
   );
 });
