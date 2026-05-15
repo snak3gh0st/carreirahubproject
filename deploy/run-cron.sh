@@ -37,9 +37,19 @@ if [[ -z "$SECRET" ]]; then
 fi
 
 ENDPOINT="${APP_URL}/api/cron/${ROUTE}"
+CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-60}"
+
+case "$ROUTE" in
+  clint-sync)
+    CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-900}"
+    ;;
+  quickbooks-sync|process-queue)
+    CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-300}"
+    ;;
+esac
 
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-  --max-time 30 \
+  --max-time "$CURL_MAX_TIME" \
   -H "Authorization: Bearer ${SECRET}" \
   "$ENDPOINT")
 
