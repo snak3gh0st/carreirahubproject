@@ -10,6 +10,7 @@ import {
   Clock3,
   Database,
   GitBranch,
+  KeyRound,
   LogIn,
   MousePointerClick,
   PlugZap,
@@ -17,7 +18,7 @@ import {
   Server,
   ShieldAlert,
   TimerReset,
-  UsersRound,
+  UserCheck,
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import {
@@ -152,11 +153,13 @@ export default async function AdminSystemHealthPage() {
   const health = await getAdminSystemHealth();
   const generatedAt = new Date(health.generatedAt);
   const failingServices = health.services.filter((service) => service.err24h > 0);
+  const monitoredServiceIssues = health.monitoredServices.filter((service) => service.level !== "healthy");
   const cronIssues = health.cronRows.filter((cron) => cron.level !== "healthy");
   const queueIssues = health.queues.rows.filter(
     (row) => row.waiting > 0 || row.active > 0 || row.delayed > 0 || row.failed > 0
   );
   const accessRows = health.accessAudit.rows;
+  const activeUsers = health.accessAudit.users;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -221,10 +224,10 @@ export default async function AdminSystemHealthPage() {
         <section className="mb-8">
           <SectionHeader
             title="Access Logs"
-            subtitle="Who logged in, which protected areas were used, and which endpoints were blocked."
+            subtitle="Authenticated users only in the main table; anonymous traffic is counted separately."
             action={
               <span className="rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-500">
-                Last 24h · latest {accessRows.length}
+                Last 24h · {activeUsers.length} users · latest {accessRows.length}
               </span>
             }
           />
@@ -237,24 +240,47 @@ export default async function AdminSystemHealthPage() {
               level={health.accessAudit.summary.loginFailure24h > 0 ? "warning" : "healthy"}
             />
             <MetricCard
-              label="Endpoint Uses"
+              label="Authenticated Uses"
               value={health.accessAudit.summary.endpointAccess24h}
-              detail="dashboard, ops and client hub requests"
+              detail="dashboard, ops and client hub requests by real users"
               icon={<MousePointerClick className="h-5 w-5" />}
             />
             <MetricCard
               label="Blocked"
               value={health.accessAudit.summary.endpointDenied24h}
-              detail="missing session, RBAC or CSRF blocks"
+              detail={`${health.accessAudit.summary.anonymousDenied24h} anonymous/session blocks`}
               icon={<Ban className="h-5 w-5" />}
               level={health.accessAudit.summary.endpointDenied24h > 0 ? "warning" : "healthy"}
             />
             <MetricCard
-              label="Audit Events"
-              value={health.accessAudit.summary.total24h}
-              detail="stored in IntegrationLog as ACCESS_AUDIT"
-              icon={<UsersRound className="h-5 w-5" />}
+              label="Active Users"
+              value={health.accessAudit.summary.uniqueAuthenticatedUsers24h}
+              detail={`${health.accessAudit.summary.authenticatedEvents24h} authenticated events, ${health.accessAudit.summary.anonymousEvents24h} anonymous`}
+              icon={<UserCheck className="h-5 w-5" />}
             />
+          </div>
+          <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="grid divide-y divide-gray-100 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
+              {activeUsers.length === 0 ? (
+                <div className="p-4 text-sm text-gray-500 md:col-span-2 xl:col-span-4">
+                  No authenticated user activity in the last 24h.
+                </div>
+              ) : (
+                activeUsers.slice(0, 8).map((user) => (
+                  <div key={user.key} className="p-4">
+                    <p className="truncate text-sm font-semibold text-gray-950">
+                      {user.email || user.actorName || user.key}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {user.role || user.actorType || "user"} · {user.events24h} events
+                    </p>
+                    <p className="mt-2 truncate text-xs text-gray-400">
+                      {formatAge(user.lastSeenAt, generatedAt)} · {user.lastPath || user.lastAction}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="max-h-[520px] overflow-auto">
@@ -273,7 +299,7 @@ export default async function AdminSystemHealthPage() {
                   {accessRows.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
-                        No access audit events yet. New logins and protected route usage will appear here.
+                        No authenticated access audit events yet. Anonymous blocks are excluded from this table.
                       </td>
                     </tr>
                   ) : (
@@ -343,6 +369,69 @@ export default async function AdminSystemHealthPage() {
                   <StatusPill level={check.level} />
                 </div>
                 <p className="break-words text-sm text-gray-500">{check.detail}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-8">
+          <SectionHeader
+            title="Service Monitor"
+            subtitle="API keys, circuit breakers, last activity and 24h failure counts for every active integration."
+            action={
+              monitoredServiceIssues.length > 0 ? (
+                <span className="inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+                  <AlertTriangle className="h-4 w-4" />
+                  {monitoredServiceIssues.length} needs attention
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                  <CheckCircle2 className="h-4 w-4" />
+                  All services configured
+                </span>
+              )
+            }
+          />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {health.monitoredServices.map((service) => (
+              <div key={service.key} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <KeyRound className="h-5 w-5 shrink-0 text-brand-verde" />
+                      <h3 className="truncate text-sm font-semibold text-gray-950">{service.label}</h3>
+                    </div>
+                    <p className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">
+                      {service.category}
+                    </p>
+                  </div>
+                  <StatusPill level={service.level} />
+                </div>
+                <p className="min-h-[40px] break-words text-sm text-gray-600">{service.detail}</p>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+                  <div className="rounded-md bg-gray-50 p-2">
+                    <p className="text-gray-400">OK 24h</p>
+                    <p className="mt-1 font-semibold text-emerald-700">{service.ok24h}</p>
+                  </div>
+                  <div className="rounded-md bg-gray-50 p-2">
+                    <p className="text-gray-400">Errors</p>
+                    <p className={`mt-1 font-semibold ${service.err24h > 0 ? "text-red-700" : "text-gray-700"}`}>
+                      {service.err24h}
+                    </p>
+                  </div>
+                  <div className="rounded-md bg-gray-50 p-2">
+                    <p className="text-gray-400">Latest</p>
+                    <p className="mt-1 truncate font-semibold text-gray-700">{formatAge(service.latestAt, generatedAt)}</p>
+                  </div>
+                </div>
+                {service.latestAction && (
+                  <p className="mt-3 truncate text-xs text-gray-400">
+                    {service.latestAction} · {service.latestStatus || "unknown"}
+                  </p>
+                )}
+                {service.latestError && (
+                  <p className="mt-2 line-clamp-2 text-xs text-red-600">{service.latestError}</p>
+                )}
               </div>
             ))}
           </div>

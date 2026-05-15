@@ -53,6 +53,13 @@ export const ADMIN_HEALTH_CRON_JOBS = [
     expectedEveryMinutes: 70,
   },
   {
+    name: "quickbooks-sync",
+    label: "QuickBooks Sync",
+    route: "/api/cron/quickbooks-sync",
+    schedule: "Every 6h",
+    expectedEveryMinutes: 420,
+  },
+  {
     name: "overdue-invoices",
     label: "Overdue Invoices",
     route: "/api/cron/overdue-invoices",
@@ -168,6 +175,137 @@ export const ADMIN_HEALTH_CRON_JOBS = [
 
 type CronJobDef = (typeof ADMIN_HEALTH_CRON_JOBS)[number];
 
+const DOCUSIGN_TEMPLATE_KEYS = [
+  "DOCUSIGN_TEMPLATE_AVULSO",
+  "DOCUSIGN_TEMPLATE_COMBO",
+  "DOCUSIGN_TEMPLATE_EARLY_CAREER",
+  "DOCUSIGN_TEMPLATE_NEW_PASS",
+  "DOCUSIGN_TEMPLATE_PASS",
+  "DOCUSIGN_TEMPLATE_PASS_ADVANCED",
+  "DOCUSIGN_TEMPLATE_START",
+  "DOCUSIGN_TEMPLATE_TREINAMENTO",
+  "DOCUSIGN_TEMPLATE_UPGRADE",
+];
+
+type MonitoredServiceDef = {
+  key: string;
+  label: string;
+  category: string;
+  infraKey?: string;
+  logServices?: readonly string[];
+  circuitNames?: readonly string[];
+  requiredEnv?: readonly string[];
+  requiredAnyEnv?: readonly string[];
+  optionalEnv?: readonly string[];
+};
+
+const ADMIN_HEALTH_MONITORED_SERVICES: readonly MonitoredServiceDef[] = [
+  {
+    key: "database",
+    label: "Database",
+    category: "Infrastructure",
+    infraKey: "db",
+    requiredAnyEnv: ["POSTGRES_PRISMA_URL", "DATABASE_URL"],
+  },
+  {
+    key: "redis",
+    label: "Redis / BullMQ",
+    category: "Infrastructure",
+    infraKey: "redis",
+    requiredEnv: ["REDIS_URL"],
+  },
+  {
+    key: "quickbooks",
+    label: "QuickBooks Accounting",
+    category: "Accounting",
+    infraKey: "quickbooks",
+    logServices: ["QUICKBOOKS"],
+    circuitNames: ["quickbooks"],
+    requiredEnv: [
+      "QUICKBOOKS_CLIENT_ID",
+      "QUICKBOOKS_CLIENT_SECRET",
+      "QUICKBOOKS_COMPANY_ID",
+      "QUICKBOOKS_REFRESH_TOKEN",
+      "QUICKBOOKS_REDIRECT_URI",
+    ],
+  },
+  {
+    key: "quickbooks_payments",
+    label: "QuickBooks Payments",
+    category: "Payments",
+    logServices: ["quickbooks_payments", "QUICKBOOKS_PAYMENTS"],
+    circuitNames: ["quickbooks_payments"],
+    requiredEnv: ["QUICKBOOKS_CLIENT_ID", "QUICKBOOKS_CLIENT_SECRET", "QUICKBOOKS_ENVIRONMENT"],
+  },
+  {
+    key: "docusign",
+    label: "DocuSign",
+    category: "Contracts",
+    logServices: ["DOCUSIGN"],
+    circuitNames: ["docusign"],
+    requiredEnv: [
+      "DOCUSIGN_ACCOUNT_ID",
+      "DOCUSIGN_BASE_URL",
+      "DOCUSIGN_INTEGRATION_KEY",
+      "DOCUSIGN_PRIVATE_KEY",
+      "DOCUSIGN_USER_ID",
+    ],
+    optionalEnv: ["DOCUSIGN_WEBHOOK_SECRET", ...DOCUSIGN_TEMPLATE_KEYS],
+  },
+  {
+    key: "telegram",
+    label: "Telegram Alerts",
+    category: "Ops Alerts",
+    logServices: ["TELEGRAM"],
+    circuitNames: ["telegram"],
+    requiredEnv: ["TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"],
+  },
+  {
+    key: "digisac",
+    label: "Digisac WhatsApp",
+    category: "Messaging",
+    infraKey: "digisac",
+    logServices: ["DIGISAC"],
+    circuitNames: ["digisac"],
+    requiredEnv: ["DIGISAC_API_BASE_URL", "DIGISAC_API_TOKEN", "DIGISAC_SERVICE_ID"],
+  },
+  {
+    key: "email",
+    label: "Resend Email",
+    category: "Messaging",
+    logServices: ["EMAIL", "RESEND"],
+    circuitNames: ["email", "resend"],
+    requiredEnv: ["RESEND_API_KEY", "EMAIL_FROM"],
+    optionalEnv: ["RESEND_WEBHOOK_SECRET"],
+  },
+  {
+    key: "stripe",
+    label: "Stripe",
+    category: "Payments",
+    logServices: ["STRIPE"],
+    circuitNames: ["stripe"],
+    requiredEnv: ["STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET"],
+  },
+  {
+    key: "openai",
+    label: "OpenAI / AI",
+    category: "AI",
+    logServices: ["OPENAI", "AI", "CFO_ANALYSIS"],
+    circuitNames: ["openai", "ai"],
+    requiredEnv: ["OPENAI_API_KEY"],
+    optionalEnv: ["AI_MODEL_DEFAULT", "AI_COPILOT_ENABLED"],
+  },
+  {
+    key: "clint",
+    label: "Clint CRM",
+    category: "CRM",
+    logServices: ["CLINT", "clint-sync"],
+    circuitNames: ["clint"],
+    requiredEnv: ["CLINT_API_KEY"],
+    optionalEnv: ["CLINT_WEBHOOK_SECRET"],
+  },
+];
+
 export function cronActionName(name: string) {
   return name.toUpperCase().replace(/-/g, "_");
 }
@@ -217,11 +355,14 @@ export function deriveOverallHealthLevel(input: {
   openCircuitBreakers: number;
   invoiceWarningCount: number;
   syncWarningCount: number;
+  criticalServiceCount?: number;
+  warningServiceCount?: number;
 }): HealthLevel {
   if (
     input.criticalInfraCount > 0 ||
     input.criticalCronCount > 0 ||
-    input.openCircuitBreakers > 0
+    input.openCircuitBreakers > 0 ||
+    (input.criticalServiceCount ?? 0) > 0
   ) {
     return "critical";
   }
@@ -232,7 +373,8 @@ export function deriveOverallHealthLevel(input: {
     input.errorCount24h > 0 ||
     input.queueIssueTotal > 0 ||
     input.invoiceWarningCount > 0 ||
-    input.syncWarningCount > 0
+    input.syncWarningCount > 0 ||
+    (input.warningServiceCount ?? 0) > 0
   ) {
     return "warning";
   }
@@ -447,6 +589,152 @@ async function getCronRows(now: Date, since24h: Date) {
   });
 }
 
+function hasEnvValue(key: string) {
+  return Boolean(process.env[key]?.trim());
+}
+
+function missingRequiredEnv(def: MonitoredServiceDef) {
+  const missing = [...(def.requiredEnv ?? [])].filter((key) => !hasEnvValue(key));
+  const anyMissing =
+    def.requiredAnyEnv && def.requiredAnyEnv.length > 0 && !def.requiredAnyEnv.some(hasEnvValue)
+      ? [`one of ${def.requiredAnyEnv.join(" or ")}`]
+      : [];
+  return [...missing, ...anyMissing];
+}
+
+function optionalEnvSummary(keys: readonly string[] | undefined) {
+  if (!keys?.length) return null;
+  const configured = keys.filter(hasEnvValue).length;
+  return `${configured}/${keys.length} optional keys`;
+}
+
+function serviceAlias(service: string) {
+  return service.toLowerCase();
+}
+
+function activeCircuitNames() {
+  return new Set(
+    ADMIN_HEALTH_MONITORED_SERVICES
+      .flatMap((service) => [...(service.circuitNames ?? [])])
+      .map((name) => name.toLowerCase())
+  );
+}
+
+async function getMonitoredServiceRows({
+  infrastructure,
+  serviceMap,
+  circuitBreakers,
+  since24h,
+}: {
+  infrastructure: Array<{ key: string; level: HealthLevel; detail: string }>;
+  serviceMap: Map<string, { service: string; ok24h: number; err24h: number }>;
+  circuitBreakers: Array<{
+    serviceName: string;
+    state: string;
+    failureCount: number;
+    successCount: number;
+    updatedAt: Date;
+  }>;
+  since24h: Date;
+}) {
+  const logServices = [
+    ...new Set(
+      ADMIN_HEALTH_MONITORED_SERVICES.flatMap((service) => [...(service.logServices ?? [])])
+    ),
+  ];
+  const latestLogs = logServices.length
+    ? await prisma.integrationLog.findMany({
+        where: {
+          service: { in: logServices },
+          createdAt: { gte: since24h },
+        },
+        select: {
+          service: true,
+          action: true,
+          status: true,
+          error: true,
+          createdAt: true,
+          durationMs: true,
+        },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
+
+  const latestByService = new Map<string, (typeof latestLogs)[number]>();
+  for (const log of latestLogs) {
+    const key = serviceAlias(log.service);
+    if (!latestByService.has(key)) latestByService.set(key, log);
+  }
+
+  const infraByKey = new Map(infrastructure.map((row) => [row.key, row]));
+  const breakerByName = new Map(
+    circuitBreakers.map((breaker) => [breaker.serviceName.toLowerCase(), breaker])
+  );
+
+  return ADMIN_HEALTH_MONITORED_SERVICES.map((service) => {
+    const missingEnv = missingRequiredEnv(service);
+    const infra = service.infraKey ? infraByKey.get(service.infraKey) : null;
+    const breakers = [...(service.circuitNames ?? [])]
+      .map((name) => breakerByName.get(name.toLowerCase()))
+      .filter(Boolean) as Array<{
+        serviceName: string;
+        state: string;
+        failureCount: number;
+        successCount: number;
+        updatedAt: Date;
+      }>;
+    const openBreaker = breakers.find((breaker) => breaker.state !== "CLOSED");
+
+    const grouped = (service.logServices ?? []).reduce(
+      (acc, name) => {
+        const byExact = serviceMap.get(name);
+        const byCase = [...serviceMap.values()].find(
+          (row) => serviceAlias(row.service) === serviceAlias(name)
+        );
+        const row = byExact ?? byCase;
+        return {
+          ok24h: acc.ok24h + (row?.ok24h ?? 0),
+          err24h: acc.err24h + (row?.err24h ?? 0),
+        };
+      },
+      { ok24h: 0, err24h: 0 }
+    );
+
+    const latestLog = (service.logServices ?? [])
+      .map((name) => latestByService.get(serviceAlias(name)))
+      .find(Boolean);
+
+    let level: HealthLevel = "healthy";
+    if (infra?.level) level = infra.level;
+    if (missingEnv.length > 0) level = "critical";
+    if (openBreaker) level = "critical";
+    if (!openBreaker && grouped.err24h > 0 && level === "healthy") level = "warning";
+    if (latestLog && !isSuccessStatus(latestLog.status) && level === "healthy") level = "warning";
+
+    const extras = optionalEnvSummary(service.optionalEnv);
+    const detailParts = [
+      missingEnv.length > 0 ? `Missing ${missingEnv.join(", ")}` : "configured",
+      infra?.detail,
+      openBreaker ? `circuit ${openBreaker.state}` : breakers.length > 0 ? "circuit closed" : null,
+      extras,
+    ].filter(Boolean);
+
+    return {
+      key: service.key,
+      label: service.label,
+      category: service.category,
+      level,
+      detail: detailParts.join(" · "),
+      ok24h: grouped.ok24h,
+      err24h: grouped.err24h,
+      latestAt: latestLog?.createdAt ?? null,
+      latestAction: latestLog?.action ?? null,
+      latestStatus: latestLog?.status ?? null,
+      latestError: latestLog?.error ?? null,
+    };
+  });
+}
+
 function asAuditMetadata(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {} as Record<string, any>;
@@ -455,53 +743,24 @@ function asAuditMetadata(value: unknown) {
 }
 
 async function getAccessAuditRows(since24h: Date) {
-  const [logs, actionGroups] = await Promise.all([
-    prisma.integrationLog.findMany({
-      where: {
-        service: ACCESS_AUDIT_SERVICE,
-        createdAt: { gte: since24h },
-      },
-      select: {
-        id: true,
-        action: true,
-        status: true,
-        error: true,
-        createdAt: true,
-        metadata: true,
-      },
-      orderBy: { createdAt: "desc" },
-      take: 80,
-    }),
-    prisma.integrationLog.groupBy({
-      by: ["action", "status"],
-      where: {
-        service: ACCESS_AUDIT_SERVICE,
-        createdAt: { gte: since24h },
-      },
-      _count: { id: true },
-    }),
-  ]);
+  const logs = await prisma.integrationLog.findMany({
+    where: {
+      service: ACCESS_AUDIT_SERVICE,
+      createdAt: { gte: since24h },
+    },
+    select: {
+      id: true,
+      action: true,
+      status: true,
+      error: true,
+      createdAt: true,
+      metadata: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1000,
+  });
 
-  const summary = {
-    total24h: 0,
-    loginSuccess24h: 0,
-    loginFailure24h: 0,
-    endpointAccess24h: 0,
-    endpointDenied24h: 0,
-  };
-
-  for (const group of actionGroups) {
-    const count = group._count.id;
-    summary.total24h += count;
-    if (group.action.endsWith("_LOGIN_SUCCESS")) summary.loginSuccess24h += count;
-    if (group.action.endsWith("_LOGIN_FAILED")) summary.loginFailure24h += count;
-    if (group.action === "ENDPOINT_ACCESS") summary.endpointAccess24h += count;
-    if (group.action === "ENDPOINT_DENIED") summary.endpointDenied24h += count;
-  }
-
-  return {
-    summary,
-    rows: logs.map((log) => {
+  const rows = logs.map((log) => {
       const metadata = asAuditMetadata(log.metadata);
       return {
         id: log.id,
@@ -511,6 +770,9 @@ async function getAccessAuditRows(since24h: Date) {
         error: log.error,
         actorType: metadata.actorType || null,
         actorName: metadata.actorName || null,
+        userId: metadata.userId || null,
+        clientUserId: metadata.clientUserId || null,
+        customerId: metadata.customerId || null,
         email: metadata.email || null,
         role: metadata.role || null,
         method: metadata.method || null,
@@ -521,7 +783,71 @@ async function getAccessAuditRows(since24h: Date) {
         userAgent: metadata.userAgent || null,
         routeType: metadata.routeType || null,
       };
-    }),
+    });
+
+  const isRealActor = (row: (typeof rows)[number]) =>
+    row.actorType !== "anonymous" &&
+    Boolean(row.email || row.actorName || row.userId || row.clientUserId || row.customerId);
+
+  const authenticatedRows = rows.filter(isRealActor);
+  const anonymousRows = rows.filter((row) => !isRealActor(row));
+
+  const uniqueUsers = new Map<string, {
+    key: string;
+    email: string | null;
+    actorName: string | null;
+    actorType: string | null;
+    role: string | null;
+    lastSeenAt: Date;
+    events24h: number;
+    lastPath: string | null;
+    lastAction: string;
+  }>();
+
+  for (const row of authenticatedRows) {
+    const key = String(row.email || row.userId || row.clientUserId || row.customerId || row.actorName);
+    const current = uniqueUsers.get(key);
+    if (!current) {
+      uniqueUsers.set(key, {
+        key,
+        email: row.email,
+        actorName: row.actorName,
+        actorType: row.actorType,
+        role: row.role,
+        lastSeenAt: row.createdAt,
+        events24h: 1,
+        lastPath: row.path,
+        lastAction: row.action,
+      });
+    } else {
+      current.events24h += 1;
+      if (row.createdAt > current.lastSeenAt) {
+        current.lastSeenAt = row.createdAt;
+        current.lastPath = row.path;
+        current.lastAction = row.action;
+      }
+    }
+  }
+
+  const summary = {
+    total24h: rows.length,
+    authenticatedEvents24h: authenticatedRows.length,
+    anonymousEvents24h: anonymousRows.length,
+    uniqueAuthenticatedUsers24h: uniqueUsers.size,
+    loginSuccess24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_SUCCESS")).length,
+    loginFailure24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_FAILED")).length,
+    endpointAccess24h: authenticatedRows.filter((row) => row.action === "ENDPOINT_ACCESS").length,
+    endpointDenied24h: rows.filter((row) => row.action === "ENDPOINT_DENIED").length,
+    anonymousDenied24h: anonymousRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
+  };
+
+  return {
+    summary,
+    users: [...uniqueUsers.values()]
+      .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
+      .slice(0, 40),
+    rows: authenticatedRows.slice(0, 80),
+    anonymousRows: anonymousRows.slice(0, 40),
   };
 }
 
@@ -659,7 +985,18 @@ export async function getAdminSystemHealth() {
   const services = [...serviceMap.values()].sort((a, b) => b.err24h - a.err24h || b.ok24h - a.ok24h);
   const totalRuns24h = services.reduce((sum, row) => sum + row.ok24h + row.err24h, 0);
   const totalErrors24h = services.reduce((sum, row) => sum + row.err24h, 0);
-  const openCircuitBreakers = circuitBreakers.filter((breaker) => breaker.state !== "CLOSED");
+  const monitoredServices = await getMonitoredServiceRows({
+    infrastructure,
+    serviceMap,
+    circuitBreakers,
+    since24h,
+  });
+  const monitoredCircuitNames = activeCircuitNames();
+  const openCircuitBreakers = circuitBreakers.filter(
+    (breaker) =>
+      breaker.state !== "CLOSED" &&
+      monitoredCircuitNames.has(breaker.serviceName.toLowerCase())
+  );
   const [dueWindowEmailPendingCount, futureScheduledEmailPendingCount, overdueCandidateCount, staleAutoChargeCount] =
     invoiceSignals;
 
@@ -705,6 +1042,8 @@ export async function getAdminSystemHealth() {
     openCircuitBreakers: openCircuitBreakers.length,
     invoiceWarningCount,
     syncWarningCount: countLevel(syncRows, "warning"),
+    criticalServiceCount: countLevel(monitoredServices, "critical"),
+    warningServiceCount: countLevel(monitoredServices, "warning"),
   });
 
   return {
@@ -725,8 +1064,11 @@ export async function getAdminSystemHealth() {
       openCircuitBreakers: openCircuitBreakers.length,
       queueIssueTotal: queueSummary.issueTotal,
       invoiceWarningCount,
+      criticalServiceCount: countLevel(monitoredServices, "critical"),
+      warningServiceCount: countLevel(monitoredServices, "warning"),
     },
     infrastructure,
+    monitoredServices,
     cronRows,
     services,
     recentFailures,

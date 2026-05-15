@@ -20,6 +20,7 @@ MAILTO=""
 # Billing and QuickBooks
 30 0 * * * root /opt/carreirahub/run-cron.sh auto-charge-invoices >> /var/log/carreirahub-cron.log 2>&1
 0,45 * * * * root /opt/carreirahub/run-cron.sh refresh-quickbooks-token >> /var/log/carreirahub-cron.log 2>&1
+15 */6 * * * root /opt/carreirahub/run-cron.sh quickbooks-sync >> /var/log/carreirahub-cron.log 2>&1
 0 2 * * * root /opt/carreirahub/run-cron.sh overdue-invoices >> /var/log/carreirahub-cron.log 2>&1
 0 3 * * * root /opt/carreirahub/run-cron.sh clint-sync >> /var/log/carreirahub-cron.log 2>&1
 0 9 * * * root /opt/carreirahub/run-cron.sh send-scheduled-invoices >> /var/log/carreirahub-cron.log 2>&1
