@@ -178,9 +178,9 @@ const QUEUE_CONFIG: QueueConfig = {
   whatsappMessages: { maxJobs: 5, timeoutMs: 5000 },
   invoiceGeneration: { maxJobs: 2, timeoutMs: 5000 },
   contractGeneration: { maxJobs: 2, timeoutMs: 5000 },
-  quickbooksSync: { maxJobs: 5, timeoutMs: 20000 },
+  quickbooksSync: { maxJobs: 1, timeoutMs: 240000 },
   invoiceApproval: { maxJobs: 3, timeoutMs: 5000 },
-  bulkImport: { maxJobs: 1, timeoutMs: 5000 },
+  bulkImport: { maxJobs: 1, timeoutMs: 240000 },
 };
 
 /**
@@ -603,7 +603,8 @@ export async function processAllQueues(): Promise<{
     };
   }
 
-  const timer = new ExecutionTimer(60000);
+  const maxDurationMs = Number(process.env.QUEUE_PROCESSOR_MAX_DURATION_MS || 270000);
+  const timer = new ExecutionTimer(maxDurationMs);
   const queueResults: Record<string, any> = {};
   let totalJobsProcessed = 0;
   let totalJobsFailed = 0;
@@ -622,7 +623,7 @@ export async function processAllQueues(): Promise<{
     ACTIVE_QUEUE_KEYS.includes(queueName as QueueKey)
   );
 
-  console.log(`[QUEUE] Starting queue processing (max 8 seconds)`);
+  console.log(`[QUEUE] Starting queue processing (max ${maxDurationMs}ms)`);
 
   for (const queueName of queueOrder) {
     // Check if we've exceeded execution time

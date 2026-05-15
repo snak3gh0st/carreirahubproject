@@ -11,15 +11,13 @@ export const dynamic = "force-dynamic";
  * Processes all BullMQ queues (leadQualification, whatsappMessages, etc.)
  * with per-queue job limits and automatic timeout handling.
  *
- * Called by Vercel Cron every 5 minutes (configured in vercel.json).
+ * Called by the host scheduler every 5 minutes.
  * See .planning/docs/QUEUE_PROCESSING.md for full architecture documentation.
  *
- * Vercel configuration: path "/api/cron/process-queue", schedule every 5 minutes
- *
  * Execution constraints:
- * - Vercel timeout: 10 seconds
- * - Endpoint max execution: 8 seconds (2s buffer)
- * - Job timeout per job: 5 seconds
+ * - Swarm scheduler curl timeout: 300 seconds
+ * - Endpoint max execution: 270 seconds by default
+ * - Heavy QuickBooks/bulk jobs get a longer per-job timeout than lightweight jobs
  *
  * Queue processing order (by priority):
  * 1. whatsappMessages (5 max) - lightweight, high priority
