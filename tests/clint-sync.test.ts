@@ -2,9 +2,29 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  buildSyncableClintContacts,
   buildClintDealWriteData,
   extractClintOwnerEmail,
 } from "../lib/services/clint-sync.service";
+
+test("buildSyncableClintContacts dedupes by Clint id and email", () => {
+  const contacts = buildSyncableClintContacts([
+    { id: " contact-1 ", name: "First", email: " First@Example.com " },
+    { id: "contact-1", name: "Duplicate id", email: "other@example.com" },
+    { id: "contact-2", name: "Duplicate email", email: "first@example.com" },
+    { id: "contact-3", name: "Missing email" },
+    { id: "", name: "Missing id", email: "missing-id@example.com" },
+    { id: "contact-4", name: "Second", email: "second@example.com" },
+  ]);
+
+  assert.deepEqual(
+    contacts.map((contact) => ({ id: contact.id, email: contact.email })),
+    [
+      { id: "contact-1", email: "first@example.com" },
+      { id: "contact-4", email: "second@example.com" },
+    ],
+  );
+});
 
 test("buildClintDealWriteData preserves Clint owner and external timestamps", () => {
   const syncTimestamp = new Date("2026-05-05T16:00:00.000Z");

@@ -27,6 +27,10 @@ export interface CustomerData {
   metadata?: any;
 }
 
+function isUniqueConstraintError(error: unknown) {
+  return typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002";
+}
+
 /**
  * Identity Mapper Service
  * 
@@ -58,6 +62,7 @@ export class IdentityMapperService {
    */
   async reconcileCustomer(data: CustomerData): Promise<Customer> {
     const { email, name, phone, dateOfBirth, ssn, passport, cpf, address, city, state, zipCode, country, externalIds = {}, metadata } = data;
+    const syncDate = new Date();
 
     // External provider IDs are more stable than email. Clint/QuickBooks may
     // change or omit email, so look up provider IDs first to avoid duplicate
@@ -70,7 +75,7 @@ export class IdentityMapperService {
       });
     }
 
-    if (customer) {
+    const updateExistingCustomer = async (existingCustomer: Customer): Promise<Customer> => {
       // Customer existe: atualizar IDs externos e fill empty fields.
       // Name and phone are always updated when provided (allows corrections).
       // Other PII fields (ssn, passport, etc.) only fill empty to avoid
@@ -78,82 +83,104 @@ export class IdentityMapperService {
       const updates: Partial<Customer> = {};
 
       // Always update name and phone when provided (allows fixing incorrect data)
-      if (name && name !== customer.name) updates.name = name;
-      if (phone && phone !== customer.phone) updates.phone = phone;
+      if (name && name !== existingCustomer.name) updates.name = name;
+      if (phone && phone !== existingCustomer.phone) updates.phone = phone;
 
       // PII and address fields: only fill if currently empty
-      if (dateOfBirth && !customer.dateOfBirth) updates.dateOfBirth = dateOfBirth;
-      if (ssn && !customer.ssn) updates.ssn = ssn;
-      if (passport && !customer.passport) updates.passport = passport;
-      if (cpf && !customer.cpf) updates.cpf = cpf;
-      if (address && !customer.address) updates.address = address;
-      if (city && !customer.city) updates.city = city;
-      if (state && !customer.state) updates.state = state;
-      if (zipCode && !customer.zipCode) updates.zipCode = zipCode;
-      if (country && !customer.country) updates.country = country;
+      if (dateOfBirth && !existingCustomer.dateOfBirth) updates.dateOfBirth = dateOfBirth;
+      if (ssn && !existingCustomer.ssn) updates.ssn = ssn;
+      if (passport && !existingCustomer.passport) updates.passport = passport;
+      if (cpf && !existingCustomer.cpf) updates.cpf = cpf;
+      if (address && !existingCustomer.address) updates.address = address;
+      if (city && !existingCustomer.city) updates.city = city;
+      if (state && !existingCustomer.state) updates.state = state;
+      if (zipCode && !existingCustomer.zipCode) updates.zipCode = zipCode;
+      if (country && !existingCustomer.country) updates.country = country;
 
       // Atualizar IDs externos que não existem
-      if (externalIds.clint_contact_id && !customer.clint_contact_id) {
+      if (externalIds.clint_contact_id && !existingCustomer.clint_contact_id) {
         updates.clint_contact_id = externalIds.clint_contact_id;
       }
       if (externalIds.clint_contact_id) {
-        updates.lastClintSyncAt = new Date();
+        updates.lastClintSyncAt = syncDate;
       }
-      if (externalIds.quickbooks_id && !customer.quickbooks_id) {
+      if (externalIds.quickbooks_id && !existingCustomer.quickbooks_id) {
         updates.quickbooks_id = externalIds.quickbooks_id;
       }
-      if (externalIds.docusign_id && !customer.docusign_id) {
+      if (externalIds.docusign_id && !existingCustomer.docusign_id) {
         updates.docusign_id = externalIds.docusign_id;
       }
-      if (externalIds.trello_id && !customer.trello_id) {
+      if (externalIds.trello_id && !existingCustomer.trello_id) {
         updates.trello_id = externalIds.trello_id;
       }
-      if (externalIds.cloudtalk_id && !customer.cloudtalk_id) {
+      if (externalIds.cloudtalk_id && !existingCustomer.cloudtalk_id) {
         updates.cloudtalk_id = externalIds.cloudtalk_id;
       }
-      if (externalIds.google_contact_id && !customer.google_contact_id) {
+      if (externalIds.google_contact_id && !existingCustomer.google_contact_id) {
         updates.google_contact_id = externalIds.google_contact_id;
       }
 
       // Merge metadata
       if (metadata) {
-        const currentMetadata = (customer.metadata as any) || {};
+        const currentMetadata = (existingCustomer.metadata as any) || {};
         updates.metadata = { ...currentMetadata, ...metadata } as any;
       }
 
       // Atualizar apenas se houver mudanças
       if (Object.keys(updates).length > 0) {
-        customer = await prisma.customer.update({
-          where: { id: customer.id },
+        return prisma.customer.update({
+          where: { id: existingCustomer.id },
           data: updates as any,
         });
       }
+
+      return existingCustomer;
+    };
+
+    if (customer) {
+      customer = await updateExistingCustomer(customer);
     } else {
       // Customer não existe: criar novo
-      customer = await prisma.customer.create({
-        data: {
-          email,
-          name,
-          phone,
-          dateOfBirth,
-          ssn,
-          passport,
-          cpf,
-          address,
-          city,
-          state,
-          zipCode,
-          country,
-          clint_contact_id: externalIds.clint_contact_id,
-          lastClintSyncAt: externalIds.clint_contact_id ? new Date() : undefined,
-          quickbooks_id: externalIds.quickbooks_id,
-          docusign_id: externalIds.docusign_id,
-          trello_id: externalIds.trello_id,
-          cloudtalk_id: externalIds.cloudtalk_id,
-          google_contact_id: externalIds.google_contact_id,
-          metadata: metadata || {},
-        },
-      });
+      try {
+        customer = await prisma.customer.create({
+          data: {
+            email,
+            name,
+            phone,
+            dateOfBirth,
+            ssn,
+            passport,
+            cpf,
+            address,
+            city,
+            state,
+            zipCode,
+            country,
+            clint_contact_id: externalIds.clint_contact_id,
+            lastClintSyncAt: externalIds.clint_contact_id ? syncDate : undefined,
+            quickbooks_id: externalIds.quickbooks_id,
+            docusign_id: externalIds.docusign_id,
+            trello_id: externalIds.trello_id,
+            cloudtalk_id: externalIds.cloudtalk_id,
+            google_contact_id: externalIds.google_contact_id,
+            metadata: metadata || {},
+          },
+        });
+      } catch (error) {
+        if (!isUniqueConstraintError(error)) {
+          throw error;
+        }
+
+        const conflictingCustomer =
+          await this.findByAnyExternalId(externalIds) ??
+          await prisma.customer.findUnique({ where: { email } });
+
+        if (!conflictingCustomer) {
+          throw error;
+        }
+
+        customer = await updateExistingCustomer(conflictingCustomer);
+      }
     }
 
     return customer;

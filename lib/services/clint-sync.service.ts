@@ -5,7 +5,7 @@
  * Roda via cron a cada 6h. Sem reverse-sync na V1.
  */
 import { prisma } from "@/lib/db";
-import { clintService, type ClintDeal } from "./clint.service";
+import { clintService, type ClintContact, type ClintDeal } from "./clint.service";
 import { identityMapper } from "./identity-mapper";
 import { integrationLogger } from "@/lib/utils/logger";
 
@@ -31,6 +31,28 @@ function normalizeEmail(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim().toLowerCase();
   return normalized.includes("@") ? normalized : null;
+}
+
+type SyncableClintContact = ClintContact & { id: string; email: string };
+
+export function buildSyncableClintContacts(contacts: ClintContact[]): SyncableClintContact[] {
+  const seenClintIds = new Set<string>();
+  const seenEmails = new Set<string>();
+  const syncableContacts: SyncableClintContact[] = [];
+
+  for (const contact of contacts) {
+    const clintContactId = typeof contact.id === "string" ? contact.id.trim() : "";
+    const email = normalizeEmail(contact.email);
+
+    if (!clintContactId || !email) continue;
+    if (seenClintIds.has(clintContactId) || seenEmails.has(email)) continue;
+
+    seenClintIds.add(clintContactId);
+    seenEmails.add(email);
+    syncableContacts.push({ ...contact, id: clintContactId, email });
+  }
+
+  return syncableContacts;
 }
 
 function parseClintDate(value: unknown): Date | undefined {
@@ -86,23 +108,13 @@ export class ClintSyncService {
     const upsertBatchSize = 20;
 
     const contacts = await clintService.getAllContacts(options.maxPages);
-    const syncableContacts = Array.from(
-      contacts.reduce((map, contact) => {
-        const email = normalizeEmail(contact.email);
-        if (email && !map.has(email)) {
-          map.set(email, contact);
-        }
-        return map;
-      }, new Map<string, (typeof contacts)[number]>()).values()
-    );
+    const syncableContacts = buildSyncableClintContacts(contacts);
 
     for (let index = 0; index < syncableContacts.length; index += upsertBatchSize) {
       const batch = syncableContacts.slice(index, index + upsertBatchSize);
       const results = await Promise.all(batch.map(async (contact) => {
         try {
           const email = contact.email;
-          if (!email) return false;
-
           const phone = contact.ddi
             ? `+${contact.ddi}${contact.phone ?? ""}`
             : contact.phone ?? undefined;
