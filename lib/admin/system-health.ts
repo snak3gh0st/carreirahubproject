@@ -570,9 +570,7 @@ async function getCronRows(now: Date, since24h: Date) {
     const level =
       lastRun && !isSuccessStatus(lastRun.status)
         ? "critical"
-        : counts.err > 0 && freshnessLevel === "healthy"
-          ? "warning"
-          : freshnessLevel;
+        : freshnessLevel;
 
     return {
       ...job,
@@ -707,7 +705,6 @@ async function getMonitoredServiceRows({
     if (infra?.level) level = infra.level;
     if (missingEnv.length > 0) level = "critical";
     if (openBreaker) level = "critical";
-    if (!openBreaker && grouped.err24h > 0 && level === "healthy") level = "warning";
     if (latestLog && !isSuccessStatus(latestLog.status) && level === "healthy") level = "warning";
 
     const extras = optionalEnvSummary(service.optionalEnv);
@@ -1036,7 +1033,7 @@ export async function getAdminSystemHealth() {
     warningInfraCount: countLevel(infrastructure, "warning"),
     criticalCronCount: countLevel(cronRows, "critical"),
     warningCronCount: countLevel(cronRows, "warning"),
-    errorCount24h: totalErrors24h,
+    errorCount24h: recentFailures.length,
     queueIssueTotal: queueSummary.issueTotal,
     openCircuitBreakers: openCircuitBreakers.length,
     invoiceWarningCount,
