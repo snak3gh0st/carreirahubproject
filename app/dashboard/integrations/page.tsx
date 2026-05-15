@@ -25,7 +25,7 @@ export default async function IntegrationsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Integrações</h1>
         <p className="text-gray-600 mt-2">
-          Gerenciar conexões com QuickBooks e Pipedrive
+          Gerenciar conexões com QuickBooks, Clint CRM e DocuSign
         </p>
       </div>
 
@@ -58,7 +58,7 @@ export default async function IntegrationsPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">Configurações</h3>
             <p className="text-sm text-gray-600">
-              Configurar conexões do QuickBooks e Pipedrive, gerenciar tokens OAuth e configurar webhooks
+              Configurar QuickBooks, Clint CRM, DocuSign, tokens OAuth e webhooks
             </p>
             <div className="mt-4 text-blue-600 text-sm font-medium">
               Configurar →
@@ -88,7 +88,7 @@ export default async function IntegrationsPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">Importação em Massa</h3>
             <p className="text-sm text-gray-600">
-              Importar todos os clientes, negócios e faturas existentes do QuickBooks ou Pipedrive
+              Importar clientes, faturas e itens existentes do QuickBooks. Clint sincroniza pelo cron diário.
             </p>
             <div className="mt-4 text-green-600 text-sm font-medium">
               Iniciar Importação →

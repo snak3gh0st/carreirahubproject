@@ -199,7 +199,7 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
               )}
               {customer.clint_contact_id && (
                 <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-xs font-medium">
-                  Pipedrive: {customer.clint_contact_id}
+                  Clint: {customer.clint_contact_id}
                 </span>
               )}
             </div>

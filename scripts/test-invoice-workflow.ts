@@ -39,7 +39,6 @@ async function testServiceImports() {
     { name: 'NotificationService', path: '../lib/services/notification.service' },
     { name: 'ContractWorkflowService', path: '../lib/services/contract-workflow.service' },
     { name: 'PaymentWorkflowService', path: '../lib/services/payment-workflow.service' },
-    { name: 'StripeService', path: '../lib/services/stripe.service' },
     { name: 'QuickbooksService', path: '../lib/services/quickbooks.service' },
     { name: 'DocuSignService', path: '../lib/services/docusign.service' },
     { name: 'InvoiceSyncService', path: '../lib/services/invoice-sync.service' },
@@ -76,8 +75,6 @@ async function testEnvironmentVariables() {
   ];
 
   const optionalVars = [
-    { name: 'STRIPE_SECRET_KEY', sensitive: true },
-    { name: 'STRIPE_WEBHOOK_SECRET', sensitive: true },
     { name: 'DOCUSIGN_INTEGRATION_KEY', sensitive: true },
     { name: 'DOCUSIGN_USER_ID', sensitive: true },
     { name: 'DOCUSIGN_ACCOUNT_ID', sensitive: true },

@@ -205,7 +205,7 @@ export default async function CustomerDetailPage({
                       <Badge variant="success">QuickBooks</Badge>
                     )}
                     {customer.clint_contact_id && (
-                      <Badge variant="info">Pipedrive</Badge>
+                      <Badge variant="info">Clint</Badge>
                     )}
                     {latestTest ? (
                       <Badge

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 export const dynamic = 'force-dynamic';
 
 interface SyncStatusData {
-  pipedrive: {
+  clint: {
     lastSync: string | null;
     successRate: number;
     successCount: number;
@@ -167,7 +167,7 @@ export default function SyncStatusPage() {
   }
 
   const overallHealthy =
-    syncStatus.pipedrive.status === "healthy" &&
+    syncStatus.clint.status === "healthy" &&
     syncStatus.quickbooks.status === "healthy";
 
   return (
@@ -339,41 +339,41 @@ export default function SyncStatusPage() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold">Clint CRM</h3>
-              <StatusIndicator status={syncStatus.pipedrive.status} />
+              <StatusIndicator status={syncStatus.clint.status} />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-sm text-gray-600">Taxa de Sucesso</div>
                 <div className="text-2xl font-bold text-gray-900">
-                  {syncStatus.pipedrive.successRate}%
+                  {syncStatus.clint.successRate}%
                 </div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Total de Operações</div>
                 <div className="text-2xl font-bold text-gray-900">
-                  {syncStatus.pipedrive.total}
+                  {syncStatus.clint.total}
                 </div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Sucesso</div>
                 <div className="text-lg font-semibold text-green-600">
-                  {syncStatus.pipedrive.successCount}
+                  {syncStatus.clint.successCount}
                 </div>
               </div>
               <div>
                 <div className="text-sm text-gray-600">Erros</div>
                 <div className="text-lg font-semibold text-red-600">
-                  {syncStatus.pipedrive.errorCount}
+                  {syncStatus.clint.errorCount}
                 </div>
               </div>
             </div>
 
-            {syncStatus.pipedrive.lastSync && (
+            {syncStatus.clint.lastSync && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="text-sm text-gray-600">Última Sincronização</div>
                 <div className="text-sm font-medium text-gray-900">
-                  {new Date(syncStatus.pipedrive.lastSync).toLocaleString()}
+                  {new Date(syncStatus.clint.lastSync).toLocaleString()}
                 </div>
               </div>
             )}
@@ -381,7 +381,7 @@ export default function SyncStatusPage() {
 
           <div className="p-4 bg-gray-50">
             <Link
-              href="/dashboard/settings/integrations?source=pipedrive"
+              href="/dashboard/settings/integrations?source=clint"
               className="text-sm text-blue-600 hover:text-blue-800 font-medium"
             >
               Configurar Clint →

@@ -17,7 +17,7 @@ export interface FallbackResponse {
 /**
  * Generate a user-friendly fallback response based on error category
  *
- * @param serviceName - Service that failed (e.g., "pipedrive", "quickbooks")
+ * @param serviceName - Service that failed (e.g., "clint", "quickbooks")
  * @param action - Action that failed (e.g., "create_lead", "sync_invoice")
  * @param errorCategory - Error category from structured error logging (transient, permanent, auth, validation, unknown)
  * @returns User-friendly fallback response
@@ -129,7 +129,7 @@ function createUnknownErrorResponse(serviceName: string): FallbackResponse {
  */
 function getServiceDisplayName(serviceName: string): string {
   const displayNames: Record<string, string> = {
-    pipedrive: "Pipedrive",
+    clint: "Clint CRM",
     quickbooks: "QuickBooks",
     docusign: "DocuSign",
     whatsapp: "WhatsApp",

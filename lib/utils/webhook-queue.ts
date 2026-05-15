@@ -21,30 +21,6 @@ export interface WebhookQueueJob {
 }
 
 /**
- * Enqueue Pipedrive webhook for async processing
- */
-export async function enqueuePipedriveWebhook(data: WebhookQueueJob): Promise<void> {
-  await queues.pipedriveSync.add(
-    "process-webhook",
-    data,
-    {
-      attempts: 5,
-      backoff: {
-        type: "exponential",
-        delay: 60000, // 1 minute base delay
-      },
-      removeOnComplete: {
-        age: 24 * 3600, // Keep for 24 hours
-        count: 1000,
-      },
-      removeOnFail: {
-        age: 7 * 24 * 3600, // Keep failures for 7 days
-      },
-    }
-  );
-}
-
-/**
  * Enqueue QuickBooks webhook for async processing
  */
 export async function enqueueQuickBooksWebhook(data: WebhookQueueJob): Promise<void> {

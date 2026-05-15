@@ -278,14 +278,6 @@ const ADMIN_HEALTH_MONITORED_SERVICES: readonly MonitoredServiceDef[] = [
     optionalEnv: ["RESEND_WEBHOOK_SECRET"],
   },
   {
-    key: "stripe",
-    label: "Stripe",
-    category: "Payments",
-    logServices: ["STRIPE"],
-    circuitNames: ["stripe"],
-    requiredEnv: ["STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_WEBHOOK_SECRET"],
-  },
-  {
     key: "openai",
     label: "OpenAI / AI",
     category: "AI",
@@ -293,6 +285,18 @@ const ADMIN_HEALTH_MONITORED_SERVICES: readonly MonitoredServiceDef[] = [
     circuitNames: ["openai", "ai"],
     requiredEnv: ["OPENAI_API_KEY"],
     optionalEnv: ["AI_MODEL_DEFAULT", "AI_COPILOT_ENABLED"],
+  },
+  {
+    key: "slack",
+    label: "Slack Ops (planned)",
+    category: "Ops Alerts",
+    logServices: ["slack"],
+    optionalEnv: [
+      "SLACK_BOT_TOKEN",
+      "SLACK_CHANNEL_COMMERCIAL",
+      "SLACK_CHANNEL_BASTAO",
+      "SLACK_CHANNEL_ENGLISH_TEST",
+    ],
   },
   {
     key: "clint",

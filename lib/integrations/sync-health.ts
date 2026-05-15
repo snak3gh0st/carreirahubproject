@@ -34,7 +34,7 @@ export async function getEffectiveSyncTimestamps(): Promise<{
     }),
     prisma.integrationLog.findMany({
       where: {
-        service: { in: ["clint-sync", "CLINT", "PIPEDRIVE"] },
+        service: { in: ["clint-sync", "CLINT"] },
         action: { in: ["syncAll", "SYNC"] },
         status: "SUCCESS",
       },

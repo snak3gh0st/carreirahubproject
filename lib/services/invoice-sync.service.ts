@@ -8,12 +8,11 @@ import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
  *
  * Manages invoice synchronization to external systems:
  * 1. Sync invoice to QuickBooks (create and optionally send email)
- * 2. Sync to Pipedrive (add note to deal)
- * 3. Trigger contract workflow if applicable
+ * 2. Trigger contract workflow if applicable
  */
 export class InvoiceSyncService {
   /**
-   * Sync invoice to QuickBooks and Pipedrive
+   * Sync invoice to QuickBooks
    * Public method - can be called from invoice creation or cron jobs
    */
   async syncInvoiceToQuickBooks(invoiceId: string): Promise<void> {

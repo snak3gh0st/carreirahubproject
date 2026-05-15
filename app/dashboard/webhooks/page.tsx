@@ -17,11 +17,11 @@ interface HealthCheckResponse {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
   services: {
-    pipedrive: ServiceHealthStatus;
+    clint: ServiceHealthStatus;
     quickbooks: ServiceHealthStatus;
     docusign: ServiceHealthStatus;
-    twilio: ServiceHealthStatus;
-    retell: ServiceHealthStatus;
+    digisac: ServiceHealthStatus;
+    telegram: ServiceHealthStatus;
   };
   deadLetterCount: number;
   pendingRetries: number;

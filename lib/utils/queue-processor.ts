@@ -42,11 +42,9 @@ import {
  * Queue Limits (from 03-01-PLAN.md):
  * - leadQualification: max 2 (AI qualification is heavy, ~1-2s per job)
  * - whatsappMessages: max 5 (lightweight, 100-200ms per job)
- * - pipedriveSync: max 3 (API-heavy, ~500ms-1s per job)
  * - invoiceGeneration: max 2 (heavyweight, database operations, ~1-2s)
  * - contractGeneration: max 2 (heavyweight, DocuSign calls, ~1-2s)
  * - quickbooksSync: max 1 (VERY heavy, long API calls, ~2-3s per job)
- * - pipedriveReverseSync: max 2 (API-heavy, ~500ms-1s per job)
  * - invoiceApproval: max 3 (moderate, ~500ms per job)
  * - bulkImport: max 1 (EXTREMELY heavy, processes many records)
  *
@@ -273,9 +271,7 @@ const queueHandlers: {
   bulkImport: async (job: any) => {
     const { importId, source, type } = job.data;
 
-    if (false) {
-      // Pipedrive removed
-    } else if (source === "QUICKBOOKS") {
+    if (source === "QUICKBOOKS") {
       const { quickbooksSyncService } = await import(
         "@/lib/services/quickbooks-sync.service"
       );

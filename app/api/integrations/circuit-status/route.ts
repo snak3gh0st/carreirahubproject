@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
  *   "timestamp": "2026-01-11T12:00:00Z",
  *   "overallHealth": "healthy" | "degraded" | "unhealthy",
  *   "circuits": {
- *     "pipedrive": { "state": "CLOSED", "failureCount": 0, "uptime": 0.99 },
+ *     "clint": { "state": "CLOSED", "failureCount": 0, "uptime": 0.99 },
  *     "quickbooks": { "state": "OPEN", "failureCount": 7, "uptime": 0.85, "recoveryAt": "2026-01-11T12:05:00Z" },
  *     ...
  *   }
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     const circuitStates = await prisma.circuitBreakerState.findMany();
 
     // Define all expected services
-    const allServices = ["pipedrive", "quickbooks", "docusign", "whatsapp", "retell", "openai", "email"];
+    const allServices = ["clint", "quickbooks", "quickbooks_payments", "docusign", "telegram", "digisac", "openai", "email"];
 
     // Build response
     const circuits: Record<string, any> = {};

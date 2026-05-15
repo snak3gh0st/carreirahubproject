@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
  * Query parameters:
  * - limit: Maximum number of results (default: 50, max: 200)
  * - offset: Number of results to skip for pagination (default: 0)
- * - service: Optional service filter (e.g., "pipedrive", "quickbooks")
+ * - service: Optional service filter (e.g., "clint", "quickbooks")
  *
  * Authentication: ADMIN role required
  *

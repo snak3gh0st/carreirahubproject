@@ -46,18 +46,17 @@ export async function GET(request: NextRequest) {
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [
-      pipedriveSuccessCount,
-      pipedriveErrorCount,
+      clintSuccessCount,
+      clintErrorCount,
       quickbooksSuccessCount,
       quickbooksErrorCount,
       recentErrors,
       bulkImportStats,
     ] = await Promise.all([
-      // Pipedrive success count
+      // Clint success count
       prisma.integrationLog.count({
         where: {
           OR: [
-            { service: { contains: "PIPEDRIVE" } },
             { service: { contains: "CLINT" } },
             { service: { contains: "clint" } },
           ],
@@ -66,11 +65,10 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Pipedrive error count
+      // Clint error count
       prisma.integrationLog.count({
         where: {
           OR: [
-            { service: { contains: "PIPEDRIVE" } },
             { service: { contains: "CLINT" } },
             { service: { contains: "clint" } },
           ],
@@ -126,10 +124,10 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Calculate success rates
-    const pipedriveTotal = pipedriveSuccessCount + pipedriveErrorCount;
-    const pipedriveSuccessRate =
-      pipedriveTotal > 0
-        ? Math.round((pipedriveSuccessCount / pipedriveTotal) * 100)
+    const clintTotal = clintSuccessCount + clintErrorCount;
+    const clintSuccessRate =
+      clintTotal > 0
+        ? Math.round((clintSuccessCount / clintTotal) * 100)
         : 100;
 
     const quickbooksTotal = quickbooksSuccessCount + quickbooksErrorCount;
@@ -150,13 +148,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       syncStatus: {
-        pipedrive: {
+        clint: {
           lastSync: effectiveSyncs.clintLastSync,
-          successRate: pipedriveSuccessRate,
-          successCount: pipedriveSuccessCount,
-          errorCount: pipedriveErrorCount,
-          total: pipedriveTotal,
-          status: pipedriveSuccessRate >= 95 ? "healthy" : pipedriveSuccessRate >= 80 ? "warning" : "error",
+          successRate: clintSuccessRate,
+          successCount: clintSuccessCount,
+          errorCount: clintErrorCount,
+          total: clintTotal,
+          status: clintSuccessRate >= 95 ? "healthy" : clintSuccessRate >= 80 ? "warning" : "error",
         },
         quickbooks: {
           lastSync: effectiveSyncs.quickbooksLastSync,

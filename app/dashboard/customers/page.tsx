@@ -105,7 +105,7 @@ export default async function CustomersPage({
 
   if (source === "quickbooks") {
     whereClause.quickbooks_id = { not: null };
-  } else if (source === "pipedrive") {
+  } else if (source === "clint") {
     whereClause.clint_contact_id = { not: null };
   }
 
@@ -215,7 +215,7 @@ export default async function CustomersPage({
     where: { ...statsFilter, quickbooks_id: { not: null } },
   });
 
-  const pipedriveCustomers = await prisma.customer.count({
+  const clintCustomers = await prisma.customer.count({
     where: { ...statsFilter, clint_contact_id: { not: null } },
   });
 
@@ -324,7 +324,7 @@ export default async function CustomersPage({
           <StatCard
             label="Do QuickBooks"
             value={qbCustomers.toString()}
-            description="Sincronizados do QB"
+            description={`Clint: ${clintCustomers}`}
           />
           <StatCard
             label="Com Vencidos"

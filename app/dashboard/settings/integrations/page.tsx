@@ -13,12 +13,18 @@ interface IntegrationStatus {
     companyId: string | null;
     tokenExpiresAt: string | null;
   };
+  clint: {
+    isConfigured: boolean;
+    tokenStatus: string;
+  };
   secrets: {
     quickbooks: boolean;
+    clint: boolean;
     cron: boolean;
   };
   lastSync: {
     quickbooks: string | null;
+    clint: string | null;
   };
 }
 
@@ -185,6 +191,40 @@ export default function IntegrationsPage() {
         </CardContent>
       </Card>
 
+      {/* Clint CRM */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Clint CRM</CardTitle>
+          <CardDescription>Sincronização comercial de contatos e deals</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-semibold">Status da API</p>
+              <p className="text-sm text-gray-600">
+                {status?.clint.isConfigured ? (
+                  <span className="text-green-600">✓ Configurado</span>
+                ) : (
+                  <span className="text-red-600">✗ Não configurado</span>
+                )}
+              </p>
+            </div>
+            <a
+              href="/dashboard/admin"
+              className="rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Ver Health
+            </a>
+          </div>
+          <p className="text-sm text-gray-600">
+            Última sincronização:{" "}
+            {status?.lastSync.clint
+              ? new Date(status.lastSync.clint).toLocaleString()
+              : "Nenhuma sincronização ainda"}
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Webhook Secrets */}
       <Card>
         <CardHeader>
@@ -197,6 +237,16 @@ export default function IntegrationsPage() {
               <p className="text-sm font-semibold">QuickBooks</p>
               <p className="text-sm text-gray-600">
                 {status?.secrets.quickbooks ? (
+                  <span className="text-green-600">✓ Configurado</span>
+                ) : (
+                  <span className="text-amber-600">⚠ Não configurado</span>
+                )}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">Clint</p>
+              <p className="text-sm text-gray-600">
+                {status?.secrets.clint ? (
                   <span className="text-green-600">✓ Configurado</span>
                 ) : (
                   <span className="text-amber-600">⚠ Não configurado</span>

@@ -69,7 +69,6 @@ export async function POST(request: NextRequest) {
       message: "Secrets gerados com sucesso",
       secrets: {
         quickbooksWebhookSecret: quickbooksSecret,
-        // pipedrive removed
         cronSecret: cronSecret,
       },
       instructions: {
@@ -106,7 +105,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       secretsConfigured: {
         quickbooks: !!config?.quickbooks_webhook_secret,
-        // pipedrive removed
         cron: !!config?.cron_secret,
       },
       message: "Todos os secrets estão configurados",

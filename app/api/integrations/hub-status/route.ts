@@ -60,12 +60,12 @@ export async function GET() {
       }
     }
 
-    // Pipedrive Status
-    const pipedriveStatus: any = {
-      configured: !!process.env.PIPEDRIVE_API_TOKEN,
+    // Clint CRM Status
+    const clintStatus: any = {
+      configured: !!process.env.CLINT_API_KEY,
       webhookSecretConfigured: !!(
         systemConfig?.cron_secret ||
-        process.env.PIPEDRIVE_WEBHOOK_SECRET
+        process.env.CLINT_WEBHOOK_SECRET
       ),
       lastSync: effectiveSyncs.clintLastSync,
     };
@@ -81,16 +81,16 @@ export async function GET() {
     });
 
     const lastQbWebhook = lastWebhooks.find((w) => w.service === "QUICKBOOKS");
-    const lastPdWebhook = lastWebhooks.find((w) => w.service === "PIPEDRIVE");
+    const lastClintWebhook = lastWebhooks.find((w) => w.service === "CLINT" || w.service === "clint-sync");
 
     quickbooksStatus.lastWebhook = lastQbWebhook?.createdAt || null;
-    pipedriveStatus.lastWebhook = lastPdWebhook?.createdAt || null;
+    clintStatus.lastWebhook = lastClintWebhook?.createdAt || null;
 
     // Sync Statistics
     const [
       totalCustomers,
       qbCustomers,
-      pipedriveCustomers,
+      clintCustomers,
       totalInvoices,
       qbInvoices,
       totalPayments,
@@ -109,7 +109,7 @@ export async function GET() {
       customers: {
         total: totalCustomers,
         quickbooks: qbCustomers,
-        pipedrive: pipedriveCustomers,
+        clint: clintCustomers,
       },
       invoices: {
         total: totalInvoices,
@@ -156,7 +156,7 @@ export async function GET() {
 
     return NextResponse.json({
       quickbooks: quickbooksStatus,
-      pipedrive: pipedriveStatus,
+      clint: clintStatus,
       syncStats,
       recentActivity,
       errorStats: {

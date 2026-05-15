@@ -28,9 +28,9 @@ async function checkInvoiceLogs() {
   console.log("- Email Send Attempts:", invoice.emailSendAttempts);
   console.log("- Last Email Error:", invoice.lastEmailSendError);
   console.log("- Customer Email:", invoice.customer?.email);
-  console.log("- Customer Pipedrive ID:", invoice.customer?.clint_contact_id);
+  console.log("- Customer Clint ID:", invoice.customer?.clint_contact_id);
   console.log("- Deal ID:", invoice.dealId);
-  console.log("- Deal Pipedrive ID:", invoice.deal?.clint_deal_id);
+  console.log("- Deal Clint ID:", invoice.deal?.clint_deal_id);
 
   // Check integration logs for this invoice
   const logs = await prisma.integrationLog.findMany({

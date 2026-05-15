@@ -43,7 +43,7 @@ npx tsx scripts/seed-test-data.ts --clear
 **O que é criado:**
 - ✅ **5 Usuários** com diferentes roles (ADMIN, SDR, SALES, FINANCE, SUPPORT)
 - ✅ **7 Leads** com diferentes statuses (NEW, QUALIFYING, QUALIFIED, UNQUALIFIED, CONVERTED, LOST)
-- ✅ **3 Customers** com IDs externos (Pipedrive, QuickBooks, Stripe)
+- ✅ **3 Customers** com IDs externos (Clint, QuickBooks)
 - ✅ **4 Deals** com diferentes statuses (OPEN, WON, LOST)
 - ✅ **4 Invoices** com diferentes statuses (PAID, OVERDUE, SENT, DRAFT)
 - ✅ **3 Conversations** com mensagens (ACTIVE, ESCALATED, RESOLVED)
@@ -134,7 +134,7 @@ node scripts/create-test-user.js sdr@test.com "SDR Test" SDR
 
 - Todos os scripts usam `upsert` quando possível, então executar múltiplas vezes não cria duplicatas
 - O script de seed mantém o usuário `admin@carreirausa.com` se já existir
-- IDs externos (Pipedrive, QuickBooks, Stripe) são fictícios para testes
+- IDs externos (Clint, QuickBooks) são fictícios para testes
 - Datas são geradas dinamicamente (algumas no passado, outras no futuro)
 
 ---

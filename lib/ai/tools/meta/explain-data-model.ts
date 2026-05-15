@@ -8,7 +8,7 @@ const DATA_MODEL_DOCS: Record<string, string> = {
 - Um **Lead** é um prospecto que ainda não se tornou cliente.
 - Possui status: NEW → QUALIFYING → QUALIFIED/UNQUALIFIED → CONVERTED/LOST.
 - Ao ser convertido, gera um **Deal** (negócio ganho).
-- Fonte (source): WEBSITE, WHATSAPP, REFERRAL, SOCIAL_MEDIA, OTHER, PIPEDRIVE.
+- Fonte (source): WEBSITE, WHATSAPP, REFERRAL, SOCIAL_MEDIA, OTHER, CLINT.
 - A pontuação de qualificação (0-100) é calculada via IA com critérios: interesse, orçamento, prazo, motivação e perfil.
 `,
   students: `
@@ -59,7 +59,7 @@ Para detalhes completos de uma fase específica (checklist, responsável, próxi
 ## Deals (Negócios)
 - Um **Deal** representa um negócio fechado originado de um Lead convertido.
 - Está vinculado a um **Customer** (cliente).
-- Ao ser fechado (WON), gera Invoice e Contract automaticamente via webhook do Pipedrive.
+- Ao ser fechado (WON), gera Invoice e Contract automaticamente via fluxo comercial/Clint.
 - Status: OPEN, WON, LOST, HOLD.
 `,
   general: `
@@ -76,7 +76,7 @@ Para detalhes completos de uma fase específica (checklist, responsável, próxi
 
 **Importante:** Este copiloto é SOMENTE LEITURA. Nenhuma escrita no banco.
 **Fonte de verdade para finanças:** QuickBooks.
-**Fonte de verdade para leads:** Pipedrive + banco local.
+**Fonte de verdade para leads:** Clint CRM + banco local.
 `,
 };
 

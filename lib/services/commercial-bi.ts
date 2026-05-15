@@ -357,10 +357,10 @@ function resolveLeadOwnerFromMetadata(
 ): string | null {
   if (!metadata || typeof metadata !== "object") return null;
   const record = metadata as Record<string, any>;
-  const pipedriveData = record.pipedrive_person_data;
+  const clintData = record.clint_contact_data;
   const ownerEmail =
-    normalizeEmail(pipedriveData?.owner_id?.email) ||
-    normalizeEmail(pipedriveData?.owner_email) ||
+    normalizeEmail(clintData?.owner_id?.email) ||
+    normalizeEmail(clintData?.owner_email) ||
     normalizeEmail(record.owner_id?.email) ||
     normalizeEmail(record.owner_email);
 

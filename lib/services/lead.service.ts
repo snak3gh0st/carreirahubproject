@@ -77,11 +77,11 @@ export class LeadService {
   }
 
   /**
-   * Buscar lead por Pipedrive Person ID
+   * Buscar lead por Clint Contact ID
    */
-  async getLeadByPipedriveId(pipedrivePersonId: number): Promise<Lead | null> {
+  async getLeadByClintId(clintContactId: number | string): Promise<Lead | null> {
     return prisma.lead.findUnique({
-      where: { clint_contact_id: String(pipedrivePersonId) },
+      where: { clint_contact_id: String(clintContactId) },
     });
   }
 
@@ -251,4 +251,3 @@ export class LeadService {
 }
 
 export const leadService = new LeadService();
-

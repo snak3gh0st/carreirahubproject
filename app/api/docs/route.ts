@@ -165,24 +165,13 @@ export async function GET() {
           },
         },
       },
-      "/api/webhooks/pipedrive/lead": {
+      "/api/cron/clint-sync": {
         post: {
-          summary: "Webhook: Novo lead do Pipedrive",
-          description: "Recebe notificação quando um novo Person é criado no Pipedrive",
+          summary: "Cron: Clint CRM Sync",
+          description: "Sincroniza contatos e deals do Clint CRM para o Hub",
           responses: {
             "200": {
-              description: "Lead processado",
-            },
-          },
-        },
-      },
-      "/api/webhooks/pipedrive/deal": {
-        post: {
-          summary: "Webhook: Deal Won do Pipedrive",
-          description: "Recebe notificação quando um Deal é marcado como Won",
-          responses: {
-            "200": {
-              description: "Deal processado",
+              description: "Sync processado",
             },
           },
         },
@@ -225,4 +214,3 @@ export async function GET() {
 
   return NextResponse.json(openApiSpec);
 }
-

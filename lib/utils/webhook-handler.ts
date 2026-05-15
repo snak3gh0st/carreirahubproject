@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { extractEventId } from "./webhook-event-id";
 import {
-  enqueuePipedriveWebhook,
   enqueueQuickBooksWebhook,
   enqueueDocuSignWebhook,
   enqueueTwilioWebhook,
@@ -30,7 +29,6 @@ export interface WebhookAcceptResult {
 }
 
 const enqueueMap = {
-  PIPEDRIVE: enqueuePipedriveWebhook,
   QUICKBOOKS: enqueueQuickBooksWebhook,
   DOCUSIGN: enqueueDocuSignWebhook,
   TWILIO: enqueueTwilioWebhook,
@@ -39,7 +37,7 @@ const enqueueMap = {
 /**
  * Accept and enqueue webhook for async processing
  *
- * @param service Service name (e.g., "PIPEDRIVE", "QUICKBOOKS")
+ * @param service Service name (e.g., "QUICKBOOKS", "DOCUSIGN")
  * @param eventType Event type (e.g., "person.created", "invoice.updated")
  * @param payload Webhook payload (parsed JSON)
  * @param headers Relevant headers (including signature)

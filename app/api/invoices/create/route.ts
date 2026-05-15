@@ -519,7 +519,7 @@ export async function POST(request: NextRequest) {
       console.log(`[INVOICE_CREATE] Saved ${invoiceCountToCreate - 1} future installments as DRAFT`);
     }
 
-    // NEW: Sync first invoice to Pipedrive deal (await to prevent Vercel container shutdown)
+    // External CRM sync is handled by Clint cron/processors.
 
     // Auto-create ClientUser for hub access
     // DISABLED: Hub is in testing phase. Enable when ready to go live.

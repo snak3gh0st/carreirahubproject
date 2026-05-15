@@ -47,7 +47,7 @@ export type WebhookHandler = (
  * 5. If max retries exceeded: sets status="dead_letter" (permanent failure)
  * 6. Always returns 200 OK to webhook sender
  *
- * @param service Service name (e.g., "pipedrive", "quickbooks", "docusign")
+ * @param service Service name (e.g., "quickbooks", "docusign")
  * @param eventType Event type (e.g., "person.created", "invoice.updated")
  * @param eventId External event ID for deduplication
  * @param payload Raw webhook payload

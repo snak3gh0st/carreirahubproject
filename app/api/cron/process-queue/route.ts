@@ -22,13 +22,11 @@ export const dynamic = "force-dynamic";
  * Queue processing order (by priority):
  * 1. whatsappMessages (5 max) - lightweight, high priority
  * 2. invoiceApproval (3 max) - moderate weight
- * 3. pipedriveReverseSync (2 max) - API calls
- * 4. pipedriveSync (3 max) - API calls
- * 5. leadQualification (2 max) - AI heavy
- * 6. invoiceGeneration (2 max) - heavyweight
- * 7. contractGeneration (2 max) - heavyweight
- * 8. quickbooksSync (1 max) - VERY heavy
- * 9. bulkImport (1 max) - EXTREMELY heavy
+ * 3. leadQualification (2 max) - AI heavy
+ * 4. invoiceGeneration (2 max) - heavyweight
+ * 5. contractGeneration (2 max) - heavyweight
+ * 6. quickbooksSync (1 max) - VERY heavy
+ * 7. bulkImport (1 max) - EXTREMELY heavy
  *
  * Returns 200 even if jobs fail (cron healthcheck success is endpoint success).
  * Metrics logged to IntegrationLog table for monitoring.

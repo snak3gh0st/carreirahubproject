@@ -14,7 +14,7 @@ const createLeadSchema = z.object({
   name: z.string().min(1),
   phone: z.string().optional(),
   source: z.nativeEnum(LeadSource).optional(),
-  pipedrive_person_id: z.number().optional(),
+  clint_contact_id: z.union([z.string(), z.number()]).optional(),
   metadata: z.any().optional(),
 });
 
@@ -84,8 +84,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = createLeadSchema.parse(body);
+    const normalizedData = {
+      ...data,
+      clint_contact_id:
+        data.clint_contact_id !== undefined
+          ? String(data.clint_contact_id)
+            : undefined,
+    };
 
-    const lead = await leadService.createLead({ ...data, createdById: userId });
+    const lead = await leadService.createLead({ ...normalizedData, createdById: userId });
 
     return NextResponse.json(lead, { status: 201 });
   } catch (error) {
@@ -100,11 +107,10 @@ export async function POST(request: NextRequest) {
 
     // Provide graceful fallback for integration errors
     const errorCategory = categorizeByStatusCode((error as any)?.status);
-    const fallback = createUserFallbackResponse("pipedrive", "create_lead", errorCategory);
+    const fallback = createUserFallbackResponse("clint", "create_lead", errorCategory);
 
     // Return appropriate status code based on error type
     const statusCode = errorCategory === "transient" ? 202 : 500;
     return NextResponse.json(fallback, { status: statusCode });
   }
 }
-

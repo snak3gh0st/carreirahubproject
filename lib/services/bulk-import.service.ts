@@ -4,57 +4,10 @@ import { BulkImport, ImportStatus } from "@prisma/client";
 /**
  * Bulk Import Service
  *
- * Orchestrates bulk import operations from Pipedrive and QuickBooks.
+ * Orchestrates bulk import operations from QuickBooks.
  * Provides progress tracking, error handling, and cancellation support.
  */
 export class BulkImportService {
-  /**
-   * Start bulk import from Pipedrive
-   */
-  async startPipedriveImport(options: {
-    importPersons: boolean;
-    importDeals: boolean;
-    startedBy?: string;
-  }): Promise<string> {
-    try {
-      const { importPersons, importDeals, startedBy } = options;
-
-      // Determine import type
-      let type = "";
-      if (importPersons && importDeals) {
-        type = "PERSONS_AND_DEALS";
-      } else if (importPersons) {
-        type = "PERSONS";
-      } else if (importDeals) {
-        type = "DEALS";
-      } else {
-        throw new Error("Must select at least one entity to import");
-      }
-
-      // Create bulk import record
-      const bulkImport = await prisma.bulkImport.create({
-        data: {
-          source: "PIPEDRIVE",
-          type,
-          status: "RUNNING",
-          startedBy: startedBy || undefined,
-        },
-      });
-
-      // Queue import jobs (will be processed by workers)
-      // Note: The actual import will be triggered via queue workers
-      // For now, we just create the record and return the ID
-      // The queue worker will call pipedriveSyncService.importAllPersons() etc.
-
-      console.log(`[BULK_IMPORT] Started Pipedrive import ${bulkImport.id}: ${type}`);
-
-      return bulkImport.id;
-    } catch (error) {
-      console.error("[BULK_IMPORT] Error starting Pipedrive import:", error);
-      throw error;
-    }
-  }
-
   /**
    * Start bulk import from QuickBooks
    */
@@ -162,7 +115,7 @@ export class BulkImportService {
    * Get all bulk imports with optional filters
    */
   async getAllImports(filters?: {
-    source?: "PIPEDRIVE" | "QUICKBOOKS";
+    source?: "CLINT" | "QUICKBOOKS";
     status?: ImportStatus;
     startedBy?: string;
     limit?: number;

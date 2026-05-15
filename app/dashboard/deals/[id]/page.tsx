@@ -120,7 +120,7 @@ export default async function DealDetailPage({
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600">Pipedrive ID</p>
+                <p className="text-sm text-gray-600">Clint ID</p>
                 <p className="mt-1">{deal.clint_deal_id}</p>
               </div>
               <div>
@@ -250,4 +250,3 @@ export default async function DealDetailPage({
     </div>
   );
 }
-

@@ -90,7 +90,6 @@ const testCustomers = [
     country: "USA",
     clint_contact_id: 1001,
     quickbooks_id: "QB-001",
-    stripe_id: "cus_alpha123",
   },
   {
     email: "empresa.beta@example.com",
@@ -104,7 +103,6 @@ const testCustomers = [
     country: "USA",
     clint_contact_id: 1002,
     quickbooks_id: "QB-002",
-    stripe_id: "cus_beta456",
   },
   {
     email: "julia.rodrigues@example.com",
@@ -304,7 +302,6 @@ async function seed() {
         dueDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 dias atrás
         status: "PAID" as InvoiceStatus,
         quickbooks_invoice_id: "QB-INV-001",
-        stripe_invoice_id: "in_stripe_001",
         deal: { connect: { id: deals[0].id } },
         customer: { connect: { id: deals[0].customerId } },
       },
@@ -477,7 +474,7 @@ async function seed() {
     
     const logs = [
       {
-        service: "PIPEDRIVE",
+        service: "CLINT",
         action: "WEBHOOK_RECEIVED",
         status: "SUCCESS",
         payload: { deal_id: 2001, event: "deal.created" },
@@ -495,13 +492,7 @@ async function seed() {
         payload: { lead_id: leads[2].id, score: 85 },
       },
       {
-        service: "STRIPE",
-        action: "PAYMENT_PROCESSED",
-        status: "SUCCESS",
-        payload: { invoice_id: "in_stripe_001", amount: 15000 },
-      },
-      {
-        service: "PIPEDRIVE",
+        service: "CLINT",
         action: "SYNC_ERROR",
         status: "ERROR",
         error: "Connection timeout",

@@ -19,7 +19,7 @@ const ROLE_FEATURES: Record<string, string> = {
 
 **Negocios** (/dashboard/deals): Pipeline de vendas (Abertos, Ganhos, Perdidos).
 
-**Integracoes** (/dashboard/integrations/hub): Conectar QuickBooks, Pipedrive, DocuSign.
+**Integracoes** (/dashboard/integrations/hub): Conectar QuickBooks, Clint CRM, DocuSign.
 
 **Configuracoes** (/dashboard/settings/integrations): Gerenciar conexoes OAuth, webhooks, credenciais.
 

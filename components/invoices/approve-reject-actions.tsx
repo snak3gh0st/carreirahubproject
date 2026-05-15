@@ -44,7 +44,7 @@ export function ApproveRejectActions({
         throw new Error(data.error || "Failed to approve invoice");
       }
 
-      alert("Invoice approved successfully! It will be synced to QuickBooks and Pipedrive.");
+      alert("Invoice approved successfully! It will be synced to QuickBooks and Clint.");
 
       if (onSuccess) {
         onSuccess();

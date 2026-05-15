@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getEffectiveSyncTimestamps } from "@/lib/integrations/sync-health";
 
@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  *
  * Obtém o status geral do sistema e configurações
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const [config, effectiveSyncs] = await Promise.all([
       prisma.systemConfig.findUnique({
@@ -18,32 +18,28 @@ export async function GET(request: NextRequest) {
       getEffectiveSyncTimestamps(),
     ]);
 
-    const pipedriveApiToken = process.env.PIPEDRIVE_API_TOKEN;
-    const pipedriveCompanyDomain = process.env.PIPEDRIVE_COMPANY_DOMAIN;
-
     const quickbooksAuthStatus = {
       isAuthenticated: config?.quickbooks_is_authenticated || false,
       companyId: config?.quickbooks_company_id || null,
       tokenExpiresAt: config?.quickbooks_token_expires_at?.toISOString() || null,
     };
 
-    const pipedriveStatus = {
-      isConfigured: !!pipedriveApiToken && !!pipedriveCompanyDomain,
-      companyDomain: pipedriveCompanyDomain || null,
-      tokenStatus: pipedriveApiToken ? 'unchecked' : 'invalid',
+    const clintStatus = {
+      isConfigured: !!process.env.CLINT_API_KEY,
+      tokenStatus: process.env.CLINT_API_KEY ? "configured" : "missing",
     };
 
     return NextResponse.json({
       quickbooks: quickbooksAuthStatus,
-      // pipedrive removed
+      clint: clintStatus,
       secrets: {
         quickbooks: !!config?.quickbooks_webhook_secret,
-        // pipedrive removed
+        clint: !!process.env.CLINT_WEBHOOK_SECRET,
         cron: !!config?.cron_secret,
       },
       lastSync: {
         quickbooks: effectiveSyncs.quickbooksLastSync?.toISOString() || null,
-        // pipedrive removed
+        clint: effectiveSyncs.clintLastSync?.toISOString() || null,
       },
       timestamp: new Date().toISOString(),
     });

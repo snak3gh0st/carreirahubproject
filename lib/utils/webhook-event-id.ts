@@ -4,7 +4,6 @@ import { createHash } from "crypto";
  * Extract event ID from webhook payloads for deduplication
  *
  * Each webhook provider has different event ID formats:
- * - Pipedrive: V2 webhooks use meta.v or data.id, V1 webhooks use current.id
  * - QuickBooks: Combination of realmId + entity ID for uniqueness
  * - DocuSign: eventId or envelopeId as fallback
  * - Twilio: MessageSid for WhatsApp messages
@@ -12,7 +11,7 @@ import { createHash } from "crypto";
  *
  * If no event ID is available, generates a deterministic SHA-256 hash of the payload.
  *
- * @param service Service name (e.g., "pipedrive", "quickbooks", "docusign")
+ * @param service Service name (e.g., "quickbooks", "docusign")
  * @param payload Raw webhook payload
  * @returns Event ID string or null if extraction fails
  */
@@ -22,18 +21,6 @@ export function extractEventId(service: string, payload: any): string | null {
   }
 
   switch (service.toLowerCase()) {
-    case "pipedrive":
-      // V2 webhooks: body.meta.v or body.data.id
-      // V1 webhooks: body.current.id
-      // Example V2: { meta: { v: "1234567890" }, data: { id: 123 } }
-      // Example V1: { current: { id: 123 } }
-      return (
-        payload?.meta?.v?.toString() ||
-        payload?.data?.id?.toString() ||
-        payload?.current?.id?.toString() ||
-        null
-      );
-
     case "quickbooks":
       // NEW: Transformed payload from webhook route (Jan 2026 refactor)
       // Structure: { realmId, entity: { id, name, operation } }

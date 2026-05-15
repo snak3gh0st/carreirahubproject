@@ -16,7 +16,7 @@ import { telegramService } from "@/lib/services/telegram.service";
  *   "status": "healthy" | "degraded" | "unhealthy",
  *   "timestamp": "2026-01-10T12:00:00Z",
  *   "services": {
- *     "pipedrive": { "status": "healthy", "successRate": 0.98, "recentErrors": 2, "totalEvents": 100 },
+ *     "clint": { "status": "healthy", "successRate": 0.98, "recentErrors": 2, "totalEvents": 100 },
  *     ...
  *   },
  *   "deadLetterCount": 12,

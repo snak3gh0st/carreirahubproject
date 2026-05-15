@@ -8,7 +8,7 @@ export const getLeadsBySource = defineAiTool({
   description: 'Agrupa leads por fonte de origem dentro de um período. Use quando o usuário perguntar sobre canais de aquisição, desempenho de campanhas ou ROI por canal.',
   allowedRoles: [UserRole.ADMIN, UserRole.COMMERCIAL, UserRole.HEAD_COMERCIAL],
   inputSchema: z.object({
-    source: z.enum(['WEBSITE', 'WHATSAPP', 'REFERRAL', 'SOCIAL_MEDIA', 'OTHER', 'PIPEDRIVE']).optional(),
+    source: z.enum(['WEBSITE', 'WHATSAPP', 'REFERRAL', 'SOCIAL_MEDIA', 'OTHER', 'CLINT']).optional(),
     days: z.number().int().min(1).max(365).default(30),
     limit: z.number().int().min(1).max(100).default(50),
   }),

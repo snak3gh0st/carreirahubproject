@@ -83,6 +83,8 @@ export default async function IntegrationHubPage() {
     },
     {} as Record<string, number>
   );
+  const clintErrors24h =
+    (errorsByService.CLINT || 0) + (errorsByService["clint-sync"] || 0);
 
   // QuickBooks status
   const qbConnected = systemConfig?.quickbooks_is_authenticated || false;
@@ -210,7 +212,7 @@ export default async function IntegrationHubPage() {
               <span className="text-gray-500">Segredo do Webhook:</span>
               <span className="font-medium">
                 {systemConfig?.cron_secret ||
-                process.env.PIPEDRIVE_WEBHOOK_SECRET
+                process.env.CLINT_WEBHOOK_SECRET
                   ? "Configurado"
                   : "Ausente"}
               </span>
@@ -225,10 +227,10 @@ export default async function IntegrationHubPage() {
                     : "Nunca"}
               </span>
             </div>
-            {errorsByService.PIPEDRIVE && (
+            {clintErrors24h > 0 && (
               <div className="flex justify-between text-red-600">
                 <span>Erros (24h):</span>
-                <span className="font-medium">{errorsByService.PIPEDRIVE}</span>
+                <span className="font-medium">{clintErrors24h}</span>
               </div>
             )}
           </div>
@@ -337,7 +339,7 @@ export default async function IntegrationHubPage() {
                         className={`px-2 py-0.5 rounded text-xs font-medium ${
                           log.service === "QUICKBOOKS"
                             ? "bg-green-100 text-green-800"
-                            : log.service === "PIPEDRIVE"
+                            : log.service === "CLINT" || log.service === "clint-sync"
                               ? "bg-blue-100 text-blue-800"
                               : "bg-gray-100 text-gray-800"
                         }`}

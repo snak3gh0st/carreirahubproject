@@ -18,11 +18,11 @@ export interface HealthCheckResponse {
   status: "healthy" | "degraded" | "unhealthy";
   timestamp: string;
   services: {
-    pipedrive: ServiceHealthStatus;
+    clint: ServiceHealthStatus;
     quickbooks: ServiceHealthStatus;
     docusign: ServiceHealthStatus;
-    twilio: ServiceHealthStatus;
-    retell: ServiceHealthStatus;
+    digisac: ServiceHealthStatus;
+    telegram: ServiceHealthStatus;
   };
   deadLetterCount: number;
   pendingRetries: number;
@@ -80,11 +80,11 @@ export async function calculateWebhookHealth(): Promise<HealthCheckResponse> {
 
   // Define all services we monitor
   const services = [
-    "pipedrive",
+    "clint",
     "quickbooks",
     "docusign",
-    "twilio",
-    "retell",
+    "digisac",
+    "telegram",
   ];
 
   // Query webhook events from last 24 hours grouped by service and status
@@ -160,11 +160,11 @@ export async function calculateWebhookHealth(): Promise<HealthCheckResponse> {
     status: calculateOverallStatus(serviceHealth),
     timestamp: now.toISOString(),
     services: {
-      pipedrive: serviceHealth.pipedrive,
+      clint: serviceHealth.clint,
       quickbooks: serviceHealth.quickbooks,
       docusign: serviceHealth.docusign,
-      twilio: serviceHealth.twilio,
-      retell: serviceHealth.retell,
+      digisac: serviceHealth.digisac,
+      telegram: serviceHealth.telegram,
     },
     deadLetterCount,
     pendingRetries,

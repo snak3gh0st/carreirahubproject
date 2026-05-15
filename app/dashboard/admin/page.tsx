@@ -25,6 +25,7 @@ import {
   type HealthLevel,
   getAdminSystemHealth,
 } from "@/lib/admin/system-health";
+import { AdminHealthActions } from "@/components/admin/admin-health-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -220,6 +221,8 @@ export default async function AdminSystemHealthPage() {
             level={health.overall.invoiceWarningCount > 0 ? "warning" : "healthy"}
           />
         </div>
+
+        <AdminHealthActions />
 
         <section className="mb-8">
           <SectionHeader

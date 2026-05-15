@@ -311,7 +311,7 @@ export async function POST(request: NextRequest) {
           console.log(`[DOCUSIGN_WEBHOOK] Contract signed for ${contract.invoices.length} invoice(s) — QB invoice email already sent`);
         }
 
-        // NEW: Mark Pipedrive deal as WON and notify commercial user
+        // Mark Hub/Clint deal as WON and notify commercial user.
         if (contract.dealId) {
           try {
             const deal = await prisma.deal.findUnique({
@@ -350,12 +350,12 @@ export async function POST(request: NextRequest) {
           } catch (error) {
             // Log but don't fail webhook processing
             await integrationLogger.logError(
-              "PIPEDRIVE",
+              "CLINT",
               "DEAL_WON_SYNC_FAILED",
               error instanceof Error ? error : new Error(String(error)),
               { contractId: contract.id }
             );
-            console.error("[DOCUSIGN_WEBHOOK] Pipedrive sync failed (non-blocking):", error);
+            console.error("[DOCUSIGN_WEBHOOK] Clint deal sync failed (non-blocking):", error);
           }
         }
 
