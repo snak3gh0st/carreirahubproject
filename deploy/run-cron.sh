@@ -41,7 +41,7 @@ CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-60}"
 
 case "$ROUTE" in
   clint-sync)
-    CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-900}"
+    CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-1800}"
     ;;
   quickbooks-sync|process-queue|evaluate-alerts)
     CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-300}"
