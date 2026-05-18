@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getHubAuth } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { documentStorageService } from "@/lib/services/document-storage.service";
 
 export const dynamic = "force-dynamic";
 
@@ -18,25 +18,6 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
-
-// ---------------------------------------------------------------------------
-// S3 Client (lazy singleton)
-// ---------------------------------------------------------------------------
-
-let _s3: S3Client | null = null;
-
-function getS3Client(): S3Client {
-  if (!_s3) {
-    _s3 = new S3Client({
-      region: process.env.AWS_REGION ?? "us-east-1",
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      },
-    });
-  }
-  return _s3;
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -86,6 +67,13 @@ export async function POST(
     const auth = await getHubAuth(request);
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!documentStorageService.isConfigured()) {
+      return NextResponse.json(
+        { error: "Document storage is not configured" },
+        { status: 503 }
+      );
     }
 
     const { id } = await params;
@@ -138,26 +126,25 @@ export async function POST(
     // Sanitize filename
     const sanitizedFilename = sanitizeFilename(file.name);
 
-    // Build S3 key
-    const s3Key = `forms/${auth.customerId}/${id}/${fieldId}/${sanitizedFilename}`;
+    // Build storage key
+    const storageKey = `forms/${auth.customerId}/${id}/${fieldId}/${sanitizedFilename}`;
 
     // Read file buffer
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload to S3
-    const s3 = getS3Client();
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME!,
-        Key: s3Key,
-        Body: buffer,
-        ContentType: file.type,
-      })
-    );
+    await documentStorageService.uploadObject(storageKey, buffer, {
+      contentType: file.type,
+      metadata: {
+        customerId: auth.customerId,
+        assignmentId: id,
+        fieldId,
+        filename: sanitizedFilename,
+      },
+    });
 
     return NextResponse.json({
-      key: s3Key,
+      key: storageKey,
       filename: sanitizedFilename,
     });
   } catch (error) {

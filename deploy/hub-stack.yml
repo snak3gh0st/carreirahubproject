@@ -18,6 +18,10 @@ services:
       - network_public
     env_file:
       - /opt/carreirahub/.env
+    volumes:
+      - type: bind
+        source: /opt/carreirahub/storage
+        target: /app/storage
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 30s
