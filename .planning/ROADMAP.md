@@ -161,7 +161,7 @@ Plans:
 
 ---
 
-### v1.2 Ops Hub — Student Journey Management (In Progress)
+### v1.2 Ops Hub — Student Journey Management ✅ COMPLETE
 
 **Milestone Goal:** Give the Carreira USA support team (Fraenze, Dária, Rafael) a single operational workspace to track every student's journey phase, see what needs action today, log sessions, and manage student data — replacing ClickUp as the team's operational hub.
 
@@ -227,7 +227,7 @@ Plans:
 Plans:
 - [x] 13-01-PLAN.md — Question bank types, infrastructure (randomizer + scoring), schema migration, A1/A2 questions
 - [x] 13-02-PLAN.md — Question bank content: B1, B2, C1, C2 questions (88+ questions completing the 130+ bank)
-- [ ] 13-03-PLAN.md — API route rewrites, test UI integration, admin display updates, i18n
+- [x] 13-03-PLAN.md — API route rewrites, test UI integration, admin display updates, i18n (completed 2026-03-25)
 
 ### Phase 14: Data Foundation
 **Goal**: The ops team can enroll any existing Customer into a mentorship program and every subsequent student journey event — phase transitions, sessions — is reliably persisted with a full audit trail
