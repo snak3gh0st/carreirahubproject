@@ -32,7 +32,7 @@ curl -s http://localhost:3000/api/health | jq '.checks.digisac'
 
 ### Produção antiga Vercel (desativado)
 
-Não cadastrar novos webhooks na URL antiga `carreirausa.sigmaintel.io`. Produção canônica roda no Swarm em `https://app.carreirausa.com`.
+Não cadastrar novos webhooks no domínio antigo da Vercel. Produção canônica roda no Swarm em `https://app.carreirausa.com`.
 
 ### Swarm (`ssh carreirausa`)
 ```bash

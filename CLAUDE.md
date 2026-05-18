@@ -13,7 +13,7 @@ Carreira AI Hub is a proprietary middleware system that replaces expensive No-Co
 This codebase serves **two completely independent portals**. They share the same database and services but have separate auth, routes, and users. **Never mix them.**
 
 ### Portal 1: Admin Dashboard (internal team)
-- **Domain**: `carreirausa.sigmaintel.io`
+- **Domain**: `app.carreirausa.com`
 - **Routes**: `/dashboard/*`, `/api/dashboard/*`
 - **Auth**: NextAuth (JWT) with role-based access (ADMIN, SALES, SDR, FINANCE, etc.)
 - **Users**: `User` model (internal operators)
@@ -64,7 +64,7 @@ app/
 - **Language**: TypeScript (strict mode)
 - **Database**: PostgreSQL (Neon) with Prisma ORM
 - **Queue System**: BullMQ with Redis (for async processing and retries)
-- **Deployment**: Vercel Serverless Functions
+- **Deployment**: Docker Swarm on `carreirausa`, routed by Traefik at `https://app.carreirausa.com`
 - **Integrations**: Pipedrive (CRM), QuickBooks (Finance), Stripe (Payments), DocuSign (Contracts), Twilio (WhatsApp), OpenAI (AI)
 
 ## Essential Commands
@@ -150,7 +150,7 @@ Available queues:
 - `contractGeneration`: Generate contracts
 - `quickbooksSync`: Sync with QuickBooks
 
-**Important**: In Vercel, workers don't run. Use Vercel Cron Jobs (vercel.json) or trigger queue processing via API routes.
+**Important**: Queue workers require a dedicated worker process/service. Current production cron execution is driven through the Swarm host scripts and `/api/cron/*` routes.
 
 ### 4. Webhook Workflow Pattern
 
@@ -356,9 +356,9 @@ This script tests OAuth, customer sync, and invoice creation.
 
 - **Path Alias**: Use `@/` for imports (maps to project root in tsconfig.json)
 - **Prisma Client**: Always generate after schema changes: `npm run db:generate`
-- **Vercel Deployment**: `npm run build` generates Prisma Client automatically via build script
+- **Production Build**: `npm run build` generates Prisma Client automatically via build script
 - **Database Push vs Migrate**: Use `db:push` in development for quick schema iteration. Use `db:migrate` in production for version-controlled migrations.
-- **Queue Workers**: Don't run in Vercel. Use cron jobs or trigger processing via API routes.
+- **Queue Workers**: Run only when a worker process/service is deployed. Cron-backed flows use Swarm host scripts or API routes.
 - **Error Handling**: Catch all errors and log to IntegrationLog for external API calls. Return graceful error responses to users.
 
 ## File Naming Conventions
@@ -380,6 +380,6 @@ This script tests OAuth, customer sync, and invoice creation.
 
 - Password authentication not fully implemented (auth bypasses password check in dev)
 - Some queue workers have placeholder implementations (search for "TODO" in queue.ts)
-- BullMQ workers don't run on Vercel (use cron jobs instead)
+- BullMQ workers need an explicit worker deployment; cron-backed flows use Swarm host scripts or API routes
 - QuickBooks OAuth tokens stored in DB need manual refresh UI for users
 - Dashboard UI is minimal (primarily API-focused system)

@@ -46,7 +46,7 @@ This guide will walk you through setting up DocuSign JWT authentication for the 
 3. **Configure App Settings**
    - **Redirect URIs**: Add (if needed for future OAuth):
      ```
-     https://carreirausa.sigmaintel.io/api/docusign/callback
+     https://app.carreirausa.com/api/docusign/callback
      ```
    - Click "Save"
 

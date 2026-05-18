@@ -78,7 +78,7 @@ try {
 }
 
 console.log("\n🔗 Consent URL:");
-console.log(`   ${oauthBasePath}/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${integrationKey}&redirect_uri=https://carreirausa.sigmaintel.io`);
+console.log(`   ${oauthBasePath}/oauth/auth?response_type=code&scope=signature%20impersonation&client_id=${integrationKey}&redirect_uri=https://app.carreirausa.com`);
 
 console.log("\n💡 Next Steps:");
 console.log("   1. If private key is invalid, regenerate RSA keypair in DocuSign");

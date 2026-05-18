@@ -29,7 +29,7 @@ Todos os usuários usam o domínio **@carreirausa.com**
 
 ## 🚀 Como Fazer Login
 
-1. **Acesse:** http://localhost:3000 ou https://carreirausa.sigmaintel.io
+1. **Acesse:** http://localhost:3000 ou https://app.carreirausa.com
 2. Será redirecionado automaticamente para `/auth/signin`
 3. Digite o email e senha
 4. Após login → Dashboard com saudação personalizada
@@ -324,7 +324,7 @@ Antes de fazer login:
 - [ ] Usuário tem senha (🔒 na listagem)
 - [ ] Senha está correta (`npm run user:test-login`)
 - [ ] Servidor está rodando (`npm run dev`)
-- [ ] URL correta (http://localhost:3000 ou https://carreirausa.sigmaintel.io)
+- [ ] URL correta (http://localhost:3000 ou https://app.carreirausa.com)
 
 ---
 
@@ -369,4 +369,4 @@ Commercial: comercial@carreirausa.com / comercial123
 
 **Última Atualização:** 19/01/2026
 **Sistema:** Carreira AI Hub v0.1.0
-**Ambiente:** Produção (carreirausa.sigmaintel.io)
+**Ambiente:** Produção (app.carreirausa.com)

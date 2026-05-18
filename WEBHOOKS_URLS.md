@@ -1,10 +1,10 @@
 # 🔗 URLs dos Webhooks - Referência Rápida
 
-## 🚀 Produção (Vercel)
+## 🚀 Produção (Swarm)
 
 ### Webhook de Leads
 ```
-https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead
+https://app.carreirausa.com/api/webhooks/pipedrive/lead
 ```
 
 **Configuração no Pipedrive (Webhooks v2):**
@@ -16,7 +16,7 @@ https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead
 
 ### Webhook de Deals
 ```
-https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal
+https://app.carreirausa.com/api/webhooks/pipedrive/deal
 ```
 
 **Configuração no Pipedrive (Webhooks v2):**
@@ -42,10 +42,9 @@ Após configurar, teste criando:
 - Uma nova **Person** no Pipedrive (testa webhook de leads)
 - Um **Deal** e mude o status para **Won** (testa webhook de deals)
 
-Verifique os logs no Vercel Dashboard → Functions → Logs
+Verifique os logs no host Swarm (`ssh carreirausa`) e os registros em `IntegrationLog`.
 
 ---
 
-**Domínio:** `carreirausa.sigmaintel.io`  
-**Plataforma:** Vercel
-
+**Domínio:** `app.carreirausa.com`  
+**Plataforma:** Docker Swarm (`carreirausa`)

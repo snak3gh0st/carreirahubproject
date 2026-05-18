@@ -179,8 +179,7 @@ Append ao bloco Digisac existente, depois da linha `DIGISAC_DEFAULT_COUNTRY_CODE
 # Webhook URL pra cadastrar no painel Digisac (Settings → Webhooks):
 #   Local (ngrok):  https://<id>.ngrok.app/api/webhooks/digisac
 #   Vercel preview: https://<branch>-<project>.vercel.app/api/webhooks/digisac
-#   Vercel prod:    https://carreirausa.sigmaintel.io/api/webhooks/digisac
-#   Swarm prod:     https://app.carreirausa.com/api/webhooks/digisac
+#   Produção:       https://app.carreirausa.com/api/webhooks/digisac
 # Header de autenticação esperado pelo webhook — use UM destes (recomendado: Authorization Bearer):
 #   Authorization: Bearer <DIGISAC_WEBHOOK_SECRET>   ← recomendado
 #   x-digisac-secret: <DIGISAC_WEBHOOK_SECRET>
@@ -214,7 +213,7 @@ Novo arquivo. Seções:
    - `vercel env add DIGISAC_API_BASE_URL` (preview + production)
    - Repetir pra `DIGISAC_API_TOKEN`, `DIGISAC_SERVICE_ID`, `DIGISAC_WEBHOOK_SECRET`
    - Trigger redeploy: `vercel --prod` ou push do merge commit (env vars não propagam pra deploys existentes)
-   - `curl https://carreirausa.sigmaintel.io/api/health | jq .checks.digisac` → `ok: true`
+   - `curl https://app.carreirausa.com/api/health | jq .checks.digisac` → `ok: true`
 4. **Swarm:**
    - `ssh carreirausa`
    - Editar `.env` no diretório da stack

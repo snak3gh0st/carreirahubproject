@@ -212,7 +212,7 @@ Subject: Welcome to Carreira U.S.A. — Your Account is Ready
 
 Your client portal is ready. Access it to view your invoices and make payments.
 
-Portal: https://carreirausa.sigmaintel.io/hub/login
+Portal: https://app.carreirausa.com/hub/login
 Email: {customer_email}
 Temporary password: {temp_password}
 

@@ -51,7 +51,7 @@ async function main() {
     preheader: "Validação do novo sistema de emails com paleta da marca v1.1",
     bodyHtml,
     ctaLabel: "Visitar Dashboard",
-    ctaUrl: "https://carreirausa.sigmaintel.io/dashboard",
+    ctaUrl: "https://app.carreirausa.com/dashboard",
     footerNote: "Email de teste — pode ignorar.",
   });
 

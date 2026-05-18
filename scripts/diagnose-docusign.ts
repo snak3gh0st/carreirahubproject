@@ -138,7 +138,7 @@ async function main() {
       console.log('  ✗ NO Connect configurations found!');
       console.log('  → This explains why no webhooks are received.');
       console.log('  → DocuSign Connect must be configured to send events to:');
-      console.log('    https://carreirausa.sigmaintel.io/api/webhooks/docusign');
+      console.log('    https://app.carreirausa.com/api/webhooks/docusign');
     } else {
       for (const config of configs) {
         console.log(`  Config: ${config.name || 'unnamed'}`);

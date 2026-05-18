@@ -18,11 +18,11 @@ O sistema possui 2 endpoints de webhook para o Pipedrive:
 
 ## 🌐 URLs dos Webhooks
 
-### 🚀 Produção (Vercel) - **USE ESTAS URLs**
+### 🚀 Produção (app.carreirausa.com) - **USE ESTAS URLs**
 
 ```
-https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead
-https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal
+https://app.carreirausa.com/api/webhooks/pipedrive/lead
+https://app.carreirausa.com/api/webhooks/pipedrive/deal
 ```
 
 **✅ Estas são as URLs que você deve usar ao configurar os webhooks no Pipedrive!**
@@ -44,12 +44,12 @@ http://localhost:3000/api/webhooks/pipedrive/deal
 
 1. **Webhook de Leads:**
    ```
-   https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead
+   https://app.carreirausa.com/api/webhooks/pipedrive/lead
    ```
 
 2. **Webhook de Deals:**
    ```
-   https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal
+   https://app.carreirausa.com/api/webhooks/pipedrive/deal
    ```
 
 **Eventos necessários:**
@@ -87,7 +87,7 @@ Para também receber atualizações de leads existentes, você pode criar um seg
 - **Nome do webhook:** `Carreira AI Hub - Novos Leads`
 - **URL do Ponto de Extremidade:** 
   ```
-  https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead
+  https://app.carreirausa.com/api/webhooks/pipedrive/lead
   ```
   
   **Para desenvolvimento local (usando ngrok):**
@@ -125,7 +125,7 @@ No mesmo local, clique em **Criar novo webhook** novamente
 - **Nome do webhook:** `Carreira AI Hub - Deals Ganhos`
 - **URL do Ponto de Extremidade:** 
   ```
-  https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal
+  https://app.carreirausa.com/api/webhooks/pipedrive/deal
   ```
   
   **Para desenvolvimento local (usando ngrok):**
@@ -180,10 +180,10 @@ No Pipedrive, ao criar o webhook, você pode configurar autenticação HTTP bás
 
 Os webhooks logam todas as ações em `IntegrationLog`. Você pode verificar:
 
-**Via Vercel Dashboard:**
-1. Acesse o [Vercel Dashboard](https://vercel.com)
-2. Selecione o projeto `carreira-ai-hub`
-3. Vá em **Functions** → **Logs** para ver os logs em tempo real
+**Via Swarm host:**
+1. Acesse `ssh carreirausa`
+2. Verifique os logs do serviço `carreirahub_hub`
+3. Cruze com os registros em `IntegrationLog`
 
 **Via Banco de Dados:**
 ```sql
@@ -328,7 +328,7 @@ https://abc123.ngrok.io/api/webhooks/pipedrive/deal
 
 - [ ] Webhook de Leads criado no Pipedrive
 - [ ] Webhook de Deals criado no Pipedrive
-- [ ] URLs configuradas corretamente (produção: `carreirausa.sigmaintel.io` ou ngrok para desenvolvimento)
+- [ ] URLs configuradas corretamente (produção: `app.carreirausa.com` ou ngrok para desenvolvimento)
 - [ ] Eventos configurados corretamente
 - [ ] `PIPEDRIVE_WEBHOOK_SECRET` configurado (opcional mas recomendado)
 - [ ] Teste de criação de Lead realizado
@@ -345,14 +345,14 @@ https://abc123.ngrok.io/api/webhooks/pipedrive/deal
 
 ### Webhook 1: Novos Leads
 ```
-https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead
+https://app.carreirausa.com/api/webhooks/pipedrive/lead
 ```
 - **Evento:** `added.person`
 - **Objeto:** `person`
 
 ### Webhook 2: Deals Ganhos
 ```
-https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal
+https://app.carreirausa.com/api/webhooks/pipedrive/deal
 ```
 - **Evento:** `updated.deal`
 - **Objeto:** `deal`
@@ -360,5 +360,4 @@ https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal
 ---
 
 **Última atualização:** Dezembro 2024  
-**Domínio de Produção:** `carreirausa.sigmaintel.io` (Vercel)
-
+**Domínio de Produção:** `app.carreirausa.com`

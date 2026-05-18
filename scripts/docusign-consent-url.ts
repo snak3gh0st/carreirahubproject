@@ -13,7 +13,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 const integrationKey = process.env.DOCUSIGN_INTEGRATION_KEY;
 const baseUrl = process.env.DOCUSIGN_BASE_URL || "https://na4.docusign.net";
-const redirectUri = process.env.DOCUSIGN_REDIRECT_URI || "https://carreirausa.sigmaintel.io";
+const redirectUri = process.env.DOCUSIGN_REDIRECT_URI || "https://app.carreirausa.com";
 
 if (!integrationKey) {
   console.error("❌ DOCUSIGN_INTEGRATION_KEY not found in environment variables");

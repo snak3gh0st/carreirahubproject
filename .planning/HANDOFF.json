@@ -1,11 +1,11 @@
 {
   "version": "1.0",
-  "timestamp": "2026-04-16T00:47:00Z",
+  "timestamp": "2026-05-18T16:06:00Z",
   "session_type": "ai-personas-feature-completion",
   "branch": "main",
   "phase": "ad-hoc",
   "phase_name": "AI Personas Feature & Bugfix",
-  "status": "completed-with-follow-up",
+  "status": "completed-production-env-verified",
   "work_completed": [
     {
       "task": "Merge feat/ai-personas branch to main",
@@ -30,35 +30,35 @@
     {
       "task": "Verify Vercel env vars are set",
       "status": "blocked-pending-human-action",
-      "details": "User must set in Vercel dashboard: AI_COPILOT_ENABLED=true, OPENAI_API_KEY, AI_MODEL_DEFAULT, NEXT_PUBLIC_AI_PERSONAS_ENABLED",
-      "blocking": true
+      "details": "Resolved for current production runtime on Swarm: /opt/carreirahub/.env has AI_COPILOT_ENABLED=true, AI_PERSONAS_ENABLED=true, NEXT_PUBLIC_AI_PERSONAS_ENABLED=true, AI_MODEL_DEFAULT=gpt-5.2-chat-latest, and OPENAI_API_KEY present",
+      "blocking": false
     },
     {
       "task": "Smoke test AI Personas feature",
       "status": "not-started",
-      "details": "Run checklist in docs/superpowers/specs/2026-04-15-ai-personas-smoke.md (4 personas × hubs, cache behavior, RBAC, output quality)"
+      "details": "Run authenticated checklist on https://app.carreirausa.com using docs/superpowers/specs/2026-04-15-ai-personas-smoke.md (4 personas × hubs, cache behavior, RBAC, output quality)"
     }
   ],
   "blockers": [
     {
-      "description": "AI chat returns 503 'AI copilot desativado' on production",
-      "type": "human_action",
-      "root_cause": "AI_COPILOT_ENABLED environment variable not configured in Vercel",
-      "solution": "Set environment variables in Vercel dashboard (Settings → Environment Variables)",
-      "workaround": "Works in local dev with .env.local"
+      "description": "AI chat previously returned 503 'AI copilot desativado' on production",
+      "type": "resolved_runtime_config",
+      "root_cause": "Production env was stale; current canonical runtime is Swarm at app.carreirausa.com, not Vercel",
+      "solution": "Set AI_COPILOT_ENABLED=true and AI_PERSONAS_ENABLED=true in /opt/carreirahub/.env and restarted carreirahub_hub",
+      "workaround": "No workaround needed; unauthenticated smoke now redirects to /auth/signin instead of 503"
     }
   ],
   "human_actions_pending": [
     {
-      "action": "Set environment variables in Vercel dashboard",
-      "required_vars": ["AI_COPILOT_ENABLED=true", "OPENAI_API_KEY", "AI_MODEL_DEFAULT=gpt-5.2-chat-latest", "NEXT_PUBLIC_AI_PERSONAS_ENABLED=true"],
-      "context": "Production deployment requires explicit env var configuration; .env.local only works locally",
-      "blocking": true,
-      "priority": "critical"
+      "action": "Run authenticated production smoke test",
+      "required_vars": ["AI_COPILOT_ENABLED=true", "AI_PERSONAS_ENABLED=true", "NEXT_PUBLIC_AI_PERSONAS_ENABLED=true", "AI_MODEL_DEFAULT=gpt-5.2-chat-latest", "OPENAI_API_KEY"],
+      "context": "Runtime env is configured on Swarm at /opt/carreirahub/.env; verify persona behavior with a logged-in internal user on https://app.carreirausa.com",
+      "blocking": false,
+      "priority": "medium"
     },
     {
-      "action": "Trigger Vercel redeploy or await automatic deploy",
-      "context": "After setting env vars, changes need to be deployed",
+      "action": "Do not use the legacy Vercel URL for validation",
+      "context": "Canonical production URL is https://app.carreirausa.com on the carreirausa Swarm host",
       "blocking": false,
       "priority": "high"
     },
@@ -98,6 +98,6 @@
     "last_commit": "bba364f - style(ai): reduce output spacing and font size for compact display",
     "all_pushed": true
   },
-  "context_notes": "AI Personas feature is code-complete and merged to main. Primary blocker is environment variable configuration on Vercel. Local dev works fine with .env.local. All 4 commits for feature have been applied (pre-merge fixes, sidebar nav, docusign optimization, styling). Code compiles successfully, unit tests pass (7/7 in personas.test.ts), Next.js build succeeds. Ready for production deployment once env vars are set. Smoke test checklist available for final validation.",
-  "next_action": "Set AI_COPILOT_ENABLED=true and other required env vars in Vercel dashboard, then redeploy to production. After deploy, run smoke test matrix to verify all personas work correctly."
+  "context_notes": "AI Personas feature is code-complete and merged to main. Current production runs on Swarm at https://app.carreirausa.com. /opt/carreirahub/.env has AI_COPILOT_ENABLED=true, AI_PERSONAS_ENABLED=true, NEXT_PUBLIC_AI_PERSONAS_ENABLED=true, AI_MODEL_DEFAULT=gpt-5.2-chat-latest, and OPENAI_API_KEY present. Service carreirahub_hub was restarted and converged. Health check passed. Unauthenticated AI route smoke returns 307 /auth/signin instead of 503.",
+  "next_action": "Run authenticated smoke test matrix on https://app.carreirausa.com to verify all 4 personas work, cache behavior, RBAC, and output quality."
 }

@@ -54,7 +54,7 @@ async function setAdminPassword() {
     console.log(`\n📋 Credenciais de Login:`);
     console.log(`   Email: ${email}`);
     console.log(`   Senha: ${password}`);
-    console.log(`\n🌐 Faça login em: https://carreirausa.sigmaintel.io/auth/signin`);
+    console.log(`\n🌐 Faça login em: https://app.carreirausa.com/auth/signin`);
     console.log(`\n⚠️  IMPORTANTE: Guarde esta senha em local seguro!`);
 
   } catch (error: any) {

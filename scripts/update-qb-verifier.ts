@@ -34,7 +34,7 @@ async function updateQuickBooksVerifierToken() {
     }
 
     console.log("\nWebhook endpoint ready at:");
-    console.log("https://carreirausa.sigmaintel.io/api/webhooks/quickbooks");
+    console.log("https://app.carreirausa.com/api/webhooks/quickbooks");
   } catch (error) {
     console.error("❌ Error updating verifier token:", error);
     throw error;

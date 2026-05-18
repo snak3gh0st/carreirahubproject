@@ -23,7 +23,7 @@
 - Digite: `Carreira AI Hub - Novos Leads`
 
 **2. URL do Ponto de Extremidade (required) ⓘ:**
-- Cole: `https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead`
+- Cole: `https://app.carreirausa.com/api/webhooks/pipedrive/lead`
 
 **3. Nome de usuário autent. HTTP:**
 - Deixe em branco (ou configure se usar autenticação HTTP)
@@ -53,7 +53,7 @@
 - Digite: `Carreira AI Hub - Deals Ganhos`
 
 **2. URL do Ponto de Extremidade (required) ⓘ:**
-- Cole: `https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal`
+- Cole: `https://app.carreirausa.com/api/webhooks/pipedrive/deal`
 
 **3. Nome de usuário autent. HTTP:**
 - Deixe em branco
@@ -94,7 +94,7 @@ Isso garante que você receba apenas os eventos relevantes para cada tipo de web
 - [ ] Objeto: `person`
 - [ ] Nível: `person`
 - [ ] Nome: `Carreira AI Hub - Novos Leads`
-- [ ] URL: `https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead`
+- [ ] URL: `https://app.carreirausa.com/api/webhooks/pipedrive/lead`
 - [ ] Autenticação: Deixar em branco
 
 ### Webhook 2 - Deals
@@ -102,7 +102,7 @@ Isso garante que você receba apenas os eventos relevantes para cada tipo de web
 - [ ] Objeto: `deal`
 - [ ] Nível: `deal`
 - [ ] Nome: `Carreira AI Hub - Deals Ganhos`
-- [ ] URL: `https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal`
+- [ ] URL: `https://app.carreirausa.com/api/webhooks/pipedrive/deal`
 - [ ] Autenticação: Deixar em branco
 
 ---

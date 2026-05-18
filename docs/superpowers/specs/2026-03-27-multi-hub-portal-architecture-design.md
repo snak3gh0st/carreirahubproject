@@ -30,7 +30,7 @@ Reorganize the Carreira AI Hub into 4 distinct portals with a unified entry page
 
 ## Component 1: Portal Selector Page
 
-**Route:** `carreirausa.sigmaintel.io/` (replaces current redirect to `/dashboard`)
+**Route:** `app.carreirausa.com/` (replaces current redirect to `/dashboard`)
 
 **Type:** Public page, no auth required.
 
@@ -141,10 +141,10 @@ middleware.ts                   — Update: add /ops/* to routeRoleMap + config.
 
 ## User Flows
 
-### Internal Team (entry at carreirausa.sigmaintel.io)
+### Internal Team (entry at app.carreirausa.com)
 
 ```
-carreirausa.sigmaintel.io/
+app.carreirausa.com/
   ├── [Hub Comercial] → /auth/signin → /dashboard (commercial sidebar)
   ├── [Hub Financeiro] → /auth/signin → /dashboard (financial sidebar)
   └── [Hub Operacional] → /ops/login → /ops (operational sidebar)

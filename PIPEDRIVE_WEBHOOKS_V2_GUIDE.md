@@ -40,13 +40,13 @@ Os **Webhooks v2** do Pipedrive trazem:
 **Configuração:**
 - **Ação do evento:** `create`
 - **Objeto do evento:** `person`
-- **URL:** `https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead`
+- **URL:** `https://app.carreirausa.com/api/webhooks/pipedrive/lead`
 - **Nome:** `Carreira AI Hub - Novos Leads`
 
 **Via API (POST /v1/webhooks):**
 ```json
 {
-  "subscription_url": "https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/lead",
+  "subscription_url": "https://app.carreirausa.com/api/webhooks/pipedrive/lead",
   "event_action": "create",
   "event_object": "person",
   "version": "2.0",
@@ -65,13 +65,13 @@ Os **Webhooks v2** do Pipedrive trazem:
 **Configuração:**
 - **Ação do evento:** `change`
 - **Objeto do evento:** `deal`
-- **URL:** `https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal`
+- **URL:** `https://app.carreirausa.com/api/webhooks/pipedrive/deal`
 - **Nome:** `Carreira AI Hub - Deals Ganhos`
 
 **Via API (POST /v1/webhooks):**
 ```json
 {
-  "subscription_url": "https://carreirausa.sigmaintel.io/api/webhooks/pipedrive/deal",
+  "subscription_url": "https://app.carreirausa.com/api/webhooks/pipedrive/deal",
   "event_action": "change",
   "event_object": "deal",
   "version": "2.0",
@@ -174,7 +174,7 @@ Se todas as tentativas falharem, o webhook será marcado como não entregue.
 
 ### 1. Teste de Lead
 1. Crie uma nova **Person** no Pipedrive
-2. Verifique os logs no Vercel Dashboard
+2. Verifique os logs no host Swarm e em `IntegrationLog`
 3. Verifique se um Lead foi criado no banco
 
 ### 2. Teste de Deal
@@ -185,8 +185,9 @@ Se todas as tentativas falharem, o webhook será marcado como não entregue.
 
 ### 3. Verificar Logs
 
-**Via Vercel:**
-- Dashboard → Projeto → Functions → Logs
+**Via Swarm host:**
+- `ssh carreirausa`
+- Verifique os logs do serviço `carreirahub_hub`
 
 **Via Banco de Dados:**
 ```sql
@@ -236,7 +237,7 @@ O código valida automaticamente o header `x-pipedrive-signature`.
 
 1. Verifique se a URL está correta e acessível
 2. Teste a URL manualmente (deve retornar 2XX ou 400, não 404)
-3. Verifique os logs no Vercel Dashboard
+3. Verifique os logs no host Swarm e em `IntegrationLog`
 4. Verifique o status do webhook no Pipedrive (Configurações → Webhooks)
 
 ### Erro 401 (Unauthorized)
@@ -267,8 +268,7 @@ O código valida automaticamente o header `x-pipedrive-signature`.
 
 **Última atualização:** Dezembro 2024  
 **Versão do Webhook:** 2.0  
-**Domínio:** `carreirausa.sigmaintel.io`
-
+**Domínio:** `app.carreirausa.com`
 
 
 

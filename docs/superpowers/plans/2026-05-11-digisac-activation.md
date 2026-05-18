@@ -351,8 +351,7 @@ DIGISAC_DEFAULT_COUNTRY_CODE="55"  # Usado quando o telefone do aluno nao tem DD
 # Webhook URL pra cadastrar no painel Digisac (Settings → Webhooks → Add):
 #   Local (ngrok):  https://<id>.ngrok.app/api/webhooks/digisac
 #   Vercel preview: https://<branch>-<project>.vercel.app/api/webhooks/digisac
-#   Vercel prod:    https://carreirausa.sigmaintel.io/api/webhooks/digisac
-#   Swarm prod:     https://app.carreirausa.com/api/webhooks/digisac
+#   Produção:       https://app.carreirausa.com/api/webhooks/digisac
 # Header de autenticação esperado pelo webhook — use UM destes:
 #   Authorization: Bearer <DIGISAC_WEBHOOK_SECRET>   ← recomendado
 #   x-digisac-secret: <DIGISAC_WEBHOOK_SECRET>
@@ -375,7 +374,7 @@ git commit -m "$(cat <<'EOF'
 docs(env): annotate Digisac webhook URLs and auth headers
 
 Adds inline comments listing the webhook URL per environment (local
-ngrok / Vercel preview / Vercel prod / Swarm prod) and the four
+ngrok / Vercel preview / produção) and the four
 auth header shapes accepted by app/api/webhooks/digisac/route.ts,
 flagging Authorization: Bearer as recommended.
 
@@ -449,7 +448,7 @@ vercel --prod
 
 Validar:
 ```bash
-curl -s https://carreirausa.sigmaintel.io/api/health | jq '.checks.digisac'
+curl -s https://app.carreirausa.com/api/health | jq '.checks.digisac'
 # esperado: { "ok": true, "detail": "service <id>" }
 ```
 
@@ -471,8 +470,7 @@ curl -s https://app.carreirausa.com/api/health | jq '.checks.digisac'
 1. Painel Digisac → **Settings** → **Webhooks** → **Add**
 2. URL:
    - Local (com ngrok): `https://<id>.ngrok.app/api/webhooks/digisac`
-   - Vercel prod: `https://carreirausa.sigmaintel.io/api/webhooks/digisac`
-   - Swarm prod: `https://app.carreirausa.com/api/webhooks/digisac`
+   - Produção: `https://app.carreirausa.com/api/webhooks/digisac`
 3. Eventos: subscrever pelo menos `message.received` (e `message.sent` se quiser auditoria de eco)
 4. Header de autenticação: adicionar `Authorization: Bearer <DIGISAC_WEBHOOK_SECRET>`
    - Aceita também: `x-digisac-secret`, `x-webhook-secret`, `x-api-key`

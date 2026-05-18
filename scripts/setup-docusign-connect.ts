@@ -2,7 +2,7 @@
  * Setup DocuSign Connect (Webhook) configuration via API.
  *
  * Creates a Connect configuration that sends envelope events to:
- *   https://carreirausa.sigmaintel.io/api/webhooks/docusign
+ *   https://app.carreirausa.com/api/webhooks/docusign
  *
  * Events: envelope-sent, envelope-delivered, envelope-completed,
  *         envelope-declined, envelope-voided
@@ -18,7 +18,7 @@ const ACCOUNT_ID = process.env.DOCUSIGN_ACCOUNT_ID || '';
 const BASE_URL = process.env.DOCUSIGN_BASE_URL || 'https://na4.docusign.net';
 const PRIVATE_KEY = (process.env.DOCUSIGN_PRIVATE_KEY || '').replace(/\\n/g, '\n');
 
-const WEBHOOK_URL = 'https://carreirausa.sigmaintel.io/api/webhooks/docusign';
+const WEBHOOK_URL = 'https://app.carreirausa.com/api/webhooks/docusign';
 
 async function getAccessToken(): Promise<string> {
   const now = Math.floor(Date.now() / 1000);

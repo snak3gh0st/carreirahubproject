@@ -437,7 +437,7 @@ const pending = await prisma.invoice.findMany({
 
 ### Acesso ao Sistema
 
-**URL de Produção**: https://carreirausa.sigmaintel.io
+**URL de Produção**: https://app.carreirausa.com
 
 **Credenciais de Admin**:
 - Email: admin@carreirausa.com
@@ -741,7 +741,7 @@ LIMIT 50;
 
 **Solução**:
 1. Verificar `DOCUSIGN_WEBHOOK_SECRET` em Vercel
-2. Verificar URL: `https://carreirausa.sigmaintel.io/api/webhooks/docusign`
+2. Verificar URL: `https://app.carreirausa.com/api/webhooks/docusign`
 3. Testar webhook via DocuSign Connect → Publish Test
 
 ### Contato para Suporte Técnico

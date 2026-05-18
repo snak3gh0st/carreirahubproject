@@ -42,7 +42,7 @@ Open `lib/services/email.service.ts`. After the closing brace of `sendWelcomeWit
     tempPassword: string;
   }): Promise<boolean> {
     const firstName = data.name.split(' ')[0];
-    const loginUrl = `${process.env.NEXTAUTH_URL || 'https://carreirausa.sigmaintel.io'}/auth/signin`;
+    const loginUrl = `${process.env.NEXTAUTH_URL || 'https://app.carreirausa.com'}/auth/signin`;
 
     const bodyHtml = `
       <p>Olá, ${esc(firstName)}!</p>

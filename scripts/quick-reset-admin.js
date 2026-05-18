@@ -58,7 +58,7 @@ const prisma = new PrismaClient();
       console.log('='.repeat(50));
       console.log('Email:', email);
       console.log('Senha:', password);
-      console.log('URL: https://carreirausa.sigmaintel.io/auth/signin');
+      console.log('URL: https://app.carreirausa.com/auth/signin');
       console.log('='.repeat(50));
     } else {
       console.log('\n❌ ERRO: Senha não validou corretamente!');

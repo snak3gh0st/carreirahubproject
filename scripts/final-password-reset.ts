@@ -69,9 +69,9 @@ async function resetPassword() {
       console.log("=".repeat(50));
       console.log("Email: admin@carreirausa.com");
       console.log("Senha:", newPassword);
-      console.log("URL: https://carreirausa.sigmaintel.io/auth/signin");
+      console.log("URL: https://app.carreirausa.com/auth/signin");
       console.log("=".repeat(50));
-      console.log("\n⚠️  Teste agora: https://carreirausa.sigmaintel.io/api/debug/test-auth");
+      console.log("\n⚠️  Teste agora: https://app.carreirausa.com/api/debug/test-auth");
     } else {
       console.log("\n❌ ERRO: Senha não validou corretamente!");
       process.exit(1);
