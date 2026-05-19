@@ -50,9 +50,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# prisma
-/prisma/migrations/*
-!/prisma/migrations/20260519120000_add_ops_hub_native_workflow/
-!/prisma/migrations/20260519120000_add_ops_hub_native_workflow/migration.sql
 .claude/worktrees/
 .claude/settings.json
