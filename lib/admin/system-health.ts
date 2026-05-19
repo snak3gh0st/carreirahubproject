@@ -1,6 +1,7 @@
 import { AutoChargeStatus, InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ACCESS_AUDIT_SERVICE } from "@/lib/admin/access-audit";
+import { summarizeInvoiceHealthSignals } from "@/lib/invoices/invoice-health";
 import { getEffectiveSyncTimestamps } from "@/lib/integrations/sync-health";
 import { getDigisacConfig } from "@/lib/services/digisac.service";
 import { queues } from "@/lib/utils/queue";
@@ -743,24 +744,40 @@ function asAuditMetadata(value: unknown) {
 }
 
 async function getAccessAuditRows(since24h: Date) {
-  const logs = await prisma.integrationLog.findMany({
-    where: {
-      service: ACCESS_AUDIT_SERVICE,
-      createdAt: { gte: since24h },
-    },
-    select: {
-      id: true,
-      action: true,
-      status: true,
-      error: true,
-      createdAt: true,
-      metadata: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 1000,
-  });
+  const baseWhere = {
+    service: ACCESS_AUDIT_SERVICE,
+    createdAt: { gte: since24h },
+  } as const;
 
-  const rows = logs.map((log) => {
+  const [aggregateLogs, recentLogs] = await Promise.all([
+    prisma.integrationLog.findMany({
+      where: baseWhere,
+      select: {
+        id: true,
+        action: true,
+        status: true,
+        error: true,
+        createdAt: true,
+        metadata: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.integrationLog.findMany({
+      where: baseWhere,
+      select: {
+        id: true,
+        action: true,
+        status: true,
+        error: true,
+        createdAt: true,
+        metadata: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 1000,
+    }),
+  ]);
+
+  const mapRow = (log: (typeof aggregateLogs)[number]) => {
       const metadata = asAuditMetadata(log.metadata);
       return {
         id: log.id,
@@ -783,14 +800,18 @@ async function getAccessAuditRows(since24h: Date) {
         userAgent: metadata.userAgent || null,
         routeType: metadata.routeType || null,
       };
-    });
+    };
 
-  const isRealActor = (row: (typeof rows)[number]) =>
+  const aggregateRows = aggregateLogs.map(mapRow);
+  const recentRows = recentLogs.map(mapRow);
+
+  const isRealActor = (row: (typeof aggregateRows)[number]) =>
     row.actorType !== "anonymous" &&
     Boolean(row.email || row.actorName || row.userId || row.clientUserId || row.customerId);
 
-  const authenticatedRows = rows.filter(isRealActor);
-  const anonymousRows = rows.filter((row) => !isRealActor(row));
+  const authenticatedRows = aggregateRows.filter(isRealActor);
+  const anonymousRows = aggregateRows.filter((row) => !isRealActor(row));
+  const recentAuthenticatedRows = recentRows.filter(isRealActor);
 
   const uniqueUsers = new Map<string, {
     key: string;
@@ -830,14 +851,14 @@ async function getAccessAuditRows(since24h: Date) {
   }
 
   const summary = {
-    total24h: rows.length,
+    total24h: aggregateRows.length,
     authenticatedEvents24h: authenticatedRows.length,
     anonymousEvents24h: anonymousRows.length,
     uniqueAuthenticatedUsers24h: uniqueUsers.size,
     loginSuccess24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_SUCCESS")).length,
     loginFailure24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_FAILED")).length,
     endpointAccess24h: authenticatedRows.filter((row) => row.action === "ENDPOINT_ACCESS").length,
-    endpointDenied24h: rows.filter((row) => row.action === "ENDPOINT_DENIED").length,
+    endpointDenied24h: aggregateRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
     anonymousDenied24h: anonymousRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
   };
 
@@ -846,7 +867,7 @@ async function getAccessAuditRows(since24h: Date) {
     users: [...uniqueUsers.values()]
       .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
       .slice(0, 40),
-    rows: authenticatedRows.slice(0, 80),
+    rows: recentAuthenticatedRows.slice(0, 80),
     anonymousRows: anonymousRows.slice(0, 40),
   };
 }
@@ -855,7 +876,6 @@ export async function getAdminSystemHealth() {
   const now = new Date();
   const since60m = new Date(now.getTime() - 60 * 60 * 1000);
   const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const invoiceSendWindowEnd = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const [
     infrastructure,
@@ -866,7 +886,7 @@ export async function getAdminSystemHealth() {
     systemConfig,
     circuitBreakers,
     queueSummary,
-    invoiceSignals,
+    invoiceHealthCandidates,
     wrongRealmIgnoredCount,
     accessAudit,
   ] = await Promise.all([
@@ -921,21 +941,27 @@ export async function getAdminSystemHealth() {
     }),
     getQueueSummary(),
     Promise.all([
-      prisma.invoice.count({
+      prisma.invoice.findMany({
         where: {
           status: { notIn: [InvoiceStatus.PAID, InvoiceStatus.VOID] },
           emailSentAt: null,
-          quickbooks_invoice_id: { not: null },
-          emailSendAttempts: { lt: 5 },
-          dueDate: { lte: invoiceSendWindowEnd },
+          OR: [
+            { quickbooks_invoice_id: { not: null } },
+            { status: InvoiceStatus.DRAFT },
+          ],
         },
-      }),
-      prisma.invoice.count({
-        where: {
-          status: InvoiceStatus.SENT,
-          emailSentAt: null,
-          quickbooks_invoice_id: { not: null },
-          dueDate: { gt: invoiceSendWindowEnd },
+        select: {
+          status: true,
+          dueDate: true,
+          emailSentAt: true,
+          emailSendAttempts: true,
+          quickbooks_invoice_id: true,
+          installments: true,
+          customer: {
+            select: {
+              email: true,
+            },
+          },
         },
       }),
       prisma.invoice.count({
@@ -997,8 +1023,28 @@ export async function getAdminSystemHealth() {
       breaker.state !== "CLOSED" &&
       monitoredCircuitNames.has(breaker.serviceName.toLowerCase())
   );
-  const [dueWindowEmailPendingCount, futureScheduledEmailPendingCount, overdueCandidateCount, staleAutoChargeCount] =
-    invoiceSignals;
+  const [invoiceHealthRows, overdueCandidateCount, staleAutoChargeCount] =
+    invoiceHealthCandidates;
+  const invoiceSignals = summarizeInvoiceHealthSignals(
+    invoiceHealthRows.map((row) => ({
+      status: row.status,
+      dueDate: row.dueDate,
+      emailSentAt: row.emailSentAt,
+      emailSendAttempts: row.emailSendAttempts,
+      quickbooks_invoice_id: row.quickbooks_invoice_id,
+      installments: row.installments,
+      customerEmail: row.customer.email,
+    })),
+    now
+  );
+  const {
+    sendWindowPendingCount,
+    publishWindowPendingCount,
+    qbCreatedAwaitingSendCount,
+    localFutureInstallmentCount,
+    legacyQbFutureUnsentCount,
+    stalePastDueUnsentCount,
+  } = invoiceSignals;
 
   const syncRows = [
     {
@@ -1030,7 +1076,8 @@ export async function getAdminSystemHealth() {
   const invoiceWarningCount =
     overdueCandidateCount +
     staleAutoChargeCount +
-    dueWindowEmailPendingCount;
+    sendWindowPendingCount +
+    stalePastDueUnsentCount;
 
   const overallLevel = deriveOverallHealthLevel({
     criticalInfraCount: countLevel(infrastructure, "critical"),
@@ -1083,8 +1130,12 @@ export async function getAdminSystemHealth() {
     queues: queueSummary,
     circuitBreakers,
     invoiceSignals: {
-      dueWindowEmailPendingCount,
-      futureScheduledEmailPendingCount,
+      sendWindowPendingCount,
+      publishWindowPendingCount,
+      qbCreatedAwaitingSendCount,
+      localFutureInstallmentCount,
+      legacyQbFutureUnsentCount,
+      stalePastDueUnsentCount,
       overdueCandidateCount,
       staleAutoChargeCount,
     },
