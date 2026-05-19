@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clearHubCookie } from "@/lib/hub-auth";
+import { buildHubRedirectUrl } from "@/lib/hub-links";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,14 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request) {
   try {
-    const url = new URL("/hub/login", request.url);
+    const url = buildHubRedirectUrl(
+      "/hub/login",
+      request.url,
+      request.headers,
+      process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.NEXTAUTH_URL ||
+        "https://app.carreirausa.com"
+    );
     const response = NextResponse.redirect(url);
     clearHubCookie(response);
     return response;
