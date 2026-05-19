@@ -3,6 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
+import {
+  canEditInvoiceStatus,
+  computeInvoiceAmountFromLineItems,
+  normalizeEditableInvoiceLineItems,
+} from "@/lib/invoices/editable-invoice";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +19,7 @@ const updateInvoiceSchema = z.object({
   lineItems: z.array(z.object({
     description: z.string(),
     amount: z.number().positive(),
+    serviceItemId: z.string().nullable().optional(),
   })).optional(),
   status: z.nativeEnum(InvoiceStatus).optional(),
   pdfUrl: z.string().url().optional(),
@@ -130,6 +136,13 @@ export async function PATCH(
       );
     }
 
+    if (!canEditInvoiceStatus(existingInvoice.status)) {
+      return NextResponse.json(
+        { error: `Cannot edit invoice in status ${existingInvoice.status}` },
+        { status: 400 }
+      );
+    }
+
     // Authorization: Check ownership for COMMERCIAL
     if (userRole === "COMMERCIAL") {
       if (existingInvoice.ownerId !== userId) {
@@ -142,13 +155,18 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateInvoiceSchema.parse(body);
+    const normalizedLineItems = normalizeEditableInvoiceLineItems(data.lineItems);
+    const computedAmount = computeInvoiceAmountFromLineItems(
+      normalizedLineItems,
+      data.amount
+    );
 
     // Determine if financial fields changed (triggers QB sync)
     const financialFieldsChanged = !!(
-      data.amount !== undefined ||
+      computedAmount !== undefined ||
       data.dueDate !== undefined ||
       data.description !== undefined ||
-      data.lineItems !== undefined
+      normalizedLineItems !== undefined
     );
 
     let qbSyncError: string | null = null;
@@ -174,8 +192,12 @@ export async function PATCH(
           qbUpdates.description = data.description;
         }
 
-        if (data.lineItems !== undefined) {
-          qbUpdates.lineItems = data.lineItems;
+        if (normalizedLineItems !== undefined) {
+          qbUpdates.lineItems = normalizedLineItems.map((item) => ({
+            description: item.description,
+            amount: item.amount,
+            ...(item.serviceItemId ? { accountRef: { value: item.serviceItemId } } : {}),
+          }));
         }
 
         // Call QuickBooks sparse update
@@ -196,7 +218,11 @@ export async function PATCH(
     const { description: _desc, lineItems: _items, ...localUpdates } = data;
     const invoice = await prisma.invoice.update({
       where: { id: params.id },
-      data: localUpdates,
+      data: {
+        ...localUpdates,
+        ...(computedAmount !== undefined ? { amount: computedAmount } : {}),
+        ...(normalizedLineItems !== undefined ? { lineItems: normalizedLineItems as any } : {}),
+      },
     });
 
     // Return response with QB sync status

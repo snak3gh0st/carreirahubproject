@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addMonths, parseLocalDate } from "@/lib/utils/date";
@@ -43,6 +43,14 @@ interface QuickBooksItem {
   unitPrice?: number | null;
 }
 
+interface InstallmentScheduleItem {
+  number: number;
+  amount: number;
+  dueDate: string;
+  description: string;
+  isEntry: boolean;
+  isSinglePayment: boolean;
+}
 
 interface InvoiceFormProps {
   customers: Customer[];
@@ -98,6 +106,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const [loadingItems, setLoadingItems] = useState(true);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [customScheduleDates, setCustomScheduleDates] = useState<string[]>([]);
   const searchParams = useSearchParams();
 
   // Check QuickBooks connectivity (catalog items are hardcoded; QB needed to create invoices)
@@ -194,7 +203,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     } else {
       setFilteredDeals(deals);
     }
-  }, [form.customerId, deals]);
+  }, [form.customerId, form.dealId, deals]);
 
   const handleChange = (field: string, value: string | number) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -303,96 +312,133 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     }
   };
 
+  const subtotal = items.reduce(
+    (sum, item) => sum + getNumericValue(item.unitPrice) * item.quantity,
+    0
+  );
+  const total = calculateTotal();
+
   const selectedCatalogProducts = items
     .map((item) => CARREIRA_CATALOG.find((product) => product.id === item.catalogProductId))
     .filter(Boolean) as CarreiraProduct[];
   const activePaymentPolicy = getPaymentPolicyForProducts(
     selectedCatalogProducts,
-    calculateTotal()
+    total
   );
   const activePaymentRule = activePaymentPolicy.paymentRule;
   const maxInstallmentsForCurrentEntry = getMaxInstallmentsForEntry(
     activePaymentPolicy,
     getNumericValue(form.entryAmount)
   );
-  const entry30Amount = Math.round(calculateTotal() * 0.3 * 100) / 100;
+  const entry30Amount = Math.round(total * 0.3 * 100) / 100;
   const entry30Installments = getMaxInstallmentsForEntry(
     activePaymentPolicy,
     entry30Amount
   );
 
-  const generateInstallmentSchedule = () => {
-    const total = calculateTotal();
-    const entryAmount = getNumericValue(form.entryAmount);
-    const installments = getNumericValue(form.installments);
-    const remaining = Math.max(0, total - entryAmount);
+  const defaultInstallmentSchedule = useMemo(
+    () => {
+      const entryAmount = getNumericValue(form.entryAmount);
+      const installments = getNumericValue(form.installments);
+      const remaining = Math.max(0, total - entryAmount);
 
-    const schedule = [];
-    // Use UTC noon for date-only operations to prevent timezone date shifts
-    const now = new Date();
-    const baseDate = form.dueDate
-      ? parseLocalDate(form.dueDate)
-      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0));
+      const schedule: InstallmentScheduleItem[] = [];
+      // Use UTC noon for date-only operations to prevent timezone date shifts
+      const now = new Date();
+      const baseDate = form.dueDate
+        ? parseLocalDate(form.dueDate)
+        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0, 0));
 
-    // CASE 1: Single payment (a vista) - no entry, no installments
-    if (entryAmount === 0 && installments === 0 && total > 0) {
-      schedule.push({
-        number: 1,
-        amount: total,
-        dueDate: baseDate.toISOString().split('T')[0],
-        description: 'Pagamento a vista (completo)',
-        isEntry: false,
-        isSinglePayment: true,
-      });
-      return schedule;
-    }
-
-    // CASE 2: Entry only (no installments)
-    if (entryAmount > 0 && installments === 0) {
-      schedule.push({
-        number: 0,
-        amount: entryAmount,
-        dueDate: baseDate.toISOString().split('T')[0],
-        description: 'Entrada (a vista)',
-        isEntry: true,
-        isSinglePayment: false,
-      });
-      return schedule;
-    }
-
-    // CASE 3: Entry + installments
-    if (entryAmount > 0) {
-      schedule.push({
-        number: 0,
-        amount: entryAmount,
-        dueDate: baseDate.toISOString().split('T')[0],
-        description: 'Entrada (a vista)',
-        isEntry: true,
-        isSinglePayment: false,
-      });
-    }
-
-    // CASE 4: Installments (with or without entry)
-    if (installments > 0 && remaining > 0) {
-      const installmentAmount = remaining / installments;
-
-      for (let i = 0; i < installments; i++) {
-        // Fix: When no entrada, first installment should use chosen date (i=0 → +0 months)
-        const monthsToAdd = entryAmount > 0 ? i + 1 : i;
-        const installmentDate = addMonths(baseDate, monthsToAdd);
-
+      if (entryAmount === 0 && installments === 0 && total > 0) {
         schedule.push({
-          number: i + 1,
-          amount: Number(installmentAmount.toFixed(2)),
-          dueDate: installmentDate.toISOString().split('T')[0],
-          description: `Parcela ${i + 1} de ${installments}`,
+          number: 1,
+          amount: total,
+          dueDate: baseDate.toISOString().split('T')[0],
+          description: 'Pagamento a vista (completo)',
           isEntry: false,
+          isSinglePayment: true,
+        });
+        return schedule;
+      }
+
+      if (entryAmount > 0 && installments === 0) {
+        schedule.push({
+          number: 0,
+          amount: entryAmount,
+          dueDate: baseDate.toISOString().split('T')[0],
+          description: 'Entrada (a vista)',
+          isEntry: true,
+          isSinglePayment: false,
+        });
+        return schedule;
+      }
+
+      if (entryAmount > 0) {
+        schedule.push({
+          number: 0,
+          amount: entryAmount,
+          dueDate: baseDate.toISOString().split('T')[0],
+          description: 'Entrada (a vista)',
+          isEntry: true,
           isSinglePayment: false,
         });
       }
-    }
 
-    return schedule;
+      if (installments > 0 && remaining > 0) {
+        const installmentAmount = remaining / installments;
+
+        for (let i = 0; i < installments; i++) {
+          const monthsToAdd = entryAmount > 0 ? i + 1 : i;
+          const installmentDate = addMonths(baseDate, monthsToAdd);
+
+          schedule.push({
+            number: i + 1,
+            amount: Number(installmentAmount.toFixed(2)),
+            dueDate: installmentDate.toISOString().split('T')[0],
+            description: `Parcela ${i + 1} de ${installments}`,
+            isEntry: false,
+            isSinglePayment: false,
+          });
+        }
+      }
+
+      return schedule;
+    },
+    [form.dueDate, form.entryAmount, form.installments, total]
+  );
+  const defaultScheduleSignature = defaultInstallmentSchedule
+    .map((installment) => `${installment.number}:${installment.amount}:${installment.dueDate}:${installment.description}`)
+    .join("|");
+
+  useEffect(() => {
+    setCustomScheduleDates((previous) => {
+      const next = defaultInstallmentSchedule.map(
+        (installment, index) => previous[index] || installment.dueDate
+      );
+
+      if (
+        next.length === previous.length &&
+        next.every((value, index) => value === previous[index])
+      ) {
+        return previous;
+      }
+
+      return next;
+    });
+  }, [defaultInstallmentSchedule, defaultScheduleSignature]);
+
+  const installmentSchedule = defaultInstallmentSchedule.map((installment, index) => ({
+    ...installment,
+    dueDate: customScheduleDates[index] || installment.dueDate,
+  }));
+
+  const handleScheduleDateChange = (index: number, value: string) => {
+    setCustomScheduleDates((previous) =>
+      defaultInstallmentSchedule.map((installment, currentIndex) => {
+        if (currentIndex === index) return value;
+        return previous[currentIndex] || installment.dueDate;
+      })
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -459,6 +505,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
           entryAmount: entryAmountValue,
           installments: installmentsValue,
           dueDate: form.dueDate || undefined,
+          scheduleDates: installmentSchedule.map((installment) => installment.dueDate),
           description: form.description || undefined,
         }),
       });
@@ -492,11 +539,6 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     }
   };
 
-  const subtotal = items.reduce(
-    (sum, item) => sum + getNumericValue(item.unitPrice) * item.quantity,
-    0
-  );
-  const total = calculateTotal();
   const discountInputValue = getNumericValue(form.discount);
   const discountValue = form.discountType === "percentage" 
     ? subtotal * (discountInputValue / 100) 
@@ -505,7 +547,6 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const installmentsValue = getNumericValue(form.installments);
   const remaining = Math.max(0, total - entryValue);
   const perInstallment = installmentsValue > 0 ? remaining / installmentsValue : 0;
-  const installmentSchedule = generateInstallmentSchedule();
   const firstInstallmentDate = installmentSchedule[0]?.dueDate;
 
   // Show contract creation prompt after successful invoice creation
@@ -1208,7 +1249,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 </div>
 
                 <div className="space-y-2">
-                  {installmentSchedule.map((installment) => (
+                  {installmentSchedule.map((installment, index) => (
                     <div
                       key={installment.number}
                       className={`rounded-lg p-3 flex justify-between items-center text-sm ${
@@ -1227,9 +1268,13 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                       }`}>
                         ${installment.amount.toFixed(2)}
                       </span>
-                      <span className="text-gray-600">
-                        {parseLocalDate(installment.dueDate).toLocaleDateString('pt-BR')}
-                      </span>
+                      <input
+                        type="date"
+                        value={installment.dueDate}
+                        min={todayInBusinessTimeZone}
+                        onChange={(e) => handleScheduleDateChange(index, e.target.value)}
+                        className="border border-gray-300 rounded-md px-2 py-1 text-xs text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
                     </div>
                   ))}
                 </div>

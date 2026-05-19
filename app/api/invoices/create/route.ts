@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
-import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { generateInvoiceNumber } from "@/lib/utils/invoice-number";
 import { invoiceWorkflowService } from "@/lib/services/invoice-workflow.service";
@@ -12,6 +11,12 @@ import {
   getProductsFromCatalogProductIds,
   validatePaymentSelection,
 } from "@/lib/invoices/payment-rules";
+import {
+  determineInvoiceCountToCreate,
+  getInstallmentPersistencePlan,
+  hasPastScheduleDate,
+  validateScheduleDatesCount,
+} from "@/lib/invoices/installment-publishing";
 import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 import { resolveInvoiceQuickBooksItemRefs } from "@/lib/invoices/quickbooks-item-resolution";
 
@@ -41,6 +46,7 @@ const createInvoiceSchema = z.object({
   entryAmount: z.number().min(0).optional(),
   installments: z.number().int().min(0).max(12).optional(),
   dueDate: z.string().optional(), // Aceita string de data simples (YYYY-MM-DD)
+  scheduleDates: z.array(z.string()).optional(),
   description: z.string().optional(),
 });
 
@@ -147,16 +153,29 @@ export async function POST(request: NextRequest) {
     // Determine number of invoices to create
     // IMPORTANT: When there's an entry + installments, create SEPARATE invoices
     // Entry today + installments start NEXT MONTH
-    let invoiceCountToCreate = 1;
-    if (entryAmount > 0 && installmentCount > 0) {
-      // Entry + installments = 1 + N invoices (entry separate, installments start next month)
-      invoiceCountToCreate = 1 + installmentCount;
-    } else if (entryAmount > 0) {
-      // Entry only = 1 invoice
-      invoiceCountToCreate = 1;
-    } else if (installmentCount > 0) {
-      // Just installments = N invoices
-      invoiceCountToCreate = installmentCount;
+    const invoiceCountToCreate = determineInvoiceCountToCreate({
+      entryAmount,
+      installmentCount,
+    });
+
+    const scheduledDates = data.scheduleDates?.map((value) => parseLocalDate(value));
+    const scheduleDateCountError = validateScheduleDatesCount(
+      scheduledDates,
+      invoiceCountToCreate
+    );
+    if (scheduleDateCountError) {
+      return NextResponse.json(
+        { error: scheduleDateCountError },
+        { status: 400 }
+      );
+    }
+
+    const today = todayUTCNoon();
+    if (hasPastScheduleDate(scheduledDates, today)) {
+      return NextResponse.json(
+        { error: "Schedule dates cannot be in the past" },
+        { status: 400 }
+      );
     }
 
     // ============================================
@@ -184,12 +203,20 @@ export async function POST(request: NextRequest) {
       let invoiceDescription: string;
       let invoiceDueDate: Date;
 
+      if (scheduledDates?.[i - 1]) {
+        invoiceDueDate = scheduledDates[i - 1];
+      } else {
+        invoiceDueDate = todayUTCNoon();
+      }
+
       // Calculate amount and description based on position
       if (entryAmount > 0 && i === 1) {
         // ENTRY INVOICE: Separate entry payment due TODAY
         invoiceAmount = entryAmount;
         invoiceDescription = `${serviceName} - Entry Payment`;
-        invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
+        if (!scheduledDates?.[i - 1]) {
+          invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
+        }
       } else if (entryAmount > 0 && i > 1) {
         // INSTALLMENT INVOICE (when entry exists): i=2 → Installment 1, i=3 → Installment 2
         const installmentAmount = remaining / installmentCount;
@@ -198,9 +225,11 @@ export async function POST(request: NextRequest) {
         invoiceDescription = `${serviceName} - Installment ${installmentNumber} of ${installmentCount}`;
 
         // Calculate due date: i=2 → +1 month, i=3 → +2 months
-        const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
-        const monthsToAdd = i - 1; // i=2 → +1 month
-        invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
+        if (!scheduledDates?.[i - 1]) {
+          const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
+          const monthsToAdd = i - 1; // i=2 → +1 month
+          invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
+        }
       } else if (installmentCount > 0) {
         // INSTALLMENT INVOICE (no entry): i=1 → Installment 1, i=2 → Installment 2
         const installmentAmount = totalAmount / installmentCount;
@@ -208,14 +237,18 @@ export async function POST(request: NextRequest) {
         invoiceDescription = `${serviceName} - Installment ${i} of ${installmentCount}`;
 
         // Calculate due date: i=1 → +0 months, i=2 → +1 month
-        const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
-        const monthsToAdd = i - 1;
-        invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
+        if (!scheduledDates?.[i - 1]) {
+          const baseDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
+          const monthsToAdd = i - 1;
+          invoiceDueDate = addMonths(baseDueDate, monthsToAdd);
+        }
       } else {
         // Single invoice (no installments, no entry split)
         invoiceAmount = totalAmount;
         invoiceDescription = serviceName;
-        invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
+        if (!scheduledDates?.[i - 1]) {
+          invoiceDueDate = data.dueDate ? parseLocalDate(data.dueDate) : todayUTCNoon();
+        }
       }
 
       // Prepare line items for this invoice
@@ -401,12 +434,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Save first invoice locally
+    const firstPersistencePlan = getInstallmentPersistencePlan({
+      invoiceIndex: 0,
+      totalInvoices: invoiceCountToCreate,
+      seriesId,
+    });
     const firstInvoice = await prisma.invoice.create({
       data: {
         invoiceNumber: firstMeta.number,
         amount: firstMeta.amount,
         dueDate: firstMeta.dueDate,
-        status: InvoiceStatus.SENT,
+        status: firstPersistencePlan.localStatus,
         quickbooks_invoice_id: qbInvoice.Id,
         ...(extractQuickbooksInvoiceLink(qbInvoice) ? { quickbooks_invoice_link: extractQuickbooksInvoiceLink(qbInvoice) } : {}),
         ownerId: userId,
@@ -416,8 +454,8 @@ export async function POST(request: NextRequest) {
         emailSentAt: firstEmailSentAt,
         emailSendAttempts: firstEmailAttempts,
         lastEmailSendError: firstEmailError,
-        ...(invoiceCountToCreate > 1 && {
-          installments: { seriesId, current: 1, total: invoiceCountToCreate, isFirstInstallment: true } as any,
+        ...(firstPersistencePlan.installmentsMetadata && {
+          installments: firstPersistencePlan.installmentsMetadata as any,
         }),
       },
     });
@@ -430,93 +468,51 @@ export async function POST(request: NextRequest) {
         console.error("[INVOICE_CREATE] Non-blocking QB sync failed:", syncError);
       });
 
-    // ── STEP B: Create RecurringTransaction for installments 2-N ──
+    // ── STEP B: Save future installments locally for progressive QB publishing ──
     if (invoiceCountToCreate > 1) {
-      const installmentAmount = Number((remaining / installmentCount).toFixed(2));
-      const firstInstallmentDueDate = invoiceMetadata[1].dueDate;
-      let recurringTemplateId: string | undefined;
-
-      // Create RecurringTransaction so QB auto-creates each installment on schedule.
-      // Finance sees the template in Sales → Recurring Transactions for AR planning.
-      // Customer only sees each invoice when QB creates it on the scheduled date.
-      try {
-        const recurring = await quickbooksService.createRecurringInvoice({
-          templateName: `${serviceName} - ${customer.name} (${new Date().toISOString().slice(0, 10)})`.slice(0, 100),
-          customerId: qbCustomer.Id,
-          customerEmail: customer.email,
-          installmentAmount,
-          installmentCount: invoiceCountToCreate - 1,
-          startDate: firstInstallmentDueDate,
-          itemRef: resolvedItems[0].serviceItemId,
-          serviceName,
-          billingAddress: {
-            line1: customer.address || undefined,
-            city: customer.city || undefined,
-            state: customer.state || undefined,
-            postalCode: customer.zipCode || undefined,
-            country: customer.country || "USA",
-          },
-        });
-
-        recurringTemplateId = recurring.Id;
-        console.log(`[INVOICE_CREATE] ✓ RecurringTransaction ${recurringTemplateId} created for ${invoiceCountToCreate - 1} installments`);
-
-        await prisma.integrationLog.create({
-          data: {
-            service: "quickbooks",
-            action: "recurring_invoice_template_created",
-            status: "SUCCESS",
-            payload: {
-              recurringTemplateId,
-              seriesId,
-              installmentCount: invoiceCountToCreate - 1,
-              installmentAmount,
-              startDate: firstInstallmentDueDate.toISOString(),
-              customerName: customer.name,
-            } as any,
-          },
-        });
-      } catch (recurError: any) {
-        console.error(`[INVOICE_CREATE] RecurringTransaction failed, installments saved as DRAFT:`, recurError.message);
-        await prisma.integrationLog.create({
-          data: {
-            service: "quickbooks",
-            action: "recurring_invoice_template_failed",
-            status: "ERROR",
-            error: recurError.message,
-            payload: { seriesId, customerName: customer.name } as any,
-          },
-        });
-      }
-
-      // Save future installments locally as DRAFT for dashboard visibility.
-      // QB auto-creates the real invoices via the recurring template.
+      // Keep future installments local-only until they enter the QB send window.
+      // This avoids the hosted QB payment page showing multiple open invoices at once.
       for (let i = 1; i < invoiceCountToCreate; i++) {
         const meta = invoiceMetadata[i];
+        const persistencePlan = getInstallmentPersistencePlan({
+          invoiceIndex: i,
+          totalInvoices: invoiceCountToCreate,
+          seriesId,
+        });
         const draftInvoice = await prisma.invoice.create({
           data: {
             invoiceNumber: meta.number,
             amount: meta.amount,
             dueDate: meta.dueDate,
-            status: InvoiceStatus.DRAFT,
+            status: persistencePlan.localStatus,
             quickbooks_invoice_id: null,
             ownerId: userId,
             dealId,
             customerId,
             lineItems: meta.lineItems as any,
-            installments: {
-              seriesId,
-              current: i + 1,
-              total: invoiceCountToCreate,
-              isFirstInstallment: false,
-              recurringTemplateId,
-            } as any,
+            installments: persistencePlan.installmentsMetadata as any,
           },
         });
         invoices.push(draftInvoice);
       }
 
-      console.log(`[INVOICE_CREATE] Saved ${invoiceCountToCreate - 1} future installments as DRAFT`);
+      await prisma.integrationLog.create({
+        data: {
+          service: "quickbooks",
+          action: "future_installments_saved_local_only",
+          status: "SUCCESS",
+          payload: {
+            seriesId,
+            installmentCount: invoiceCountToCreate - 1,
+            firstFutureDueDate: invoiceMetadata[1]?.dueDate.toISOString(),
+            customerName: customer.name,
+            publishStrategy: "WINDOWED_QB_CREATE",
+            qbPublishWindowDays: 7,
+          } as any,
+        },
+      });
+
+      console.log(`[INVOICE_CREATE] Saved ${invoiceCountToCreate - 1} future installments locally for progressive QB publishing`);
     }
 
     // External CRM sync is handled by Clint cron/processors.

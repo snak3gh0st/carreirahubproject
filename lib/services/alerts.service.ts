@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Alert, AlertStatus, AlertSeverity, InvoiceStatus, Prisma } from "@prisma/client";
+import { isWindowedQuickBooksInstallmentDraft } from "@/lib/invoices/installment-publishing";
 
 interface AlertCheckResult {
   shouldAlert: boolean;
@@ -515,7 +516,11 @@ export class AlertsService {
         },
       });
 
-      if (pendingInvoices.length === 0) {
+      const actionablePendingInvoices = pendingInvoices.filter(
+        (invoice) => !isWindowedQuickBooksInstallmentDraft(invoice)
+      );
+
+      if (actionablePendingInvoices.length === 0) {
         // Auto-resolve stale alerts — no pending invoices remain
         await prisma.alert.updateMany({
           where: {
@@ -528,7 +533,7 @@ export class AlertsService {
       }
 
       // Single batch query to find which invoice IDs already have an active alert
-      const pendingIds = pendingInvoices.map((inv) => inv.id);
+      const pendingIds = actionablePendingInvoices.map((inv) => inv.id);
       const existingAlerts = await prisma.alert.findMany({
         where: {
           ruleId: rule.id,
@@ -539,7 +544,7 @@ export class AlertsService {
       });
       const alertedIds = new Set(existingAlerts.map((a) => a.invoiceId));
 
-      for (const invoice of pendingInvoices) {
+      for (const invoice of actionablePendingInvoices) {
         if (alertedIds.has(invoice.id)) continue;
 
         const hoursPending = Math.floor(

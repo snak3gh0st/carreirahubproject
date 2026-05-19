@@ -6,6 +6,7 @@ import { InvoiceStatus } from "@prisma/client";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { EditInvoiceForm } from "@/components/invoices/edit-invoice-form";
+import { isWindowedQuickBooksInstallmentDraft } from "@/lib/invoices/installment-publishing";
 
 /**
  * Edit Invoice Page
@@ -126,9 +127,30 @@ export default async function EditInvoicePage({
             invoiceNumber: invoice.invoiceNumber,
             amount: Number(invoice.amount),
             dueDate: invoice.dueDate,
-            description: null, // Description not stored in schema currently
+            description: null,
             quickbooks_invoice_id: invoice.quickbooks_invoice_id,
-            quickbooks_sync_token: null, // SyncToken is fetched from QB at update time
+            quickbooks_sync_token: null,
+            lineItems: Array.isArray(invoice.lineItems)
+              ? (invoice.lineItems as Array<{
+                  description?: string;
+                  amount?: number;
+                  unitPrice?: number;
+                  serviceItemId?: string;
+                }>).map((item) => ({
+                  description: item.description || "Service",
+                  amount: Number(item.amount ?? item.unitPrice ?? 0),
+                  serviceItemId: item.serviceItemId || null,
+                }))
+              : [
+                  {
+                    description: "Service",
+                    amount: Number(invoice.amount),
+                    serviceItemId: null,
+                  },
+                ],
+            isScheduledFutureInstallment:
+              invoice.status === InvoiceStatus.DRAFT &&
+              isWindowedQuickBooksInstallmentDraft(invoice),
           }}
         />
       </div>

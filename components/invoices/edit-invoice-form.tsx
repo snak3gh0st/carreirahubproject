@@ -7,6 +7,7 @@ import { Trash2, Plus } from "lucide-react";
 interface LineItem {
   description: string;
   amount: number;
+  serviceItemId?: string | null;
 }
 
 interface EditInvoiceFormProps {
@@ -18,6 +19,8 @@ interface EditInvoiceFormProps {
     description: string | null;
     quickbooks_invoice_id: string | null;
     quickbooks_sync_token: string | null;
+    lineItems: LineItem[];
+    isScheduledFutureInstallment: boolean;
   };
 }
 
@@ -32,9 +35,11 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
     new Date(invoice.dueDate).toISOString().split('T')[0]
   );
   const [description, setDescription] = useState(invoice.description || "");
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: "Service", amount: Number(invoice.amount) }
-  ]);
+  const [lineItems, setLineItems] = useState<LineItem[]>(
+    invoice.lineItems.length > 0
+      ? invoice.lineItems
+      : [{ description: "Service", amount: Number(invoice.amount), serviceItemId: null }]
+  );
 
   // Validation state
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -127,7 +132,7 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
         body: JSON.stringify({
           amount,
           dueDate: new Date(dueDate).toISOString(),
-          description: description || null,
+          description: invoice.quickbooks_invoice_id ? description || null : undefined,
           lineItems,
         }),
       });
@@ -186,6 +191,15 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
         </div>
       )}
 
+      {invoice.isScheduledFutureInstallment && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg">
+          <p className="font-medium">Future installment</p>
+          <p className="text-sm">
+            This invoice has not been published to QuickBooks yet. Changes made here stay local until it enters the scheduled QB send window.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Amount (read-only, calculated from line items) */}
         <div>
@@ -224,19 +238,21 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
       </div>
 
       {/* Description */}
-      <div>
-        <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
-          Description / Notes
-        </label>
-        <textarea
-          id="description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          placeholder="Add any notes or description for this invoice..."
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-        />
-      </div>
+      {invoice.quickbooks_invoice_id && (
+        <div>
+          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-2">
+            QuickBooks Customer Note
+          </label>
+          <textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            placeholder="Optional note to sync to the QuickBooks invoice..."
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+        </div>
+      )}
 
       {/* Line Items */}
       <div>

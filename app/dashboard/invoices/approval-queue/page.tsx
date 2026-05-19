@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ApprovalStatusBadge } from "@/components/invoices/approval-status-badge";
+import { isWindowedQuickBooksInstallmentDraft } from "@/lib/invoices/installment-publishing";
 
 export const dynamic = 'force-dynamic';
 
@@ -50,6 +51,10 @@ export default async function ApprovalQueuePage() {
     },
   });
 
+  const actionablePendingInvoices = pendingInvoices.filter(
+    (invoice) => !isWindowedQuickBooksInstallmentDraft(invoice)
+  );
+
   // Get statistics by invoice status
   const stats = await prisma.invoice.groupBy({
     by: ["status"],
@@ -68,7 +73,7 @@ export default async function ApprovalQueuePage() {
 
   // Calculate wait times
   const now = new Date();
-  const invoicesWithWaitTime = pendingInvoices.map((invoice) => {
+  const invoicesWithWaitTime = actionablePendingInvoices.map((invoice) => {
     const waitTimeMs = now.getTime() - invoice.createdAt.getTime();
     const waitTimeHours = Math.floor(waitTimeMs / (1000 * 60 * 60));
     const waitTimeDays = Math.floor(waitTimeHours / 24);
@@ -102,7 +107,7 @@ export default async function ApprovalQueuePage() {
         <div className="bg-orange-50 border border-orange-200 p-6 rounded-lg">
           <h3 className="text-sm font-medium text-orange-700">Draft (Pending)</h3>
           <p className="text-4xl font-bold mt-2 text-orange-900">
-            {statsMap.DRAFT || 0}
+            {actionablePendingInvoices.length}
           </p>
           <p className="text-sm text-orange-600 mt-1">Require your attention</p>
         </div>
@@ -123,7 +128,7 @@ export default async function ApprovalQueuePage() {
       </div>
 
       {/* Pending Invoices List */}
-      {pendingInvoices.length === 0 ? (
+      {actionablePendingInvoices.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <div className="text-6xl mb-4">🎉</div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -137,11 +142,16 @@ export default async function ApprovalQueuePage() {
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-900">
-              Pending Invoices ({pendingInvoices.length})
+              Pending Invoices ({actionablePendingInvoices.length})
             </h2>
             <p className="text-sm text-gray-600 mt-1">
               Oldest invoices shown first
             </p>
+            {pendingInvoices.length > actionablePendingInvoices.length && (
+              <p className="text-xs text-gray-500 mt-1">
+                Future installments scheduled for later QuickBooks publishing are excluded from this queue.
+              </p>
+            )}
           </div>
 
           <div className="overflow-x-auto">

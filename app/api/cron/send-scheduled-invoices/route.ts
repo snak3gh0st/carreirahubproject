@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import {
+  DEFAULT_QB_PUBLISH_WINDOW_DAYS,
+  getWindowedQuickBooksDeliveryStage,
+} from "@/lib/invoices/installment-publishing";
 import { extractQuickbooksInvoiceLink } from '@/lib/quickbooks/invoice-link';
 import { quickbooksService } from '@/lib/services/quickbooks.service';
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
@@ -110,11 +114,22 @@ export const GET = withCronTelemetry("send-scheduled-invoices", async (request) 
         const installmentMeta = invoice.installments as any;
         const isInstallment = !!installmentMeta?.seriesId;
 
-        // Only process if within 7 days of due date (or already past due)
-        if (daysUntilDue <= 7) {
+        const publishWindowDays =
+          typeof installmentMeta?.qbPublishWindowDays === "number" &&
+          installmentMeta.qbPublishWindowDays > 0
+            ? installmentMeta.qbPublishWindowDays
+            : DEFAULT_QB_PUBLISH_WINDOW_DAYS;
+        const deliveryStage = getWindowedQuickBooksDeliveryStage({
+          dueDate: invoice.dueDate,
+          now,
+          publishWindowDays,
+        });
+
+        // Only process if within the QB publish window (or already past due)
+        if (deliveryStage !== "hold") {
           // If DRAFT with no QB invoice, create it in QB first (7 days before due)
           if (!invoice.quickbooks_invoice_id && invoice.status === 'DRAFT') {
-            if (daysUntilDue > 5) {
+            if (deliveryStage === "create_only") {
               // 7-6 days out: create in QB but don't send email yet
               console.log(`[CRON] Creating QB invoice for DRAFT installment ${invoice.id} (due in ${daysUntilDue} days)`);
               await quickbooksService.initialize();
@@ -152,7 +167,7 @@ export const GET = withCronTelemetry("send-scheduled-invoices", async (request) 
               skipped++; // will send email on next run (≤5 days)
               continue;
             }
-            // ≤5 days: create in QB AND send immediately below
+            // In the send window: create in QB AND send immediately below
             console.log(`[CRON] Creating QB invoice + sending for DRAFT installment ${invoice.id} (due in ${daysUntilDue} days)`);
             await quickbooksService.initialize();
 
