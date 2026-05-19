@@ -16,6 +16,7 @@ import {
   PhoneOff,
   ShieldCheck,
   Sparkles,
+  Square,
 } from "lucide-react";
 import type { Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
@@ -115,6 +116,7 @@ function copyFor(lang: Language) {
       eyebrow: "English Speaking Test",
       subtitle: "Avaliador AI, áudio em tempo real e resultado CEFR ao final.",
       start: "Iniciar teste",
+      stop: "Parar",
       connecting: "Conectando áudio...",
       live: "Teste ao vivo",
       finish: "Finalizar e gerar resultado",
@@ -186,6 +188,7 @@ function copyFor(lang: Language) {
     eyebrow: "English speaking test",
     subtitle: "AI examiner, real-time audio, and CEFR level at the end.",
     start: "Start test",
+    stop: "Stop",
     connecting: "Connecting audio...",
     live: "Live test",
     finish: "Finish and score",
@@ -308,6 +311,7 @@ export default function RealtimeEnglishTestPage() {
   const startTimeRef = useRef<number>(0);
   const restoredDurationSecondsRef = useRef(0);
   const responseInProgressRef = useRef(false);
+  const responseWatchdogRef = useRef<number | null>(null);
   const evaluatingStudentTurnRef = useRef(false);
   const queuedStudentTranscriptRef = useRef<string | null>(null);
   const recordedUsageResponseIdsRef = useRef<Set<string>>(new Set());
@@ -444,7 +448,7 @@ export default function RealtimeEnglishTestPage() {
     dcRef.current = null;
     pcRef.current = null;
     streamRef.current = null;
-    responseInProgressRef.current = false;
+    markResponseIdle();
     evaluatingStudentTurnRef.current = false;
     queuedStudentTranscriptRef.current = null;
     pendingExaminerResponseRef.current = null;
@@ -457,10 +461,33 @@ export default function RealtimeEnglishTestPage() {
     return true;
   }
 
+  function clearResponseWatchdog() {
+    if (responseWatchdogRef.current) {
+      window.clearTimeout(responseWatchdogRef.current);
+      responseWatchdogRef.current = null;
+    }
+  }
+
+  function markResponseInProgress() {
+    responseInProgressRef.current = true;
+    clearResponseWatchdog();
+    responseWatchdogRef.current = window.setTimeout(() => {
+      if (!responseInProgressRef.current) return;
+      responseInProgressRef.current = false;
+      lastRequestedExaminerResponseRef.current = null;
+      flushPendingExaminerResponse();
+    }, 45000);
+  }
+
+  function markResponseIdle() {
+    responseInProgressRef.current = false;
+    clearResponseWatchdog();
+  }
+
   function createRealtimeResponse(response: RealtimeResponseRequest) {
     lastRequestedExaminerResponseRef.current = response;
     const sent = sendRealtimeEvent({ type: "response.create", response });
-    if (sent) responseInProgressRef.current = true;
+    if (sent) markResponseInProgress();
     return sent;
   }
 
@@ -474,6 +501,7 @@ export default function RealtimeEnglishTestPage() {
 
     if (responseInProgressRef.current) {
       pendingExaminerResponseRef.current = response;
+      cancelActiveResponse();
       return;
     }
 
@@ -639,12 +667,12 @@ export default function RealtimeEnglishTestPage() {
     }
 
     if (payload.type === "response.created") {
-      responseInProgressRef.current = true;
+      markResponseInProgress();
       return;
     }
 
     if (payload.type === "response.cancelled" || payload.type === "response.failed") {
-      responseInProgressRef.current = false;
+      markResponseIdle();
       lastRequestedExaminerResponseRef.current = null;
       flushPendingExaminerResponse();
       return;
@@ -656,7 +684,7 @@ export default function RealtimeEnglishTestPage() {
         if (lastRequestedExaminerResponseRef.current) {
           pendingExaminerResponseRef.current = lastRequestedExaminerResponseRef.current;
         }
-        responseInProgressRef.current = true;
+        markResponseInProgress();
         return;
       }
       setStatus("error");
@@ -673,7 +701,7 @@ export default function RealtimeEnglishTestPage() {
 
     if (payload.type === "response.done") {
       void persistRealtimeUsageEvent(payload);
-      responseInProgressRef.current = false;
+      markResponseIdle();
       lastRequestedExaminerResponseRef.current = null;
       flushPendingExaminerResponse();
     }
@@ -701,7 +729,7 @@ export default function RealtimeEnglishTestPage() {
     }
     statusRef.current = "connecting";
     setStatus("connecting");
-    responseInProgressRef.current = false;
+    markResponseIdle();
     evaluatingStudentTurnRef.current = false;
     queuedStudentTranscriptRef.current = null;
     setEvaluatingTurn(false);
@@ -792,6 +820,22 @@ export default function RealtimeEnglishTestPage() {
     if (!track) return;
     track.enabled = !track.enabled;
     setMuted(!track.enabled);
+  }
+
+  async function stopSession() {
+    setError(null);
+    const durationSeconds = getDurationSeconds();
+    const transcriptSnapshot = transcriptRef.current;
+    await persistProgress(transcriptSnapshot);
+    cancelActiveResponse();
+    cleanupRealtime();
+    startTimeRef.current = 0;
+    restoredDurationSecondsRef.current = durationSeconds;
+    setElapsedSeconds(durationSeconds);
+    setEvaluatingTurn(false);
+    setMuted(false);
+    statusRef.current = "idle";
+    setStatus("idle");
   }
 
   async function finishSession() {
@@ -1150,14 +1194,23 @@ export default function RealtimeEnglishTestPage() {
                 )}
 
                 {status === "live" && (
-                  <button
-                    onClick={finishSession}
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold transition hover:bg-gray-100 active:scale-[0.99]"
-                    style={{ color: BRAND_COLORS.VERDE }}
-                  >
-                    <PhoneOff className="h-4 w-4" strokeWidth={2} />
-                    {copy.finish}
-                  </button>
+                  <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
+                    <button
+                      onClick={stopSession}
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] py-3.5 text-sm font-extrabold text-white/75 transition hover:bg-white/15 active:scale-[0.99]"
+                    >
+                      <Square className="h-3.5 w-3.5 fill-current" strokeWidth={2} />
+                      {copy.stop}
+                    </button>
+                    <button
+                      onClick={finishSession}
+                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold transition hover:bg-gray-100 active:scale-[0.99]"
+                      style={{ color: BRAND_COLORS.VERDE }}
+                    >
+                      <PhoneOff className="h-4 w-4" strokeWidth={2} />
+                      {copy.finish}
+                    </button>
+                  </div>
                 )}
 
                 {status === "scoring" && (

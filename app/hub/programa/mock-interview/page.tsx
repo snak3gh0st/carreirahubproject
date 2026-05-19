@@ -16,6 +16,7 @@ import {
   PhoneOff,
   Radio,
   ShieldCheck,
+  Square,
   Target,
   UserRound,
 } from "lucide-react";
@@ -86,6 +87,7 @@ function copyFor(lang: Language) {
       back: "Voltar ao programa",
       start: "Iniciar entrevista",
       retry: "Tentar novamente",
+      stop: "Parar",
       connecting: "Abrindo sala segura...",
       live: "Entrevista ao vivo",
       finish: "Finalizar e gerar relatório",
@@ -145,6 +147,7 @@ function copyFor(lang: Language) {
     back: "Back to program",
     start: "Start interview",
     retry: "Try again",
+    stop: "Stop",
     connecting: "Opening secure room...",
     live: "Live interview",
     finish: "Finish and prepare report",
@@ -246,6 +249,7 @@ export default function AiMockInterviewPage() {
   const startTimeRef = useRef<number>(0);
   const restoredDurationSecondsRef = useRef(0);
   const responseInProgressRef = useRef(false);
+  const responseWatchdogRef = useRef<number | null>(null);
   const pendingInterviewerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const lastRequestedInterviewerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const recordedUsageResponseIdsRef = useRef<Set<string>>(new Set());
@@ -360,7 +364,7 @@ export default function AiMockInterviewPage() {
     dcRef.current = null;
     pcRef.current = null;
     streamRef.current = null;
-    responseInProgressRef.current = false;
+    markResponseIdle();
     pendingInterviewerResponseRef.current = null;
     lastRequestedInterviewerResponseRef.current = null;
   }
@@ -371,11 +375,39 @@ export default function AiMockInterviewPage() {
     return true;
   }
 
+  function clearResponseWatchdog() {
+    if (responseWatchdogRef.current) {
+      window.clearTimeout(responseWatchdogRef.current);
+      responseWatchdogRef.current = null;
+    }
+  }
+
+  function markResponseInProgress() {
+    responseInProgressRef.current = true;
+    clearResponseWatchdog();
+    responseWatchdogRef.current = window.setTimeout(() => {
+      if (!responseInProgressRef.current) return;
+      responseInProgressRef.current = false;
+      lastRequestedInterviewerResponseRef.current = null;
+      flushPendingInterviewerResponse();
+    }, 45000);
+  }
+
+  function markResponseIdle() {
+    responseInProgressRef.current = false;
+    clearResponseWatchdog();
+  }
+
   function createRealtimeResponse(response: RealtimeResponseRequest) {
     lastRequestedInterviewerResponseRef.current = response;
     const sent = sendRealtimeEvent({ type: "response.create", response });
-    if (sent) responseInProgressRef.current = true;
+    if (sent) markResponseInProgress();
     return sent;
+  }
+
+  function cancelActiveResponse() {
+    if (!responseInProgressRef.current) return false;
+    return sendRealtimeEvent({ type: "response.cancel" });
   }
 
   function queueOrCreateRealtimeResponse(response: RealtimeResponseRequest) {
@@ -383,6 +415,7 @@ export default function AiMockInterviewPage() {
 
     if (responseInProgressRef.current) {
       pendingInterviewerResponseRef.current = response;
+      cancelActiveResponse();
       return;
     }
 
@@ -458,12 +491,12 @@ export default function AiMockInterviewPage() {
     }
 
     if (payload.type === "response.created") {
-      responseInProgressRef.current = true;
+      markResponseInProgress();
       return;
     }
 
     if (payload.type === "response.cancelled" || payload.type === "response.failed") {
-      responseInProgressRef.current = false;
+      markResponseIdle();
       lastRequestedInterviewerResponseRef.current = null;
       flushPendingInterviewerResponse();
       return;
@@ -475,7 +508,7 @@ export default function AiMockInterviewPage() {
         if (lastRequestedInterviewerResponseRef.current) {
           pendingInterviewerResponseRef.current = lastRequestedInterviewerResponseRef.current;
         }
-        responseInProgressRef.current = true;
+        markResponseInProgress();
         return;
       }
       setStatus("error");
@@ -492,7 +525,7 @@ export default function AiMockInterviewPage() {
 
     if (payload.type === "response.done") {
       void persistRealtimeUsageEvent(payload);
-      responseInProgressRef.current = false;
+      markResponseIdle();
       lastRequestedInterviewerResponseRef.current = null;
       flushPendingInterviewerResponse();
     }
@@ -512,7 +545,7 @@ export default function AiMockInterviewPage() {
 
     statusRef.current = "connecting";
     setStatus("connecting");
-    responseInProgressRef.current = false;
+    markResponseIdle();
     pendingInterviewerResponseRef.current = null;
     lastRequestedInterviewerResponseRef.current = null;
 
@@ -595,6 +628,21 @@ export default function AiMockInterviewPage() {
     setMuted(!track.enabled);
   }
 
+  async function stopSession() {
+    setError(null);
+    const durationSeconds = getDurationSeconds();
+    const transcriptSnapshot = transcriptRef.current;
+    await persistProgress(transcriptSnapshot);
+    cancelActiveResponse();
+    cleanupRealtime();
+    startTimeRef.current = 0;
+    restoredDurationSecondsRef.current = durationSeconds;
+    setElapsedSeconds(durationSeconds);
+    setMuted(false);
+    statusRef.current = "idle";
+    setStatus("idle");
+  }
+
   async function finishSession() {
     setError(null);
     const activeSessionId = sessionIdRef.current;
@@ -611,9 +659,7 @@ export default function AiMockInterviewPage() {
 
     statusRef.current = "scoring";
     setStatus("scoring");
-    if (responseInProgressRef.current) {
-      sendRealtimeEvent({ type: "response.cancel" });
-    }
+    cancelActiveResponse();
 
     try {
       const transcriptSnapshot = transcriptRef.current;
@@ -891,14 +937,23 @@ export default function AiMockInterviewPage() {
                   </div>
                 )}
                 {status === "live" && (
-                  <button
-                    onClick={finishSession}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold transition hover:bg-gray-100 active:scale-[0.99]"
-                    style={{ color: BRAND_COLORS.VERDE }}
-                  >
-                    <PhoneOff className="h-4 w-4" strokeWidth={2} />
-                    {copy.finish}
-                  </button>
+                  <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
+                    <button
+                      onClick={stopSession}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] py-3.5 text-sm font-extrabold text-white/75 transition hover:bg-white/15 active:scale-[0.99]"
+                    >
+                      <Square className="h-3.5 w-3.5 fill-current" strokeWidth={2} />
+                      {copy.stop}
+                    </button>
+                    <button
+                      onClick={finishSession}
+                      className="flex items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold transition hover:bg-gray-100 active:scale-[0.99]"
+                      style={{ color: BRAND_COLORS.VERDE }}
+                    >
+                      <PhoneOff className="h-4 w-4" strokeWidth={2} />
+                      {copy.finish}
+                    </button>
+                  </div>
                 )}
                 {status === "scoring" && (
                   <div className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-white/10 py-3.5 text-sm font-bold text-white/60">

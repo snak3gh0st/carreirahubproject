@@ -39,6 +39,7 @@ export interface AiMockInterviewContext {
   targetRole: string | null;
   linkedinUrl: string | null;
   resumeFiles: string[];
+  cvText: string | null;
   englishLevel: string | null;
   profileHighlights: string[];
   rawAnswers: Record<string, string>;
@@ -57,6 +58,8 @@ const PRIORITY_FIELD_IDS = [
   "specialNotes",
   "linkedIn",
   "resume",
+  "resumeText",
+  "cvText",
 ] as const;
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -65,8 +68,8 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function cleanText(value: unknown): string {
-  if (typeof value === "string") return value.trim();
+function cleanText(value: unknown, max = 1200): string {
+  if (typeof value === "string") return value.trim().slice(0, max);
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   return "";
 }
@@ -106,7 +109,10 @@ export function buildAiMockInterviewContext(
   for (const assignment of sortedSubmittedAssignments(input.formAssignments ?? [])) {
     const answers = asRecord(assignment.submission?.answers);
     for (const [fieldId, value] of Object.entries(answers)) {
-      const text = cleanText(value);
+      const text = cleanText(
+        value,
+        fieldId === "resumeText" || fieldId === "cvText" ? 9000 : 1200
+      );
       if (!text) continue;
 
       const label = fieldLabel(assignment.templateId, fieldId);
@@ -131,6 +137,14 @@ export function buildAiMockInterviewContext(
     rawAnswers.fieldOfWork ||
     null;
   const linkedinUrl = rawAnswers.linkedIn || null;
+  const cvText =
+    cleanText(
+      rawAnswers.cvText ||
+      rawAnswers.resumeText ||
+      rawAnswers.resumeContent ||
+      rawAnswers.resumeSummary,
+      9000
+    ) || null;
   const englishLevel = input.englishLevel?.cefrLevel
     ? `${input.englishLevel.cefrLevel}${input.englishLevel.displayLevel ? ` - ${input.englishLevel.displayLevel}` : ""}`
     : null;
@@ -143,6 +157,7 @@ export function buildAiMockInterviewContext(
     targetRole,
     linkedinUrl,
     resumeFiles: Array.from(new Set(resumeFiles)).slice(0, 5),
+    cvText,
     englishLevel,
     profileHighlights: Array.from(new Set(profileHighlights)).slice(0, 18),
     rawAnswers,
@@ -160,6 +175,9 @@ export function summarizeAiMockInterviewContextForPrompt(
     context.linkedinUrl ? `LinkedIn: ${context.linkedinUrl}` : null,
     context.englishLevel ? `Latest English level: ${context.englishLevel}` : null,
     context.resumeFiles.length ? `Uploaded resume/CV files: ${context.resumeFiles.join(", ")}` : null,
+    context.cvText
+      ? `CV / resume text for interview grounding:\n${context.cvText}`
+      : null,
     context.profileHighlights.length
       ? ["Profile notes from onboarding forms:", ...context.profileHighlights.map((item) => `- ${item}`)].join("\n")
       : "No detailed onboarding answers were found. Ask the candidate to summarize their CV early in the interview.",
