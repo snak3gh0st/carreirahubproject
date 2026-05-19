@@ -865,10 +865,9 @@ async function getAccessAuditRows(since24h: Date) {
   return {
     summary,
     users: [...uniqueUsers.values()]
-      .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime())
-      .slice(0, 40),
-    rows: recentAuthenticatedRows.slice(0, 80),
-    anonymousRows: anonymousRows.slice(0, 40),
+      .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime()),
+    rows: recentAuthenticatedRows,
+    anonymousRows,
   };
 }
 

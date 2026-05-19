@@ -263,13 +263,16 @@ export default async function AdminSystemHealthPage() {
             />
           </div>
           <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
+              Last 24h · showing all {activeUsers.length} authenticated users
+            </div>
             <div className="grid divide-y divide-gray-100 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
               {activeUsers.length === 0 ? (
                 <div className="p-4 text-sm text-gray-500 md:col-span-2 xl:col-span-4">
                   No authenticated user activity in the last 24h.
                 </div>
               ) : (
-                activeUsers.slice(0, 8).map((user) => (
+                activeUsers.map((user) => (
                   <div key={user.key} className="p-4">
                     <p className="truncate text-sm font-semibold text-gray-950">
                       {user.email || user.actorName || user.key}
@@ -286,6 +289,9 @@ export default async function AdminSystemHealthPage() {
             </div>
           </div>
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
+              Last 24h · showing all {accessRows.length} authenticated events
+            </div>
             <div className="max-h-[520px] overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
                 <thead className="sticky top-0 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
