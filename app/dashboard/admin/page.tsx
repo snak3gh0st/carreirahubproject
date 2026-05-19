@@ -264,33 +264,63 @@ export default async function AdminSystemHealthPage() {
           </div>
           <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
-              Last 24h · showing all {activeUsers.length} authenticated users
+              Last 24h · all {activeUsers.length} authenticated users with latest action
             </div>
-            <div className="grid divide-y divide-gray-100 md:grid-cols-2 md:divide-x md:divide-y-0 xl:grid-cols-4">
-              {activeUsers.length === 0 ? (
-                <div className="p-4 text-sm text-gray-500 md:col-span-2 xl:col-span-4">
-                  No authenticated user activity in the last 24h.
-                </div>
-              ) : (
-                activeUsers.map((user) => (
-                  <div key={user.key} className="p-4">
-                    <p className="truncate text-sm font-semibold text-gray-950">
-                      {user.email || user.actorName || user.key}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {user.role || user.actorType || "user"} · {user.events24h} events
-                    </p>
-                    <p className="mt-2 truncate text-xs text-gray-400">
-                      {formatAge(user.lastSeenAt, generatedAt)} · {user.lastPath || user.lastAction}
-                    </p>
-                  </div>
-                ))
-              )}
+            <div className="max-h-[360px] overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="sticky top-0 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th className="px-4 py-3">Who</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3">Events</th>
+                    <th className="px-4 py-3">Last Seen</th>
+                    <th className="px-4 py-3">Latest Action</th>
+                    <th className="px-4 py-3">Latest Endpoint</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {activeUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                        No authenticated user activity in the last 24h.
+                      </td>
+                    </tr>
+                  ) : (
+                    activeUsers.map((user) => (
+                      <tr key={user.key} className="bg-white">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-gray-950">
+                            {user.email || user.actorName || user.key}
+                          </p>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {user.role || user.actorType || "user"}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {user.events24h}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-600">
+                          <p>{formatAge(user.lastSeenAt, generatedAt)}</p>
+                          <p className="mt-1 text-xs text-gray-400">{formatDate(user.lastSeenAt)}</p>
+                        </td>
+                        <td className="px-4 py-3 text-gray-900">
+                          {accessActionLabel(user.lastAction)}
+                        </td>
+                        <td className="px-4 py-3">
+                          <code className="break-all rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                            {user.lastPath || user.lastAction}
+                          </code>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
-              Last 24h · showing all {accessRows.length} authenticated events
+              Last 24h · full authenticated event feed ({accessRows.length} events)
             </div>
             <div className="max-h-[520px] overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
