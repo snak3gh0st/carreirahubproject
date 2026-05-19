@@ -7,6 +7,8 @@ import {
   getQuestionsByIds,
 } from "@/lib/hub/question-bank";
 import { canStartPlacementTest } from "@/lib/hub/placement-test-policy";
+import { getOralEnglishTestAccess } from "@/lib/hub/english-test-access";
+import type { Language } from "@/lib/i18n/hub";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +32,14 @@ export async function GET(request: NextRequest) {
       where: { customerId: auth.customerId, totalScore: { not: -1 } },
       select: { questionIds: true },
     });
+    const oralAccess = await getOralEnglishTestAccess(
+      auth.customerId,
+      (auth.language || "en") as Language
+    );
     const testPolicy = canStartPlacementTest(priorTests.length);
     if (!testPolicy.allowed) {
       return NextResponse.json(
-        { error: testPolicy.reason, code: "RETAKE_LIMIT_REACHED" },
+        { error: testPolicy.reason, code: "RETAKE_LIMIT_REACHED", oralAccess },
         { status: 403 }
       );
     }
@@ -52,7 +58,7 @@ export async function GET(request: NextRequest) {
         const questions = getQuestionsByIds(pendingTest.questionIds).map(
           toClientQuestion
         );
-        return NextResponse.json({ questions, testId: pendingTest.id });
+        return NextResponse.json({ questions, testId: pendingTest.id, oralAccess });
       }
 
       // Pending test is expired (> 24 hours old) — delete it (deleteMany avoids P2025 on race)
@@ -87,6 +93,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       questions: selected.map(toClientQuestion),
       testId: test.id,
+      oralAccess,
     });
   } catch (error) {
     console.error("[Hub Test] Error fetching questions:", error);

@@ -11,6 +11,10 @@ import {
   normalizeRealtimeEnglishTranscript,
 } from "@/lib/hub/realtime-english-test-flow";
 import { buildOpenAIAuthHeaders } from "@/lib/services/openai-auth-headers";
+import {
+  WRITTEN_TEST_REQUIRED_CODE,
+  getOralEnglishTestAccess,
+} from "@/lib/hub/english-test-access";
 import type { Language } from "@/lib/i18n/hub";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +90,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     }
 
+    const language = (auth.language || "en") as Language;
+    const oralAccess = await getOralEnglishTestAccess(auth.customerId, language);
+    if (!oralAccess.unlocked) {
+      return NextResponse.json(
+        {
+          code: WRITTEN_TEST_REQUIRED_CODE,
+          error: oralAccess.message,
+          oralAccess,
+        },
+        { status: 403 }
+      );
+    }
+
     const realtimeApiKey = process.env.OPENAI_REALTIME_API_KEY || process.env.OPENAI_API_KEY;
     if (!realtimeApiKey) {
       return NextResponse.json(
@@ -101,7 +118,6 @@ export async function POST(request: NextRequest) {
 
     const modelCandidates = getRealtimeEnglishTestModelCandidates();
     const primaryModel = modelCandidates[0];
-    const language = (auth.language || "en") as Language;
 
     const reusableRealtimeTest = await prisma.englishRealtimeTest.findFirst({
       where: {

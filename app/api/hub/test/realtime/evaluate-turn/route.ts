@@ -13,6 +13,10 @@ import {
 } from "@/lib/hub/voice-english-test";
 import { createOpenAIChatCompletion } from "@/lib/services/openai-chat-completions";
 import { recordRealtimeEnglishUsage } from "@/lib/hub/realtime-english-test-usage-store";
+import {
+  WRITTEN_TEST_REQUIRED_CODE,
+  getOralEnglishTestAccess,
+} from "@/lib/hub/english-test-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -65,6 +69,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     }
 
+    const language = (auth.language || "en") as Language;
+    const oralAccess = await getOralEnglishTestAccess(auth.customerId, language);
+    if (!oralAccess.unlocked) {
+      return NextResponse.json(
+        {
+          code: WRITTEN_TEST_REQUIRED_CODE,
+          error: oralAccess.message,
+          oralAccess,
+        },
+        { status: 403 }
+      );
+    }
+
     const apiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_REALTIME_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
@@ -105,7 +122,6 @@ export async function POST(request: NextRequest) {
       Array.isArray(body?.transcript) ? body.transcript : existing.transcript
     );
     const stage = getCurrentRealtimeEnglishTestStage(transcript);
-    const language = (auth.language || "en") as Language;
     const transcriptSummary = summarizeRealtimeEnglishTranscriptForPrompt(transcript);
 
     const completion = await createOpenAIChatCompletion({

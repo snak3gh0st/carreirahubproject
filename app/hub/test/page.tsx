@@ -13,6 +13,16 @@ interface Question {
   passage?: string;
 }
 
+interface OralAccess {
+  unlocked: boolean;
+  message?: string | null;
+  writtenTest?: {
+    cefrLevel: string;
+    displayLevel: string;
+    percentage: number;
+  } | null;
+}
+
 function getLangFromCookie(): Language {
   try {
     const match = document.cookie.match(/(?:^|;\s*)hub-token=([^;]*)/);
@@ -45,6 +55,7 @@ export default function HubTestPage() {
   const [error, setError] = useState<string | null>(null);
   const [testId, setTestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [oralAccess, setOralAccess] = useState<OralAccess | null>(null);
 
   useEffect(() => {
     setLang(getLangFromCookie());
@@ -62,6 +73,7 @@ export default function HubTestPage() {
       .then((data) => {
         setQuestions(data.questions || []);
         setTestId(data.testId || null);
+        setOralAccess(data.oralAccess || null);
       })
       .catch((err) => setError(err instanceof Error ? err.message : t(lang, "test.failedToLoad")))
       .finally(() => setLoading(false));
@@ -133,6 +145,9 @@ export default function HubTestPage() {
       );
     }
 
+    const oralUnlocked = oralAccess?.unlocked === true;
+    const writtenResult = oralAccess?.writtenTest;
+
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
         <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: BRAND_COLORS.CREME }}>
@@ -147,18 +162,38 @@ export default function HubTestPage() {
         </p>
         <div className="grid gap-3">
           <button
-            onClick={() => router.push("/hub/test/realtime")}
+            onClick={handleStart}
             className="px-8 py-4 rounded-xl text-center text-white font-semibold text-lg transition hover:opacity-90"
             style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
           >
-            {lang === "pt-BR" ? "Iniciar teste por voz" : "Start Voice Test"}
-          </button>
-          <button
-            onClick={handleStart}
-            className="px-8 py-3 rounded-xl text-center border border-gray-200 text-gray-600 font-semibold text-sm transition hover:bg-gray-50"
-          >
             {lang === "pt-BR" ? "Fazer teste escrito" : "Take Written Test"}
           </button>
+          {oralUnlocked ? (
+            <button
+              onClick={() => router.push("/hub/test/realtime")}
+              className="px-8 py-3 rounded-xl text-center border border-gray-200 text-gray-600 font-semibold text-sm transition hover:bg-gray-50"
+            >
+              {lang === "pt-BR" ? "Iniciar teste oral" : "Start Oral Test"}
+            </button>
+          ) : (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 text-left">
+              <p className="text-sm font-semibold text-gray-800">
+                {lang === "pt-BR" ? "Teste oral bloqueado" : "Oral test locked"}
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {oralAccess?.message ||
+                  (lang === "pt-BR"
+                    ? "Complete o teste escrito antes de iniciar a entrevista oral."
+                    : "Complete the written test before starting the oral interview.")}
+              </p>
+            </div>
+          )}
+          {writtenResult && (
+            <p className="text-xs font-medium text-gray-400">
+              {lang === "pt-BR" ? "Ultimo resultado escrito" : "Latest written result"}:{" "}
+              {writtenResult.displayLevel} ({writtenResult.cefrLevel}) - {Math.round(writtenResult.percentage)}%
+            </p>
+          )}
         </div>
       </div>
     );

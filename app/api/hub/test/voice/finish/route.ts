@@ -10,6 +10,10 @@ import {
   normalizeVoiceEnglishResult,
   normalizeVoiceTranscript,
 } from "@/lib/hub/voice-english-test";
+import {
+  WRITTEN_TEST_REQUIRED_CODE,
+  getOralEnglishTestAccess,
+} from "@/lib/hub/english-test-access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,6 +45,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     }
 
+    const language = (auth.language || "en") as Language;
+    const oralAccess = await getOralEnglishTestAccess(auth.customerId, language);
+    if (!oralAccess.unlocked) {
+      return NextResponse.json(
+        {
+          code: WRITTEN_TEST_REQUIRED_CODE,
+          error: oralAccess.message,
+          oralAccess,
+        },
+        { status: 403 }
+      );
+    }
+
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "OpenAI is not configured" },
@@ -64,8 +81,6 @@ export async function POST(request: NextRequest) {
     }
 
     const transcript = normalizeVoiceTranscript(existing.transcript);
-    const language = (auth.language || "en") as Language;
-
     const completion = await createOpenAIChatCompletion({
       models: getVoiceEnglishTestModelCandidates(),
       json: true,

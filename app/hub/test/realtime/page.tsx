@@ -9,6 +9,7 @@ import {
   Clock3,
   FileText,
   Loader2,
+  Lock,
   Mic,
   MicOff,
   PhoneOff,
@@ -59,6 +60,16 @@ interface VoiceResult {
   summary: string;
   strengths: string[];
   focusAreas: string[];
+}
+
+interface OralAccess {
+  unlocked: boolean;
+  message?: string | null;
+  writtenTest?: {
+    cefrLevel: string;
+    displayLevel: string;
+    percentage: number;
+  } | null;
 }
 
 class RealtimeSessionStartError extends Error {
@@ -163,6 +174,9 @@ function copyFor(lang: Language) {
       examinerLabel: "Examiner",
       studentLabel: "Student",
       transcriptEmptyTitle: "Aguardando áudio",
+      writtenRequiredTitle: "Teste escrito primeiro",
+      writtenRequiredMessage: "Complete o teste escrito de ingles antes de iniciar a entrevista oral.",
+      writtenRequiredCta: "Ir para o teste escrito",
     };
   }
 
@@ -230,6 +244,9 @@ function copyFor(lang: Language) {
     examinerLabel: "Examiner",
     studentLabel: "Student",
     transcriptEmptyTitle: "Waiting for audio",
+    writtenRequiredTitle: "Written test first",
+    writtenRequiredMessage: "Complete the written English test before starting the oral interview.",
+    writtenRequiredCta: "Go to written test",
   };
 }
 
@@ -277,6 +294,7 @@ export default function RealtimeEnglishTestPage() {
   const [testId, setTestId] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [evaluatingTurn, setEvaluatingTurn] = useState(false);
+  const [oralAccess, setOralAccess] = useState<OralAccess | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const dcRef = useRef<RTCDataChannel | null>(null);
@@ -320,15 +338,20 @@ export default function RealtimeEnglishTestPage() {
     setTestId(nextTestId);
   }
 
-  async function loadSavedProgress() {
+  async function loadSavedProgress(): Promise<OralAccess | null> {
     try {
       const response = await fetch("/api/hub/test/realtime/progress", {
         method: "GET",
         cache: "no-store",
       });
-      if (!response.ok) return;
+      if (!response.ok) return null;
 
       const data = await response.json();
+      const nextOralAccess = data?.oralAccess && typeof data.oralAccess === "object"
+        ? data.oralAccess as OralAccess
+        : null;
+      setOralAccess(nextOralAccess);
+
       const savedTranscript = Array.isArray(data?.transcript)
         ? data.transcript.filter((item: any): item is TranscriptItem =>
             item &&
@@ -355,8 +378,10 @@ export default function RealtimeEnglishTestPage() {
           : 0;
       restoredDurationSecondsRef.current = savedDurationSeconds;
       setElapsedSeconds(savedDurationSeconds);
+      return nextOralAccess;
     } catch {
       // Progress restore is best-effort; the live session can still start.
+      return null;
     }
   }
 
@@ -655,7 +680,13 @@ export default function RealtimeEnglishTestPage() {
   async function startSession() {
     setError(null);
     setResult(null);
-    await loadSavedProgress();
+    const latestAccess = await loadSavedProgress();
+    if (latestAccess?.unlocked === false) {
+      setStatus("idle");
+      statusRef.current = "idle";
+      setError(latestAccess.message || copy.writtenRequiredMessage);
+      return;
+    }
     const resumeTranscript = transcriptRef.current;
     const shouldResume = Boolean(testIdRef.current && resumeTranscript.length > 0);
     if (!shouldResume) {
@@ -845,6 +876,7 @@ export default function RealtimeEnglishTestPage() {
   const isCallActive = status === "live" || status === "scoring";
   const isWaiting = status === "idle" || status === "error";
   const isBusy = status === "connecting" || status === "scoring";
+  const oralLocked = oralAccess?.unlocked === false;
   const sessionState = testId ? copy.active : copy.ready;
   const microphoneState = muted ? copy.mute : copy.listening;
   const latestTranscript = transcript.slice(-8);
@@ -1087,14 +1119,25 @@ export default function RealtimeEnglishTestPage() {
               {/* CTA */}
               <div className="mt-3">
                 {isWaiting && (
-                  <button
-                    onClick={startSession}
-                    className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl py-3.5 text-sm font-extrabold text-white shadow-lg transition hover:brightness-95 active:scale-[0.99]"
-                    style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
-                  >
-                    <Mic className="h-4 w-4" strokeWidth={2.5} />
-                    {status === "error" ? copy.retry : copy.start}
-                  </button>
+                  oralLocked ? (
+                    <Link
+                      href="/hub/test"
+                      className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl py-3.5 text-sm font-extrabold text-white shadow-lg transition hover:brightness-95 active:scale-[0.99]"
+                      style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
+                    >
+                      <FileText className="h-4 w-4" strokeWidth={2.5} />
+                      {copy.writtenRequiredCta}
+                    </Link>
+                  ) : (
+                    <button
+                      onClick={startSession}
+                      className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl py-3.5 text-sm font-extrabold text-white shadow-lg transition hover:brightness-95 active:scale-[0.99]"
+                      style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
+                    >
+                      <Mic className="h-4 w-4" strokeWidth={2.5} />
+                      {status === "error" ? copy.retry : copy.start}
+                    </button>
+                  )
                 )}
 
                 {status === "connecting" && (
@@ -1245,6 +1288,22 @@ export default function RealtimeEnglishTestPage() {
             {error && (
               <div className="shrink-0 border-b border-red-100 bg-red-50 px-5 py-4 text-sm font-medium text-red-700">
                 {error}
+              </div>
+            )}
+
+            {oralLocked && (
+              <div className="shrink-0 border-b border-amber-100 bg-amber-50 px-5 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-amber-700">
+                    <Lock className="h-4 w-4" strokeWidth={2.2} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-amber-900">{copy.writtenRequiredTitle}</p>
+                    <p className="mt-1 text-sm leading-5 text-amber-800">
+                      {oralAccess?.message || copy.writtenRequiredMessage}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 

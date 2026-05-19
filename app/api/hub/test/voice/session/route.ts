@@ -7,6 +7,11 @@ import {
   getVoiceEnglishTestModelCandidates,
   type VoiceInterviewTranscriptItem,
 } from "@/lib/hub/voice-english-test";
+import {
+  WRITTEN_TEST_REQUIRED_CODE,
+  getOralEnglishTestAccess,
+} from "@/lib/hub/english-test-access";
+import type { Language } from "@/lib/i18n/hub";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +25,21 @@ export async function POST(request: NextRequest) {
 
     if (!verifyCsrf(request)) {
       return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    }
+
+    const oralAccess = await getOralEnglishTestAccess(
+      auth.customerId,
+      (auth.language || "en") as Language
+    );
+    if (!oralAccess.unlocked) {
+      return NextResponse.json(
+        {
+          code: WRITTEN_TEST_REQUIRED_CODE,
+          error: oralAccess.message,
+          oralAccess,
+        },
+        { status: 403 }
+      );
     }
 
     if (!process.env.OPENAI_API_KEY) {
