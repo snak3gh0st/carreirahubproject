@@ -821,6 +821,13 @@ async function getAccessAuditRows(since24h: Date) {
     role: string | null;
     lastSeenAt: Date;
     events24h: number;
+    loginEvents24h: number;
+    hubEvents24h: number;
+    hubApiEvents24h: number;
+    dashboardEvents24h: number;
+    dashboardApiEvents24h: number;
+    opsEvents24h: number;
+    opsApiEvents24h: number;
     lastPath: string | null;
     lastAction: string;
   }>();
@@ -837,11 +844,25 @@ async function getAccessAuditRows(since24h: Date) {
         role: row.role,
         lastSeenAt: row.createdAt,
         events24h: 1,
+        loginEvents24h: row.action.endsWith("_LOGIN_SUCCESS") ? 1 : 0,
+        hubEvents24h: row.routeType === "hub" ? 1 : 0,
+        hubApiEvents24h: row.routeType === "hub_api" ? 1 : 0,
+        dashboardEvents24h: row.routeType === "dashboard" ? 1 : 0,
+        dashboardApiEvents24h: row.routeType === "dashboard_api" ? 1 : 0,
+        opsEvents24h: row.routeType === "ops" ? 1 : 0,
+        opsApiEvents24h: row.routeType === "ops_api" ? 1 : 0,
         lastPath: row.path,
         lastAction: row.action,
       });
     } else {
       current.events24h += 1;
+      current.loginEvents24h += row.action.endsWith("_LOGIN_SUCCESS") ? 1 : 0;
+      current.hubEvents24h += row.routeType === "hub" ? 1 : 0;
+      current.hubApiEvents24h += row.routeType === "hub_api" ? 1 : 0;
+      current.dashboardEvents24h += row.routeType === "dashboard" ? 1 : 0;
+      current.dashboardApiEvents24h += row.routeType === "dashboard_api" ? 1 : 0;
+      current.opsEvents24h += row.routeType === "ops" ? 1 : 0;
+      current.opsApiEvents24h += row.routeType === "ops_api" ? 1 : 0;
       if (row.createdAt > current.lastSeenAt) {
         current.lastSeenAt = row.createdAt;
         current.lastPath = row.path;
@@ -855,11 +876,21 @@ async function getAccessAuditRows(since24h: Date) {
     authenticatedEvents24h: authenticatedRows.length,
     anonymousEvents24h: anonymousRows.length,
     uniqueAuthenticatedUsers24h: uniqueUsers.size,
+    uniqueClientUsers24h: [...uniqueUsers.values()].filter((user) => user.actorType === "client").length,
+    uniqueInternalUsers24h: [...uniqueUsers.values()].filter((user) => user.actorType === "internal").length,
     loginSuccess24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_SUCCESS")).length,
     loginFailure24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_FAILED")).length,
+    clientLoginSuccess24h: authenticatedRows.filter((row) => row.action === "CLIENT_LOGIN_SUCCESS").length,
+    internalLoginSuccess24h: authenticatedRows.filter((row) => row.action === "INTERNAL_LOGIN_SUCCESS").length,
     endpointAccess24h: authenticatedRows.filter((row) => row.action === "ENDPOINT_ACCESS").length,
     endpointDenied24h: aggregateRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
     anonymousDenied24h: anonymousRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
+    hubEvents24h: authenticatedRows.filter((row) => row.routeType === "hub").length,
+    hubApiEvents24h: authenticatedRows.filter((row) => row.routeType === "hub_api").length,
+    dashboardEvents24h: authenticatedRows.filter((row) => row.routeType === "dashboard").length,
+    dashboardApiEvents24h: authenticatedRows.filter((row) => row.routeType === "dashboard_api").length,
+    opsEvents24h: authenticatedRows.filter((row) => row.routeType === "ops").length,
+    opsApiEvents24h: authenticatedRows.filter((row) => row.routeType === "ops_api").length,
   };
 
   return {

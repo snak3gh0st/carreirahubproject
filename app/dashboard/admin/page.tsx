@@ -161,6 +161,15 @@ export default async function AdminSystemHealthPage() {
   );
   const accessRows = health.accessAudit.rows;
   const activeUsers = health.accessAudit.users;
+  const hubUsers = activeUsers.filter(
+    (user) =>
+      user.actorType === "client" ||
+      user.hubEvents24h > 0 ||
+      user.hubApiEvents24h > 0 ||
+      user.lastPath?.startsWith("/hub") ||
+      user.lastPath?.startsWith("/api/hub")
+  );
+  const hubRows = accessRows.filter((row) => row.routeType === "hub" || row.routeType === "hub_api");
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -262,6 +271,85 @@ export default async function AdminSystemHealthPage() {
               icon={<UserCheck className="h-5 w-5" />}
             />
           </div>
+          <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="Hub Users"
+              value={health.accessAudit.summary.uniqueClientUsers24h}
+              detail={`${health.accessAudit.summary.clientLoginSuccess24h} client logins in the last 24h`}
+              icon={<UserCheck className="h-5 w-5" />}
+            />
+            <MetricCard
+              label="Hub Pages"
+              value={health.accessAudit.summary.hubEvents24h}
+              detail="client portal page loads"
+              icon={<MousePointerClick className="h-5 w-5" />}
+            />
+            <MetricCard
+              label="Hub APIs"
+              value={health.accessAudit.summary.hubApiEvents24h}
+              detail="client portal API requests"
+              icon={<Activity className="h-5 w-5" />}
+            />
+            <MetricCard
+              label="Internal Users"
+              value={health.accessAudit.summary.uniqueInternalUsers24h}
+              detail={`${health.accessAudit.summary.internalLoginSuccess24h} internal logins in the last 24h`}
+              icon={<LogIn className="h-5 w-5" />}
+            />
+          </div>
+          <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
+              Last 24h · hub users only ({hubUsers.length}) with latest portal action
+            </div>
+            <div className="max-h-[360px] overflow-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="sticky top-0 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th className="px-4 py-3">Who</th>
+                    <th className="px-4 py-3">Portal Events</th>
+                    <th className="px-4 py-3">Hub Pages</th>
+                    <th className="px-4 py-3">Hub APIs</th>
+                    <th className="px-4 py-3">Last Seen</th>
+                    <th className="px-4 py-3">Latest Endpoint</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {hubUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-500">
+                        No hub user activity in the last 24h.
+                      </td>
+                    </tr>
+                  ) : (
+                    hubUsers.map((user) => (
+                      <tr key={user.key} className="bg-white">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-gray-950">
+                            {user.email || user.actorName || user.key}
+                          </p>
+                          <p className="text-xs text-gray-500">client</p>
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {user.hubEvents24h + user.hubApiEvents24h}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{user.hubEvents24h}</td>
+                        <td className="px-4 py-3 text-gray-600">{user.hubApiEvents24h}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-600">
+                          <p>{formatAge(user.lastSeenAt, generatedAt)}</p>
+                          <p className="mt-1 text-xs text-gray-400">{formatDate(user.lastSeenAt)}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <code className="break-all rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">
+                            {user.lastPath || user.lastAction}
+                          </code>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
           <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
               Last 24h · all {activeUsers.length} authenticated users with latest action
@@ -320,7 +408,7 @@ export default async function AdminSystemHealthPage() {
           </div>
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
-              Last 24h · full authenticated event feed ({accessRows.length} events)
+              Last 24h · full authenticated event feed ({accessRows.length} events, {hubRows.length} from hub)
             </div>
             <div className="max-h-[520px] overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
