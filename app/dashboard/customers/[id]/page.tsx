@@ -447,7 +447,7 @@ export default async function CustomerDetailPage({
       </div>
 
       {/* Invoice Table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div id="invoices" className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-xl font-display font-semibold text-gray-900">Faturas</h2>
         </div>

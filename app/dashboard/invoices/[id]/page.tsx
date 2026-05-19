@@ -240,13 +240,14 @@ export default async function InvoiceDetailPage({ params }: { params: { id: stri
     deliveryStep,
     paymentStep,
   ];
+  const customerInvoicesHref = `/dashboard/customers/${invoice.customer.id}#invoices`;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="container mx-auto p-6 md:p-8 max-w-6xl">
         {/* Breadcrumb */}
-        <Link href="/dashboard/invoices" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4" /> Voltar para Faturas
+        <Link href={customerInvoicesHref} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors">
+          <ArrowLeft className="h-4 w-4" /> Voltar para Faturas do Cliente
         </Link>
 
         {/* Hero Header */}

@@ -74,15 +74,17 @@ export default async function EditInvoicePage({
     redirect(`/dashboard/invoices/${invoice.id}?error=cannot-edit-${invoice.status.toLowerCase()}`);
   }
 
+  const customerInvoicesHref = `/dashboard/customers/${invoice.customer.id}#invoices`;
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       {/* Back Link */}
       <Link
-        href={`/dashboard/invoices/${invoice.id}`}
+        href={customerInvoicesHref}
         className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium mb-6"
       >
         <ArrowLeft className="w-4 h-4" />
-        Voltar para Fatura
+        Voltar para Faturas do Cliente
       </Link>
 
       {/* Header */}
@@ -124,6 +126,7 @@ export default async function EditInvoicePage({
         <EditInvoiceForm
           invoice={{
             id: invoice.id,
+            customerId: invoice.customer.id,
             invoiceNumber: invoice.invoiceNumber,
             amount: Number(invoice.amount),
             dueDate: invoice.dueDate,

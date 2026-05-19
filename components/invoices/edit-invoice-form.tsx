@@ -13,6 +13,7 @@ interface LineItem {
 interface EditInvoiceFormProps {
   invoice: {
     id: string;
+    customerId: string;
     invoiceNumber: string | null;
     amount: number;
     dueDate: Date;
@@ -26,6 +27,7 @@ interface EditInvoiceFormProps {
 
 export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
   const router = useRouter();
+  const customerInvoicesHref = `/dashboard/customers/${invoice.customerId}#invoices`;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -132,7 +134,7 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
         body: JSON.stringify({
           amount,
           dueDate: new Date(dueDate).toISOString(),
-          description: invoice.quickbooks_invoice_id ? description || null : undefined,
+          description: invoice.quickbooks_invoice_id ? description.trim() || null : undefined,
           lineItems,
         }),
       });
@@ -149,8 +151,8 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
         // Still redirect but could show a toast notification
       }
 
-      // Success - redirect to invoice detail page
-      router.push(`/dashboard/invoices/${invoice.id}?updated=true`);
+      // Success - return to the selected customer's invoices
+      router.push(`${customerInvoicesHref}?updatedInvoice=${invoice.id}`);
       router.refresh();
     } catch (err: any) {
       setError(err.message || "Failed to update invoice");
@@ -159,7 +161,7 @@ export function EditInvoiceForm({ invoice }: EditInvoiceFormProps) {
   };
 
   const handleCancel = () => {
-    router.push(`/dashboard/invoices/${invoice.id}`);
+    router.push(customerInvoicesHref);
   };
 
   return (

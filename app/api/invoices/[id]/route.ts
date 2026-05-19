@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const updateInvoiceSchema = z.object({
   amount: z.number().positive().optional(),
   dueDate: z.string().datetime().optional(), // ISO 8601 format
-  description: z.string().optional(), // For QB CustomerMemo field only (not stored locally)
+  description: z.string().nullable().optional(), // For QB CustomerMemo field only (not stored locally)
   lineItems: z.array(z.object({
     description: z.string(),
     amount: z.number().positive(),
@@ -155,6 +155,10 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateInvoiceSchema.parse(body);
+    const normalizedDescription =
+      data.description === undefined
+        ? undefined
+        : data.description?.trim() || "";
     const normalizedLineItems = normalizeEditableInvoiceLineItems(data.lineItems);
     const computedAmount = computeInvoiceAmountFromLineItems(
       normalizedLineItems,
@@ -165,7 +169,7 @@ export async function PATCH(
     const financialFieldsChanged = !!(
       computedAmount !== undefined ||
       data.dueDate !== undefined ||
-      data.description !== undefined ||
+      normalizedDescription !== undefined ||
       normalizedLineItems !== undefined
     );
 
@@ -188,8 +192,8 @@ export async function PATCH(
           qbUpdates.dueDate = new Date(data.dueDate).toISOString().split('T')[0];
         }
 
-        if (data.description !== undefined) {
-          qbUpdates.description = data.description;
+        if (normalizedDescription !== undefined) {
+          qbUpdates.description = normalizedDescription;
         }
 
         if (normalizedLineItems !== undefined) {
