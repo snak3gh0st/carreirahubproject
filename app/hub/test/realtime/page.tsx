@@ -15,7 +15,6 @@ import {
   PhoneOff,
   ShieldCheck,
   Sparkles,
-  Waves,
 } from "lucide-react";
 import type { Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
@@ -1311,57 +1310,50 @@ export default function RealtimeEnglishTestPage() {
         </div>
       </section>
 
-      {/* ── Transcript card — own card below, grows freely on the page ── */}
-      {(isCallActive || latestTranscript.length > 0) && (
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+      {/* ── Transcript panel — detached from the room layout on desktop ── */}
+      {latestTranscript.length > 0 && !result && (
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:fixed lg:bottom-5 lg:right-5 lg:z-20 lg:w-[420px] lg:shadow-[0_24px_70px_-28px_rgba(15,23,42,0.28)]">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-gray-400" strokeWidth={2} />
-              <h3 className="text-sm font-bold text-gray-900">{copy.transcript}</h3>
+              <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.transcript}</h3>
             </div>
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 font-mono text-xs font-semibold text-gray-500">
               {latestTranscript.length}
             </span>
           </div>
 
-          {latestTranscript.length > 0 ? (
-            <div className="space-y-2 p-5">
-              {latestTranscript.map((item, idx) => (
+          <div className="max-h-64 space-y-2 overflow-y-auto p-4">
+            {latestTranscript.map((item, idx) => (
+              <div
+                key={`${item.at}-${idx}`}
+                className={`flex ${item.role === "student" ? "justify-end" : "justify-start"}`}
+              >
                 <div
-                  key={`${item.at}-${idx}`}
-                  className={`flex ${item.role === "student" ? "justify-end" : "justify-start"}`}
+                  className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
+                    item.role === "student"
+                      ? "rounded-br-sm text-white"
+                      : "rounded-bl-sm border-l-2 bg-gray-50 text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                  }`}
+                  style={
+                    item.role === "student"
+                      ? { backgroundColor: BRAND_COLORS.VERDE }
+                      : { borderLeftColor: BRAND_COLORS.VERDE }
+                  }
                 >
-                  <div
-                    className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
-                      item.role === "student"
-                        ? "rounded-br-sm text-white"
-                        : "rounded-bl-sm border-l-2 bg-gray-50 text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                  <p
+                    className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                      item.role === "student" ? "text-white/40" : "text-gray-400"
                     }`}
-                    style={
-                      item.role === "student"
-                        ? { backgroundColor: BRAND_COLORS.VERDE }
-                        : { borderLeftColor: BRAND_COLORS.VERDE }
-                    }
                   >
-                    <p
-                      className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                        item.role === "student" ? "text-white/40" : "text-gray-400"
-                      }`}
-                    >
-                      {item.role === "student" ? copy.studentLabel : copy.examinerLabel}
-                    </p>
-                    {item.text}
-                  </div>
+                    {item.role === "student" ? copy.studentLabel : copy.examinerLabel}
+                  </p>
+                  {item.text}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex items-center justify-center gap-3 px-5 py-8 text-gray-400">
-              <Waves className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-              <p className="text-sm">{copy.emptyTranscript}</p>
-            </div>
-          )}
-        </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* ── Result card ── */}

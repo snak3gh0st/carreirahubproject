@@ -109,6 +109,11 @@ function copyFor(lang: Language) {
       target: "Foco",
       duration: "Tempo",
       interviewMode: "Mock interview",
+      interviewBrief: "Brief da entrevista",
+      basedOnCv: "Baseado no CV",
+      rolePractice: "Treino por função",
+      aiInterviewRoom: "Sala com entrevistador AI",
+      candidateRoom: "Sua posição",
       active: "Ativa",
       ready: "Pronta",
       answered: "respostas",
@@ -162,6 +167,11 @@ function copyFor(lang: Language) {
     target: "Focus",
     duration: "Time",
     interviewMode: "Mock interview",
+    interviewBrief: "Interview brief",
+    basedOnCv: "Based on your CV",
+    rolePractice: "Role practice",
+    aiInterviewRoom: "AI interviewer room",
+    candidateRoom: "Your seat",
     active: "Active",
     ready: "Ready",
     answered: "answers",
@@ -680,8 +690,8 @@ export default function AiMockInterviewPage() {
         }
       `}</style>
 
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_24px_60px_-20px_rgba(47,68,63,0.18)]">
-        <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
+      <section className="overflow-hidden rounded-[22px] border border-gray-200 bg-[#f7f4ea] shadow-[0_24px_70px_-24px_rgba(47,68,63,0.22)]">
+        <header className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-5 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/hub/programa"
@@ -719,15 +729,18 @@ export default function AiMockInterviewPage() {
           </div>
         </header>
 
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
           <div
-            className="relative flex min-h-[620px] flex-col overflow-hidden"
-            style={{ backgroundColor: BRAND_COLORS.VERDE }}
+            className="relative flex min-h-[620px] flex-col overflow-hidden bg-[#151c1a]"
           >
             <div
               aria-hidden
               className="pointer-events-none absolute left-1/2 top-[38%] h-[460px] w-[460px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl transition-opacity duration-1000"
-              style={{ backgroundColor: BRAND_COLORS.TANGERINA, opacity: isCallActive ? 0.13 : 0.045 }}
+              style={{ backgroundColor: BRAND_COLORS.TANGERINA, opacity: isCallActive ? 0.1 : 0.04 }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-36 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent)]"
             />
             <div className="relative flex items-center justify-between p-5">
               <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-3.5 py-1.5 text-xs font-bold text-white">
@@ -736,72 +749,89 @@ export default function AiMockInterviewPage() {
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 text-xs font-semibold text-white/45">
                 <Radio className="h-3.5 w-3.5" strokeWidth={2} />
-                {copy.interviewMode}
+                {copy.basedOnCv}
               </div>
             </div>
 
-            <div className="relative flex flex-1 flex-col items-center justify-center pb-6 text-center">
-              <div className="relative flex h-64 w-64 items-center justify-center">
-                {isCallActive && (
-                  <>
-                    <div
-                      aria-hidden
-                      className="absolute inset-0 rounded-full"
-                      style={{
-                        background: `conic-gradient(transparent 0deg, transparent 210deg, ${BRAND_COLORS.TANGERINA}55 300deg, transparent 360deg)`,
-                        animation: "mock-orbit 8s linear infinite",
-                      }}
-                    />
-                    <div className="absolute inset-2 animate-ping rounded-full border border-white/20 opacity-30" style={{ animationDuration: "2.8s" }} />
-                  </>
-                )}
-                <div className="absolute inset-8 rounded-full border border-white/15 bg-white/[0.05]" />
-                <div
-                  className="absolute inset-14 flex flex-col items-center justify-center rounded-full border border-white/20"
-                  style={{
-                    background: "radial-gradient(circle at 35% 30%, rgba(255,129,66,.18), rgba(255,255,255,.07) 72%)",
-                    boxShadow: isCallActive
-                      ? `0 0 76px 18px ${BRAND_COLORS.TANGERINA}2A, inset 0 1px 0 rgba(255,255,255,.12)`
-                      : "inset 0 1px 0 rgba(255,255,255,.08)",
-                  }}
-                >
-                  {isBusy ? (
-                    <Loader2 className="h-10 w-10 animate-spin text-white/60" strokeWidth={1.5} />
-                  ) : (
-                    <>
-                      <UserRound className="h-10 w-10 text-white" strokeWidth={1.5} />
-                      <p className="mt-2 font-mono text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
-                        interviewer
-                      </p>
-                    </>
-                  )}
+            <div className="relative flex flex-1 flex-col gap-4 px-5 pb-5">
+              <div className="relative flex min-h-[340px] flex-1 flex-col justify-between overflow-hidden rounded-[24px] border border-white/10 bg-[#202927] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/35">{copy.aiInterviewRoom}</p>
+                    <h2 className="mt-1 text-xl font-black tracking-tight text-white">
+                      {isBusy ? copy.scoring : isCallActive ? copy.listening : copy.readyCopy}
+                    </h2>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white/55">
+                    <span className={`h-2 w-2 rounded-full ${isCallActive ? "animate-pulse bg-emerald-400" : "bg-white/25"}`} />
+                    {roomLabel}
+                  </div>
+                </div>
+
+                <div className="flex flex-1 items-center justify-center py-8">
+                  <div className="relative flex h-44 w-44 items-center justify-center rounded-[32px] border border-white/15 bg-white/[0.05]">
+                    {isCallActive && (
+                      <div
+                        aria-hidden
+                        className="absolute -inset-5 rounded-[42px]"
+                        style={{
+                          background: `conic-gradient(transparent 0deg, transparent 220deg, ${BRAND_COLORS.TANGERINA}55 305deg, transparent 360deg)`,
+                          animation: "mock-orbit 8s linear infinite",
+                        }}
+                      />
+                    )}
+                    <div className="relative flex h-28 w-28 flex-col items-center justify-center rounded-[28px] border border-white/20 bg-[#111816]">
+                      {isBusy ? (
+                        <Loader2 className="h-9 w-9 animate-spin text-white/60" strokeWidth={1.5} />
+                      ) : (
+                        <>
+                          <UserRound className="h-10 w-10 text-white" strokeWidth={1.5} />
+                          <p className="mt-2 font-mono text-[10px] font-black uppercase tracking-[0.22em] text-white/35">
+                            interviewer
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-end justify-between gap-5">
+                  <p className="max-w-md text-sm leading-6 text-white/50">
+                    {isCallActive ? copy.liveHint : copy.subtitle}
+                  </p>
+                  <div className="hidden h-12 items-center justify-center gap-[3px] sm:flex" aria-hidden>
+                    {Array.from({ length: 18 }, (_, index) => (
+                      <span
+                        key={index}
+                        className="h-10 w-[3px] origin-bottom rounded-full"
+                        style={{
+                          backgroundColor: BRAND_COLORS.TANGERINA,
+                          opacity: isCallActive ? 0.9 : 0.18,
+                          animation: isCallActive
+                            ? `mock-eq ${0.72 + (index % 6) * 0.12}s ease-in-out ${index * 30}ms infinite`
+                            : undefined,
+                          transform: isCallActive ? undefined : "scaleY(.45)",
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-8 flex h-14 items-center justify-center gap-[4px]" aria-hidden>
-                {Array.from({ length: 24 }, (_, index) => (
-                  <span
-                    key={index}
-                    className="h-12 w-[4px] origin-bottom rounded-full"
-                    style={{
-                      backgroundColor: BRAND_COLORS.TANGERINA,
-                      opacity: isCallActive ? 0.9 : 0.18,
-                      animation: isCallActive
-                        ? `mock-eq ${0.72 + (index % 6) * 0.12}s ease-in-out ${index * 30}ms infinite`
-                        : undefined,
-                      transform: isCallActive ? undefined : "scaleY(.45)",
-                    }}
-                  />
-                ))}
-              </div>
-
-              <div className="mt-7 max-w-xl px-8">
-                <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-white">
-                  {isBusy ? copy.scoring : isCallActive ? copy.listening : copy.readyCopy}
-                </h2>
-                <p className="mt-3 text-sm leading-6 text-white/50">
-                  {isCallActive ? copy.liveHint : copy.subtitle}
-                </p>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_210px]">
+                <div className="rounded-[20px] border border-white/10 bg-white/[0.06] p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">{copy.rolePractice}</p>
+                  <p className="mt-2 text-base font-extrabold leading-5 text-white">
+                    {targetRole || copy.interviewMode}
+                  </p>
+                </div>
+                <div className="rounded-[20px] border border-white/10 bg-white/[0.05] p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">{copy.candidateRoom}</p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-white/75">{copy.candidate}</span>
+                    <span className={`h-2.5 w-2.5 rounded-full ${muted ? "bg-red-400" : "bg-emerald-400"}`} />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -877,19 +907,31 @@ export default function AiMockInterviewPage() {
             </div>
           </div>
 
-          <aside className="border-t border-gray-100 bg-[#FAFAF9] lg:border-l lg:border-t-0">
+          <aside className="border-t border-gray-200 bg-white lg:border-l lg:border-t-0">
             <div className="border-b border-gray-100 p-5">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.session}</p>
-                  <h2 className="mt-0.5 text-base font-extrabold text-gray-950">{copy.interviewer}</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.interviewBrief}</p>
+                  <h2 className="mt-0.5 text-base font-extrabold text-gray-950">{targetRole || copy.interviewMode}</h2>
                 </div>
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isCallActive ? "bg-emerald-50" : "bg-gray-100"}`}>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-full ${isCallActive ? "bg-emerald-50" : "bg-[#f7f4ea]"}`}>
                   <span className={`h-2.5 w-2.5 rounded-full ${isCallActive ? "animate-pulse bg-emerald-500" : "bg-gray-300"}`} />
                 </div>
               </div>
 
-              <div className="divide-y divide-gray-100">
+              <div className="rounded-2xl border border-gray-100 bg-[#faf8f1] p-3.5">
+                <div className="flex items-start gap-3">
+                  <Target className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" strokeWidth={2} />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">{copy.basedOnCv}</p>
+                    <p className="mt-1 text-sm font-semibold leading-5 text-gray-800">
+                      {copy.subtitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 divide-y divide-gray-100">
                 {[
                   { label: copy.session, value: sessionId ? copy.active : copy.ready },
                   { label: copy.microphone, value: muted ? copy.mute : copy.listening },
@@ -901,18 +943,6 @@ export default function AiMockInterviewPage() {
                     <span className="font-semibold text-gray-900">{value}</span>
                   </div>
                 ))}
-              </div>
-
-              <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50/60 p-3.5">
-                <div className="flex items-start gap-3">
-                  <Target className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" strokeWidth={2} />
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">{copy.target}</p>
-                    <p className="mt-1 text-sm font-semibold leading-5 text-gray-800">
-                      {targetRole || copy.interviewMode}
-                    </p>
-                  </div>
-                </div>
               </div>
 
               <div className="mt-3.5 flex items-center gap-2 text-[11px] text-gray-400">
@@ -930,41 +960,46 @@ export default function AiMockInterviewPage() {
               </div>
             )}
 
-            <div className="p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.transcript}</p>
-              {latestTranscript.length > 0 ? (
-                <div className="mt-4 space-y-2">
-                  {latestTranscript.map((item, idx) => (
-                    <div
-                      key={`${item.at}-${idx}`}
-                      className={`rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
-                        item.role === "candidate"
-                          ? "ml-6 text-white"
-                          : "mr-6 border-l-2 bg-white text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                      }`}
-                      style={
-                        item.role === "candidate"
-                          ? { backgroundColor: BRAND_COLORS.VERDE }
-                          : { borderLeftColor: BRAND_COLORS.VERDE }
-                      }
-                    >
-                      <p className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${item.role === "candidate" ? "text-white/40" : "text-gray-400"}`}>
-                        {item.role === "candidate" ? copy.candidate : copy.interviewer}
-                      </p>
-                      {item.text}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="mt-4 flex items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-white px-4 py-6 text-gray-400">
-                  <FileText className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                  <p className="text-sm">{copy.emptyTranscript}</p>
-                </div>
-              )}
-            </div>
           </aside>
         </div>
       </section>
+
+      {latestTranscript.length > 0 && !report && (
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:fixed lg:bottom-5 lg:right-5 lg:z-20 lg:w-[420px] lg:shadow-[0_24px_70px_-28px_rgba(15,23,42,0.28)]">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-gray-400" strokeWidth={2} />
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.transcript}</p>
+            </div>
+            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 font-mono text-xs font-semibold text-gray-500">
+              {latestTranscript.length}
+            </span>
+          </div>
+
+          <div className="max-h-64 space-y-2 overflow-y-auto p-4">
+            {latestTranscript.map((item, idx) => (
+              <div
+                key={`${item.at}-${idx}`}
+                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
+                  item.role === "candidate"
+                    ? "ml-8 text-white"
+                    : "mr-8 border-l-2 bg-gray-50 text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                }`}
+                style={
+                  item.role === "candidate"
+                    ? { backgroundColor: BRAND_COLORS.VERDE }
+                    : { borderLeftColor: BRAND_COLORS.VERDE }
+                }
+              >
+                <p className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${item.role === "candidate" ? "text-white/40" : "text-gray-400"}`}>
+                  {item.role === "candidate" ? copy.candidate : copy.interviewer}
+                </p>
+                {item.text}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {report && (
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
