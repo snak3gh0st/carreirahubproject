@@ -139,11 +139,17 @@ export async function POST(request: NextRequest) {
 
     let opsSessionId = existing.opsSessionId;
     if (!opsSessionId && access.enrollment) {
+      const priorMockCount = await prisma.mentorshipSession.count({
+        where: {
+          enrollmentId: access.enrollment.id,
+          sessionType: { in: ["mock_interview_1", "mock_interview_2"] },
+        },
+      });
       const opsSession = await prisma.mentorshipSession.create({
         data: {
           enrollmentId: access.enrollment.id,
           conductorId: access.enrollment.assignedToId,
-          sessionType: "mock_interview",
+          sessionType: priorMockCount === 0 ? "mock_interview_1" : "mock_interview_2",
           sessionDate: new Date(),
           notes: [
             "AI mock interview completed in CarreiraHub.",

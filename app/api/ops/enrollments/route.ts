@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const enrollSchema = z.object({
   customerId: z.string().min(1),
-  programType: z.enum(["PASS", "ADVANCED"]),
+  programType: z.enum(["PASS", "ADVANCED", "EARLY_CAREER"]),
   assignedToId: z.string().min(1),
   startDate: z.string().min(1),
 });

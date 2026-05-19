@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export interface EnrollmentCard {
   id: string;
-  programType: "PASS" | "ADVANCED";
+  programType: "PASS" | "ADVANCED" | "EARLY_CAREER";
   status: string;
   startDate: string;
   customer: {
@@ -21,6 +21,13 @@ export interface EnrollmentCard {
       dueDate: string;
       status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "VOID" | "PARTIALLY_PAID" | "REFUNDED" | "PARTIALLY_REFUNDED";
     }>;
+    contracts: Array<{
+      id: string;
+      status: string;
+      sentAt: string | null;
+      signedAt: string | null;
+      docusign_env_id: string | null;
+    }>;
   };
   assignedTo: {
     id: string;
@@ -28,6 +35,19 @@ export interface EnrollmentCard {
   };
   transitions: Array<{ createdAt: string }>;
   sessions: Array<{ sessionDate: string }>;
+  opsProfile: {
+    renewalDate: string | null;
+    renewalState: string;
+    lastOperationalContactAt: string | null;
+    coachCohort: string | null;
+  } | null;
+  opsActivities: Array<{
+    type: string;
+    activityDate: string;
+    company: string | null;
+    roleTitle: string | null;
+    outcome: string | null;
+  }>;
   _count: { sessions: number };
   checklistProgress: Array<{ phaseKey: string; itemKey: string; completedAt: string | null }>;
 }

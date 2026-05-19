@@ -29,6 +29,7 @@ MAILTO=""
 # Contracts and collections
 0 1 * * * root /opt/carreirahub/run-cron.sh contract-expiration >> /var/log/carreirahub-cron.log 2>&1
 0 7 * * * root /opt/carreirahub/run-cron.sh contract-renewal-reminder >> /var/log/carreirahub-cron.log 2>&1
+30 7 * * * root /opt/carreirahub/run-cron.sh mentorship-renewals >> /var/log/carreirahub-cron.log 2>&1
 0 13 * * * root /opt/carreirahub/run-cron.sh collection-calls >> /var/log/carreirahub-cron.log 2>&1
 
 # Digests

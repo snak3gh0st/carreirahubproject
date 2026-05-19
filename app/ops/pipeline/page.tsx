@@ -17,14 +17,14 @@ export default async function PipelinePage() {
   const currentUserName = (session.user as { name?: string | null }).name ?? "";
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-6">
+    <div className="p-6 md:p-8 xl:flex xl:h-[100dvh] xl:flex-col xl:overflow-hidden">
+      <div className="mb-6 shrink-0">
         <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">Alunos por Area</h1>
         <p className="text-sm text-gray-500 mt-1">
           Lista operacional por fase, responsavel, risco e progresso do aluno.
         </p>
       </div>
-      <div>
+      <div className="xl:min-h-0 xl:flex-1">
         <Suspense fallback={<PipelineSkeleton />}>
           <PipelineBoard
             currentUserId={currentUserId}

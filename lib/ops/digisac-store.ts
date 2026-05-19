@@ -1,6 +1,11 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { buildDigisacContactUrl, normalizePhone } from "@/lib/services/digisac.service";
+import {
+  buildDigisacContactUrl,
+  findDigisacContactById,
+  findDigisacContactByPhone,
+  normalizePhone,
+} from "@/lib/services/digisac.service";
 import type { extractDigisacWebhookMessage } from "@/lib/services/digisac.service";
 
 type DigisacWebhookMessage = NonNullable<ReturnType<typeof extractDigisacWebhookMessage>>;
@@ -54,36 +59,54 @@ export async function getOrCreateDigisacThreadForEnrollment(enrollmentId: string
   });
   if (!enrollment) return null;
 
-  const phoneNumber = normalizePhone(enrollment.customer.phone);
-  let thread = await prisma.opsDigisacThread.findFirst({
-    where: {
-      OR: [
-        { enrollmentId: enrollment.id },
-        { customerId: enrollment.customerId, phoneNumber },
-      ],
-    },
-    orderBy: { updatedAt: "desc" },
+  const digisacContact = await findDigisacContactByPhone(enrollment.customer.phone).catch((error) => {
+    console.warn("[DIGISAC] Failed to resolve contact by phone:", error);
+    return null;
   });
+  const phoneNumber = normalizePhone(digisacContact?.phoneNumber) || normalizePhone(enrollment.customer.phone);
+
+  let thread = digisacContact?.id
+    ? await prisma.opsDigisacThread.findFirst({
+        where: { contactId: digisacContact.id },
+        orderBy: { updatedAt: "desc" },
+      })
+    : null;
+
+  if (!thread) {
+    thread = await prisma.opsDigisacThread.findFirst({
+      where: {
+        OR: [
+          { enrollmentId: enrollment.id },
+          { customerId: enrollment.customerId, phoneNumber },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+  }
+
+  const contactName =
+    digisacContact?.internalName ||
+    digisacContact?.name ||
+    enrollment.customer.name;
+  const threadUpdate = {
+    customerId: enrollment.customerId,
+    enrollmentId: enrollment.id,
+    phoneNumber: phoneNumber || thread?.phoneNumber || "",
+    contactId: digisacContact?.id ?? thread?.contactId ?? null,
+    contactName,
+    ticketId: digisacContact?.ticketId ?? thread?.ticketId ?? null,
+    serviceId: digisacContact?.serviceId ?? thread?.serviceId ?? null,
+    lastSyncedAt: new Date(),
+  };
 
   if (!thread) {
     thread = await prisma.opsDigisacThread.create({
-      data: {
-        customerId: enrollment.customerId,
-        enrollmentId: enrollment.id,
-        phoneNumber,
-        contactName: enrollment.customer.name,
-        lastSyncedAt: new Date(),
-      },
+      data: threadUpdate,
     });
-  } else if (thread.enrollmentId !== enrollment.id || thread.customerId !== enrollment.customerId) {
+  } else {
     thread = await prisma.opsDigisacThread.update({
       where: { id: thread.id },
-      data: {
-        customerId: enrollment.customerId,
-        enrollmentId: enrollment.id,
-        phoneNumber: thread.phoneNumber || phoneNumber,
-        contactName: thread.contactName || enrollment.customer.name,
-      },
+      data: threadUpdate,
     });
   }
 
@@ -160,7 +183,13 @@ export async function storeOutboundDigisacMessage(args: {
 }
 
 export async function storeInboundDigisacWebhookMessage(message: DigisacWebhookMessage) {
-  const phoneNumber = normalizePhone(message.phoneNumber);
+  const contact = !message.phoneNumber && message.contactId
+    ? await findDigisacContactById(message.contactId).catch((error) => {
+        console.warn("[DIGISAC] Failed to resolve webhook contact by id:", error);
+        return null;
+      })
+    : null;
+  const phoneNumber = normalizePhone(message.phoneNumber) || normalizePhone(contact?.phoneNumber);
   const customerId = await findCustomerIdByPhone(phoneNumber);
   const enrollmentId = await findActiveEnrollmentId(customerId);
 
@@ -179,9 +208,9 @@ export async function storeInboundDigisacWebhookMessage(message: DigisacWebhookM
   const threadData = {
     phoneNumber,
     contactId: message.contactId,
-    contactName: message.contactName,
-    ticketId: message.ticketId,
-    serviceId: message.serviceId,
+    contactName: message.contactName ?? contact?.internalName ?? contact?.name,
+    ticketId: message.ticketId ?? contact?.ticketId,
+    serviceId: message.serviceId ?? contact?.serviceId,
     customerId,
     enrollmentId,
     lastMessageAt,

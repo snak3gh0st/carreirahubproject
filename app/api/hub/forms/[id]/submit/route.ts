@@ -3,9 +3,18 @@ import type { Prisma } from "@prisma/client";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
 import { getTemplate } from "@/lib/hub/form-templates";
-import { deriveCustomerUpdatesFromFormAnswers } from "@/lib/hub/customer-form-sync";
+import {
+  deriveCustomerUpdatesFromFormAnswers,
+  deriveOpsProfileUpdatesFromFormAnswers,
+} from "@/lib/hub/customer-form-sync";
+import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 
 export const dynamic = "force-dynamic";
+
+function filenameFromStorageKey(value: unknown): string | null {
+  if (typeof value !== "string" || !value.includes("/")) return null;
+  return value.split("/").pop() || null;
+}
 
 /**
  * POST /api/hub/forms/[id]/submit
@@ -82,7 +91,13 @@ export async function POST(
     }
 
     const customerUpdates = deriveCustomerUpdatesFromFormAnswers(answers);
-    const transaction: Prisma.PrismaPromise<unknown>[] = [
+    const opsProfileUpdates = deriveOpsProfileUpdatesFromFormAnswers(answers);
+    const activeEnrollment = await prisma.mentorshipEnrollment.findFirst({
+      where: { customerId: auth.customerId, status: "ACTIVE" },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    });
+    const baseTransaction: Prisma.PrismaPromise<unknown>[] = [
       prisma.formSubmission.create({
         data: {
           assignmentId: assignment.id,
@@ -97,7 +112,7 @@ export async function POST(
     ];
 
     if (Object.keys(customerUpdates).length > 0) {
-      transaction.push(
+      baseTransaction.push(
         prisma.customer.update({
           where: { id: auth.customerId },
           data: customerUpdates,
@@ -105,7 +120,46 @@ export async function POST(
       );
     }
 
-    await prisma.$transaction(transaction);
+    const transaction: Prisma.PrismaPromise<unknown>[] = [...baseTransaction];
+
+    if (activeEnrollment && Object.keys(opsProfileUpdates).length > 0) {
+      transaction.push(
+        prisma.opsStudentProfile.upsert({
+          where: { enrollmentId: activeEnrollment.id },
+          create: {
+            ...opsProfileUpdates,
+            enrollmentId: activeEnrollment.id,
+            customerId: auth.customerId,
+          },
+          update: opsProfileUpdates,
+        })
+      );
+    }
+
+    const resumeFilename = filenameFromStorageKey(answers.resume);
+    if (activeEnrollment && resumeFilename && typeof answers.resume === "string") {
+      transaction.push(
+        prisma.opsStudentDocument.create({
+          data: {
+            kind: "CV_ORIGINAL",
+            status: "UPLOADED",
+            title: "CV enviado no onboarding",
+            filename: resumeFilename,
+            storageKey: answers.resume,
+            version: 1,
+            enrollmentId: activeEnrollment.id,
+            customerId: auth.customerId,
+          },
+        })
+      );
+    }
+
+    try {
+      await prisma.$transaction(transaction);
+    } catch (error) {
+      if (!isMissingOpsNativeTable(error)) throw error;
+      await prisma.$transaction(baseTransaction);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

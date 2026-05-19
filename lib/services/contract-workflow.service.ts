@@ -190,7 +190,7 @@ export class ContractWorkflowService {
   /**
    * Handle contract signed event (triggered by DocuSign webhook)
    */
-  async handleContractSigned(contractId: string): Promise<void> {
+  async handleContractSigned(contractId: string, signedAt?: Date | string | null): Promise<void> {
     try {
       console.log(`[CONTRACT_WORKFLOW] Processing signed contract: ${contractId}`);
 
@@ -207,12 +207,15 @@ export class ContractWorkflowService {
         throw new Error(`Contract ${contractId} not found`);
       }
 
+      const resolvedSignedAt = signedAt ? new Date(signedAt) : new Date();
+      const signedAtForDb = Number.isNaN(resolvedSignedAt.getTime()) ? new Date() : resolvedSignedAt;
+
       // Update contract status
       const updatedContract = await prisma.contract.update({
         where: { id: contractId },
         data: {
           status: ContractStatus.SIGNED,
-          signedAt: new Date(),
+          signedAt: signedAtForDb,
         },
       });
 

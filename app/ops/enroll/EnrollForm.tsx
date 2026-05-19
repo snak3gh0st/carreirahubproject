@@ -20,7 +20,7 @@ export default function EnrollForm() {
   const [query, setQuery] = useState("");
   const [customers, setCustomers] = useState<CustomerResult[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerResult | null>(null);
-  const [programType, setProgramType] = useState<"PASS" | "ADVANCED" | "">("");
+  const [programType, setProgramType] = useState<"PASS" | "ADVANCED" | "EARLY_CAREER" | "">("");
   // TODO: Replace with user select once /api/dashboard/users endpoint exists
   const [assignedToId, setAssignedToId] = useState("");
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
@@ -186,13 +186,14 @@ export default function EnrollForm() {
         <select
           id="programType"
           value={programType}
-          onChange={(e) => setProgramType(e.target.value as "PASS" | "ADVANCED" | "")}
+          onChange={(e) => setProgramType(e.target.value as "PASS" | "ADVANCED" | "EARLY_CAREER" | "")}
           required
           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-verde focus:border-transparent"
         >
           <option value="">Selecione o programa...</option>
-          <option value="PASS">PASS</option>
-          <option value="ADVANCED">ADVANCED</option>
+          <option value="PASS">Programa Pass</option>
+          <option value="ADVANCED">Programa Pass Advanced</option>
+          <option value="EARLY_CAREER">Programa Early Career</option>
         </select>
       </div>
 

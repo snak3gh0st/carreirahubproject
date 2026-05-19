@@ -98,8 +98,31 @@ function cleanOpsAiText(value: string) {
 }
 
 function getPhaseAgeDays(enrollment: EnrollmentCard) {
-  const marker = enrollment.transitions[0]?.createdAt ?? enrollment.startDate;
+  const marker = getOperationalStart(enrollment).date;
   return Math.max(0, differenceInDays(new Date(), new Date(marker)));
+}
+
+function getOperationalStart(enrollment: EnrollmentCard) {
+  const signedContract = enrollment.customer.contracts?.find((contract) => contract.signedAt);
+  if (signedContract?.signedAt) {
+    return {
+      date: signedContract.signedAt,
+      source: "Contrato assinado DocuSign",
+    };
+  }
+
+  const transitionDate = enrollment.transitions[0]?.createdAt;
+  if (transitionDate) {
+    return {
+      date: transitionDate,
+      source: "Entrada na fase",
+    };
+  }
+
+  return {
+    date: enrollment.startDate,
+    source: "Inicio da mentoria",
+  };
 }
 
 function getDaysSinceLastSession(enrollment: EnrollmentCard) {
@@ -193,6 +216,11 @@ function StudentRow({
   const progress = getChecklistProgress(phase, enrollment);
   const risk = getRiskLabel(phase, enrollment);
   const paymentAlert = getPaymentAlert(enrollment);
+  const operationalStart = getOperationalStart(enrollment);
+  const renewalDate = enrollment.opsProfile?.renewalDate
+    ? new Date(enrollment.opsProfile.renewalDate)
+    : null;
+  const renewalInDays = renewalDate ? differenceInDays(renewalDate, new Date()) : null;
   const slaPercent = phase.slaDays > 0 ? Math.min(Math.round((phaseAgeDays / phase.slaDays) * 100), 100) : 0;
 
   return (
@@ -233,6 +261,12 @@ function StudentRow({
                 Pago
               </span>
             )}
+            {renewalInDays !== null && renewalInDays <= 30 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
+                <Clock className="h-3 w-3" />
+                Renovar {renewalInDays < 0 ? "vencido" : `${renewalInDays}d`}
+              </span>
+            )}
           </div>
           <div className="mt-2 grid gap-2 text-xs text-gray-500 sm:grid-cols-3">
             <span className="truncate">Responsavel: {enrollment.assignedTo.name ?? "Sem nome"}</span>
@@ -240,16 +274,21 @@ function StudentRow({
             <span>
               Ultima sessao: {daysSinceLastSession === null ? "sem registro" : `${daysSinceLastSession}d atras`}
             </span>
+            {enrollment.opsProfile?.coachCohort && (
+              <span className="truncate">Turma: {enrollment.opsProfile.coachCohort}</span>
+            )}
+            <span>{enrollment.opsActivities.length} atividade{enrollment.opsActivities.length !== 1 ? "s" : ""} recentes</span>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             <div>
               <div className="mb-1 flex justify-between text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                <span>SLA da fase</span>
+                <span>SLA operacional</span>
                 <span>{phaseAgeDays}/{phase.slaDays}d</span>
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
                 <div className={`h-full ${phaseAgeDays > phase.slaDays ? "bg-red-500" : "bg-brand-verde"}`} style={{ width: `${slaPercent}%` }} />
               </div>
+              <p className="mt-1 truncate text-[10px] text-gray-400">{operationalStart.source}</p>
             </div>
             <div>
               <div className="mb-1 flex justify-between text-[10px] font-semibold uppercase tracking-wide text-gray-400">
@@ -544,7 +583,7 @@ function StudentAiCard({
   const { messages, setMessages, sendMessage, status, error } = useChat({ transport } as any);
   const isStreaming = status === "streaming" || status === "submitted";
   const summaryPrompt =
-    "Sumarize o caso operacional deste aluno em no maximo 6 linhas curtas. Use texto puro, sem Markdown, sem negrito, sem emoji, sem tabela, sem separadores e sem pipes. Comece cada linha com um rotulo simples: Fase atual, Risco, Ultima sessao, Checklist, Pendencias, Proxima acao. Nao inclua leitura estrategica, visao CEO, nomes de tools, IDs internos ou erros tecnicos.";
+    "Sumarize o caso operacional deste aluno em no maximo 7 linhas curtas. Use texto puro, sem Markdown, sem negrito, sem emoji, sem tabela, sem separadores e sem pipes. Comece cada linha com um rotulo simples: Fase atual, Risco, Ultima sessao, Aplicacoes/entrevistas, Material/CV, Pendencias, Proxima acao. Nao inclua leitura estrategica, visao CEO, nomes de tools, IDs internos ou erros tecnicos.";
   const opsContext = [
     `Aluno: ${enrollment.customer.name}`,
     `Enrollment ID: ${enrollment.id}`,
@@ -552,6 +591,8 @@ function StudentAiCard({
     `Fase atual: ${phase.label} (${phase.key})`,
     `Responsavel: ${enrollment.assignedTo.name ?? "Sem nome"}`,
     `Programa: ${enrollment.programType}`,
+    `Atividades recentes: ${enrollment.opsActivities.length}`,
+    `Renovacao: ${enrollment.opsProfile?.renewalDate ?? "sem data"}`,
   ].join(" | ");
 
   async function createSummaryConversation() {
@@ -664,6 +705,7 @@ function StudentDetail({
 }) {
   const advanceMutation = useAdvancePhase();
   const phaseAgeDays = getPhaseAgeDays(enrollment);
+  const operationalStart = getOperationalStart(enrollment);
   const daysSinceLastSession = getDaysSinceLastSession(enrollment);
   const progress = getChecklistProgress(phase, enrollment);
   const nextPhase = phases.find((p) => p.sortOrder === phase.sortOrder + 1);
@@ -707,8 +749,9 @@ function StudentDetail({
             <p className="mt-1 text-sm font-semibold text-gray-800">{enrollment.assignedTo.name ?? "Sem nome"}</p>
           </div>
           <div className="rounded-lg bg-gray-50 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Tempo na fase</p>
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Dias considerados</p>
             <p className="mt-1 text-sm font-semibold text-gray-800">{phaseAgeDays} de {phase.slaDays} dias</p>
+            <p className="mt-1 text-[10px] text-gray-400">{operationalStart.source}</p>
           </div>
           <div className="rounded-lg bg-gray-50 p-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Ultima sessao</p>
@@ -834,8 +877,8 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
   }
 
   return (
-    <div className="grid min-h-0 grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_390px]">
-      <div className="min-w-0">
+    <div className="grid min-h-0 grid-cols-1 gap-6 xl:h-full xl:grid-cols-[minmax(0,1fr)_390px]">
+      <div className="min-w-0 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
         <div className="mb-4 grid gap-3 md:grid-cols-4">
           {[
             { key: "all" as const, label: "Todos", value: totals.students },
@@ -909,7 +952,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
         </div>
       </div>
 
-      <div className="min-w-0 xl:sticky xl:top-6 xl:self-start">
+      <div className="min-w-0 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
         {selected ? (
           <StudentDetail
             phase={selected.phase}

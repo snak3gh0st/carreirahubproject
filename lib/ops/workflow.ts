@@ -4,9 +4,13 @@ export const OPS_SESSION_TYPES = [
   "onboarding",
   "bussola",
   "raio_x",
+  "suporte_15_min",
   "devolutiva",
   "treinamento_de_entrevista",
-  "mock_interview",
+  "mock_interview_1",
+  "mock_interview_2",
+  "analise_vaga_entrevista",
+  "recolocacao",
   "check_in",
   "renovacao",
   "outro",
@@ -20,9 +24,13 @@ export const OPS_SESSION_TYPE_LABELS: Record<OpsSessionType, string> = {
   onboarding: "Onboarding",
   bussola: "Bússola",
   raio_x: "Raio X",
+  suporte_15_min: "15 minutos com o suporte",
   devolutiva: "Devolutiva",
   treinamento_de_entrevista: "Treinamento de Entrevista",
-  mock_interview: "Mock Interview",
+  mock_interview_1: "1ª Mock Interview",
+  mock_interview_2: "2ª Mock Interview",
+  analise_vaga_entrevista: "Análise de vaga/entrevista",
+  recolocacao: "Recolocação",
   check_in: "Check-in",
   renovacao: "Renovação",
   outro: "Outro",
@@ -38,7 +46,7 @@ export interface OpsWorkflowDefinition {
   description: string;
   primaryOwner: string;
   supportOwner: string;
-  clickupFocus: string;
+  hubFocus: string;
   checklist: string[];
   nextActions: string[];
   requiredRecords: string[];
@@ -113,7 +121,7 @@ export interface OpsCurrentPlaybook {
   description: string;
   primaryOwner: string;
   supportOwner: string;
-  clickupFocus: string;
+  hubFocus: string;
   checklist: string[];
   nextActions: string[];
   requiredRecords: string[];
@@ -149,10 +157,43 @@ function hasSessionType(
 }
 
 const COMMON_REQUIRED_RECORDS = [
-  "Atualizar o status oficial do aluno no ClickUp.",
+  "Atualizar o status oficial do aluno no Hub.",
   "Registrar data da etapa e quem executou a ação.",
   "Deixar observações críticas no histórico do aluno.",
 ];
+
+type SimpleWorkflowDefinitionInput = Pick<
+  OpsWorkflowDefinition,
+  "key" | "label" | "shortLabel" | "description" | "primaryOwner" | "supportOwner" | "hubFocus"
+> &
+  Partial<
+    Pick<
+      OpsWorkflowDefinition,
+      | "checklist"
+      | "nextActions"
+      | "requiredRecords"
+      | "communication"
+      | "automations"
+      | "slackChannels"
+    >
+  >;
+
+function simplePhase(input: SimpleWorkflowDefinitionInput): OpsWorkflowDefinition {
+  return {
+    checklist: [
+      `Confirmar critérios de entrada para ${input.label}.`,
+      "Atualizar o histórico operacional do aluno no Hub.",
+      "Registrar responsável, data e próximo passo claro.",
+      ...(input.checklist ?? []),
+    ],
+    nextActions: input.nextActions ?? ["Avançar somente quando a etapa estiver comprovada."],
+    requiredRecords: input.requiredRecords ?? COMMON_REQUIRED_RECORDS,
+    communication: input.communication ?? ["Registrar contato com o aluno no histórico operacional."],
+    automations: input.automations ?? ["Usar alertas internos do Hub para evitar perda de prazo."],
+    slackChannels: input.slackChannels ?? [],
+    ...input,
+  };
+}
 
 const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
   {
@@ -163,10 +204,10 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Entrada oficial do aluno na operação após venda do comercial, com repasse dos dados obrigatórios e contrato.",
     primaryOwner: "Fraenzi / Suporte",
     supportOwner: "Time Comercial",
-    clickupFocus: "Criar o aluno no CRM operacional e iniciar o atendimento.",
+    hubFocus: "Criar o aluno no Hub operacional e iniciar o atendimento.",
     checklist: [
       "Receber no Slack a passagem de bastão com dados completos do aluno.",
-      "Cadastrar o aluno no ClickUp dentro do CRM do produto correto.",
+      "Cadastrar o aluno no Hub dentro do produto correto.",
       "Garantir que contrato e dados-base estejam anexados.",
     ],
     nextActions: [
@@ -201,7 +242,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Preparar o aluno para o início da mentoria com acessos, mensagem inicial e acionamento do teste de inglês.",
     primaryOwner: "Fraenzi / Suporte",
     supportOwner: "Dária",
-    clickupFocus: "Status do aluno pronto para marcar teste.",
+    hubFocus: "Status do aluno pronto para marcar teste.",
     checklist: [
       "Liberar acesso na plataforma de vídeos.",
       "Enviar mensagem inicial com manual do cliente.",
@@ -227,6 +268,20 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "marcar_teste_ingles",
+    label: "Marcar Teste de Inglês",
+    shortLabel: "Marcar Teste",
+    description: "Coletar disponibilidade e deixar o teste de inglês pronto para acontecer.",
+    primaryOwner: "Dária / Suporte",
+    supportOwner: "Mônica / Leka",
+    hubFocus: "Aluno aguardando agenda do teste de inglês.",
+    checklist: [
+      "Confirmar que o aluno recebeu orientação para o teste.",
+      "Registrar horários disponíveis e responsável indicado.",
+    ],
+    nextActions: ["Agendar o teste e mover para Teste de Inglês."],
+  }),
   {
     key: "teste_de_ingles",
     label: "Teste de Inglês",
@@ -235,7 +290,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Agendar, registrar e concluir o teste de inglês, incluindo retorno operacional para aprovado ou reprovado.",
     primaryOwner: "Dária / Suporte",
     supportOwner: "Mônica / Leka",
-    clickupFocus: "Marcou o teste, passou ou não passou no teste.",
+    hubFocus: "Marcou o teste, passou ou não passou no teste.",
     checklist: [
       "Conferir agenda da Mônica ou da Leka.",
       "Criar invite do teste com data, horário e responsável.",
@@ -268,6 +323,56 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     ],
 
   },
+  simplePhase({
+    key: "passou_teste_ingles",
+    label: "Passou no Teste de Inglês",
+    shortLabel: "Passou Inglês",
+    description: "Registrar aprovação e preparar a entrada oficial na mentoria.",
+    primaryOwner: "Dária / Suporte",
+    supportOwner: "Fraenzi",
+    hubFocus: "Aluno aprovado e pronto para onboarding.",
+    checklist: [
+      "Conferir resultado escrito/oral registrado no Hub.",
+      "Comunicar aprovação e próximos passos ao aluno.",
+    ],
+    nextActions: ["Mover para Marcar Onboarding."],
+  }),
+  simplePhase({
+    key: "nao_passou_teste_ingles",
+    label: "Não passou no Teste de Inglês",
+    shortLabel: "Não passou",
+    description: "Registrar reprovação, explicar próximos passos e sinalizar decisão comercial/operacional.",
+    primaryOwner: "Dária / Suporte",
+    supportOwner: "Comercial",
+    hubFocus: "Aluno reprovado no inglês com desfecho operacional pendente.",
+    checklist: [
+      "Registrar score, CEFR e motivo principal.",
+      "Definir se será redirecionado para outro produto ou cancelamento.",
+    ],
+    nextActions: ["Resolver o desfecho antes de seguir qualquer fase da mentoria."],
+  }),
+  simplePhase({
+    key: "marcar_onboarding",
+    label: "Marcar Onboarding",
+    shortLabel: "Marcar Onb.",
+    description: "Coletar agenda e preparar a sessão de onboarding do aluno aprovado.",
+    primaryOwner: "Dária",
+    supportOwner: "Fraenzi",
+    hubFocus: "Onboarding aguardando marcação.",
+    checklist: ["Confirmar disponibilidade do aluno.", "Enviar convite com pauta e responsável."],
+    nextActions: ["Mover para Onboarding Marcado quando houver data definida."],
+  }),
+  simplePhase({
+    key: "onboarding_marcado",
+    label: "Onboarding Marcado",
+    shortLabel: "Onb. Marcado",
+    description: "Acompanhar a sessão marcada até a realização e registro.",
+    primaryOwner: "Dária",
+    supportOwner: "Fraenzi",
+    hubFocus: "Onboarding com data definida.",
+    checklist: ["Confirmar presença no dia.", "Registrar ausência, remarcação ou conclusão."],
+    nextActions: ["Registrar a sessão de onboarding realizada."],
+  }),
   {
     key: "onboarding",
     label: "Onboarding",
@@ -276,7 +381,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Transição do aluno aprovado no teste para a mentoria ativa, com envio de instruções e coleta de links do board e do Notion.",
     primaryOwner: "Dária",
     supportOwner: "Fraenzi",
-    clickupFocus: "Onboarding marcado e concluído.",
+    hubFocus: "Onboarding marcado e concluído.",
     checklist: [
       "Parabenizar o aluno pela aprovação no teste.",
       "Pedir agenda e marcar onboarding.",
@@ -304,6 +409,17 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "preparacao_board",
+    label: "Preparação do Board",
+    shortLabel: "Prep. Board",
+    description: "Garantir links, acessos e materiais para a construção do board.",
+    primaryOwner: "Dária",
+    supportOwner: "Fraenzi",
+    hubFocus: "Board ainda em preparação.",
+    checklist: ["Salvar URL do board no perfil operacional.", "Salvar URL do Notion no perfil operacional."],
+    nextActions: ["Mover para Board quando o aluno estiver construindo ou revisando a entrega."],
+  }),
   {
     key: "board",
     label: "Board",
@@ -312,7 +428,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Acompanhar a construção do board em até 7 dias e garantir que o aluno disponibilize tudo o que o time técnico precisa.",
     primaryOwner: "Dária",
     supportOwner: "Fraenzi",
-    clickupFocus: "Board em construção ou finalizado.",
+    hubFocus: "Board em construção ou finalizado.",
     checklist: [
       "Acompanhar se o aluno compartilhou board e Notion corretamente.",
       "Cobrar finalização do board dentro de 7 dias.",
@@ -339,6 +455,28 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "pode_marcar_bussola",
+    label: "Pode Marcar a Bússola",
+    shortLabel: "Pode Bússola",
+    description: "Board pronto o suficiente para o operacional marcar a sessão bússola.",
+    primaryOwner: "Dária",
+    supportOwner: "Fraenzi",
+    hubFocus: "Aluno liberado para agendar bússola.",
+    checklist: ["Validar que o board está utilizável.", "Confirmar agenda disponível."],
+    nextActions: ["Marcar sessão bússola."],
+  }),
+  simplePhase({
+    key: "bussola_marcada",
+    label: "Sessão Bússola Marcada",
+    shortLabel: "Bússola Marcada",
+    description: "Sessão bússola com data definida, aguardando realização.",
+    primaryOwner: "Dária",
+    supportOwner: "Fraenzi",
+    hubFocus: "Bússola agendada.",
+    checklist: ["Enviar invite.", "Fazer lembrete no dia.", "Registrar remarcação se houver."],
+    nextActions: ["Registrar a bússola realizada."],
+  }),
   {
     key: "bussola",
     label: "Sessão Bússola",
@@ -347,7 +485,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Marcar e registrar a sessão bússola com o texto correto do invite e lembrete no dia.",
     primaryOwner: "Dária",
     supportOwner: "Fraenzi",
-    clickupFocus: "Sessão bússola marcada e realizada.",
+    hubFocus: "Sessão bússola marcada e realizada.",
     checklist: [
       "Confirmar agenda do time e do aluno.",
       "Gerar invite pela agenda do suporte.",
@@ -375,6 +513,28 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "finalizar_board",
+    label: "Finalizar o Board",
+    shortLabel: "Finalizar Board",
+    description: "Fechar pendências do board depois da bússola antes da sessão Raio-X.",
+    primaryOwner: "Dária",
+    supportOwner: "Time Técnico",
+    hubFocus: "Board em fechamento.",
+    checklist: ["Confirmar ajustes pós-bússola.", "Atualizar URL do board final no perfil."],
+    nextActions: ["Mover para Marcar Sessão Raio-X."],
+  }),
+  simplePhase({
+    key: "marcar_raio_x",
+    label: "Marcar Sessão Raio-X",
+    shortLabel: "Marcar Raio-X",
+    description: "Coletar disponibilidade e marcar a sessão Raio-X.",
+    primaryOwner: "Dária",
+    supportOwner: "Fraenzi",
+    hubFocus: "Raio-X aguardando agenda.",
+    checklist: ["Confirmar condutor.", "Enviar invite e pauta."],
+    nextActions: ["Registrar a sessão Raio-X quando realizada."],
+  }),
   {
     key: "raio_x",
     label: "Raio X",
@@ -383,12 +543,12 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Marcar, executar e registrar a sessão Raio X antes da fase de escrita/material.",
     primaryOwner: "Dária",
     supportOwner: "Fraenzi",
-    clickupFocus: "Raio X marcado e realizado.",
+    hubFocus: "Raio X marcado e realizado.",
     checklist: [
       "Conferir agenda do time e do aluno.",
       "Criar invite da sessão Raio X.",
       "Mandar lembrete no dia da sessão.",
-      "Atualizar ClickUp com data, responsável e observações.",
+      "Atualizar o Hub com data, responsável e observações.",
     ],
     nextActions: [
       "Quando Raio X terminar, mover o aluno para escrita/material.",
@@ -411,6 +571,17 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "construcao_material",
+    label: "Construção de Material",
+    shortLabel: "Construção",
+    description: "Material profissional em produção pelo time técnico.",
+    primaryOwner: "Time Técnico",
+    supportOwner: "Dária",
+    hubFocus: "Material em construção.",
+    checklist: ["Registrar CV/material recebido.", "Acompanhar prazo de produção e pendências."],
+    nextActions: ["Mover para Material ou Revisão conforme o estado da entrega."],
+  }),
   {
     key: "material",
     label: "Escrita / Material",
@@ -419,7 +590,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Janela de produção do material técnico do aluno, com acompanhamento de aulas e alinhamento com o time de escrita.",
     primaryOwner: "Dária",
     supportOwner: "Fraenzi / Time Técnico",
-    clickupFocus: "Escrita em andamento até a entrega do material.",
+    hubFocus: "Escrita em andamento até a entrega do material.",
     checklist: [
       "Aguardar prazo operacional do material.",
       "Cobrar que o aluno assista às aulas da plataforma.",
@@ -452,6 +623,28 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     ],
 
   },
+  simplePhase({
+    key: "em_revisao",
+    label: "Em Processo de Revisão",
+    shortLabel: "Revisão",
+    description: "Material aguardando revisão final antes da devolutiva.",
+    primaryOwner: "Time Técnico",
+    supportOwner: "Dária",
+    hubFocus: "Material em revisão.",
+    checklist: ["Registrar documento revisado.", "Marcar status do material como revisado/final no Hub."],
+    nextActions: ["Liberar devolutiva quando a revisão estiver aprovada."],
+  }),
+  simplePhase({
+    key: "realizar_devolutiva",
+    label: "Realizar Devolutiva",
+    shortLabel: "Realizar Dev.",
+    description: "Material aprovado e pronto para devolutiva ao aluno.",
+    primaryOwner: "Dária",
+    supportOwner: "Time Técnico",
+    hubFocus: "Devolutiva precisa ser realizada.",
+    checklist: ["Agendar devolutiva.", "Preparar resumo de entrega e próximos passos."],
+    nextActions: ["Registrar Devolutiva Feita após a sessão/entrega."],
+  }),
   {
     key: "devolutiva",
     label: "Devolutiva",
@@ -460,7 +653,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Confirmar que o material foi entregue e registrar a passagem da fase inicial para ongoing.",
     primaryOwner: "Dária",
     supportOwner: "Fraenzi / Time Técnico",
-    clickupFocus: "Material pronto e devolutiva realizada.",
+    hubFocus: "Material pronto e devolutiva realizada.",
     checklist: [
       "Confirmar que o time sinalizou material pronto.",
       "Registrar a devolutiva no histórico do aluno.",
@@ -492,6 +685,83 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     ],
 
   },
+  simplePhase({
+    key: "suporte_15_min",
+    label: "15 Minutos com o Suporte",
+    shortLabel: "15 Min.",
+    description: "Sessão curta de transição para o acompanhamento de aplicação.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Aluno precisa fazer a sessão de 15 minutos.",
+    checklist: ["Confirmar material entregue.", "Registrar sessão de 15 minutos no Hub."],
+    nextActions: ["Mover para Marcado com o Suporte ou Treinamento de Entrevista."],
+  }),
+  simplePhase({
+    key: "suporte_marcado",
+    label: "Marcado com o Suporte",
+    shortLabel: "Suporte Marcado",
+    description: "Sessão com suporte marcada e aguardando realização.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Suporte com data definida.",
+    checklist: ["Confirmar presença.", "Registrar conclusão ou remarcação."],
+    nextActions: ["Após realização, avançar para treinamento de entrevista."],
+  }),
+  simplePhase({
+    key: "marcar_treinamento_entrevista",
+    label: "Marcar Treinamento de Entrevista",
+    shortLabel: "Marcar Treino",
+    description: "Preparar o treinamento de entrevista do aluno.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Treinamento aguardando marcação.",
+    checklist: ["Confirmar elegibilidade.", "Agendar treinamento com o responsável."],
+    nextActions: ["Mover para Treinamento de Entrevista Marcado."],
+  }),
+  simplePhase({
+    key: "treinamento_entrevista",
+    label: "Treinamento de Entrevista",
+    shortLabel: "Treinamento",
+    description: "Treinar comunicação, respostas e postura antes dos mocks/entrevistas reais.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Treinamento em execução.",
+    checklist: ["Registrar sessão realizada.", "Registrar principais gaps e próximos exercícios."],
+    nextActions: ["Avançar para mock interview quando estiver liberado."],
+  }),
+  simplePhase({
+    key: "treinamento_entrevista_marcado",
+    label: "Treinamento de Entrevista Marcado",
+    shortLabel: "Treino Marcado",
+    description: "Treinamento marcado e aguardando realização.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Treinamento com data definida.",
+    checklist: ["Enviar invite.", "Registrar presença, remarcação ou conclusão."],
+    nextActions: ["Executar e registrar treinamento."],
+  }),
+  simplePhase({
+    key: "mock_interview_1",
+    label: "1ª Mock Interview",
+    shortLabel: "Mock 1",
+    description: "Primeira mock interview com base em CV, alvo e etapa do aluno.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Primeira mock interview pendente ou em análise.",
+    checklist: ["Confirmar CV/material atualizado.", "Registrar relatório e gravação da mock."],
+    nextActions: ["Acompanhar evolução e liberar 2ª mock quando fizer sentido."],
+  }),
+  simplePhase({
+    key: "mock_interview_2",
+    label: "2ª Mock Interview",
+    shortLabel: "Mock 2",
+    description: "Segunda mock interview para ajuste fino e prontidão de entrevista.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Segunda mock interview pendente ou em análise.",
+    checklist: ["Comparar evolução com a primeira mock.", "Registrar score, riscos e plano de prática."],
+    nextActions: ["Mover para acompanhamento de aplicação/recolocação."],
+  }),
   {
     key: "ongoing",
     label: "Ongoing",
@@ -500,7 +770,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Fase de aplicação com Rafael, incluindo 15 minutos, treinamento, mock interviews, análise de vaga e check-ins recorrentes.",
     primaryOwner: "Rafael",
     supportOwner: "Fraenzi",
-    clickupFocus: "Acompanhamento ativo da aplicação do aluno.",
+    hubFocus: "Acompanhamento ativo da aplicação do aluno.",
     checklist: [
       "Enviar material de treinamento de entrevista por e-mail.",
       "Criar pasta de gravação de entrevistas no Drive.",
@@ -533,6 +803,39 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "aguardando_recolocacao",
+    label: "Aguardando Recolocação",
+    shortLabel: "Recolocação",
+    description: "Aluno em acompanhamento ativo até entrevista/oferta/recolocação.",
+    primaryOwner: "Rafael",
+    supportOwner: "Fraenzi",
+    hubFocus: "Aguardar recolocação com atividades registradas.",
+    checklist: ["Registrar aplicações, entrevistas, ofertas e recolocação.", "Manter check-ins recorrentes."],
+    nextActions: ["Mover para renovação quando a vigência estiver próxima do fim."],
+  }),
+  simplePhase({
+    key: "precisa_renovar",
+    label: "Precisa Renovar",
+    shortLabel: "Renovar",
+    description: "Aluno chegou na janela de renovação e precisa de abordagem comercial/operacional.",
+    primaryOwner: "Rafael / Fraenzi",
+    supportOwner: "Coordenação",
+    hubFocus: "Renovação pendente.",
+    checklist: ["Confirmar data de fim da mentoria.", "Preparar contexto de evolução e proposta de renovação."],
+    nextActions: ["Enviar áudio de renovação e registrar retorno."],
+  }),
+  simplePhase({
+    key: "audio_renovacao_enviado",
+    label: "Áudio de Renovação Enviado",
+    shortLabel: "Áudio Enviado",
+    description: "Áudio de renovação enviado, aguardando resposta do aluno.",
+    primaryOwner: "Rafael / Fraenzi",
+    supportOwner: "Coordenação",
+    hubFocus: "Aguardando resposta da renovação.",
+    checklist: ["Registrar data do áudio.", "Registrar resposta ou follow-up."],
+    nextActions: ["Mover para Renovação ou Mentoria Encerrada conforme decisão."],
+  }),
   {
     key: "renovacao",
     label: "Renovação",
@@ -541,7 +844,7 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
       "Fase final da mentoria em que o aluno decide renovar por mais 6 meses ou encerrar o acompanhamento.",
     primaryOwner: "Rafael / Fraenzi",
     supportOwner: "Coordenação",
-    clickupFocus: "Precisa renovar, renovou ou encerrou.",
+    hubFocus: "Precisa renovar, renovou ou encerrou.",
     checklist: [
       "Enviar áudio de renovação.",
       "Registrar interesse ou recusa do aluno.",
@@ -569,6 +872,17 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
     slackChannels: [],
 
   },
+  simplePhase({
+    key: "mentoria_encerrada",
+    label: "Mentoria Encerrada",
+    shortLabel: "Encerrado",
+    description: "Ciclo encerrado por término de contrato, não renovação ou cancelamento.",
+    primaryOwner: "Fraenzi / Coordenação",
+    supportOwner: "Rafael",
+    hubFocus: "Encerramento formal do ciclo.",
+    checklist: ["Registrar motivo do encerramento.", "Encerrar acessos e salvar documentação final."],
+    nextActions: ["Manter histórico completo disponível no Hub."],
+  }),
 ];
 
 export const OPS_WORKFLOW_DEFINITIONS = WORKFLOW_DEFINITIONS;
@@ -755,7 +1069,7 @@ export function deriveOpsWorkflowState(
           description: currentDefinition.description,
           primaryOwner: currentDefinition.primaryOwner,
           supportOwner: currentDefinition.supportOwner,
-          clickupFocus: currentDefinition.clickupFocus,
+          hubFocus: currentDefinition.hubFocus,
           checklist: currentDefinition.checklist,
           nextActions: currentDefinition.nextActions,
           requiredRecords: currentDefinition.requiredRecords,

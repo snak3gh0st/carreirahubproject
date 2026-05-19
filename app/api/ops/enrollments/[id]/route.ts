@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { FORM_TEMPLATES, NPS_TEMPLATE_IDS } from "@/lib/hub/form-templates";
+import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { extractNpsFromSubmissions } from "@/lib/ops/nps";
 import { deriveOpsWorkflowState } from "@/lib/ops/workflow";
 import { isOperationalAccessRole } from "@/lib/roles";
@@ -21,37 +22,131 @@ export async function GET(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const enrollment = await prisma.mentorshipEnrollment.findUnique({
-    where: { id: params.id },
-    include: {
-      customer: {
-        select: { id: true, name: true, email: true, phone: true, qbBalance: true },
-      },
-      currentPhase: { select: { id: true, key: true, label: true, sortOrder: true, slaDays: true } },
-      assignedTo: { select: { id: true, name: true } },
-      transitions: {
-        orderBy: { createdAt: "asc" },
-        include: {
-          fromPhase: { select: { key: true, label: true, sortOrder: true } },
-          toPhase: { select: { key: true, label: true, sortOrder: true } },
-          triggeredBy: { select: { name: true } },
+  const baseInclude = {
+    customer: {
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        preferredLanguage: true,
+        dateOfBirth: true,
+        address: true,
+        city: true,
+        state: true,
+        zipCode: true,
+        country: true,
+        cpf: true,
+        passport: true,
+        qbBalance: true,
+        qbTotalInvoiced: true,
+        qbTotalPaid: true,
+        lastQbBalanceSync: true,
+        contracts: {
+          orderBy: { createdAt: "desc" as const },
+          take: 3,
+          select: {
+            id: true,
+            status: true,
+            docusign_env_id: true,
+            sentAt: true,
+            signedAt: true,
+            expiresAt: true,
+            signedS3Key: true,
+            signedS3Url: true,
+          },
         },
-      },
-      sessions: {
-        orderBy: { sessionDate: "desc" },
-        take: 20,
-        include: {
-          conductor: { select: { name: true } },
+        invoices: {
+          orderBy: { createdAt: "desc" as const },
+          take: 8,
+          select: {
+            id: true,
+            invoiceNumber: true,
+            amount: true,
+            amountPaid: true,
+            dueDate: true,
+            paidAt: true,
+            status: true,
+            paymentMethod: true,
+            quickbooks_invoice_link: true,
+          },
+        },
+        deals: {
+          orderBy: { createdAt: "desc" as const },
+          take: 4,
+          select: {
+            id: true,
+            title: true,
+            value: true,
+            currency: true,
+            status: true,
+            createdAt: true,
+            owner: { select: { name: true } },
+          },
         },
       },
     },
-  });
+    currentPhase: { select: { id: true, key: true, label: true, sortOrder: true, slaDays: true } },
+    assignedTo: { select: { id: true, name: true } },
+    transitions: {
+      orderBy: { createdAt: "asc" as const },
+      include: {
+        fromPhase: { select: { key: true, label: true, sortOrder: true } },
+        toPhase: { select: { key: true, label: true, sortOrder: true } },
+        triggeredBy: { select: { name: true } },
+      },
+    },
+    sessions: {
+      orderBy: { sessionDate: "desc" as const },
+      take: 20,
+      include: {
+        conductor: { select: { name: true } },
+      },
+    },
+  };
+
+  let opsNativeMigrationRequired = false;
+  let enrollment;
+  try {
+    enrollment = await prisma.mentorshipEnrollment.findUnique({
+      where: { id: params.id },
+      include: {
+        ...baseInclude,
+        opsProfile: true,
+        opsDocuments: {
+          orderBy: [{ uploadedAt: "desc" as const }],
+          take: 12,
+          include: {
+            uploadedBy: { select: { name: true } },
+            reviewedBy: { select: { name: true } },
+          },
+        },
+        opsActivities: {
+          orderBy: [{ activityDate: "desc" as const }],
+          take: 20,
+          include: {
+            createdBy: { select: { name: true } },
+          },
+        },
+      },
+    });
+  } catch (error) {
+    if (!isMissingOpsNativeTable(error)) throw error;
+    opsNativeMigrationRequired = true;
+    const fallback = await prisma.mentorshipEnrollment.findUnique({
+      where: { id: params.id },
+      include: baseInclude,
+    });
+    enrollment = fallback
+      ? { ...fallback, opsProfile: null, opsDocuments: [], opsActivities: [] }
+      : null;
+  }
 
   if (!enrollment) {
     return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
   }
 
-  const [placementTest, realtimeTest, totalSessions, formAssignments] = await Promise.all([
+  const [placementTest, realtimeTest, totalSessions, formAssignments, mockInterviews] = await Promise.all([
     prisma.placementTest.findFirst({
       where: { customerId: enrollment.customer.id, totalScore: { not: -1 } },
       orderBy: { createdAt: "desc" },
@@ -74,6 +169,31 @@ export async function GET(
         },
       },
     }),
+    prisma.aiMockInterviewSession.findMany({
+      where: { customerId: enrollment.customer.id },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        status: true,
+        targetRole: true,
+        interviewFocus: true,
+        overallScore: true,
+        communicationScore: true,
+        experienceScore: true,
+        problemSolvingScore: true,
+        roleFitScore: true,
+        executivePresenceScore: true,
+        hiringSignal: true,
+        summary: true,
+        strengths: true,
+        risks: true,
+        focusAreas: true,
+        durationSeconds: true,
+        completedAt: true,
+        createdAt: true,
+      },
+    }),
   ]);
 
   const englishTest =
@@ -92,7 +212,7 @@ export async function GET(
   });
 
   const availableTemplateIds =
-    enrollment.programType === "PASS"
+    enrollment.programType === "PASS" || enrollment.programType === "ADVANCED"
       ? ["onboarding-pass", ...NPS_TEMPLATE_IDS]
       : ["onboarding-career", ...NPS_TEMPLATE_IDS];
 
@@ -128,5 +248,7 @@ export async function GET(
     workflow,
     availableFormTemplates,
     npsResults,
+    mockInterviews,
+    opsNativeMigrationRequired,
   });
 }

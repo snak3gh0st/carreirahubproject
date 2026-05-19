@@ -88,6 +88,19 @@ async function notifySellerContractUnsigned(
   }
 }
 
+function getDocuSignCompletedAt(payload: any): string | null {
+  return (
+    payload?.data?.envelopeSummary?.completedDateTime ||
+    payload?.data?.envelope?.completedDateTime ||
+    payload?.data?.completedDateTime ||
+    payload?.envelopeSummary?.completedDateTime ||
+    payload?.envelope?.completedDateTime ||
+    payload?.completedDateTime ||
+    payload?.generatedDateTime ||
+    null
+  );
+}
+
 /**
  * POST /api/webhooks/docusign
  * Handle DocuSign webhook events
@@ -232,7 +245,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Handle signed contract
-        await contractWorkflowService.handleContractSigned(contract.id);
+        await contractWorkflowService.handleContractSigned(contract.id, getDocuSignCompletedAt(payload));
 
         // Onboarding gate: trigger if invoice is already PAID
         if (contract.dealId && contract.customer) {

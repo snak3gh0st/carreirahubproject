@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { getSessionItemKey } from "@/lib/ops/phase-checklists";
 
 /**
@@ -21,7 +22,7 @@ export class MentorshipError extends Error {
 
 export interface CreateEnrollmentInput {
   customerId: string;
-  programType: "PASS" | "ADVANCED";
+  programType: "PASS" | "ADVANCED" | "EARLY_CAREER";
   assignedToId: string;
   startDate: Date;
   triggeredById: string; // the User performing the enrollment
@@ -85,7 +86,9 @@ export class MentorshipService {
       where: { key: "bastao" },
     });
     const intakeTemplateId =
-      programType === "PASS" ? "onboarding-pass" : "onboarding-career";
+      programType === "PASS" || programType === "ADVANCED"
+        ? "onboarding-pass"
+        : "onboarding-career";
 
     // 3. Atomic: create enrollment + initial PhaseTransition in one transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -128,6 +131,18 @@ export class MentorshipService {
       }
 
       return { enrollment, transition };
+    });
+
+    await prisma.opsStudentProfile.create({
+      data: {
+        enrollmentId: result.enrollment.id,
+        customerId,
+        renewalDate: new Date(startDate.getTime() + 180 * 86_400_000),
+      },
+    }).catch((error) => {
+      if (!isMissingOpsNativeTable(error)) {
+        console.warn("[MentorshipService] Could not create ops profile:", error);
+      }
     });
 
     return result;

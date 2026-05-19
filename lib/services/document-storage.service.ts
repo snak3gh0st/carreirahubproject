@@ -33,9 +33,17 @@ export class DocumentStorageService {
   constructor() {
     const requestedDriver = process.env.STORAGE_DRIVER?.toLowerCase();
 
+    if (!requestedDriver && process.env.NODE_ENV !== 'production') {
+      this.driver = 'local';
+      this.localRoot = process.env.LOCAL_STORAGE_ROOT || path.join(process.cwd(), '.local-storage');
+      return;
+    }
+
     if (requestedDriver === 'local') {
       this.driver = 'local';
-      this.localRoot = process.env.LOCAL_STORAGE_ROOT || '/app/storage';
+      this.localRoot =
+        process.env.LOCAL_STORAGE_ROOT ||
+        (process.env.NODE_ENV === 'production' ? '/app/storage' : path.join(process.cwd(), '.local-storage'));
       return;
     }
 

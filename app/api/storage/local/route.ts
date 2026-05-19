@@ -5,6 +5,7 @@ import path from "node:path";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getHubAuth } from "@/lib/hub-auth";
+import { isOperationalAccessRole } from "@/lib/roles";
 import { documentStorageService } from "@/lib/services/document-storage.service";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +57,12 @@ export async function GET(request: NextRequest) {
   }
 
   const session = await getServerSession(authOptions);
-  if (!session) {
+  if (session) {
+    const role = (session.user as { role?: string } | undefined)?.role;
+    if (!isOperationalAccessRole(role || "")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  } else {
     const hubAuth = await getHubAuth(request);
     if (!hubAuth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

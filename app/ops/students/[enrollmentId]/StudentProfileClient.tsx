@@ -2,8 +2,9 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { FormsSection } from "./FormsSection";
+import { OperationalHubSection } from "./OperationalHubSection";
 import { SessionSection } from "./SessionSection";
-import { ArrowLeft, User, GraduationCap, Clock } from "lucide-react";
+import { ArrowLeft, User, GraduationCap, Clock, FileText, WalletCards, BriefcaseBusiness, ListChecks } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -13,7 +14,55 @@ type ProfileData = {
     programType: string;
     status: string;
     startDate: string;
-    customer: { id: string; name: string; email: string; phone: string | null };
+    customer: {
+      id: string;
+      name: string;
+      email: string;
+      phone: string | null;
+      preferredLanguage: string | null;
+      dateOfBirth: string | null;
+      address: string | null;
+      city: string | null;
+      state: string | null;
+      zipCode: string | null;
+      country: string | null;
+      cpf: string | null;
+      passport: string | null;
+      qbBalance: string | null;
+      qbTotalInvoiced: string | null;
+      qbTotalPaid: string | null;
+      lastQbBalanceSync: string | null;
+      contracts: Array<{
+        id: string;
+        status: string;
+        docusign_env_id: string | null;
+        sentAt: string | null;
+        signedAt: string | null;
+        expiresAt: string | null;
+        signedS3Key: string | null;
+        signedS3Url: string | null;
+      }>;
+      invoices: Array<{
+        id: string;
+        invoiceNumber: string | null;
+        amount: string;
+        amountPaid: string | null;
+        dueDate: string;
+        paidAt: string | null;
+        status: string;
+        paymentMethod: string | null;
+        quickbooks_invoice_link: string | null;
+      }>;
+      deals: Array<{
+        id: string;
+        title: string;
+        value: string;
+        currency: string;
+        status: string;
+        createdAt: string;
+        owner: { name: string | null } | null;
+      }>;
+    };
     currentPhase: { label: string; sortOrder: number } | null;
     assignedTo: { id: string; name: string };
     transitions: Array<{
@@ -29,6 +78,48 @@ type ProfileData = {
       sessionDate: string;
       notes: string | null;
       conductor: { name: string };
+    }>;
+    opsProfile: {
+      id: string;
+      optStatus: string | null;
+      coachCohort: string | null;
+      classAttendancePercent: number | null;
+      boardUrl: string | null;
+      notionUrl: string | null;
+      linkedinUrl: string | null;
+      interviewRecordingFolderUrl: string | null;
+      contractPdfKey: string | null;
+      renewalDate: string | null;
+      renewalState: string;
+      lastOperationalContactAt: string | null;
+      notes: string | null;
+    } | null;
+    opsDocuments: Array<{
+      id: string;
+      kind: string;
+      status: string;
+      title: string | null;
+      filename: string;
+      storageKey: string;
+      version: number;
+      uploadedAt: string;
+      reviewedAt: string | null;
+      finalizedAt: string | null;
+      uploadedBy: { name: string } | null;
+      reviewedBy: { name: string } | null;
+    }>;
+    opsActivities: Array<{
+      id: string;
+      type: string;
+      activityDate: string;
+      company: string | null;
+      roleTitle: string | null;
+      area: string | null;
+      industry: string | null;
+      source: string | null;
+      outcome: string | null;
+      notes: string | null;
+      createdBy: { name: string } | null;
     }>;
     formAssignments: Array<{
       id: string;
@@ -50,6 +141,26 @@ type ProfileData = {
     title: string;
     titlePt: string;
   }>;
+  mockInterviews: Array<{
+    id: string;
+    status: string;
+    targetRole: string | null;
+    interviewFocus: string | null;
+    overallScore: number | null;
+    communicationScore: number | null;
+    experienceScore: number | null;
+    problemSolvingScore: number | null;
+    roleFitScore: number | null;
+    executivePresenceScore: number | null;
+    hiringSignal: string | null;
+    summary: string | null;
+    strengths: string[];
+    risks: string[];
+    focusAreas: string[];
+    durationSeconds: number | null;
+    completedAt: string | null;
+    createdAt: string;
+  }>;
   npsResults: Array<{
     templateId: string;
     score: number;
@@ -64,6 +175,31 @@ function useProfileData(enrollmentId: string) {
     queryFn: () =>
       fetch(`/api/ops/enrollments/${enrollmentId}`).then((r) => r.json()),
   });
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return "—";
+  return format(new Date(value), "dd/MM/yyyy");
+}
+
+function formatMoney(value: string | null | undefined) {
+  const amount = Number(value ?? 0);
+  return amount.toLocaleString("pt-BR", { style: "currency", currency: "USD" });
+}
+
+function getStatusBadge(status: string) {
+  if (["PAID", "SIGNED", "COMPLETED", "WON"].includes(status)) return "bg-emerald-50 text-emerald-700";
+  if (["OVERDUE", "FAILED", "DECLINED", "VOIDED", "LOST"].includes(status)) return "bg-red-50 text-red-700";
+  return "bg-amber-50 text-amber-700";
+}
+
+function InfoLine({ label, value }: { label: string; value: string | number | null | undefined }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-gray-50 py-2 last:border-0">
+      <span className="text-xs text-gray-400">{label}</span>
+      <span className="max-w-[60%] text-right text-xs font-semibold text-gray-700">{value || "—"}</span>
+    </div>
+  );
 }
 
 export function StudentProfileClient({
@@ -81,9 +217,15 @@ export function StudentProfileClient({
   }
 
   const { enrollment, placementTest, totalSessions } = data;
+  const signedContract = enrollment.customer.contracts.find((contract) => contract.signedAt);
+  const latestInvoice = enrollment.customer.invoices[0];
+  const latestDeal = enrollment.customer.deals[0];
+  const latestMock = data.mockInterviews[0];
+  const pendingHubTasks = enrollment.formAssignments.filter((assignment) => assignment.status !== "COMPLETED").length;
+  const completedHubTasks = enrollment.formAssignments.filter((assignment) => assignment.status === "COMPLETED").length;
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
+    <div className="p-8 max-w-6xl mx-auto space-y-8">
       {/* Back nav */}
       <Link
         href="/ops/pipeline"
@@ -138,6 +280,16 @@ export function StudentProfileClient({
               {format(new Date(enrollment.startDate), "dd/MM/yyyy")}
             </p>
           </div>
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Contrato assinado</p>
+            <p className="text-sm font-medium text-gray-800 mt-1">{formatDate(signedContract?.signedAt)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Tasks no Hub</p>
+            <p className="text-sm font-medium text-gray-800 mt-1">
+              {pendingHubTasks} pendente{pendingHubTasks !== 1 ? "s" : ""} · {completedHubTasks} feita{completedHubTasks !== 1 ? "s" : ""}
+            </p>
+          </div>
           {placementTest && (
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium flex items-center gap-1">
@@ -167,6 +319,95 @@ export function StudentProfileClient({
           </div>
         )}
       </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
+            <User className="h-4 w-4" />
+            Dados do cliente
+          </h2>
+          <InfoLine label="Telefone" value={enrollment.customer.phone} />
+          <InfoLine label="Idioma" value={enrollment.customer.preferredLanguage} />
+          <InfoLine label="Nascimento" value={formatDate(enrollment.customer.dateOfBirth)} />
+          <InfoLine label="Estado" value={enrollment.customer.state} />
+          <InfoLine label="Endereço" value={[enrollment.customer.address, enrollment.customer.city, enrollment.customer.country].filter(Boolean).join(", ")} />
+          <InfoLine label="CPF/Passport" value={enrollment.customer.cpf || enrollment.customer.passport} />
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
+            <WalletCards className="h-4 w-4" />
+            Contrato & financeiro
+          </h2>
+          <div className="mb-3 flex flex-wrap gap-2">
+            {signedContract ? (
+              <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${getStatusBadge(signedContract.status)}`}>
+                {signedContract.status}
+              </span>
+            ) : (
+              <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-bold text-gray-500">
+                Sem contrato assinado
+              </span>
+            )}
+            {latestInvoice && (
+              <span className={`rounded-full px-2 py-1 text-[11px] font-bold ${getStatusBadge(latestInvoice.status)}`}>
+                {latestInvoice.status}
+              </span>
+            )}
+          </div>
+          <InfoLine label="Assinado em" value={formatDate(signedContract?.signedAt)} />
+          <InfoLine label="Invoice recente" value={latestInvoice?.invoiceNumber} />
+          <InfoLine label="Valor invoice" value={latestInvoice ? formatMoney(latestInvoice.amount) : "—"} />
+          <InfoLine label="Pago" value={formatMoney(enrollment.customer.qbTotalPaid)} />
+          <InfoLine label="Aberto QB" value={formatMoney(enrollment.customer.qbBalance)} />
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
+            <BriefcaseBusiness className="h-4 w-4" />
+            Testes & mock
+          </h2>
+          <InfoLine label="Deal" value={latestDeal?.title} />
+          <InfoLine label="Valor do deal" value={latestDeal ? formatMoney(latestDeal.value) : "—"} />
+          <InfoLine label="Inglês" value={placementTest ? `${placementTest.displayLevel} (${Math.round(placementTest.percentage)}%)` : "—"} />
+          <InfoLine label="Mock interview" value={latestMock?.targetRole || latestMock?.interviewFocus || "—"} />
+          <InfoLine label="Score mock" value={latestMock?.overallScore ? `${latestMock.overallScore}/100` : "—"} />
+          <InfoLine label="Sinal de contratação" value={latestMock?.hiringSignal} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
+          <ListChecks className="h-4 w-4" />
+          Como isso alimenta o Hub do cliente
+        </h2>
+        <div className="grid gap-3 text-xs text-gray-600 md:grid-cols-4">
+          <div className="rounded-lg bg-gray-50 p-3">
+            <p className="font-semibold text-gray-900">Formulários</p>
+            <p className="mt-1">{pendingHubTasks} tarefas liberadas pelo operacional.</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <p className="font-semibold text-gray-900">Documentos</p>
+            <p className="mt-1">{enrollment.opsDocuments.length} arquivos operacionais no caso.</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <p className="font-semibold text-gray-900">Sessões</p>
+            <p className="mt-1">{totalSessions} registros para orientar próximas etapas.</p>
+          </div>
+          <div className="rounded-lg bg-gray-50 p-3">
+            <p className="font-semibold text-gray-900">AI interviews</p>
+            <p className="mt-1">{data.mockInterviews.length} simulação{data.mockInterviews.length !== 1 ? "ões" : ""} registrada{data.mockInterviews.length !== 1 ? "s" : ""}.</p>
+          </div>
+        </div>
+      </div>
+
+      <OperationalHubSection
+        enrollmentId={enrollmentId}
+        customerId={enrollment.customer.id}
+        profile={enrollment.opsProfile}
+        documents={enrollment.opsDocuments}
+        activities={enrollment.opsActivities}
+      />
 
       {/* Phase timeline */}
       <div className="bg-white rounded-2xl border border-gray-200 p-6">
@@ -201,6 +442,38 @@ export function StudentProfileClient({
         availableTemplates={data.availableFormTemplates}
         npsResults={data.npsResults}
       />
+
+      {data.mockInterviews.length > 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white p-6">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-display font-semibold text-brand-verde">
+            <FileText className="h-4 w-4" />
+            Mock interviews AI
+          </h2>
+          <div className="space-y-3">
+            {data.mockInterviews.map((mock) => (
+              <div key={mock.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">{mock.targetRole || "Mock interview"}</p>
+                    <p className="text-xs text-gray-400">
+                      {formatDate(mock.completedAt ?? mock.createdAt)} · {mock.interviewFocus || "Treinamento geral"}
+                    </p>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusBadge(mock.status)}`}>
+                    {mock.overallScore ? `${mock.overallScore}/100` : mock.status}
+                  </span>
+                </div>
+                {mock.summary && <p className="mt-3 text-sm leading-relaxed text-gray-600">{mock.summary}</p>}
+                {mock.focusAreas.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Foco: {mock.focusAreas.slice(0, 3).join(", ")}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Session log + form — rendered by SessionSection (Plan 02) */}
       <SessionSection

@@ -7,6 +7,11 @@ export interface CustomerFormUpdates {
   address?: string;
 }
 
+export interface OpsProfileFormUpdates {
+  optStatus?: string;
+  linkedinUrl?: string;
+}
+
 function cleanText(value: AnswerValue): string | undefined {
   if (typeof value !== "string") {
     return undefined;
@@ -39,6 +44,20 @@ export function deriveCustomerUpdatesFromFormAnswers(
   if (dateOfBirth) updates.dateOfBirth = dateOfBirth;
   if (phone) updates.phone = phone;
   if (address) updates.address = address;
+
+  return updates;
+}
+
+export function deriveOpsProfileUpdatesFromFormAnswers(
+  answers: Record<string, AnswerValue>
+): OpsProfileFormUpdates {
+  const updates: OpsProfileFormUpdates = {};
+  const linkedIn = cleanText(answers.linkedIn);
+  const optAnswer = cleanText(answers.workPermitOptCpt);
+
+  if (linkedIn) updates.linkedinUrl = linkedIn;
+  if (optAnswer === "yes") updates.optStatus = "YES";
+  if (optAnswer === "no") updates.optStatus = "NO";
 
   return updates;
 }

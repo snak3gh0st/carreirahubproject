@@ -32,6 +32,16 @@ type DigisacWebhookMessage = {
   raw: unknown;
 };
 
+export type DigisacContactRecord = {
+  id: string;
+  name: string | null;
+  internalName: string | null;
+  phoneNumber: string | null;
+  serviceId: string | null;
+  ticketId: string | null;
+  raw: unknown;
+};
+
 function trimTrailingSlash(value: string | undefined) {
   return value?.trim().replace(/\/+$/, "") || null;
 }
@@ -58,6 +68,65 @@ function parseDate(value: unknown) {
   if (!raw) return null;
   const date = new Date(raw);
   return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function unwrapDigisacList(data: any) {
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.contacts)) return data.contacts;
+  if (Array.isArray(data?.items)) return data.items;
+  if (data && typeof data === "object") return [data];
+  return [];
+}
+
+function mapDigisacContact(raw: unknown): DigisacContactRecord | null {
+  const contact = firstObject(raw);
+  const nestedData = firstObject(contact.data, contact.profile, contact.payload);
+  const ticket = firstObject(contact.currentTicket, contact.ticket, nestedData.currentTicket);
+  const service = firstObject(contact.service, nestedData.service, ticket.service);
+  const id = firstString(contact.id, nestedData.id);
+  if (!id) return null;
+
+  return {
+    id,
+    name: firstString(contact.name, contact.displayName, nestedData.name),
+    internalName: firstString(contact.internalName, nestedData.internalName),
+    phoneNumber: firstString(
+      contact.number,
+      contact.phone,
+      contact.mobile,
+      contact.whatsapp,
+      nestedData.number,
+      nestedData.phone
+    ),
+    serviceId: firstString(contact.serviceId, nestedData.serviceId, service.id, ticket.serviceId),
+    ticketId: firstString(contact.currentTicketId, contact.ticketId, nestedData.currentTicketId, ticket.id),
+    raw,
+  };
+}
+
+async function requestDigisacJson(pathname: string) {
+  const config = getDigisacConfig();
+  if (!config.enabled || !config.apiBaseUrl || !config.apiToken) return null;
+
+  const response = await fetch(`${config.apiBaseUrl}${pathname}`, {
+    headers: { Authorization: `Bearer ${config.apiToken}` },
+    cache: "no-store",
+  });
+  const rawText = await response.text();
+  let data: any = null;
+  try {
+    data = rawText ? JSON.parse(rawText) : null;
+  } catch {
+    data = rawText;
+  }
+
+  if (!response.ok) {
+    console.warn(`[DIGISAC] ${pathname} returned ${response.status}`);
+    return null;
+  }
+
+  return data;
 }
 
 export function getDigisacConfig(): DigisacConfig {
@@ -105,6 +174,42 @@ export function buildDigisacContactUrl(contactId: string | null | undefined) {
   const config = getDigisacConfig();
   if (!config.workspaceUrl) return null;
   return `${config.workspaceUrl}/contacts/${contactId}`;
+}
+
+export async function findDigisacContactById(contactId: string | null | undefined) {
+  if (!contactId) return null;
+  const data = await requestDigisacJson(`/contacts/${encodeURIComponent(contactId)}`);
+  return mapDigisacContact(data);
+}
+
+export async function findDigisacContactByPhone(phone: string | null | undefined) {
+  const config = getDigisacConfig();
+  const digits = normalizePhone(phone);
+  if (!digits || !config.enabled) return null;
+
+  const candidates = Array.from(
+    new Set([
+      formatDigisacPhone(digits, config.defaultCountryCode),
+      digits,
+      digits.slice(-10),
+    ].filter(Boolean))
+  );
+
+  for (const candidate of candidates) {
+    const data = await requestDigisacJson(`/contacts?search=${encodeURIComponent(candidate)}`);
+    const contacts: DigisacContactRecord[] = unwrapDigisacList(data)
+      .map((item: unknown) => mapDigisacContact(item))
+      .filter((contact: DigisacContactRecord | null): contact is DigisacContactRecord => Boolean(contact));
+    if (contacts.length === 0) continue;
+
+    const exact = contacts.find((contact) => {
+      const contactDigits = normalizePhone(contact.phoneNumber);
+      return contactDigits === digits || contactDigits.endsWith(digits.slice(-10));
+    });
+    return exact ?? contacts[0];
+  }
+
+  return null;
 }
 
 export async function sendDigisacMessage(input: DigisacSendMessageInput) {

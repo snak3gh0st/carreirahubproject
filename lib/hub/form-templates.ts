@@ -155,6 +155,21 @@ export const FORM_TEMPLATES: Record<string, FormTemplate> = {
         required: true,
       },
       {
+        id: "resume",
+        type: "file",
+        label: "Upload your current CV or resume.",
+        labelPt: "Envie seu CV ou currículo atual.",
+        required: false,
+        accept: ".pdf,.doc,.docx",
+      },
+      {
+        id: "linkedIn",
+        type: "text",
+        label: "LinkedIn profile",
+        labelPt: "Perfil do LinkedIn",
+        required: false,
+      },
+      {
         id: "workPermitOptCpt",
         type: "radio",
         label: "Is your work permit OPT/CPT (work permit granted to students)?",

@@ -9,88 +9,93 @@ datasource db {
 }
 
 model User {
-  id                     String              @id @default(uuid())
-  email                  String              @unique
+  id                     String                   @id @default(uuid())
+  email                  String                   @unique
   name                   String?
-  role                   UserRole            @default(COMMERCIAL)
-  active                 Boolean             @default(true)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
+  role                   UserRole                 @default(COMMERCIAL)
+  active                 Boolean                  @default(true)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
   password               String?
   passwordHashedAt       DateTime?
-  bulkImports            BulkImport[]        @relation("BulkImports")
-  escalatedConversations Conversation[]      @relation("EscalatedConversations")
+  bulkImports            BulkImport[]             @relation("BulkImports")
+  escalatedConversations Conversation[]           @relation("EscalatedConversations")
   sales                  Deal[]
-  ownedInvoices          Invoice[]           @relation("InvoiceOwner")
-  leadQualifications     LeadQualification[] @relation("LeadQualifications")
-  qualifiedLeads         Lead[]              @relation("QualifiedLeads")
-  createdLeads           Lead[]              @relation("CreatedLeads")
-  createdCustomers       Customer[]          @relation("CreatedCustomers")
-  supportTickets         SupportTicket[]     @relation("UserSupportTickets")
-  assignedTickets        SupportTicket[]     @relation("AssignedSupportTickets")
-  formAssignments        FormAssignment[]    @relation("AssignedForms")
-  assignedEnrollments    MentorshipEnrollment[] @relation("AssignedEnrollments")
-  conductedSessions      MentorshipSession[]    @relation("ConductedSessions")
-  triggeredTransitions   PhaseTransition[]      @relation("TriggeredTransitions")
+  ownedInvoices          Invoice[]                @relation("InvoiceOwner")
+  leadQualifications     LeadQualification[]      @relation("LeadQualifications")
+  qualifiedLeads         Lead[]                   @relation("QualifiedLeads")
+  createdLeads           Lead[]                   @relation("CreatedLeads")
+  createdCustomers       Customer[]               @relation("CreatedCustomers")
+  supportTickets         SupportTicket[]          @relation("UserSupportTickets")
+  assignedTickets        SupportTicket[]          @relation("AssignedSupportTickets")
+  formAssignments        FormAssignment[]         @relation("AssignedForms")
+  assignedEnrollments    MentorshipEnrollment[]   @relation("AssignedEnrollments")
+  conductedSessions      MentorshipSession[]      @relation("ConductedSessions")
+  triggeredTransitions   PhaseTransition[]        @relation("TriggeredTransitions")
+  uploadedOpsDocuments   OpsStudentDocument[]     @relation("UploadedOpsDocuments")
+  reviewedOpsDocuments   OpsStudentDocument[]     @relation("ReviewedOpsDocuments")
+  createdOpsActivities   OpsStudentActivity[]     @relation("CreatedOpsActivities")
   aiConversations        AiConversation[]
   aiRateLimit            AiRateLimit?
-  assignedPhases         String[]               @default([])
+  assignedPhases         String[]                 @default([])
   checklistProgress      PhaseChecklistProgress[] @relation("CompletedByUser")
   opsStudentComments     OpsStudentComment[]      @relation("OpsStudentComments")
-  sentOpsDigisacMessages OpsDigisacMessage[]       @relation("OpsDigisacSentBy")
+  sentOpsDigisacMessages OpsDigisacMessage[]      @relation("OpsDigisacSentBy")
 
   @@index([id])
   @@map("users")
 }
 
 model Customer {
-  id                   String           @id @default(uuid())
-  email                String           @unique
-  name                 String
-  phone                String?
-  clint_contact_id     String?          @unique
-  quickbooks_id        String?          @unique
-  cloudtalk_id         String?
-  google_contact_id    String?
-  metadata             Json?
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
-  lastClintSyncAt      DateTime?
-  lastQuickbooksSyncAt DateTime?
-  phoneVerified        Boolean          @default(false)
-  preferredLanguage    String?          @default("pt-BR")
-  lastQbBalanceSync    DateTime?
-  qbBalance            Decimal?         @db.Decimal(10, 2)
-  qbTotalInvoiced      Decimal?         @db.Decimal(10, 2)
-  qbTotalPaid          Decimal?         @db.Decimal(10, 2)
-  docusign_id          String?          @unique
-  lastDocusignSyncAt   DateTime?
-  address              String?
-  city                 String?
-  country              String?          @default("USA")
-  ssn                  String?
-  state                String?
-  zipCode              String?
-  cpf                  String?
-  passport             String?
-  dateOfBirth          DateTime?
-  createdById          String?
-  createdBy            User?            @relation("CreatedCustomers", fields: [createdById], references: [id])
-  alerts               Alert[]
-  clientUser           ClientUser?
-  collectionCalls      CollectionCall[]
-  contracts            Contract[]
-  deals                Deal[]
-  formAssignments      FormAssignment[]
-  formSubmissions      FormSubmission[]
-  invoices             Invoice[]
-  notifications        Notification[]
-  payments             Payment[]
-  placementTests       PlacementTest[]
-  englishRealtimeTests EnglishRealtimeTest[]
+  id                      String                   @id @default(uuid())
+  email                   String                   @unique
+  name                    String
+  phone                   String?
+  clint_contact_id        String?                  @unique
+  quickbooks_id           String?                  @unique
+  cloudtalk_id            String?
+  google_contact_id       String?
+  metadata                Json?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  lastClintSyncAt         DateTime?
+  lastQuickbooksSyncAt    DateTime?
+  phoneVerified           Boolean                  @default(false)
+  preferredLanguage       String?                  @default("pt-BR")
+  lastQbBalanceSync       DateTime?
+  qbBalance               Decimal?                 @db.Decimal(10, 2)
+  qbTotalInvoiced         Decimal?                 @db.Decimal(10, 2)
+  qbTotalPaid             Decimal?                 @db.Decimal(10, 2)
+  docusign_id             String?                  @unique
+  lastDocusignSyncAt      DateTime?
+  address                 String?
+  city                    String?
+  country                 String?                  @default("USA")
+  ssn                     String?
+  state                   String?
+  zipCode                 String?
+  cpf                     String?
+  passport                String?
+  dateOfBirth             DateTime?
+  createdById             String?
+  createdBy               User?                    @relation("CreatedCustomers", fields: [createdById], references: [id])
+  alerts                  Alert[]
+  clientUser              ClientUser?
+  collectionCalls         CollectionCall[]
+  contracts               Contract[]
+  deals                   Deal[]
+  formAssignments         FormAssignment[]
+  formSubmissions         FormSubmission[]
+  invoices                Invoice[]
+  notifications           Notification[]
+  payments                Payment[]
+  placementTests          PlacementTest[]
+  englishRealtimeTests    EnglishRealtimeTest[]
   aiMockInterviewSessions AiMockInterviewSession[]
-  mentorshipEnrollments MentorshipEnrollment[]
-  opsDigisacThreads    OpsDigisacThread[]
+  mentorshipEnrollments   MentorshipEnrollment[]
+  opsProfiles             OpsStudentProfile[]
+  opsDocuments            OpsStudentDocument[]
+  opsDigisacThreads       OpsDigisacThread[]
 
   @@index([email])
   @@index([clint_contact_id])
@@ -114,8 +119,8 @@ model ClientUser {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  customerId            String    @unique
-  customer              Customer  @relation(fields: [customerId], references: [id])
+  customerId String   @unique
+  customer   Customer @relation(fields: [customerId], references: [id])
 
   @@map("client_users")
 }
@@ -127,18 +132,18 @@ enum FormAssignmentStatus {
 }
 
 model FormAssignment {
-  id           String               @id @default(cuid())
-  templateId   String
-  status       FormAssignmentStatus @default(PENDING)
-  assignedAt   DateTime             @default(now())
+  id             String               @id @default(cuid())
+  templateId     String
+  status         FormAssignmentStatus @default(PENDING)
+  assignedAt     DateTime             @default(now())
   lastReminderAt DateTime?
-  reminderCount  Int                @default(0)
-  updatedAt    DateTime             @updatedAt
+  reminderCount  Int                  @default(0)
+  updatedAt      DateTime             @updatedAt
 
   customerId   String
-  customer     Customer             @relation(fields: [customerId], references: [id])
+  customer     Customer        @relation(fields: [customerId], references: [id])
   assignedById String
-  assignedBy   User                 @relation("AssignedForms", fields: [assignedById], references: [id])
+  assignedBy   User            @relation("AssignedForms", fields: [assignedById], references: [id])
   submission   FormSubmission?
 
   @@index([customerId])
@@ -146,10 +151,10 @@ model FormAssignment {
 }
 
 model FormSubmission {
-  id           String         @id @default(cuid())
-  answers      Json
-  submittedAt  DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  id          String   @id @default(cuid())
+  answers     Json
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   assignmentId String         @unique
   assignment   FormAssignment @relation(fields: [assignmentId], references: [id])
@@ -177,48 +182,48 @@ model PlacementTest {
   questionCount    Int      @default(25)
   createdAt        DateTime @default(now())
 
-  customerId       String
-  customer         Customer @relation(fields: [customerId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
 
   @@index([customerId])
   @@map("placement_tests")
 }
 
 model EnglishRealtimeTest {
-  id                 String    @id @default(cuid())
-  status             String    @default("IN_PROGRESS")
-  model              String    @default("gpt-realtime-2")
-  openaiCallId       String?
-  cefrLevel          String?
-  displayLevel       String?
-  score              Int?
-  fluencyScore       Int?
-  pronunciationScore Int?
-  grammarScore       Int?
-  vocabularyScore    Int?
-  comprehensionScore Int?
-  summary            String?
-  strengths          String[]  @default([])
-  focusAreas         String[]  @default([])
-  transcript         Json?
-  durationSeconds    Int?
-  usageInputTextTokens       Int      @default(0)
-  usageCachedInputTextTokens Int      @default(0)
-  usageInputAudioTokens      Int      @default(0)
-  usageOutputTextTokens      Int      @default(0)
-  usageOutputAudioTokens     Int      @default(0)
-  usageTotalTokens           Int      @default(0)
-  usageEstimatedCostUsd      Decimal? @db.Decimal(10, 4)
+  id                         String    @id @default(cuid())
+  status                     String    @default("IN_PROGRESS")
+  model                      String    @default("gpt-realtime-2")
+  openaiCallId               String?
+  cefrLevel                  String?
+  displayLevel               String?
+  score                      Int?
+  fluencyScore               Int?
+  pronunciationScore         Int?
+  grammarScore               Int?
+  vocabularyScore            Int?
+  comprehensionScore         Int?
+  summary                    String?
+  strengths                  String[]  @default([])
+  focusAreas                 String[]  @default([])
+  transcript                 Json?
+  durationSeconds            Int?
+  usageInputTextTokens       Int       @default(0)
+  usageCachedInputTextTokens Int       @default(0)
+  usageInputAudioTokens      Int       @default(0)
+  usageOutputTextTokens      Int       @default(0)
+  usageOutputAudioTokens     Int       @default(0)
+  usageTotalTokens           Int       @default(0)
+  usageEstimatedCostUsd      Decimal?  @db.Decimal(10, 4)
   usageCapturedAt            DateTime?
-  startedAt          DateTime  @default(now())
-  completedAt        DateTime?
-  failedAt           DateTime?
-  errorMessage       String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  startedAt                  DateTime  @default(now())
+  completedAt                DateTime?
+  failedAt                   DateTime?
+  errorMessage               String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
-  customerId         String
-  customer           Customer  @relation(fields: [customerId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
 
   @@index([customerId, createdAt])
   @@index([status])
@@ -265,10 +270,10 @@ model AiMockInterviewSession {
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
-  customerId                 String
-  customer                   Customer  @relation(fields: [customerId], references: [id])
-  enrollmentId               String?
-  enrollment                 MentorshipEnrollment? @relation(fields: [enrollmentId], references: [id])
+  customerId   String
+  customer     Customer              @relation(fields: [customerId], references: [id])
+  enrollmentId String?
+  enrollment   MentorshipEnrollment? @relation(fields: [enrollmentId], references: [id])
 
   @@index([customerId, createdAt])
   @@index([enrollmentId, createdAt])
@@ -277,21 +282,21 @@ model AiMockInterviewSession {
 }
 
 model AiUsageEvent {
-  id                         String   @id @default(cuid())
-  source                     String
-  provider                   String   @default("openai")
-  model                      String?
-  externalEventId            String?  @unique
-  testId                     String?
-  customerId                 String?
-  inputTextTokens            Int      @default(0)
-  cachedInputTextTokens      Int      @default(0)
-  inputAudioTokens           Int      @default(0)
-  outputTextTokens           Int      @default(0)
-  outputAudioTokens          Int      @default(0)
-  totalTokens                Int      @default(0)
-  estimatedCostUsd           Decimal  @default(0) @db.Decimal(10, 4)
-  createdAt                  DateTime @default(now())
+  id                    String   @id @default(cuid())
+  source                String
+  provider              String   @default("openai")
+  model                 String?
+  externalEventId       String?  @unique
+  testId                String?
+  customerId            String?
+  inputTextTokens       Int      @default(0)
+  cachedInputTextTokens Int      @default(0)
+  inputAudioTokens      Int      @default(0)
+  outputTextTokens      Int      @default(0)
+  outputAudioTokens     Int      @default(0)
+  totalTokens           Int      @default(0)
+  estimatedCostUsd      Decimal  @default(0) @db.Decimal(10, 4)
+  createdAt             DateTime @default(now())
 
   @@index([source, createdAt])
   @@index([customerId, createdAt])
@@ -300,29 +305,29 @@ model AiUsageEvent {
 }
 
 model Lead {
-  id                  String              @id @default(uuid())
-  email               String              @unique
-  name                String
-  phone               String?
-  source              LeadSource          @default(WEBSITE)
-  status              LeadStatus          @default(NEW)
-  clint_contact_id    String?             @unique
-  qualificationScore  Int?                @default(0)
-  qualificationData   Json?
-  qualifiedAt         DateTime?
-  qualifiedById       String?
-  createdById         String?
-  convertedToDealId   String?             @unique
-  convertedAt         DateTime?
-  metadata            Json?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  conversations       Conversation[]
-  qualifications      LeadQualification[]
-  convertedToDeal     Deal?               @relation("ConvertedLead", fields: [convertedToDealId], references: [id])
-  qualifiedBy         User?               @relation("QualifiedLeads", fields: [qualifiedById], references: [id])
-  createdBy           User?               @relation("CreatedLeads", fields: [createdById], references: [id])
-  messages            Message[]
+  id                 String              @id @default(uuid())
+  email              String              @unique
+  name               String
+  phone              String?
+  source             LeadSource          @default(WEBSITE)
+  status             LeadStatus          @default(NEW)
+  clint_contact_id   String?             @unique
+  qualificationScore Int?                @default(0)
+  qualificationData  Json?
+  qualifiedAt        DateTime?
+  qualifiedById      String?
+  createdById        String?
+  convertedToDealId  String?             @unique
+  convertedAt        DateTime?
+  metadata           Json?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  conversations      Conversation[]
+  qualifications     LeadQualification[]
+  convertedToDeal    Deal?               @relation("ConvertedLead", fields: [convertedToDealId], references: [id])
+  qualifiedBy        User?               @relation("QualifiedLeads", fields: [qualifiedById], references: [id])
+  createdBy          User?               @relation("CreatedLeads", fields: [createdById], references: [id])
+  messages           Message[]
 
   @@index([email])
   @@index([status])
@@ -415,48 +420,48 @@ model Deal {
 }
 
 model Invoice {
-  id                    String           @id @default(uuid())
-  invoiceNumber         String?          @unique
-  amount                Decimal          @db.Decimal(10, 2)
-  dueDate               DateTime
-  status                InvoiceStatus    @default(DRAFT)
-  quickbooks_invoice_id String?          @unique
+  id                      String            @id @default(uuid())
+  invoiceNumber           String?           @unique
+  amount                  Decimal           @db.Decimal(10, 2)
+  dueDate                 DateTime
+  status                  InvoiceStatus     @default(DRAFT)
+  quickbooks_invoice_id   String?           @unique
   quickbooks_invoice_link String?
-  dealId                String?
-  customerId            String
-  pdfUrl                String?
-  installments          Json?
-  createdAt             DateTime         @default(now())
-  updatedAt             DateTime         @updatedAt
-  amountPaid            Decimal?         @db.Decimal(10, 2)
-  contractId            String?
-  lastPaymentReminderAt DateTime?
-  paidAt                DateTime?
-  paymentMethod         String?
-  paymentReminderCount  Int              @default(0)
-  collectionCallCount   Int              @default(0)
-  lastCollectionCallAt  DateTime?
-  markedOverdueAt       DateTime?
-  amountRefunded        Decimal?         @default(0) @db.Decimal(10, 2)
-  lineItems             Json?
-  ownerId               String?
-  emailSendAttempts     Int              @default(0)
-  emailSentAt           DateTime?
-  lastEmailSendError    String?
-  autoChargeAttempts    Int               @default(0)
-  lastAutoChargeAt      DateTime?
-  lastAutoChargeError   String?
-  autoChargeStatus      AutoChargeStatus?
-  nextAutoChargeRetry   DateTime?
-  autoChargePaymentRef  String?
-  alerts                Alert[]
-  collectionCalls       CollectionCall[]
-  contract              Contract?        @relation(fields: [contractId], references: [id])
-  customer              Customer         @relation(fields: [customerId], references: [id])
-  deal                  Deal?            @relation(fields: [dealId], references: [id])
-  owner                 User?            @relation("InvoiceOwner", fields: [ownerId], references: [id])
-  notifications         Notification[]
-  payments              Payment[]
+  dealId                  String?
+  customerId              String
+  pdfUrl                  String?
+  installments            Json?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+  amountPaid              Decimal?          @db.Decimal(10, 2)
+  contractId              String?
+  lastPaymentReminderAt   DateTime?
+  paidAt                  DateTime?
+  paymentMethod           String?
+  paymentReminderCount    Int               @default(0)
+  collectionCallCount     Int               @default(0)
+  lastCollectionCallAt    DateTime?
+  markedOverdueAt         DateTime?
+  amountRefunded          Decimal?          @default(0) @db.Decimal(10, 2)
+  lineItems               Json?
+  ownerId                 String?
+  emailSendAttempts       Int               @default(0)
+  emailSentAt             DateTime?
+  lastEmailSendError      String?
+  autoChargeAttempts      Int               @default(0)
+  lastAutoChargeAt        DateTime?
+  lastAutoChargeError     String?
+  autoChargeStatus        AutoChargeStatus?
+  nextAutoChargeRetry     DateTime?
+  autoChargePaymentRef    String?
+  alerts                  Alert[]
+  collectionCalls         CollectionCall[]
+  contract                Contract?         @relation(fields: [contractId], references: [id])
+  customer                Customer          @relation(fields: [customerId], references: [id])
+  deal                    Deal?             @relation(fields: [dealId], references: [id])
+  owner                   User?             @relation("InvoiceOwner", fields: [ownerId], references: [id])
+  notifications           Notification[]
+  payments                Payment[]
 
   @@index([customerId])
   @@index([dealId])
@@ -507,12 +512,12 @@ model CfoInsight {
 }
 
 model QbReportCache {
-  id          String   @id @default(cuid())
-  reportType  String   @unique
-  data        String   @db.Text
-  parameters  String
-  fetchedAt   DateTime @default(now())
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  reportType String   @unique
+  data       String   @db.Text
+  parameters String
+  fetchedAt  DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   @@map("qb_report_cache")
 }
@@ -1039,36 +1044,39 @@ model MentorshipPhase {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  enrollments        MentorshipEnrollment[] @relation("CurrentPhaseEnrollments")
-  transitionsFrom    PhaseTransition[]      @relation("TransitionFrom")
-  transitionsTo      PhaseTransition[]      @relation("TransitionTo")
+  enrollments     MentorshipEnrollment[] @relation("CurrentPhaseEnrollments")
+  transitionsFrom PhaseTransition[]      @relation("TransitionFrom")
+  transitionsTo   PhaseTransition[]      @relation("TransitionTo")
 
   @@index([sortOrder])
   @@map("mentorship_phases")
 }
 
 model MentorshipEnrollment {
-  id           String    @id @default(cuid())
-  programType  String    // "PASS" | "ADVANCED" (per D-03)
-  status       String    @default("ACTIVE") // "ACTIVE" | "COMPLETED" | "PAUSED"
-  startDate    DateTime
-  endDate      DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  programType String // "PASS" | "ADVANCED" | "EARLY_CAREER" (per ops product catalog)
+  status      String    @default("ACTIVE") // "ACTIVE" | "COMPLETED" | "PAUSED"
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  customerId      String
-  customer        Customer         @relation(fields: [customerId], references: [id])
-  assignedToId    String
-  assignedTo      User             @relation("AssignedEnrollments", fields: [assignedToId], references: [id])
-  currentPhaseId  String?
-  currentPhase    MentorshipPhase? @relation("CurrentPhaseEnrollments", fields: [currentPhaseId], references: [id])
+  customerId     String
+  customer       Customer         @relation(fields: [customerId], references: [id])
+  assignedToId   String
+  assignedTo     User             @relation("AssignedEnrollments", fields: [assignedToId], references: [id])
+  currentPhaseId String?
+  currentPhase   MentorshipPhase? @relation("CurrentPhaseEnrollments", fields: [currentPhaseId], references: [id])
 
-  sessions    MentorshipSession[]
+  sessions                MentorshipSession[]
   aiMockInterviewSessions AiMockInterviewSession[]
-  transitions PhaseTransition[]
-  checklistProgress PhaseChecklistProgress[]
-  comments    OpsStudentComment[]
-  digisacThreads OpsDigisacThread[]
+  transitions             PhaseTransition[]
+  checklistProgress       PhaseChecklistProgress[]
+  comments                OpsStudentComment[]
+  opsProfile              OpsStudentProfile?
+  opsDocuments            OpsStudentDocument[]
+  opsActivities           OpsStudentActivity[]
+  digisacThreads          OpsDigisacThread[]
 
   @@index([customerId])
   @@index([assignedToId])
@@ -1077,18 +1085,107 @@ model MentorshipEnrollment {
   @@map("mentorship_enrollments")
 }
 
-model MentorshipSession {
+model OpsStudentProfile {
+  id                          String    @id @default(cuid())
+  optStatus                   String?
+  coachCohort                 String?
+  classAttendancePercent      Int?
+  boardUrl                    String?
+  notionUrl                   String?
+  linkedinUrl                 String?
+  interviewRecordingFolderUrl String?
+  contractPdfKey              String?
+  renewalDate                 DateTime?
+  renewalState                String    @default("NOT_DUE")
+  renewalReminder30SentAt     DateTime?
+  renewalReminder15SentAt     DateTime?
+  renewalReminder7SentAt      DateTime?
+  lastOperationalContactAt    DateTime?
+  notes                       String?   @db.Text
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  enrollmentId String               @unique
+  enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  customerId   String
+  customer     Customer             @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([renewalDate])
+  @@index([renewalState])
+  @@map("ops_student_profiles")
+}
+
+model OpsStudentDocument {
+  id            String    @id @default(cuid())
+  kind          String
+  status        String    @default("UPLOADED")
+  title         String?
+  filename      String
+  storageKey    String
+  mimeType      String?
+  sizeBytes     Int?
+  extractedText String?   @db.Text
+  notes         String?   @db.Text
+  version       Int       @default(1)
+  uploadedAt    DateTime  @default(now())
+  reviewedAt    DateTime?
+  finalizedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enrollmentId String
+  enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  customerId   String
+  customer     Customer             @relation(fields: [customerId], references: [id])
+  uploadedById String?
+  uploadedBy   User?                @relation("UploadedOpsDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+  reviewedById String?
+  reviewedBy   User?                @relation("ReviewedOpsDocuments", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([enrollmentId, kind])
+  @@index([customerId, uploadedAt])
+  @@index([status])
+  @@map("ops_student_documents")
+}
+
+model OpsStudentActivity {
   id           String   @id @default(cuid())
-  sessionType  String   // controlled values per D-12
-  sessionDate  DateTime
-  notes        String?
+  type         String
+  activityDate DateTime
+  company      String?
+  roleTitle    String?
+  area         String?
+  industry     String?
+  source       String?
+  outcome      String?
+  notes        String?  @db.Text
+  metadata     Json?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   enrollmentId String
+  enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  createdById  String?
+  createdBy    User?                @relation("CreatedOpsActivities", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([enrollmentId, activityDate])
+  @@index([type, activityDate])
+  @@map("ops_student_activities")
+}
+
+model MentorshipSession {
+  id          String   @id @default(cuid())
+  sessionType String // controlled values per D-12
+  sessionDate DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  enrollmentId String
   enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
   conductorId  String
-  conductor    User   @relation("ConductedSessions", fields: [conductorId], references: [id])
+  conductor    User                 @relation("ConductedSessions", fields: [conductorId], references: [id])
 
   @@index([enrollmentId])
   @@index([conductorId])
@@ -1097,17 +1194,17 @@ model MentorshipSession {
 }
 
 model PhaseTransition {
-  id          String   @id @default(cuid())
-  createdAt   DateTime @default(now())
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  enrollmentId    String
-  enrollment      MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
-  fromPhaseId     String?
-  fromPhase       MentorshipPhase?     @relation("TransitionFrom", fields: [fromPhaseId], references: [id])
-  toPhaseId       String
-  toPhase         MentorshipPhase      @relation("TransitionTo", fields: [toPhaseId], references: [id])
-  triggeredById   String
-  triggeredBy     User                 @relation("TriggeredTransitions", fields: [triggeredById], references: [id])
+  enrollmentId  String
+  enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
+  fromPhaseId   String?
+  fromPhase     MentorshipPhase?     @relation("TransitionFrom", fields: [fromPhaseId], references: [id])
+  toPhaseId     String
+  toPhase       MentorshipPhase      @relation("TransitionTo", fields: [toPhaseId], references: [id])
+  triggeredById String
+  triggeredBy   User                 @relation("TriggeredTransitions", fields: [triggeredById], references: [id])
 
   @@index([enrollmentId])
   @@index([fromPhaseId])
@@ -1117,17 +1214,17 @@ model PhaseTransition {
 }
 
 model PhaseChecklistProgress {
-  id            String    @id @default(cuid())
-  phaseKey      String
-  itemKey       String
-  completedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(cuid())
+  phaseKey    String
+  itemKey     String
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   enrollmentId  String
   enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   completedById String?
-  completedBy   User?     @relation("CompletedByUser", fields: [completedById], references: [id], onDelete: SetNull)
+  completedBy   User?                @relation("CompletedByUser", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@unique([enrollmentId, phaseKey, itemKey])
   @@index([completedById])
@@ -1135,15 +1232,15 @@ model PhaseChecklistProgress {
 }
 
 model OpsStudentComment {
-  id            String    @id @default(cuid())
-  body          String    @db.Text
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String   @id @default(cuid())
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  enrollmentId  String
-  enrollment    MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  authorId      String?
-  author        User?     @relation("OpsStudentComments", fields: [authorId], references: [id], onDelete: SetNull)
+  enrollmentId String
+  enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  authorId     String?
+  author       User?                @relation("OpsStudentComments", fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([enrollmentId, createdAt])
   @@index([authorId])
@@ -1157,24 +1254,24 @@ enum OpsDigisacMessageDirection {
 }
 
 model OpsDigisacThread {
-  id                String    @id @default(cuid())
-  phoneNumber       String
-  contactId         String?
-  contactName       String?
-  ticketId          String?
-  serviceId         String?
-  status            String    @default("OPEN")
-  lastMessageAt     DateTime?
-  lastSyncedAt      DateTime?
-  metadata          Json?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  phoneNumber   String
+  contactId     String?
+  contactName   String?
+  ticketId      String?
+  serviceId     String?
+  status        String    @default("OPEN")
+  lastMessageAt DateTime?
+  lastSyncedAt  DateTime?
+  metadata      Json?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  customerId        String?
-  customer          Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  enrollmentId      String?
-  enrollment        MentorshipEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
-  messages          OpsDigisacMessage[]
+  customerId   String?
+  customer     Customer?             @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  enrollmentId String?
+  enrollment   MentorshipEnrollment? @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  messages     OpsDigisacMessage[]
 
   @@index([customerId, updatedAt])
   @@index([enrollmentId, updatedAt])
@@ -1184,21 +1281,21 @@ model OpsDigisacThread {
 }
 
 model OpsDigisacMessage {
-  id                String    @id @default(cuid())
-  externalId        String?   @unique
+  id                String                     @id @default(cuid())
+  externalId        String?                    @unique
   direction         OpsDigisacMessageDirection
-  content           String    @db.Text
+  content           String                     @db.Text
   type              String?
   status            String?
   senderName        String?
   externalCreatedAt DateTime?
   raw               Json?
-  createdAt         DateTime  @default(now())
+  createdAt         DateTime                   @default(now())
 
-  threadId          String
-  thread            OpsDigisacThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  sentById          String?
-  sentBy            User?     @relation("OpsDigisacSentBy", fields: [sentById], references: [id], onDelete: SetNull)
+  threadId String
+  thread   OpsDigisacThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sentById String?
+  sentBy   User?            @relation("OpsDigisacSentBy", fields: [sentById], references: [id], onDelete: SetNull)
 
   @@index([threadId, createdAt])
   @@index([direction, createdAt])
@@ -1220,13 +1317,13 @@ enum AiHub {
 }
 
 model AiConversation {
-  id        String       @id @default(cuid())
+  id        String      @id @default(cuid())
   userId    String
-  user      User         @relation(fields: [userId], references: [id])
-  hub       AiHub        @default(ADMIN_EXECUTIVE)
+  user      User        @relation(fields: [userId], references: [id])
+  hub       AiHub       @default(ADMIN_EXECUTIVE)
   title     String?
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
   messages  AiMessage[]
 
   @@index([userId, hub, updatedAt])
@@ -1268,10 +1365,10 @@ model AiRateLimit {
 model PersonaCacheEntry {
   id          String   @id @default(cuid())
   personaSlug String
-  dayBucket   String   // YYYY-MM-DD-HHmm aligned to persona.cacheTtlMinutes in UTC; see lib/ai/persona-cache.ts computeDayBucket
+  dayBucket   String // YYYY-MM-DD-HHmm aligned to persona.cacheTtlMinutes in UTC; see lib/ai/persona-cache.ts computeDayBucket
   content     String   @db.Text
   generatedAt DateTime @default(now())
-  generatedBy String?  // userId of first requester; no relation — kept independent of user lifecycle for audit
+  generatedBy String? // userId of first requester; no relation — kept independent of user lifecycle for audit
 
   @@unique([personaSlug, dayBucket])
   @@index([personaSlug, generatedAt])
@@ -1282,7 +1379,7 @@ model PersonaCacheRead {
   id          String   @id @default(cuid())
   personaSlug String
   dayBucket   String
-  userId      String   // no relation — read log is audit-style, survives user deletion
+  userId      String // no relation — read log is audit-style, survives user deletion
   readAt      DateTime @default(now())
 
   @@unique([personaSlug, dayBucket, userId])

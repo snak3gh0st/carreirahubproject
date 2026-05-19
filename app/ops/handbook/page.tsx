@@ -58,7 +58,7 @@ function SectionBlock({
 const PROCESS_STEPS = [
   {
     label: "Entrada",
-    description: "Venda no grupo 'Passagem de Bastão', cadastro no ClickUp, liberação do portal e mensagem inicial.",
+    description: "Venda no grupo 'Passagem de Bastão', cadastro no Hub, liberação do portal e mensagem inicial.",
     dot: "bg-brand-verde",
   },
   {
