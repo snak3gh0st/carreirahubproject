@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { telegramService } from "@/lib/services/telegram.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 import { queues } from "@/lib/utils/queue";
+import { estimateCostUSD } from "@/lib/ai/pricing";
+import { resolveDashboardAiModel } from "@/lib/ai/model-selection";
 
 export const dynamic = "force-dynamic";
 
@@ -143,6 +145,9 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     overdueCandidateCount,
     staleAutoChargeCount,
     wrongRealmIgnoredCount,
+    dashboardAiUsage24h,
+    aiUsageEvents24h,
+    aiUsageBySource24h,
   ] = await Promise.all([
     healthPromise,
     summarizeIntegrationWindow(since15m),
@@ -229,6 +234,35 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
         action: "WEBHOOK_WRONG_REALM_IGNORED",
         createdAt: { gte: since24h },
       },
+    }),
+    prisma.aiMessage.aggregate({
+      where: {
+        role: "ASSISTANT",
+        createdAt: { gte: since24h },
+      },
+      _sum: { tokensIn: true, tokensOut: true },
+      _count: { _all: true },
+    }),
+    prisma.aiUsageEvent.aggregate({
+      where: { createdAt: { gte: since24h } },
+      _sum: {
+        estimatedCostUsd: true,
+        totalTokens: true,
+        inputAudioTokens: true,
+        outputAudioTokens: true,
+      },
+      _count: { _all: true },
+    }),
+    prisma.aiUsageEvent.groupBy({
+      by: ["source"],
+      where: { createdAt: { gte: since24h } },
+      _sum: {
+        estimatedCostUsd: true,
+        totalTokens: true,
+        inputAudioTokens: true,
+        outputAudioTokens: true,
+      },
+      _count: { _all: true },
     }),
   ]);
 
@@ -351,6 +385,37 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     }
   }
 
+  const dashboardAiModel = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
+  const dashboardTokensIn = dashboardAiUsage24h._sum.tokensIn ?? 0;
+  const dashboardTokensOut = dashboardAiUsage24h._sum.tokensOut ?? 0;
+  const dashboardAiCostUsd = estimateCostUSD(
+    dashboardTokensIn,
+    dashboardTokensOut,
+    dashboardAiModel
+  );
+  const realtimeAiCostUsd = Number(aiUsageEvents24h._sum.estimatedCostUsd || 0);
+  const totalAiCostUsd = dashboardAiCostUsd + realtimeAiCostUsd;
+
+  lines.push("", "<b>AI Costs — Sigma internal</b>");
+  lines.push(
+    `• Dashboard AI 24h: $${dashboardAiCostUsd.toFixed(4)} — ${dashboardAiUsage24h._count._all} messages, ${dashboardTokensIn + dashboardTokensOut} tokens (${esc(dashboardAiModel)})`
+  );
+  lines.push(
+    `• Realtime interview AI 24h: $${realtimeAiCostUsd.toFixed(4)} — ${aiUsageEvents24h._count._all} usage events, ${aiUsageEvents24h._sum.totalTokens ?? 0} tokens`
+  );
+  for (const sourceRow of aiUsageBySource24h
+    .slice()
+    .sort((a, b) => Number(b._sum.estimatedCostUsd || 0) - Number(a._sum.estimatedCostUsd || 0))
+    .slice(0, 5)) {
+    lines.push(
+      `  - ${esc(sourceRow.source)}: $${Number(sourceRow._sum.estimatedCostUsd || 0).toFixed(4)} — ${sourceRow._count._all} events`
+    );
+  }
+  lines.push(
+    `• Realtime audio tokens 24h: in ${aiUsageEvents24h._sum.inputAudioTokens ?? 0}, out ${aiUsageEvents24h._sum.outputAudioTokens ?? 0}`
+  );
+  lines.push(`• Total estimated AI cost 24h: <b>$${totalAiCostUsd.toFixed(4)}</b>`);
+
   lines.push("", `<i>${new Date().toISOString()}</i>`);
 
   await telegramService.send(lines.join("\n"), { parse_mode: "HTML" });
@@ -376,6 +441,31 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
       staleAutoChargeCount,
       dueWindowEmailPendingCount,
       futureScheduledEmailPendingCount,
+    },
+    aiCosts: {
+      dashboard: {
+        model: dashboardAiModel,
+        messages: dashboardAiUsage24h._count._all,
+        tokensIn: dashboardTokensIn,
+        tokensOut: dashboardTokensOut,
+        estimatedCostUsd: dashboardAiCostUsd,
+      },
+      oralInterview: {
+        usageEvents: aiUsageEvents24h._count._all,
+        totalTokens: aiUsageEvents24h._sum.totalTokens ?? 0,
+        inputAudioTokens: aiUsageEvents24h._sum.inputAudioTokens ?? 0,
+        outputAudioTokens: aiUsageEvents24h._sum.outputAudioTokens ?? 0,
+        estimatedCostUsd: realtimeAiCostUsd,
+        bySource: aiUsageBySource24h.map((sourceRow) => ({
+          source: sourceRow.source,
+          usageEvents: sourceRow._count._all,
+          totalTokens: sourceRow._sum.totalTokens ?? 0,
+          inputAudioTokens: sourceRow._sum.inputAudioTokens ?? 0,
+          outputAudioTokens: sourceRow._sum.outputAudioTokens ?? 0,
+          estimatedCostUsd: Number(sourceRow._sum.estimatedCostUsd || 0),
+        })),
+      },
+      totalEstimatedCostUsd: totalAiCostUsd,
     },
   });
 });

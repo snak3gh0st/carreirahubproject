@@ -32,9 +32,16 @@ export async function GET() {
       name: true,
       email: true,
       placementTests: {
+        where: { totalScore: { not: -1 } },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { cefrLevel: true },
+        select: { cefrLevel: true, createdAt: true },
+      },
+      englishRealtimeTests: {
+        where: { status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { cefrLevel: true, createdAt: true },
       },
     },
   });
@@ -44,7 +51,12 @@ export async function GET() {
       id: c.id,
       name: c.name,
       email: c.email,
-      cefrLevel: c.placementTests[0]?.cefrLevel ?? null,
+      cefrLevel:
+        c.englishRealtimeTests[0] &&
+        (!c.placementTests[0] ||
+          c.englishRealtimeTests[0].createdAt > c.placementTests[0].createdAt)
+          ? c.englishRealtimeTests[0].cefrLevel
+          : c.placementTests[0]?.cefrLevel ?? null,
     })),
   });
 }

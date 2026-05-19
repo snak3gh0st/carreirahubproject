@@ -27,8 +27,8 @@ function getCustomerStatus(customer: any): { variant: BadgeVariant; label: strin
     (inv: any) => inv.status !== "PAID" && inv.status !== "VOID"
   );
 
-  if (hasOverdue) return { variant: "error", label: "Vencido" };
-  if (hasUnpaid) return { variant: "warning", label: "Pendente" };
+  if (hasOverdue) return { variant: "error", label: "Fatura vencida" };
+  if (hasUnpaid) return { variant: "warning", label: "Fatura aberta" };
   if (customer.invoices.length > 0) return { variant: "success", label: "Em Dia" };
   return { variant: "default", label: "Sem Faturas" };
 }
@@ -103,9 +103,7 @@ export default async function CustomersPage({
     }
   }
 
-  if (source === "quickbooks") {
-    whereClause.quickbooks_id = { not: null };
-  } else if (source === "clint") {
+  if (source === "clint") {
     whereClause.clint_contact_id = { not: null };
   }
 
@@ -152,9 +150,23 @@ export default async function CustomersPage({
     where: whereClause,
     orderBy: { [actualSortBy]: sortOrder },
     include: {
+      createdBy: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
       deals: {
         take: 3,
         orderBy: { createdAt: "desc" },
+        include: {
+          owner: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
+        },
       },
       invoices: {
         orderBy: { createdAt: "desc" },
@@ -163,6 +175,12 @@ export default async function CustomersPage({
           status: true,
           amount: true,
           dueDate: true,
+          owner: {
+            select: {
+              name: true,
+              email: true,
+            },
+          },
         },
       },
     },
@@ -209,10 +227,6 @@ export default async function CustomersPage({
   const stats = await prisma.customer.aggregate({
     where: statsFilter,
     _count: { id: true },
-  });
-
-  const qbCustomers = await prisma.customer.count({
-    where: { ...statsFilter, quickbooks_id: { not: null } },
   });
 
   const clintCustomers = await prisma.customer.count({
@@ -322,9 +336,9 @@ export default async function CustomersPage({
             icon={<TrendingUp className="w-5 h-5" />}
           />
           <StatCard
-            label="Do QuickBooks"
-            value={qbCustomers.toString()}
-            description={`Clint: ${clintCustomers}`}
+            label="Com origem Clint"
+            value={clintCustomers.toString()}
+            description="Registros vinculados"
           />
           <StatCard
             label="Com Vencidos"
@@ -543,7 +557,6 @@ export default async function CustomersPage({
             const isHighBalanceActive = searchParams.minTotalInvoiced === "5000";
             const isNoInvoicesActive = searchParams.maxInvoices === "0";
             const isActiveThisMonthActive = searchParams.createdFrom === monthStart && searchParams.createdTo === monthEnd;
-            const isFromQBOnlyActive = source === "quickbooks";
 
             return (
               <>
@@ -552,7 +565,7 @@ export default async function CustomersPage({
                   href={isOverdueActive ? "/dashboard/customers" : `/dashboard/customers?balanceStatus=overdue-balance`}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isOverdueActive
-                      ? "bg-red-600 text-white"
+                      ? "bg-green-600 text-white ring-2 ring-green-200"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
@@ -564,7 +577,7 @@ export default async function CustomersPage({
                   href={isHighBalanceActive ? "/dashboard/customers" : `/dashboard/customers?minTotalInvoiced=5000`}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isHighBalanceActive
-                      ? "bg-blue-600 text-white"
+                      ? "bg-green-600 text-white ring-2 ring-green-200"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
@@ -576,7 +589,7 @@ export default async function CustomersPage({
                   href={isNoInvoicesActive ? "/dashboard/customers" : `/dashboard/customers?maxInvoices=0`}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isNoInvoicesActive
-                      ? "bg-blue-600 text-white"
+                      ? "bg-green-600 text-white ring-2 ring-green-200"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
@@ -588,23 +601,11 @@ export default async function CustomersPage({
                   href={isActiveThisMonthActive ? "/dashboard/customers" : `/dashboard/customers?createdFrom=${monthStart}&createdTo=${monthEnd}`}
                   className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
                     isActiveThisMonthActive
-                      ? "bg-blue-600 text-white"
+                      ? "bg-green-600 text-white ring-2 ring-green-200"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
                   }`}
                 >
                   Ativos Este Mês
-                </Link>
-
-                {/* From QuickBooks Only */}
-                <Link
-                  href={isFromQBOnlyActive ? "/dashboard/customers" : `/dashboard/customers?source=quickbooks`}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition whitespace-nowrap snap-start ${
-                    isFromQBOnlyActive
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200 active:bg-gray-300"
-                  }`}
-                >
-                  Apenas do QuickBooks
                 </Link>
               </>
             );
@@ -636,6 +637,9 @@ export default async function CustomersPage({
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                Closer
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
                 Ações
               </th>
             </tr>
@@ -643,7 +647,7 @@ export default async function CustomersPage({
           <tbody className="bg-white divide-y divide-gray-200">
             {customers.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-0">
+                <td colSpan={6} className="p-0">
                   <EmptyState
                     icon={<Users className="w-16 h-16" />}
                     title="Nenhum cliente encontrado"
@@ -661,6 +665,10 @@ export default async function CustomersPage({
                       .reduce((sum, i) => sum + Number(i.amount), 0);
 
                 const status = getCustomerStatus(customer);
+                const assignedCloser =
+                  customer.deals.find((deal) => deal.owner)?.owner ||
+                  customer.invoices.find((invoice) => invoice.owner)?.owner ||
+                  customer.createdBy;
 
                 return (
                   <tr key={customer.id} className="hover:bg-gray-50 transition-colors">
@@ -691,6 +699,9 @@ export default async function CustomersPage({
                       <Badge variant={status.variant}>
                         {status.label}
                       </Badge>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {assignedCloser?.name || assignedCloser?.email || "Sem closer"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <Link

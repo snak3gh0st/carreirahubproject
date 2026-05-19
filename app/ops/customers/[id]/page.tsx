@@ -192,6 +192,17 @@ export default async function OpsCustomerDetailPage({
           createdAt: true,
         },
       },
+      englishRealtimeTests: {
+        where: { status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          displayLevel: true,
+          cefrLevel: true,
+          score: true,
+          createdAt: true,
+        },
+      },
       mentorshipEnrollments: {
         orderBy: { startDate: "desc" },
         take: 1,
@@ -224,6 +235,23 @@ export default async function OpsCustomerDetailPage({
   const portalStatus = getPortalStatus(customer.clientUser, now);
   const PortalStatusIcon = portalStatus.icon;
   const latestTest = customer.placementTests[0] ?? null;
+  const latestRealtimeTest = customer.englishRealtimeTests[0] ?? null;
+  const englishTest =
+    latestRealtimeTest && (!latestTest || latestRealtimeTest.createdAt > latestTest.createdAt)
+      ? {
+          displayLevel: latestRealtimeTest.displayLevel ?? "",
+          cefrLevel: latestRealtimeTest.cefrLevel ?? "",
+          scoreLabel: `${latestRealtimeTest.score ?? 0}/100`,
+          createdAt: latestRealtimeTest.createdAt,
+        }
+      : latestTest
+        ? {
+            displayLevel: latestTest.displayLevel,
+            cefrLevel: latestTest.cefrLevel,
+            scoreLabel: `${latestTest.totalScore}/${latestTest.questionCount}`,
+            createdAt: latestTest.createdAt,
+          }
+        : null;
   const latestEnrollment = customer.mentorshipEnrollments[0] ?? null;
   const latestEnrollmentStatus = latestEnrollment
     ? getEnrollmentStatus(latestEnrollment.status)
@@ -295,11 +323,11 @@ export default async function OpsCustomerDetailPage({
         <div className="rounded-2xl border border-gray-200 bg-white p-5">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Teste de Ingles</p>
           <p className="mt-2 text-2xl font-display font-bold text-brand-verde">
-            {latestTest ? latestTest.cefrLevel : "Pendente"}
+            {englishTest ? englishTest.cefrLevel : "Pendente"}
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            {latestTest
-              ? `${latestTest.displayLevel} • ${latestTest.totalScore}/${latestTest.questionCount}`
+            {englishTest
+              ? `${englishTest.displayLevel} • ${englishTest.scoreLabel}`
               : "Sem resultado concluido"}
           </p>
         </div>
@@ -474,8 +502,8 @@ export default async function OpsCustomerDetailPage({
               <p className="text-sm font-medium text-gray-900">Teste de Ingles</p>
             </div>
             <p className="text-sm text-gray-500 mt-2">
-              {latestTest
-                ? `${latestTest.displayLevel} (${latestTest.cefrLevel}) • ${latestTest.totalScore}/${latestTest.questionCount} • ${formatDate(latestTest.createdAt)}`
+              {englishTest
+                ? `${englishTest.displayLevel} (${englishTest.cefrLevel}) • ${englishTest.scoreLabel} • ${formatDate(englishTest.createdAt)}`
                 : "Nenhum resultado concluido ainda."}
             </p>
           </div>

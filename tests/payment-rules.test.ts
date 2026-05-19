@@ -50,6 +50,26 @@ assert.doesNotThrow(() =>
   })
 );
 
+assert.doesNotThrow(() =>
+  validatePaymentSelection({
+    products: [mentoriaProduct],
+    entryAmount: 900,
+    installments: 11,
+    totalAmount: 3000,
+  })
+);
+
+assert.throws(
+  () =>
+    validatePaymentSelection({
+      products: [mentoriaProduct],
+      entryAmount: 900,
+      installments: 12,
+      totalAmount: 3000,
+    }),
+  /entrada conta como primeira parcela|máximo de 11 parcelas/i
+);
+
 assert.throws(
   () =>
     validatePaymentSelection({

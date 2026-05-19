@@ -10,22 +10,33 @@ import { z } from "zod";
 
 export const dynamic = "force-dynamic";
 
+const requiredString = (field: string) =>
+  z.string().trim().min(1, `${field} é obrigatório`);
+
 const createCustomerSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  phone: z.string().optional(),
-  dateOfBirth: z.string().optional(),
+  email: z.string().trim().email(),
+  name: requiredString("Nome"),
+  phone: requiredString("Telefone"),
+  dateOfBirth: requiredString("Data de nascimento"),
   ssn: z.string().optional(),
   passport: z.string().optional(),
   cpf: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  zipCode: z.string().optional(),
-  country: z.string().optional(),
+  address: requiredString("Endereço"),
+  city: requiredString("Cidade"),
+  state: requiredString("Estado"),
+  zipCode: requiredString("CEP"),
+  country: requiredString("País"),
   clint_contact_id: z.number().optional(),
   quickbooks_id: z.string().optional(),
   metadata: z.any().optional(),
+}).superRefine((data, ctx) => {
+  if (!data.passport?.trim() && !data.cpf?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Informe passaporte ou CPF",
+      path: ["passport"],
+    });
+  }
 });
 
 /**
@@ -48,19 +59,35 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const email = searchParams.get("email");
+    const search = searchParams.get("search")?.trim();
     const selectedId = searchParams.get("selectedId");
     const requestedLimit = parseInt(searchParams.get("limit") || "50");
     const limit = Math.min(Math.max(requestedLimit, 1), 200);
     const offset = Math.max(parseInt(searchParams.get("offset") || "0"), 0);
 
     const where: any = {};
-    if (email) where.email = { contains: email, mode: "insensitive" };
+    const andClauses: any[] = [];
+    if (email) andClauses.push({ email: { contains: email, mode: "insensitive" } });
+    if (search) {
+      andClauses.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
     if (userRole === "COMMERCIAL") {
-      where.OR = [
-        { createdById: userId },
-        { invoices: { some: { ownerId: userId } } },
-        { deals: { some: { ownerId: userId } } },
-      ];
+      andClauses.push({
+        OR: [
+          { createdById: userId },
+          { invoices: { some: { ownerId: userId } } },
+          { deals: { some: { ownerId: userId } } },
+        ],
+      });
+    }
+    if (andClauses.length > 0) {
+      where.AND = andClauses;
     }
 
     const total = await prisma.customer.count({ where });
@@ -85,16 +112,18 @@ export async function GET(request: NextRequest) {
     });
 
     if (selectedId && !customers.some((customer) => customer.id === selectedId)) {
-      const selectedWhere: any = { id: selectedId };
+      const selectedAndClauses: any[] = [{ id: selectedId }];
       if (userRole === "COMMERCIAL") {
-        selectedWhere.OR = [
-          { createdById: userId },
-          { invoices: { some: { ownerId: userId } } },
-          { deals: { some: { ownerId: userId } } },
-        ];
+        selectedAndClauses.push({
+          OR: [
+            { createdById: userId },
+            { invoices: { some: { ownerId: userId } } },
+            { deals: { some: { ownerId: userId } } },
+          ],
+        });
       }
       const selectedCustomer = await prisma.customer.findFirst({
-        where: selectedWhere,
+        where: { AND: selectedAndClauses },
         include: customerInclude,
       });
       if (selectedCustomer) {

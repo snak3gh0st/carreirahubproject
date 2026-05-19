@@ -157,17 +157,54 @@ export async function verifyHubRequest(
 // ---------------------------------------------------------------------------
 
 /**
- * Verify that the `Origin` header of the request matches the configured
- * `NEXTAUTH_URL`.  Returns `true` when valid.
+ * Verify that the `Origin` header is trusted for state-changing Hub requests.
+ * Production is strict. Local development can run on alternate loopback ports
+ * when NEXTAUTH_URL is still configured for the default port.
  */
-export function verifyCsrf(request: NextRequest): boolean {
-  const origin = request.headers.get("origin");
-  const allowed = process.env.NEXTAUTH_URL;
-  if (!origin || !allowed) return false;
+function parseOrigin(value: string | null | undefined): URL | null {
+  if (!value) return null;
+  try {
+    return new URL(value);
+  } catch {
+    return null;
+  }
+}
 
-  // Normalise by stripping trailing slashes for comparison
-  const normalise = (u: string) => u.replace(/\/+$/, "");
-  return normalise(origin) === normalise(allowed);
+function normaliseOrigin(value: URL): string {
+  return value.origin.replace(/\/+$/, "");
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+export function isAllowedCsrfOrigin(
+  origin: string | null | undefined,
+  allowed: string | null | undefined,
+  nodeEnv = process.env.NODE_ENV
+): boolean {
+  const parsedOrigin = parseOrigin(origin);
+  const parsedAllowed = parseOrigin(allowed);
+  if (!parsedOrigin || !parsedAllowed) return false;
+
+  if (normaliseOrigin(parsedOrigin) === normaliseOrigin(parsedAllowed)) {
+    return true;
+  }
+
+  if (nodeEnv === "production") return false;
+
+  return (
+    parsedOrigin.protocol === parsedAllowed.protocol &&
+    isLoopbackHostname(parsedOrigin.hostname) &&
+    isLoopbackHostname(parsedAllowed.hostname)
+  );
+}
+
+export function verifyCsrf(request: NextRequest): boolean {
+  return isAllowedCsrfOrigin(
+    request.headers.get("origin"),
+    process.env.NEXTAUTH_URL
+  );
 }
 
 // ---------------------------------------------------------------------------

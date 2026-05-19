@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
 import { getTemplate } from "@/lib/hub/form-templates";
+import { deriveCustomerUpdatesFromFormAnswers } from "@/lib/hub/customer-form-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -79,8 +81,8 @@ export async function POST(
       }
     }
 
-    // Create submission and update assignment status in a transaction
-    await prisma.$transaction([
+    const customerUpdates = deriveCustomerUpdatesFromFormAnswers(answers);
+    const transaction: Prisma.PrismaPromise<unknown>[] = [
       prisma.formSubmission.create({
         data: {
           assignmentId: assignment.id,
@@ -92,7 +94,18 @@ export async function POST(
         where: { id: assignment.id },
         data: { status: "COMPLETED" },
       }),
-    ]);
+    ];
+
+    if (Object.keys(customerUpdates).length > 0) {
+      transaction.push(
+        prisma.customer.update({
+          where: { id: auth.customerId },
+          data: customerUpdates,
+        })
+      );
+    }
+
+    await prisma.$transaction(transaction);
 
     return NextResponse.json({ success: true });
   } catch (error) {

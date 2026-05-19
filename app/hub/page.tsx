@@ -29,16 +29,21 @@ export default async function HubHomePage() {
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
   const customerId: string = payload.customerId;
 
-  const [invoices, placementTest, formAssignments, enrollment, deal] = await Promise.all([
+  const [invoices, placementTest, realtimeTest, formAssignments, enrollment, deal] = await Promise.all([
     prisma.invoice.findMany({
       where: { customerId },
       select: { id: true, status: true, amount: true, amountPaid: true, dueDate: true },
       orderBy: { dueDate: "asc" },
     }),
     prisma.placementTest.findFirst({
-      where: { customerId },
+      where: { customerId, totalScore: { not: -1 } },
       orderBy: { createdAt: "desc" },
-      select: { displayLevel: true, cefrLevel: true },
+      select: { displayLevel: true, cefrLevel: true, createdAt: true },
+    }),
+    prisma.englishRealtimeTest.findFirst({
+      where: { customerId, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      select: { displayLevel: true, cefrLevel: true, createdAt: true },
     }),
     prisma.formAssignment.findMany({
       where: { customerId },
@@ -96,6 +101,10 @@ export default async function HubHomePage() {
   const firstName = (payload.name as string | undefined)?.split(" ")[0]
     ?? (payload.email as string | undefined)?.split("@")[0]
     ?? "";
+  const englishLevel =
+    realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
+      ? realtimeTest
+      : placementTest;
 
   return (
     <div className="space-y-4">
@@ -191,10 +200,10 @@ export default async function HubHomePage() {
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
             {t(lang, "inicio.englishLevel")}
           </p>
-          {placementTest ? (
+          {englishLevel?.cefrLevel && englishLevel?.displayLevel ? (
             <>
-              <p className="text-xl sm:text-2xl font-extrabold text-blue-600">{placementTest.cefrLevel}</p>
-              <p className="text-[11px] text-gray-400 mt-1">{placementTest.displayLevel}</p>
+              <p className="text-xl sm:text-2xl font-extrabold text-blue-600">{englishLevel.cefrLevel}</p>
+              <p className="text-[11px] text-gray-400 mt-1">{englishLevel.displayLevel}</p>
             </>
           ) : (
             <>

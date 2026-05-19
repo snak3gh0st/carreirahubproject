@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
+import { canStartPlacementTest } from "@/lib/hub/placement-test-policy";
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
   Beginner: { bg: "#FEF2F2", text: "#DC2626" },
@@ -31,12 +32,18 @@ export default async function HubTestResultPage() {
   const lang = (payload?.language || "en") as Language;
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
 
-  const result = await prisma.placementTest.findFirst({
-    where: { customerId: payload.customerId, totalScore: { not: -1 } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [result, completedTestCount] = await Promise.all([
+    prisma.placementTest.findFirst({
+      where: { customerId: payload.customerId, totalScore: { not: -1 } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.placementTest.count({
+      where: { customerId: payload.customerId, totalScore: { not: -1 } },
+    }),
+  ]);
 
   if (!result) redirect("/hub/test");
+  const retakePolicy = canStartPlacementTest(completedTestCount);
 
   const sectionScores = [
     result.section1Score,
@@ -111,12 +118,18 @@ export default async function HubTestResultPage() {
         >
           &larr; {t(lang, "testResult.backToDashboard")}
         </Link>
-        <Link
-          href="/hub/test"
-          className="flex-1 py-3 text-center rounded-xl text-white font-medium text-sm transition hover:opacity-90 bg-brand-tangerina"
-        >
-          {t(lang, "testResult.retakeTest")}
-        </Link>
+        {retakePolicy.allowed ? (
+          <Link
+            href="/hub/test"
+            className="flex-1 py-3 text-center rounded-xl text-white font-medium text-sm transition hover:opacity-90 bg-brand-tangerina"
+          >
+            {t(lang, "testResult.retakeTest")}
+          </Link>
+        ) : (
+          <div className="flex-1 py-3 text-center rounded-xl bg-gray-100 text-gray-500 font-medium text-sm">
+            {retakePolicy.reason}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ export function NewCustomerForm() {
     email: "",
     phone: "",
     dateOfBirth: "",
+    identificationType: "passport",
     ssn: "",
     passport: "",
     cpf: "",
@@ -23,7 +24,6 @@ export function NewCustomerForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [qbSyncInfo, setQbSyncInfo] = useState<any>(null);
 
   const handleChange = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -36,7 +36,6 @@ export function NewCustomerForm() {
     setSubmitting(true);
     setError(null);
     setSuccess(null);
-    setQbSyncInfo(null);
 
     try {
       const res = await fetch("/api/customers", {
@@ -50,8 +49,8 @@ export function NewCustomerForm() {
           phone: form.phone || undefined,
           dateOfBirth: form.dateOfBirth || undefined,
           ssn: form.ssn || undefined,
-          passport: form.passport || undefined,
-          cpf: form.cpf || undefined,
+          passport: form.identificationType === "passport" ? form.passport : undefined,
+          cpf: form.identificationType === "cpf" ? form.cpf : undefined,
           address: form.address || undefined,
           city: form.city || undefined,
           state: form.state || undefined,
@@ -63,11 +62,13 @@ export function NewCustomerForm() {
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Erro ao criar cliente");
+        const validationMessage = Array.isArray(data.details)
+          ? data.details.map((detail: any) => detail.message).join(", ")
+          : null;
+        throw new Error(validationMessage || data.error || "Erro ao criar cliente");
       }
 
       setSuccess(`Cliente ${data.customer.name} criado com sucesso!`);
-      setQbSyncInfo(data.quickbooksSync);
 
       // Clear form
       setForm({
@@ -75,6 +76,7 @@ export function NewCustomerForm() {
         email: "",
         phone: "",
         dateOfBirth: "",
+        identificationType: "passport",
         ssn: "",
         passport: "",
         cpf: "",
@@ -133,23 +135,6 @@ export function NewCustomerForm() {
               <div>
                 <h3 className="font-semibold mb-1">Cliente criado com sucesso!</h3>
                 <p className="text-sm">{success}</p>
-                {qbSyncInfo && (
-                  <div className="mt-2 text-sm">
-                    {qbSyncInfo.synced ? (
-                      <div className="flex items-center text-green-800">
-                        <span className="mr-2">✓</span>
-                        <span>
-                          Sincronizado com QuickBooks (ID: {qbSyncInfo.qbId})
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center text-yellow-700">
-                        <span className="mr-2">⚠️</span>
-                        <span>{qbSyncInfo.message}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
                 <p className="text-xs mt-2 text-green-600">
                   Redirecionando para a página do cliente...
                 </p>
@@ -157,29 +142,6 @@ export function NewCustomerForm() {
             </div>
           </div>
         )}
-
-        {/* Info Box */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-blue-900 font-semibold mb-2 flex items-center text-sm">
-            <svg
-              className="w-4 h-4 mr-2"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            Integração com QuickBooks
-          </h3>
-          <ul className="text-xs text-blue-800 space-y-1">
-            <li>✓ Cliente criado automaticamente no QuickBooks</li>
-            <li>✓ Email usado como identificador único</li>
-            <li>✓ Se já existir no QB, será vinculado automaticamente</li>
-          </ul>
-        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -208,13 +170,13 @@ export function NewCustomerForm() {
             required
           />
           <p className="text-xs text-gray-500 mt-1">
-            Email será usado para enviar faturas do QuickBooks
+            Email usado para acesso ao hub e envio de comunicados.
           </p>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Telefone <span className="text-gray-400 text-xs">(Opcional)</span>
+            Telefone <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -222,12 +184,13 @@ export function NewCustomerForm() {
             onChange={(e) => handleChange("phone", e.target.value)}
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="+1 (555) 123-4567"
+            required
           />
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Data de Nascimento <span className="text-gray-400 text-xs">(Opcional)</span>
+            Data de Nascimento <span className="text-red-500">*</span>
           </label>
           <input
             type="date"
@@ -235,29 +198,39 @@ export function NewCustomerForm() {
             onChange={(e) => handleChange("dateOfBirth", e.target.value)}
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="DD/MM/AAAA"
+            required
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              SSN (últimos 4 dígitos) <span className="text-gray-400 text-xs">(Opcional)</span>
+              Tipo de identificação <span className="text-red-500">*</span>
             </label>
-            <input
-              type="text"
-              value={form.ssn}
+            <select
+              value={form.identificationType}
               onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                handleChange("ssn", val);
+                const nextType = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  identificationType: nextType,
+                  passport: nextType === "passport" ? prev.passport : "",
+                  cpf: nextType === "cpf" ? prev.cpf : "",
+                }));
+                setError(null);
+                setSuccess(null);
               }}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="1234"
-              maxLength={4}
-            />
+              required
+            >
+              <option value="passport">Passaporte</option>
+              <option value="cpf">CPF</option>
+            </select>
           </div>
-          <div>
+          {form.identificationType === "passport" ? (
+            <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Passaporte <span className="text-gray-400 text-xs">(Opcional)</span>
+              Passaporte <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -265,11 +238,13 @@ export function NewCustomerForm() {
               onChange={(e) => handleChange("passport", e.target.value)}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Número do passaporte"
+              required
             />
           </div>
-          <div>
+          ) : (
+            <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              CPF <span className="text-gray-400 text-xs">(Opcional)</span>
+              CPF <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -278,13 +253,15 @@ export function NewCustomerForm() {
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="000.000.000-00"
               maxLength={14}
+              required
             />
           </div>
+          )}
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Endereço <span className="text-gray-400 text-xs">(Opcional)</span>
+            Endereço <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
@@ -292,13 +269,14 @@ export function NewCustomerForm() {
             onChange={(e) => handleChange("address", e.target.value)}
             className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="123 Main Street, Apt 4B"
+            required
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Cidade <span className="text-gray-400 text-xs">(Opcional)</span>
+              Cidade <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -306,11 +284,12 @@ export function NewCustomerForm() {
               onChange={(e) => handleChange("city", e.target.value)}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="New York"
+              required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Estado <span className="text-gray-400 text-xs">(Opcional)</span>
+              Estado <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -319,11 +298,12 @@ export function NewCustomerForm() {
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="NY"
               maxLength={2}
+              required
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              CEP <span className="text-gray-400 text-xs">(Opcional)</span>
+              CEP <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -332,6 +312,7 @@ export function NewCustomerForm() {
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="10001"
               maxLength={10}
+              required
             />
           </div>
         </div>
@@ -355,4 +336,3 @@ export function NewCustomerForm() {
     </div>
   );
 }
-

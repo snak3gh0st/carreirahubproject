@@ -51,11 +51,16 @@ export async function GET(
     return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
   }
 
-  const [placementTest, totalSessions, formAssignments] = await Promise.all([
+  const [placementTest, realtimeTest, totalSessions, formAssignments] = await Promise.all([
     prisma.placementTest.findFirst({
-      where: { customerId: enrollment.customer.id },
+      where: { customerId: enrollment.customer.id, totalScore: { not: -1 } },
       orderBy: { createdAt: "desc" },
       select: { cefrLevel: true, displayLevel: true, percentage: true, createdAt: true },
+    }),
+    prisma.englishRealtimeTest.findFirst({
+      where: { customerId: enrollment.customer.id, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      select: { cefrLevel: true, displayLevel: true, score: true, createdAt: true },
     }),
     prisma.mentorshipSession.count({
       where: { enrollmentId: params.id },
@@ -71,9 +76,19 @@ export async function GET(
     }),
   ]);
 
+  const englishTest =
+    realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
+      ? {
+          cefrLevel: realtimeTest.cefrLevel ?? "",
+          displayLevel: realtimeTest.displayLevel ?? "",
+          percentage: realtimeTest.score ?? 0,
+          createdAt: realtimeTest.createdAt,
+        }
+      : placementTest;
+
   const workflow = deriveOpsWorkflowState({
     enrollment,
-    placementTest,
+    placementTest: englishTest,
   });
 
   const availableTemplateIds =
@@ -108,7 +123,7 @@ export async function GET(
       ...enrollment,
       formAssignments,
     },
-    placementTest,
+    placementTest: englishTest,
     totalSessions,
     workflow,
     availableFormTemplates,

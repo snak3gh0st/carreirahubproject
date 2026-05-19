@@ -7,14 +7,12 @@ import { useRouter } from "next/navigation";
 interface DeleteCustomerButtonProps {
   customerId: string;
   customerName: string;
-  quickbooksId: string | null;
   userRole: string;
 }
 
 export function DeleteCustomerButton({
   customerId,
   customerName,
-  quickbooksId,
   userRole,
 }: DeleteCustomerButtonProps) {
   const router = useRouter();
@@ -26,14 +24,11 @@ export function DeleteCustomerButton({
   }
 
   const handleDelete = async () => {
-    if (!quickbooksId) {
-      alert("Cannot delete customer: QuickBooks ID is required for deletion.");
-      return;
-    }
+    const confirmName = prompt(
+      `Para excluir "${customerName}", digite exatamente o nome do cliente.\n\nEsta ação remove o cliente, faturas, contratos, formulários, testes e vínculos operacionais.`
+    );
 
-    const confirmMessage = `Delete customer "${customerName}"?\n\nThis will delete the customer from both the system and QuickBooks. This action cannot be undone.\n\nAre you sure you want to continue?`;
-
-    if (!confirm(confirmMessage)) {
+    if (confirmName === null) {
       return;
     }
 
@@ -45,7 +40,7 @@ export function DeleteCustomerButton({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ qbCustomerId: quickbooksId }),
+        body: JSON.stringify({ customerId, confirmName }),
       });
 
       if (!response.ok) {
@@ -53,10 +48,8 @@ export function DeleteCustomerButton({
         throw new Error(error.error || "Failed to delete customer");
       }
 
-      const result = await response.json();
-
-      // Show success message
-      alert(`Customer "${customerName}" deleted successfully from both the system and QuickBooks.`);
+      await response.json();
+      alert(`Cliente "${customerName}" excluído com sucesso.`);
 
       // Redirect to customers list
       router.push("/dashboard/customers");
@@ -70,16 +63,12 @@ export function DeleteCustomerButton({
   return (
     <button
       onClick={handleDelete}
-      disabled={isDeleting || !quickbooksId}
+      disabled={isDeleting}
       className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-red-600 text-white text-sm font-display font-medium rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      title={
-        !quickbooksId
-          ? "Customer must have QuickBooks ID to delete"
-          : "Delete customer"
-      }
+      title="Excluir cliente"
     >
       <Trash2 className="w-4 h-4" />
-      {isDeleting ? "Deleting..." : "Delete Customer"}
+      {isDeleting ? "Excluindo..." : "Excluir Cliente"}
     </button>
   );
 }

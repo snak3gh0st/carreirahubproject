@@ -52,12 +52,18 @@ export default function HubTestPage() {
 
   useEffect(() => {
     fetch("/api/hub/test")
-      .then((r) => r.json())
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.error || t(lang, "test.failedToLoad"));
+        }
+        return data;
+      })
       .then((data) => {
         setQuestions(data.questions || []);
         setTestId(data.testId || null);
       })
-      .catch(() => setError(t(lang, "test.failedToLoad")))
+      .catch((err) => setError(err instanceof Error ? err.message : t(lang, "test.failedToLoad")))
       .finally(() => setLoading(false));
   }, [lang]);
 
@@ -110,6 +116,23 @@ export default function HubTestPage() {
 
   // Intro screen
   if (currentSection === 0) {
+    if (error) {
+      return (
+        <div className="max-w-2xl mx-auto text-center py-12">
+          <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">{t(lang, "test.title")}</h1>
+            <p className="text-sm text-red-700">{error}</p>
+            <button
+              onClick={() => router.push("/hub")}
+              className="mt-6 px-6 py-3 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition"
+            >
+              {t(lang, "testResult.backToDashboard")}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
         <div className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center" style={{ backgroundColor: BRAND_COLORS.CREME }}>
@@ -122,13 +145,21 @@ export default function HubTestPage() {
         <p className="text-gray-400 text-sm mb-8 max-w-md mx-auto">
           {t(lang, "test.description")}
         </p>
-        <button
-          onClick={handleStart}
-          className="px-8 py-4 rounded-xl text-center text-white font-semibold text-lg transition hover:opacity-90"
-          style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
-        >
-          {t(lang, "test.startTest")}
-        </button>
+        <div className="grid gap-3">
+          <button
+            onClick={() => router.push("/hub/test/realtime")}
+            className="px-8 py-4 rounded-xl text-center text-white font-semibold text-lg transition hover:opacity-90"
+            style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
+          >
+            {lang === "pt-BR" ? "Iniciar teste por voz" : "Start Voice Test"}
+          </button>
+          <button
+            onClick={handleStart}
+            className="px-8 py-3 rounded-xl text-center border border-gray-200 text-gray-600 font-semibold text-sm transition hover:bg-gray-50"
+          >
+            {lang === "pt-BR" ? "Fazer teste escrito" : "Take Written Test"}
+          </button>
+        </div>
       </div>
     );
   }

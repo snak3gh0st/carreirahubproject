@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const { customerId } = auth;
 
     // Fetch all relevant data in parallel
-    const [contracts, invoices, formAssignments, placementTest, enrollment] = await Promise.all([
+    const [contracts, invoices, formAssignments, placementTest, realtimeTest, enrollment] = await Promise.all([
       prisma.contract.findMany({
         where: { customerId },
         select: { status: true, signedAt: true },
@@ -44,9 +44,14 @@ export async function GET(request: NextRequest) {
         select: { status: true },
       }),
       prisma.placementTest.findFirst({
-        where: { customerId },
+        where: { customerId, totalScore: { not: -1 } },
         orderBy: { createdAt: "desc" },
-        select: { displayLevel: true, cefrLevel: true },
+        select: { displayLevel: true, cefrLevel: true, createdAt: true },
+      }),
+      prisma.englishRealtimeTest.findFirst({
+        where: { customerId, status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        select: { displayLevel: true, cefrLevel: true, createdAt: true },
       }),
       prisma.mentorshipEnrollment.findFirst({
         where: { customerId, status: "ACTIVE" },
@@ -69,7 +74,11 @@ export async function GET(request: NextRequest) {
     const onboardingDone = totalForms === 0 ? null : completedForms === totalForms; // null = no forms assigned
 
     // 4. English Test: test taken
-    const testDone = !!placementTest;
+    const englishLevel =
+      realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
+        ? realtimeTest
+        : placementTest;
+    const testDone = !!englishLevel;
 
     // Build steps
     const steps: ProcessStep[] = [];
@@ -116,8 +125,8 @@ export async function GET(request: NextRequest) {
       label: "English Test",
       labelPt: "Teste de Inglês",
       status: testDone ? "completed" : anyPaid ? "current" : "pending",
-      detail: testDone ? `Level: ${placementTest.displayLevel} (${placementTest.cefrLevel})` : "Not taken yet",
-      detailPt: testDone ? `Nível: ${placementTest.displayLevel} (${placementTest.cefrLevel})` : "Ainda não realizado",
+      detail: testDone ? `Level: ${englishLevel!.displayLevel} (${englishLevel!.cefrLevel})` : "Not taken yet",
+      detailPt: testDone ? `Nível: ${englishLevel!.displayLevel} (${englishLevel!.cefrLevel})` : "Ainda não realizado",
     });
 
     // Step 5: Mentorship — shows current pipeline phase when enrolled

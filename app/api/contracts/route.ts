@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') as ContractStatus | null;
+    const statusGroup = searchParams.get('statusGroup');
     const customerId = searchParams.get('customerId');
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');
@@ -95,7 +96,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    if (status) {
+    if (statusGroup === 'pending') {
+      where.status = { in: [ContractStatus.SENT_FOR_SIGNATURE, ContractStatus.VIEWED] };
+    } else if (status) {
       where.status = status;
     }
 

@@ -7,7 +7,9 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { StatCard } from "@/components/ui/stat-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { BookOpen, Users, Award, Clock } from "lucide-react";
+import { RealtimeTestResetButton } from "@/components/dashboard/realtime-test-reset-button";
+import { getRealtimeEnglishTestProgress, normalizeRealtimeEnglishTranscript } from "@/lib/hub/realtime-english-test-flow";
+import { BookOpen, Users, Award, Clock, Mic } from "lucide-react";
 
 type BadgeVariant = "success" | "warning" | "error" | "info" | "default";
 
@@ -18,6 +20,14 @@ function getLevelBadgeVariant(displayLevel: string): BadgeVariant {
   if (level.includes("advanced")) return "info";
   if (level.includes("fluent")) return "success";
   return "default";
+}
+
+function getStatusBadgeVariant(status: string): BadgeVariant {
+  if (status === "COMPLETED") return "success";
+  if (status === "IN_PROGRESS") return "warning";
+  if (status === "FAILED") return "error";
+  if (status === "RESET") return "default";
+  return "info";
 }
 
 function formatTimeSpent(seconds: number | null): string {
@@ -69,6 +79,33 @@ export default async function TestsPage({
       },
     },
     orderBy: { createdAt: "desc" },
+  });
+
+  const realtimeWhereClause: any = {
+    NOT: { model: { startsWith: "voice-turn:" } },
+  };
+  if (search) {
+    realtimeWhereClause.customer = {
+      OR: [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ],
+    };
+  }
+
+  const realtimeTests = await prisma.englishRealtimeTest.findMany({
+    where: realtimeWhereClause,
+    include: {
+      customer: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 100,
   });
 
   // Statistics
@@ -283,6 +320,136 @@ export default async function TestsPage({
                       </td>
                     </tr>
                   ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Oral AI Tests Table */}
+        <div className="mt-8 bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-6 py-4">
+            <div>
+              <h2 className="text-lg font-display font-semibold text-gray-900">
+                Oral AI Interviews
+              </h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Live speaking assessments and operational reset controls.
+              </p>
+            </div>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600">
+              <Mic className="h-5 w-5" />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Customer
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Level
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Score
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Sections
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Time
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-display font-medium text-gray-700 uppercase tracking-wide">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {realtimeTests.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-0">
+                      <EmptyState
+                        icon={<Mic className="w-16 h-16" />}
+                        title="No oral interviews found"
+                        description={
+                          search
+                            ? "No oral interviews match your search."
+                            : "Oral AI interview attempts will appear here once students start the speaking test."
+                        }
+                      />
+                    </td>
+                  </tr>
+                ) : (
+                  realtimeTests.map((test) => {
+                    const oralTranscript = normalizeRealtimeEnglishTranscript(test.transcript);
+                    const oralProgress = getRealtimeEnglishTestProgress(oralTranscript);
+
+                    return (
+                      <tr
+                        key={test.id}
+                        className="hover:bg-gray-50 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col">
+                            <Link
+                              href={`/dashboard/customers/${test.customer.id}`}
+                              className="text-sm font-display font-medium text-primary-600 hover:text-primary-700"
+                            >
+                              {test.customer.name}
+                            </Link>
+                            <span className="text-xs text-gray-500">
+                              {test.customer.email}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={getStatusBadgeVariant(test.status)}>
+                            {test.status.replace("_", " ")}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {test.displayLevel ? (
+                            <Badge variant={getLevelBadgeVariant(test.displayLevel)}>
+                              {test.displayLevel}
+                            </Badge>
+                          ) : (
+                            <span className="text-sm text-gray-400">-</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-sm font-display font-semibold text-gray-900 tabular-nums">
+                            {typeof test.score === "number" ? `${test.score}/100` : "-"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <span className="text-sm font-display text-gray-700 tabular-nums">
+                            {oralProgress.completedStageCount}/{oralProgress.requiredStudentTurns}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 tabular-nums">
+                          {format(new Date(test.createdAt), "MMM dd, yyyy")}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 tabular-nums">
+                          {formatTimeSpent(test.durationSeconds)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {test.status === "IN_PROGRESS" ? (
+                            <RealtimeTestResetButton testId={test.id} />
+                          ) : (
+                            <span className="text-xs text-gray-400">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

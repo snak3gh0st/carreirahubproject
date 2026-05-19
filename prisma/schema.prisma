@@ -87,6 +87,8 @@ model Customer {
   notifications        Notification[]
   payments             Payment[]
   placementTests       PlacementTest[]
+  englishRealtimeTests EnglishRealtimeTest[]
+  aiMockInterviewSessions AiMockInterviewSession[]
   mentorshipEnrollments MentorshipEnrollment[]
   opsDigisacThreads    OpsDigisacThread[]
 
@@ -180,6 +182,121 @@ model PlacementTest {
 
   @@index([customerId])
   @@map("placement_tests")
+}
+
+model EnglishRealtimeTest {
+  id                 String    @id @default(cuid())
+  status             String    @default("IN_PROGRESS")
+  model              String    @default("gpt-realtime-2")
+  openaiCallId       String?
+  cefrLevel          String?
+  displayLevel       String?
+  score              Int?
+  fluencyScore       Int?
+  pronunciationScore Int?
+  grammarScore       Int?
+  vocabularyScore    Int?
+  comprehensionScore Int?
+  summary            String?
+  strengths          String[]  @default([])
+  focusAreas         String[]  @default([])
+  transcript         Json?
+  durationSeconds    Int?
+  usageInputTextTokens       Int      @default(0)
+  usageCachedInputTextTokens Int      @default(0)
+  usageInputAudioTokens      Int      @default(0)
+  usageOutputTextTokens      Int      @default(0)
+  usageOutputAudioTokens     Int      @default(0)
+  usageTotalTokens           Int      @default(0)
+  usageEstimatedCostUsd      Decimal? @db.Decimal(10, 4)
+  usageCapturedAt            DateTime?
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
+  failedAt           DateTime?
+  errorMessage       String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  customerId         String
+  customer           Customer  @relation(fields: [customerId], references: [id])
+
+  @@index([customerId, createdAt])
+  @@index([status])
+  @@map("english_realtime_tests")
+}
+
+model AiMockInterviewSession {
+  id                         String    @id @default(cuid())
+  status                     String    @default("IN_PROGRESS")
+  model                      String    @default("gpt-realtime-2")
+  openaiCallId               String?
+  targetRole                 String?
+  interviewFocus             String?
+  resumeSnapshot             String?
+  cvContext                  Json?
+  transcript                 Json?
+  report                     Json?
+  overallScore               Int?
+  communicationScore         Int?
+  experienceScore            Int?
+  problemSolvingScore        Int?
+  roleFitScore               Int?
+  executivePresenceScore     Int?
+  hiringSignal               String?
+  summary                    String?
+  strengths                  String[]  @default([])
+  risks                      String[]  @default([])
+  focusAreas                 String[]  @default([])
+  suggestedPracticeQuestions String[]  @default([])
+  durationSeconds            Int?
+  opsSessionId               String?
+  usageInputTextTokens       Int       @default(0)
+  usageCachedInputTextTokens Int       @default(0)
+  usageInputAudioTokens      Int       @default(0)
+  usageOutputTextTokens      Int       @default(0)
+  usageOutputAudioTokens     Int       @default(0)
+  usageTotalTokens           Int       @default(0)
+  usageEstimatedCostUsd      Decimal?  @db.Decimal(10, 4)
+  usageCapturedAt            DateTime?
+  startedAt                  DateTime  @default(now())
+  completedAt                DateTime?
+  failedAt                   DateTime?
+  errorMessage               String?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
+
+  customerId                 String
+  customer                   Customer  @relation(fields: [customerId], references: [id])
+  enrollmentId               String?
+  enrollment                 MentorshipEnrollment? @relation(fields: [enrollmentId], references: [id])
+
+  @@index([customerId, createdAt])
+  @@index([enrollmentId, createdAt])
+  @@index([status])
+  @@map("ai_mock_interview_sessions")
+}
+
+model AiUsageEvent {
+  id                         String   @id @default(cuid())
+  source                     String
+  provider                   String   @default("openai")
+  model                      String?
+  externalEventId            String?  @unique
+  testId                     String?
+  customerId                 String?
+  inputTextTokens            Int      @default(0)
+  cachedInputTextTokens      Int      @default(0)
+  inputAudioTokens           Int      @default(0)
+  outputTextTokens           Int      @default(0)
+  outputAudioTokens          Int      @default(0)
+  totalTokens                Int      @default(0)
+  estimatedCostUsd           Decimal  @default(0) @db.Decimal(10, 4)
+  createdAt                  DateTime @default(now())
+
+  @@index([source, createdAt])
+  @@index([customerId, createdAt])
+  @@index([testId])
+  @@map("ai_usage_events")
 }
 
 model Lead {
@@ -947,6 +1064,7 @@ model MentorshipEnrollment {
   currentPhase    MentorshipPhase? @relation("CurrentPhaseEnrollments", fields: [currentPhaseId], references: [id])
 
   sessions    MentorshipSession[]
+  aiMockInterviewSessions AiMockInterviewSession[]
   transitions PhaseTransition[]
   checklistProgress PhaseChecklistProgress[]
   comments    OpsStudentComment[]

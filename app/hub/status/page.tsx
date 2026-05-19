@@ -33,11 +33,20 @@ export default async function HubStatusPage() {
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
   const customerId = payload.customerId;
 
-  const [contracts, invoices, formAssignments, placementTest, enrollment] = await Promise.all([
+  const [contracts, invoices, formAssignments, placementTest, realtimeTest, enrollment] = await Promise.all([
     prisma.contract.findMany({ where: { customerId }, select: { status: true, signedAt: true } }),
     prisma.invoice.findMany({ where: { customerId }, select: { status: true, paidAt: true } }),
     prisma.formAssignment.findMany({ where: { customerId }, select: { status: true } }),
-    prisma.placementTest.findFirst({ where: { customerId }, orderBy: { createdAt: "desc" }, select: { displayLevel: true, cefrLevel: true } }),
+    prisma.placementTest.findFirst({
+      where: { customerId, totalScore: { not: -1 } },
+      orderBy: { createdAt: "desc" },
+      select: { displayLevel: true, cefrLevel: true, createdAt: true },
+    }),
+    prisma.englishRealtimeTest.findFirst({
+      where: { customerId, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      select: { displayLevel: true, cefrLevel: true, createdAt: true },
+    }),
     prisma.mentorshipEnrollment.findFirst({
       where: { customerId, status: "ACTIVE" },
       select: { currentPhase: { select: { label: true } } },
@@ -52,7 +61,11 @@ export default async function HubStatusPage() {
   const totalForms = formAssignments.length;
   const completedForms = formAssignments.filter((f) => f.status === FormAssignmentStatus.COMPLETED).length;
   const onboardingDone = totalForms === 0 ? null : completedForms === totalForms;
-  const testDone = !!placementTest;
+  const englishLevel =
+    realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
+      ? realtimeTest
+      : placementTest;
+  const testDone = !!englishLevel;
   const allPriorDone = contractSigned && anyPaid && (onboardingDone === null || onboardingDone) && testDone;
 
   const steps: Step[] = [
@@ -88,7 +101,7 @@ export default async function HubStatusPage() {
     id: "english-test",
     label: t(lang, "status.englishTest"),
     status: testDone ? "completed" : anyPaid ? "current" : "pending",
-    detail: testDone ? `${placementTest!.displayLevel} (${placementTest!.cefrLevel})` : t(lang, "status.notTakenYet"),
+    detail: testDone ? `${englishLevel!.displayLevel} (${englishLevel!.cefrLevel})` : t(lang, "status.notTakenYet"),
     icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253",
   });
 

@@ -35,6 +35,24 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
+    const realtimeTests = await prisma.englishRealtimeTest.findMany({
+      where: {
+        ...(customerId ? { customerId } : {}),
+        NOT: { model: { startsWith: "voice-turn:" } },
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+
     return NextResponse.json({
       tests: tests.map((test) => ({
         id: test.id,
@@ -49,6 +67,18 @@ export async function GET(request: NextRequest) {
         displayLevel: test.displayLevel,
         timeSpentSeconds: test.timeSpentSeconds,
         createdAt: test.createdAt,
+        customerId: test.customerId,
+        customer: test.customer,
+      })),
+      realtimeTests: realtimeTests.map((test) => ({
+        id: test.id,
+        status: test.status,
+        cefrLevel: test.cefrLevel,
+        displayLevel: test.displayLevel,
+        score: test.score,
+        durationSeconds: test.durationSeconds,
+        createdAt: test.createdAt,
+        completedAt: test.completedAt,
         customerId: test.customerId,
         customer: test.customer,
       })),

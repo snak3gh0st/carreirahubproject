@@ -33,6 +33,12 @@ export async function GET(request: NextRequest) {
     },
     include: {
       placementTests: {
+        where: { totalScore: { not: -1 } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+      englishRealtimeTests: {
+        where: { status: "COMPLETED" },
         orderBy: { createdAt: "desc" },
         take: 1,
       },
@@ -45,7 +51,12 @@ export async function GET(request: NextRequest) {
       id: customer.id,
       name: customer.name,
       email: customer.email,
-      cefrLevel: customer.placementTests[0]?.cefrLevel ?? null,
+      cefrLevel:
+        customer.englishRealtimeTests[0] &&
+        (!customer.placementTests[0] ||
+          customer.englishRealtimeTests[0].createdAt > customer.placementTests[0].createdAt)
+          ? customer.englishRealtimeTests[0].cefrLevel
+          : customer.placementTests[0]?.cefrLevel ?? null,
     })),
   });
 }

@@ -107,6 +107,7 @@ export default function CreateContractPage() {
   // UI state
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
   const [loadingTemplates, setLoadingTemplates] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [missingFields, setMissingFields] = useState<{ field: string; label: string }[]>([]);
@@ -143,6 +144,44 @@ export default function CreateContractPage() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showCustomerDropdown]);
+
+  useEffect(() => {
+    const search = customerSearch.trim();
+    if (search.length < 2) return;
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      try {
+        setLoadingCustomers(true);
+        const params = new URLSearchParams({
+          limit: '50',
+          search,
+        });
+        if (customerId) params.set('selectedId', customerId);
+
+        const response = await fetch(`/api/customers?${params.toString()}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('Falha ao buscar clientes');
+
+        const data = await response.json();
+        setCustomers(data.customers || []);
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === 'AbortError')) {
+          console.error('Error searching customers:', err);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoadingCustomers(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [customerSearch, customerId]);
 
   // Fetch customers and invoices on mount
   useEffect(() => {
@@ -181,6 +220,41 @@ export default function CreateContractPage() {
     
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (!customerId) return;
+
+    const controller = new AbortController();
+    async function fetchCustomerInvoices() {
+      try {
+        const invoicesRes = await fetch(
+          `/api/invoices?limit=200&customerId=${encodeURIComponent(customerId)}`,
+          { signal: controller.signal }
+        );
+        if (!invoicesRes.ok) throw new Error('Falha ao buscar faturas do cliente');
+
+        const invoicesData = await invoicesRes.json();
+        const customerInvoices = invoicesData.invoices || [];
+        setInvoices((currentInvoices) => {
+          const invoiceMap = new Map<string, Invoice>();
+          [...customerInvoices, ...currentInvoices].forEach((invoice) => {
+            invoiceMap.set(invoice.id, invoice);
+          });
+          return Array.from(invoiceMap.values());
+        });
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === 'AbortError')) {
+          console.error('Error fetching customer invoices:', err);
+        }
+      }
+    }
+
+    fetchCustomerInvoices();
+
+    return () => {
+      controller.abort();
+    };
+  }, [customerId]);
 
   // Fetch DocuSign templates (used for "Other template" option)
   useEffect(() => {
@@ -418,7 +492,11 @@ export default function CreateContractPage() {
 
                 {showCustomerDropdown && (
                   <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {filteredCustomers.length === 0 ? (
+                    {loadingCustomers ? (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Buscando clientes...
+                      </div>
+                    ) : filteredCustomers.length === 0 ? (
                       <div className="px-3 py-2 text-sm text-gray-500">
                         Nenhum cliente encontrado
                       </div>
@@ -680,7 +758,7 @@ export default function CreateContractPage() {
             <div className="flex gap-3 pt-4 border-t">
               <Button
                 type="submit"
-                disabled={loading || !customerId || !program || (program === 'other' && !templateId) || missingFields.some(f => f.field === 'identification')}
+                disabled={loading || !customerId || !program || (program === 'other' && !templateId) || missingFields.length > 0}
                 className="flex-1"
               >
                 {loading ? (

@@ -66,6 +66,24 @@ export default async function CustomerDetailPage({
     where: { customerId: params.id, totalScore: { not: -1 } },
     orderBy: { createdAt: "desc" },
   });
+  const latestRealtimeTest = await prisma.englishRealtimeTest.findFirst({
+    where: { customerId: params.id, status: "COMPLETED" },
+    orderBy: { createdAt: "desc" },
+  });
+  const englishTest =
+    latestRealtimeTest && (!latestTest || latestRealtimeTest.createdAt > latestTest.createdAt)
+      ? {
+          displayLevel: latestRealtimeTest.displayLevel ?? "",
+          cefrLevel: latestRealtimeTest.cefrLevel ?? "",
+          scoreLabel: `${latestRealtimeTest.score ?? 0}/100`,
+        }
+      : latestTest
+        ? {
+            displayLevel: latestTest.displayLevel,
+            cefrLevel: latestTest.cefrLevel,
+            scoreLabel: `${latestTest.totalScore}/${latestTest.questionCount || 25}`,
+          }
+        : null;
 
   // Calculate financial statistics from invoices
   const today = new Date();
@@ -201,28 +219,25 @@ export default async function CustomerDetailPage({
                 <div>
                   <h1 className="text-3xl font-display font-semibold text-gray-900">{customer.name}</h1>
                   <div className="flex gap-2 mt-2 flex-wrap">
-                    {customer.quickbooks_id && (
-                      <Badge variant="success">QuickBooks</Badge>
-                    )}
                     {customer.clint_contact_id && (
                       <Badge variant="info">Clint</Badge>
                     )}
-                    {latestTest ? (
+                    {englishTest ? (
                       <Badge
                         variant={
-                          latestTest.displayLevel.toLowerCase().includes("beginner")
+                          englishTest.displayLevel.toLowerCase().includes("beginner")
                             ? "error"
-                            : latestTest.displayLevel.toLowerCase().includes("intermediate")
+                            : englishTest.displayLevel.toLowerCase().includes("intermediate")
                             ? "warning"
-                            : latestTest.displayLevel.toLowerCase().includes("advanced")
+                            : englishTest.displayLevel.toLowerCase().includes("advanced")
                             ? "info"
-                            : latestTest.displayLevel.toLowerCase().includes("fluent")
+                            : englishTest.displayLevel.toLowerCase().includes("fluent")
                             ? "success"
                             : "default"
                         }
                       >
                         <BookOpen className="h-3 w-3 mr-1 inline" />
-                        {latestTest.displayLevel} ({latestTest.cefrLevel}) — {latestTest.totalScore}/{latestTest.questionCount || 25}
+                        {englishTest.displayLevel} ({englishTest.cefrLevel}) — {englishTest.scoreLabel}
                       </Badge>
                     ) : (
                       <Badge variant="default">
@@ -257,7 +272,6 @@ export default async function CustomerDetailPage({
               <DeleteCustomerButton
                 customerId={customer.id}
                 customerName={customer.name}
-                quickbooksId={customer.quickbooks_id}
                 userRole={userRole}
               />
               <Link
@@ -293,12 +307,12 @@ export default async function CustomerDetailPage({
             icon={<DollarSign className="h-5 w-5" />}
           />
           <StatCard
-            label="Pendente"
+            label="Fatura aberta"
             value={formatCurrency(pendingAmount)}
             description={`${pendingCount} faturas`}
           />
           <StatCard
-            label="Vencido"
+            label="Fatura vencida"
             value={formatCurrency(overdueAmount)}
             description={`${overdueCount} faturas`}
             icon={overdueCount > 0 ? <AlertCircle className="h-5 w-5 text-error-500" /> : undefined}

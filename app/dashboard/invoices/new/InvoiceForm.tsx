@@ -11,6 +11,7 @@ import {
 } from "@/lib/constants/carreira-products";
 import {
   getPaymentPolicyForProducts,
+  getMaxInstallmentsForEntry,
   validatePaymentSelection,
 } from "@/lib/invoices/payment-rules";
 import { getCatalogProductUnitPrice } from "@/lib/invoices/catalog-price";
@@ -84,7 +85,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
   const [items, setItems] = useState<InvoiceItemForm[]>([
     { id: `item-${Date.now()}`, catalogProductId: "", serviceItemId: "", quantity: 1, unitPrice: "", serviceSearch: "", showServiceDropdown: false },
   ]);
-  const [mentoriaPreset, setMentoriaPreset] = useState<"avista" | "entry30_max" | "max" | null>(null);
+  const [mentoriaPreset, setMentoriaPreset] = useState<"avista" | "entry30_max" | "six" | "max" | null>(null);
   const [filteredDeals, setFilteredDeals] = useState<Deal[]>(deals);
   const [submitting, setSubmitting] = useState(false);
   const [createdInvoiceData, setCreatedInvoiceData] = useState<{
@@ -223,7 +224,7 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     );
   };
 
-  const applyMentoriaPreset = (preset: "avista" | "entry30_max" | "max") => {
+  const applyMentoriaPreset = (preset: "avista" | "entry30_max" | "six" | "max") => {
     setMentoriaPreset(preset);
     const currentTotal = calculateTotal();
     if (preset === "avista") {
@@ -233,7 +234,13 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
       setForm((f) => ({
         ...f,
         entryAmount: String(entry),
-        installments: String(activePaymentPolicy.maxInstallments),
+        installments: String(getMaxInstallmentsForEntry(activePaymentPolicy, entry)),
+      }));
+    } else if (preset === "six") {
+      setForm((f) => ({
+        ...f,
+        entryAmount: "",
+        installments: "6",
       }));
     } else {
       setForm((f) => ({
@@ -304,6 +311,15 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
     calculateTotal()
   );
   const activePaymentRule = activePaymentPolicy.paymentRule;
+  const maxInstallmentsForCurrentEntry = getMaxInstallmentsForEntry(
+    activePaymentPolicy,
+    getNumericValue(form.entryAmount)
+  );
+  const entry30Amount = Math.round(calculateTotal() * 0.3 * 100) / 100;
+  const entry30Installments = getMaxInstallmentsForEntry(
+    activePaymentPolicy,
+    entry30Amount
+  );
 
   const generateInstallmentSchedule = () => {
     const total = calculateTotal();
@@ -1040,10 +1056,10 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Número de parcelas (até {activePaymentPolicy.maxInstallments}x)
+                    Número de parcelas (até {maxInstallmentsForCurrentEntry}x)
                   </label>
                   <input
-                    type="number" min="0" max={activePaymentPolicy.maxInstallments}
+                    type="number" min="0" max={maxInstallmentsForCurrentEntry}
                     value={form.installments}
                     onChange={(e) => handleChange("installments", e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"
@@ -1059,14 +1075,19 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-3">Atalhos de pagamento</label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                   {(
                     [
                       { key: "avista", label: "À vista", sub: `$${total.toFixed(2)}` },
                       {
                         key: "entry30_max",
-                        label: `30% entrada + ${activePaymentPolicy.maxInstallments}x`,
-                        sub: `Entrada $${(Math.round(total * 0.3 * 100) / 100).toFixed(2)} + ${activePaymentPolicy.maxInstallments}x $${((total - Math.round(total * 0.3 * 100) / 100) / activePaymentPolicy.maxInstallments).toFixed(2)}`,
+                        label: `30% entrada + ${entry30Installments}x`,
+                        sub: `Entrada $${entry30Amount.toFixed(2)} + ${entry30Installments}x $${((total - entry30Amount) / entry30Installments).toFixed(2)}`,
+                      },
+                      {
+                        key: "six",
+                        label: "6x sem entrada",
+                        sub: `6x de $${(total / 6).toFixed(2)}`,
                       },
                       {
                         key: "max",
@@ -1103,9 +1124,11 @@ export function InvoiceForm({ customers, deals }: InvoiceFormProps) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Número de parcelas</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número de parcelas (até {maxInstallmentsForCurrentEntry}x)
+                  </label>
                   <input
-                    type="number" min="1"
+                    type="number" min="1" max={maxInstallmentsForCurrentEntry}
                     value={form.installments}
                     onChange={(e) => { setMentoriaPreset(null); handleChange("installments", e.target.value); }}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500"

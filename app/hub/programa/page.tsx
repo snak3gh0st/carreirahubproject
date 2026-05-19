@@ -26,7 +26,7 @@ export default async function ProgramaPage() {
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
   const customerId: string = payload.customerId;
 
-  const [contracts, invoices, formAssignments, placementTest, enrollment, deal] = await Promise.all([
+  const [contracts, invoices, formAssignments, placementTest, realtimeTest, enrollment, deal, mockInterview] = await Promise.all([
     prisma.contract.findMany({
       where: { customerId },
       select: { status: true, signedAt: true },
@@ -41,7 +41,7 @@ export default async function ProgramaPage() {
       orderBy: { assignedAt: "desc" },
     }),
     prisma.placementTest.findFirst({
-      where: { customerId },
+      where: { customerId, totalScore: { not: -1 } },
       orderBy: { createdAt: "desc" },
       select: {
         displayLevel: true,
@@ -56,14 +56,38 @@ export default async function ProgramaPage() {
         section5Score: true,
       },
     }),
+    prisma.englishRealtimeTest.findFirst({
+      where: { customerId, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      select: {
+        displayLevel: true,
+        cefrLevel: true,
+        score: true,
+        createdAt: true,
+      },
+    }),
     prisma.mentorshipEnrollment.findFirst({
       where: { customerId, status: "ACTIVE" },
-      select: { currentPhase: { select: { label: true } } },
+      select: {
+        id: true,
+        programType: true,
+        currentPhase: { select: { label: true } },
+      },
     }),
     prisma.deal.findFirst({
       where: { customerId },
       orderBy: { createdAt: "desc" },
       select: { title: true, createdAt: true },
+    }),
+    prisma.aiMockInterviewSession.findFirst({
+      where: { customerId, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" },
+      select: {
+        targetRole: true,
+        overallScore: true,
+        hiringSignal: true,
+        completedAt: true,
+      },
     }),
   ]);
 
@@ -76,7 +100,14 @@ export default async function ProgramaPage() {
   const completedForms = formAssignments.filter((f) => f.status === FormAssignmentStatus.COMPLETED).length;
   const onboardingFormsApplicable = totalForms > 0;
   const onboardingDone = !onboardingFormsApplicable || completedForms === totalForms;
-  const testDone = !!placementTest;
+  const englishLevelSource =
+    realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
+      ? "realtime"
+      : placementTest
+        ? "written"
+        : null;
+  const englishLevel = englishLevelSource === "realtime" ? realtimeTest : placementTest;
+  const testDone = !!englishLevel;
   const phaseLabel = enrollment?.currentPhase?.label ?? "";
 
   type StepStatus = "completed" | "current" | "pending";
@@ -121,11 +152,11 @@ export default async function ProgramaPage() {
       label: t(lang, "programa.testTitle"),
       status: testDone ? "completed" : anyPaid ? "current" : "pending",
       detail: testDone
-        ? `${placementTest!.cefrLevel} — ${placementTest!.displayLevel}`
+        ? `${englishLevel!.cefrLevel} — ${englishLevel!.displayLevel}`
         : t(lang, "programa.notTaken"),
       badge: testDone ? (
         <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-          {placementTest!.cefrLevel}
+          {englishLevel!.cefrLevel}
         </span>
       ) : undefined,
     },
@@ -299,20 +330,22 @@ export default async function ProgramaPage() {
           <div>
             <h2 className="text-sm font-bold text-gray-900 mb-3">{t(lang, "programa.testTitle")}</h2>
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              {placementTest ? (
+              {englishLevel ? (
                 <div>
                   <div className="flex items-center gap-4 mb-4">
                     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-                      <span className="text-lg font-extrabold text-blue-600">{placementTest.cefrLevel}</span>
+                      <span className="text-lg font-extrabold text-blue-600">{englishLevel.cefrLevel}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900">{placementTest.displayLevel}</p>
+                      <p className="text-sm font-bold text-gray-900">{englishLevel.displayLevel}</p>
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {placementTest.createdAt
-                          ? new Date(placementTest.createdAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })
+                        {englishLevel.createdAt
+                          ? new Date(englishLevel.createdAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })
                           : ""}
-                        {placementTest.totalScore != null && placementTest.questionCount != null
-                          ? ` · ${placementTest.totalScore}/${placementTest.questionCount}`
+                        {"score" in englishLevel && englishLevel.score != null
+                          ? ` · ${englishLevel.score}/100`
+                          : "totalScore" in englishLevel && englishLevel.totalScore != null && englishLevel.questionCount != null
+                          ? ` · ${englishLevel.totalScore}/${englishLevel.questionCount}`
                           : ""}
                       </p>
                     </div>
@@ -337,7 +370,7 @@ export default async function ProgramaPage() {
                   )}
 
                   <Link
-                    href="/hub/test/result"
+                    href={englishLevelSource === "realtime" ? "/hub/test/realtime/result" : "/hub/test/result"}
                     className="block mt-4 text-xs text-gray-400 hover:text-gray-600 underline text-right"
                   >
                     {t(lang, "programa.viewResult")}
@@ -352,6 +385,72 @@ export default async function ProgramaPage() {
                   >
                     {t(lang, "programa.takeTest")}
                   </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* AI mock interview card */}
+          <div>
+            <h2 className="text-sm font-bold text-gray-900 mb-3">
+              {lang === "pt-BR" ? "Mock interview" : "Mock interview"}
+            </h2>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-900">
+                    {lang === "pt-BR" ? "Entrevista AI ao vivo" : "Live AI interview"}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-gray-500">
+                    {lang === "pt-BR"
+                      ? "Treine uma entrevista corporativa baseada no seu CV e objetivo profissional."
+                      : "Practice a corporate interview based on your CV and career goal."}
+                  </p>
+                </div>
+                {mockInterview?.overallScore != null && (
+                  <div className="shrink-0 rounded-xl bg-gray-50 px-3 py-2 text-center">
+                    <p className="text-lg font-extrabold text-gray-900">{mockInterview.overallScore}</p>
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">score</p>
+                  </div>
+                )}
+              </div>
+
+              {mockInterview ? (
+                <div className="mt-4 rounded-xl bg-gray-50 p-3">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="font-semibold text-gray-500">
+                      {mockInterview.targetRole || (lang === "pt-BR" ? "Foco do programa" : "Program focus")}
+                    </span>
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-bold text-emerald-700">
+                      {mockInterview.hiringSignal || "reviewed"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-gray-400">
+                    {mockInterview.completedAt
+                      ? new Date(mockInterview.completedAt).toLocaleDateString(dateLocale, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })
+                      : ""}
+                  </p>
+                </div>
+              ) : null}
+
+              {enrollment ? (
+                <Link
+                  href="/hub/programa/mock-interview"
+                  className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-brand-verde px-5 py-3 text-sm font-bold text-white transition hover:opacity-95 active:scale-[0.99]"
+                >
+                  {mockInterview
+                    ? lang === "pt-BR" ? "Refazer treino AI" : "Run another AI practice"
+                    : lang === "pt-BR" ? "Iniciar mock interview" : "Start mock interview"}
+                </Link>
+              ) : (
+                <div className="mt-4 rounded-xl bg-gray-50 px-4 py-3 text-center text-xs font-medium text-gray-400">
+                  {lang === "pt-BR"
+                    ? "Disponível quando o programa estiver ativo."
+                    : "Available when your program is active."}
                 </div>
               )}
             </div>

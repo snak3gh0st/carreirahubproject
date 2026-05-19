@@ -70,22 +70,26 @@ export default function ContractsPage() {
   const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, totalPages: 0 });
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [activeStatus, setActiveStatus] = useState<ContractStatus | ''>('');
+  const [activeStatusGroup, setActiveStatusGroup] = useState<'' | 'pending'>('');
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const status = searchParams.get('status') as ContractStatus | null;
+    const statusGroup = searchParams.get('statusGroup') === 'pending' ? 'pending' : '';
     const search = searchParams.get('search');
     const page = searchParams.get('page');
-    if (status) setActiveStatus(status);
+    setActiveStatus(status || '');
+    setActiveStatusGroup(statusGroup);
     if (search) setSearchTerm(search);
-    fetchContracts(status || '', search || '', page ? parseInt(page) : 1);
+    fetchContracts(status || '', search || '', page ? parseInt(page) : 1, statusGroup);
   }, [searchParams]);
 
-  const fetchContracts = async (status: string, search: string, page: number) => {
+  const fetchContracts = async (status: string, search: string, page: number, statusGroup: '' | 'pending' = '') => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       if (status) params.set('status', status);
+      if (statusGroup) params.set('statusGroup', statusGroup);
       if (search) params.set('search', search);
       params.set('page', page.toString());
       const response = await fetch(`/api/contracts?${params}`);
@@ -101,9 +105,10 @@ export default function ContractsPage() {
     }
   };
 
-  const updateFilters = (status: ContractStatus | '', search: string, page: number = 1) => {
+  const updateFilters = (status: ContractStatus | '', search: string, page: number = 1, statusGroup: '' | 'pending' = '') => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
+    if (statusGroup) params.set('statusGroup', statusGroup);
     if (search) params.set('search', search);
     if (page > 1) params.set('page', page.toString());
     router.push(`/dashboard/contracts?${params.toString()}`);
@@ -143,7 +148,13 @@ export default function ContractsPage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <button
+            type="button"
+            onClick={() => updateFilters('', searchTerm)}
+            className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-shadow text-left ${
+              !activeStatus && !activeStatusGroup ? 'border-green-300 ring-2 ring-green-100' : 'border-gray-100'
+            }`}
+          >
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2.5 bg-gray-100 rounded-xl">
                 <FileText className="h-5 w-5 text-gray-600" />
@@ -152,9 +163,15 @@ export default function ContractsPage() {
             </div>
             <p className="text-3xl font-display font-bold text-gray-900 tabular-nums">{totalContracts}</p>
             <p className="text-xs text-gray-400 mt-1">contratos criados</p>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-2xl border border-emerald-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <button
+            type="button"
+            onClick={() => updateFilters('SIGNED', searchTerm)}
+            className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-shadow text-left ${
+              activeStatus === 'SIGNED' ? 'border-green-300 ring-2 ring-green-100' : 'border-emerald-100'
+            }`}
+          >
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2.5 bg-emerald-50 rounded-xl">
                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
@@ -166,9 +183,15 @@ export default function ContractsPage() {
               <TrendingUp className="h-3 w-3 text-emerald-500" />
               <p className="text-xs text-emerald-600 font-medium">{signRate}% taxa de assinatura</p>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-2xl border border-blue-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <button
+            type="button"
+            onClick={() => updateFilters('', searchTerm, 1, 'pending')}
+            className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-shadow text-left ${
+              activeStatusGroup === 'pending' ? 'border-green-300 ring-2 ring-green-100' : 'border-blue-100'
+            }`}
+          >
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2.5 bg-blue-50 rounded-xl">
                 <Timer className="h-5 w-5 text-blue-600" />
@@ -177,9 +200,15 @@ export default function ContractsPage() {
             </div>
             <p className="text-3xl font-display font-bold text-blue-700 tabular-nums">{pendingCount}</p>
             <p className="text-xs text-gray-400 mt-1">aguardando assinatura</p>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-2xl border border-amber-100 p-5 shadow-sm hover:shadow-md transition-shadow">
+          <button
+            type="button"
+            onClick={() => updateFilters('EXPIRED', searchTerm)}
+            className={`bg-white rounded-2xl border p-5 shadow-sm hover:shadow-md transition-shadow text-left ${
+              activeStatus === 'EXPIRED' ? 'border-green-300 ring-2 ring-green-100' : 'border-amber-100'
+            }`}
+          >
             <div className="flex items-center gap-3 mb-3">
               <div className="p-2.5 bg-amber-50 rounded-xl">
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
@@ -188,7 +217,7 @@ export default function ContractsPage() {
             </div>
             <p className="text-3xl font-display font-bold text-amber-700 tabular-nums">{expiredCount}</p>
             <p className="text-xs text-gray-400 mt-1">precisam de atenção</p>
-          </div>
+          </button>
         </div>
 
         {/* Filters + Search */}
@@ -200,6 +229,7 @@ export default function ContractsPage() {
                 onClick={() => updateFilters('', searchTerm)}
                 className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${
                   !activeStatus
+                    && !activeStatusGroup
                     ? 'bg-gray-900 text-white shadow-sm'
                     : 'text-gray-600 hover:bg-gray-100'
                 }`}

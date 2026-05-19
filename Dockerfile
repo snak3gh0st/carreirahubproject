@@ -35,6 +35,7 @@ ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 # Build generates Prisma client then runs next build (output: standalone)
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_BUILD=true
+ENV NODE_OPTIONS=--max-old-space-size=3072
 RUN npm run build
 
 # ─── Stage 3: runtime ────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import {
   toClientQuestion,
   getQuestionsByIds,
 } from "@/lib/hub/question-bank";
+import { canStartPlacementTest } from "@/lib/hub/placement-test-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,18 @@ export async function GET(request: NextRequest) {
     const auth = await getHubAuth(request);
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const priorTests = await prisma.placementTest.findMany({
+      where: { customerId: auth.customerId, totalScore: { not: -1 } },
+      select: { questionIds: true },
+    });
+    const testPolicy = canStartPlacementTest(priorTests.length);
+    if (!testPolicy.allowed) {
+      return NextResponse.json(
+        { error: testPolicy.reason, code: "RETAKE_LIMIT_REACHED" },
+        { status: 403 }
+      );
     }
 
     // Check for an existing pending test (totalScore: -1 = sentinel for pending)
@@ -47,10 +60,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Collect previously seen question IDs from completed tests
-    const priorTests = await prisma.placementTest.findMany({
-      where: { customerId: auth.customerId, totalScore: { not: -1 } },
-      select: { questionIds: true },
-    });
     const seenIds = new Set<string>(priorTests.flatMap((t) => t.questionIds));
 
     // Generate a new randomized test

@@ -72,12 +72,29 @@ export function validatePaymentSelection(input: {
   totalAmount: number;
 }): PaymentPolicy {
   const policy = getPaymentPolicyForProducts(input.products, input.totalAmount);
+  const maxInstallments = getMaxInstallmentsForEntry(
+    policy,
+    input.entryAmount
+  );
 
-  if (input.installments > policy.maxInstallments) {
+  if (input.installments > maxInstallments) {
     throw new Error(
-      `Máximo de ${policy.maxInstallments} parcelas para esta seleção.`
+      input.entryAmount > 0
+        ? `Máximo de ${maxInstallments} parcelas para esta seleção porque a entrada conta como primeira parcela.`
+        : `Máximo de ${maxInstallments} parcelas para esta seleção.`
     );
   }
 
   return policy;
+}
+
+export function getMaxInstallmentsForEntry(
+  policy: PaymentPolicy,
+  entryAmount: number
+): number {
+  if (entryAmount > 0) {
+    return Math.max(0, policy.maxInstallments - 1);
+  }
+
+  return policy.maxInstallments;
 }
