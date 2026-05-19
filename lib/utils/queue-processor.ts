@@ -309,6 +309,15 @@ async function processQuickBooksWebhookJob(data: any): Promise<void> {
   const entityId = entity?.id ? String(entity.id) : null;
 
   if (webhookEventId) {
+    const existingEvent = await prisma.webhookEvent.findUnique({
+      where: { id: webhookEventId },
+      select: { status: true, processed_at: true },
+    }).catch(() => null);
+
+    if (existingEvent?.status === "success" && existingEvent.processed_at) {
+      return;
+    }
+
     await prisma.webhookEvent.update({
       where: { id: webhookEventId },
       data: {

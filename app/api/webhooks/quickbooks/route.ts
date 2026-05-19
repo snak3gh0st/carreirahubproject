@@ -8,6 +8,54 @@ import { telegramService } from "@/lib/services/telegram.service";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+async function syncQuickBooksPaymentInline(options: {
+  webhookEventId?: string;
+  paymentId: string;
+  eventType: string;
+}) {
+  const { webhookEventId, paymentId, eventType } = options;
+  const timeoutMs = 15_000;
+
+  const timeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`QuickBooks inline payment sync timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+
+  const { quickbooksSyncService } = await import("@/lib/services/quickbooks-sync.service");
+  const result = await Promise.race([
+    quickbooksSyncService.syncSinglePayment(paymentId),
+    timeout,
+  ]);
+
+  if (!result.success) {
+    throw new Error(result.error || `QuickBooks payment ${paymentId} inline sync failed`);
+  }
+
+  if (webhookEventId) {
+    await prisma.webhookEvent.update({
+      where: { id: webhookEventId },
+      data: {
+        status: "success",
+        processed_at: new Date(),
+        last_error: null,
+        updated_at: new Date(),
+      },
+    }).catch(() => undefined);
+  }
+
+  await prisma.integrationLog.create({
+    data: {
+      service: "QUICKBOOKS",
+      action: "WEBHOOK_PAYMENT_SYNCED_INLINE",
+      status: "SUCCESS",
+      payload: {
+        webhookEventId,
+        eventType,
+        paymentId,
+      } as any,
+    },
+  }).catch(() => undefined);
+}
+
 /**
  * POST /api/webhooks/quickbooks
  *
@@ -260,6 +308,43 @@ export async function POST(request: NextRequest) {
 
           if (result.status === "accepted") {
             entitiesEnqueued++;
+          }
+
+          if (
+            result.status === "accepted" &&
+            name === "Payment" &&
+            (operation === "Create" || operation === "Update") &&
+            id
+          ) {
+            try {
+              await syncQuickBooksPaymentInline({
+                webhookEventId: result.webhookEventId,
+                paymentId: id,
+                eventType,
+              });
+              console.log(`[QuickBooks Webhook] Inline payment sync completed for ${id}`);
+            } catch (inlineError) {
+              const message =
+                inlineError instanceof Error ? inlineError.message : String(inlineError);
+              console.warn(
+                `[QuickBooks Webhook] Inline payment sync failed for ${id}; queued fallback will retry:`,
+                message
+              );
+
+              await prisma.integrationLog.create({
+                data: {
+                  service: "QUICKBOOKS",
+                  action: "WEBHOOK_PAYMENT_INLINE_SYNC_FAILED",
+                  status: "ERROR",
+                  error: message,
+                  payload: {
+                    webhookEventId: result.webhookEventId,
+                    eventType,
+                    paymentId: id,
+                  } as any,
+                },
+              }).catch(() => undefined);
+            }
           }
         }
       }
