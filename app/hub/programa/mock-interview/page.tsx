@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
+  Headphones,
   Loader2,
   Mic,
   MicOff,
@@ -101,6 +102,7 @@ function copyFor(lang: Language) {
       readyCopy: "Pronto para começar",
       liveHint: "Responda como em uma entrevista real.",
       privacy: "Uso interno para treinamento e avaliação do programa.",
+      bestExperience: "Para melhor experiência e análise, faça a mock interview sozinho e de fone.",
       mute: "Mutar",
       unmute: "Ativar microfone",
       microphone: "Microfone",
@@ -159,6 +161,7 @@ function copyFor(lang: Language) {
     readyCopy: "Ready to begin",
     liveHint: "Answer as you would in a real interview.",
     privacy: "Internal program training and evaluation use.",
+    bestExperience: "For the best experience and analysis, take the mock interview alone and with headphones.",
     mute: "Mute",
     unmute: "Unmute",
     microphone: "Microphone",
@@ -948,6 +951,10 @@ export default function AiMockInterviewPage() {
               <div className="mt-3.5 flex items-center gap-2 text-[11px] text-gray-400">
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
                 <span>{copy.privacy}</span>
+              </div>
+              <div className="mt-2 flex items-start gap-2 rounded-xl bg-gray-50 px-3 py-2 text-[11px] font-medium leading-4 text-gray-500">
+                <Headphones className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" strokeWidth={2} />
+                <span>{copy.bestExperience}</span>
               </div>
             </div>
 

@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock3,
   FileText,
+  Headphones,
   Loader2,
   Lock,
   Mic,
@@ -140,6 +141,7 @@ function copyFor(lang: Language) {
       listening: "Ouvindo",
       readyCopy: "Pronto para iniciar",
       privacy: "Uso interno para avaliação",
+      bestExperience: "Para melhor experiência e análise, faça o teste sozinho e de fone.",
       liveHint: "Fale naturalmente — vou avaliar tudo.",
       resultHint: "Pontuação salva no seu perfil CarreiraHub.",
       controlPanel: "Controles",
@@ -210,6 +212,7 @@ function copyFor(lang: Language) {
     listening: "Listening",
     readyCopy: "Speak when ready",
     privacy: "Internal assessment use",
+    bestExperience: "For the best experience and analysis, take the test alone and with headphones.",
     liveHint: "Speak naturally — I'll handle the rest.",
     resultHint: "Score saved to your CarreiraHub profile.",
     controlPanel: "Controls",
@@ -1280,6 +1283,10 @@ export default function RealtimeEnglishTestPage() {
               <div className="mt-3.5 flex items-center gap-2 text-[11px] text-gray-400">
                 <ShieldCheck className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
                 <span>{copy.privacy}</span>
+              </div>
+              <div className="mt-2 flex items-start gap-2 rounded-xl bg-white px-3 py-2 text-[11px] font-medium leading-4 text-gray-500">
+                <Headphones className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" strokeWidth={2} />
+                <span>{copy.bestExperience}</span>
               </div>
             </div>
 
