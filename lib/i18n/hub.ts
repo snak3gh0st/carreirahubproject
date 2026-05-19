@@ -213,6 +213,10 @@ const translations = {
     "testResult.section": "Section",
     "testResult.backToDashboard": "Back to Dashboard",
     "testResult.retakeTest": "Retake Test",
+    "testResult.nextStepTitle": "Next step: oral interview",
+    "testResult.nextStepDescription": "Your written result is saved. Continue now with the live oral assessment, or return later from this same English test area.",
+    "testResult.startOralNow": "Take Oral Test Now",
+    "testResult.doLater": "Do Later",
 
     // Receipt page
     "receipt.paymentReceipt": "Payment Receipt",
@@ -546,6 +550,10 @@ const translations = {
     "testResult.section": "Seção",
     "testResult.backToDashboard": "Voltar ao Painel",
     "testResult.retakeTest": "Refazer Teste",
+    "testResult.nextStepTitle": "Próxima etapa: entrevista oral",
+    "testResult.nextStepDescription": "Seu resultado escrito foi salvo. Continue agora com a avaliação oral ao vivo, ou volte depois por esta mesma área de teste de inglês.",
+    "testResult.startOralNow": "Fazer Teste Oral Agora",
+    "testResult.doLater": "Fazer Depois",
 
     // Receipt page
     "receipt.paymentReceipt": "Recibo de Pagamento",

@@ -111,6 +111,35 @@ export default async function HubTestResultPage() {
       </div>
 
       {/* Actions */}
+      <div className="mb-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div
+          className="border-b border-gray-100 px-6 py-5"
+          style={{ backgroundColor: BRAND_COLORS.CREME }}
+        >
+          <h2 className="text-lg font-bold text-gray-900">
+            {t(lang, "testResult.nextStepTitle")}
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-gray-600">
+            {t(lang, "testResult.nextStepDescription")}
+          </p>
+        </div>
+        <div className="grid gap-3 p-5 sm:grid-cols-2">
+          <Link
+            href="/hub/test/realtime"
+            className="py-3.5 text-center rounded-xl text-white font-semibold text-sm transition hover:opacity-90"
+            style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
+          >
+            {t(lang, "testResult.startOralNow")}
+          </Link>
+          <Link
+            href="/hub"
+            className="py-3.5 text-center rounded-xl border border-gray-200 text-gray-600 font-semibold text-sm hover:bg-gray-50 transition"
+          >
+            {t(lang, "testResult.doLater")}
+          </Link>
+        </div>
+      </div>
+
       <div className="flex gap-4">
         <Link
           href="/hub"
