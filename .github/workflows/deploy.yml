@@ -77,6 +77,7 @@ jobs:
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "
             set -euo pipefail
             echo '$REGISTRY_PASSWORD' | docker login -u '$REGISTRY_USER' --password-stdin '$REGISTRY'
+            docker pull '$IMAGE:$short_sha'
             docker service update --with-registry-auth --image '$IMAGE:$short_sha' carreirahub_hub || docker stack deploy --with-registry-auth -c /opt/carreirahub/hub-stack.yml carreirahub
           "
 
@@ -87,8 +88,16 @@ jobs:
         run: |
           set -euo pipefail
 
-          ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service inspect carreirahub_hub --format 'IMAGE={{.Spec.TaskTemplate.ContainerSpec.Image}}'"
+          short_sha="${GITHUB_SHA::8}"
+          service_image="$(ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service inspect carreirahub_hub --format '{{.Spec.TaskTemplate.ContainerSpec.Image}}'")"
+          running_image="$(ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service ps carreirahub_hub --filter desired-state=running --no-trunc --format '{{.Image}}' | head -n 1")"
+
+          printf 'SERVICE_IMAGE=%s\n' "$service_image"
+          printf 'RUNNING_IMAGE=%s\n' "$running_image"
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service ps carreirahub_hub --no-trunc --format 'table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.Error}}\t{{.Image}}'"
+
+          [[ "$service_image" == *":$short_sha"* ]]
+          [[ "$running_image" == *":$short_sha"* ]]
 
           curl --retry 10 --retry-delay 3 --retry-all-errors -fsS "$APP_URL/api/health"
           curl --retry 10 --retry-delay 3 --retry-all-errors -IfsS "$APP_URL/ops/login"
