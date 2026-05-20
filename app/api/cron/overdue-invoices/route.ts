@@ -97,3 +97,5 @@ export const GET = withCronTelemetry("overdue-invoices", async (request) => {
     );
   }
 });
+
+export const POST = GET;

@@ -13,10 +13,8 @@ import {
   Lock,
   Mic,
   MicOff,
-  PhoneOff,
   ShieldCheck,
   Sparkles,
-  Square,
 } from "lucide-react";
 import type { Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
@@ -31,10 +29,14 @@ import {
   normalizeRealtimeEnglishTurnEvaluation,
   type RealtimeEnglishTurnEvaluation,
 } from "@/lib/hub/realtime-english-test-flow";
+import { buildRealtimeEnglishReportArtifacts } from "@/lib/hub/realtime-english-test-analysis";
 import {
   getMicrophoneAccessErrorMessage,
   getRealtimeSessionErrorMessage,
 } from "@/lib/hub/realtime-browser-errors";
+
+const REALTIME_ENGLISH_TEST_COMPLETION_PHRASE =
+  "English assessment complete. I have enough evidence to prepare your result now.";
 
 type SessionStatus = "idle" | "connecting" | "live" | "scoring" | "complete" | "error";
 type RealtimeResponseRequest = Record<string, unknown>;
@@ -61,6 +63,20 @@ interface VoiceResult {
   summary: string;
   strengths: string[];
   focusAreas: string[];
+  deliveryAnalysis?: {
+    fillerWordAssessment: string;
+    paceAssessment: string;
+    toneAndPresence: string;
+    examinerRead: string;
+  };
+  conversationMetrics?: {
+    studentTurns: number;
+    totalStudentWords: number;
+    avgWordsPerAnswer: number;
+    estimatedWordsPerMinute: number;
+    fillerWordCount: number;
+    topFillerWords: string[];
+  };
 }
 
 interface OralAccess {
@@ -114,7 +130,7 @@ function copyFor(lang: Language) {
     return {
       title: "Teste de inglês ao vivo",
       eyebrow: "English Speaking Test",
-      subtitle: "Avaliador AI, áudio em tempo real e resultado CEFR ao final.",
+      subtitle: "Simulação oral premium com avaliador AI, áudio em tempo real e leitura final no padrão de entrevista corporativa.",
       start: "Iniciar teste",
       stop: "Parar",
       connecting: "Conectando áudio...",
@@ -136,7 +152,8 @@ function copyFor(lang: Language) {
       incompleteTest: "A prova ainda nao tem evidencias suficientes para gerar resultado. Complete as etapas restantes. Se precisar encerrar agora, solicite ao operacional um reset ou uma nova prova.",
       saved: "Resultado salvo.",
       transcript: "Transcrição",
-      emptyTranscript: "As falas capturadas aparecem aqui durante a entrevista.",
+      fullConversation: "Conversa completa",
+      conversationHint: "Veja toda a conversa capturada entre voce e o avaliador AI.",
       strengths: "Pontos fortes",
       focusAreas: "Focar agora",
       signal: "Conexão de voz",
@@ -144,11 +161,11 @@ function copyFor(lang: Language) {
       readyCopy: "Pronto para iniciar",
       privacy: "Uso interno para avaliação",
       bestExperience: "Para melhor experiência e análise, faça o teste sozinho e de fone.",
-      liveHint: "Fale naturalmente — vou avaliar tudo.",
+      liveHint: "Respire, organize a ideia em inglês e responda com calma. O avaliador vai conduzir o resto.",
       resultHint: "Pontuação salva no seu perfil CarreiraHub.",
-      controlPanel: "Controles",
-      aiTeacher: "AI examiner",
-      interviewer: "Avaliador AI",
+      controlPanel: "Brief da avaliação",
+      aiTeacher: "Avaliador Carreira USA",
+      interviewer: "Brief da avaliacao",
       candidate: "Aluno",
       microphone: "Microfone",
       session: "Sessão",
@@ -177,6 +194,31 @@ function copyFor(lang: Language) {
       examinerLabel: "Examiner",
       studentLabel: "Student",
       transcriptEmptyTitle: "Aguardando áudio",
+      aiControlsFinish: "A AI conduz a avaliacao e encerra so quando houver evidencia suficiente.",
+      confidenceTitle: "Como essa avaliacao funciona",
+      confidenceBullets: [
+        "O avaliador conduz como um entrevistador humano: claro, calmo e profissional.",
+        "Voce pode pedir para repetir ou simplificar a pergunta se necessario.",
+        "O foco nao e apenas gramatica: tambem conta clareza, confianca e comunicacao profissional.",
+      ],
+      coachTitle: "O que soa forte em ingles",
+      coachBullets: [
+        "Comece pela resposta principal e depois sustente com exemplo.",
+        "Use pausas curtas em vez de preencher silencio com um, uh, like ou i mean.",
+        "Priorize frases claras e objetivas, em vez de tentar parecer rebuscado.",
+      ],
+      delivery: "Leitura do avaliador",
+      fillerWords: "Filler words",
+      pace: "Ritmo e velocidade",
+      tonePresence: "Clareza e presenca",
+      examinerRead: "Leitura final do avaliador",
+      conversationMetrics: "Metricas da conversa",
+      answers: "Respostas consideradas",
+      totalWords: "Palavras",
+      avgAnswer: "Media por resposta",
+      estimatedPace: "Pace estimado",
+      topFillers: "Fillers mais usados",
+      briefSummary: "A sessao mistura perguntas de carreira, role-play, cenarios de trabalho e reasoning para medir quao natural e convincente seu ingles profissional realmente soa.",
       writtenRequiredTitle: "Teste escrito primeiro",
       writtenRequiredMessage: "Complete o teste escrito de ingles antes de iniciar a entrevista oral.",
       writtenRequiredCta: "Ir para o teste escrito",
@@ -186,7 +228,7 @@ function copyFor(lang: Language) {
   return {
     title: "Live English test",
     eyebrow: "English speaking test",
-    subtitle: "AI examiner, real-time audio, and CEFR level at the end.",
+    subtitle: "Premium live speaking assessment with a human-style AI examiner and a final CEFR read built for corporate English.",
     start: "Start test",
     stop: "Stop",
     connecting: "Connecting audio...",
@@ -208,7 +250,8 @@ function copyFor(lang: Language) {
     incompleteTest: "The test does not have enough evidence to generate a result yet. Complete the remaining sections. If you need to stop now, contact operations for a reset or new test.",
     saved: "Result saved.",
     transcript: "Transcript",
-    emptyTranscript: "Captured speech appears here during the test.",
+    fullConversation: "Full conversation",
+    conversationHint: "Review the complete conversation captured between you and the AI examiner.",
     strengths: "Strengths",
     focusAreas: "Focus areas",
     signal: "Voice connection",
@@ -216,11 +259,11 @@ function copyFor(lang: Language) {
     readyCopy: "Speak when ready",
     privacy: "Internal assessment use",
     bestExperience: "For the best experience and analysis, take the test alone and with headphones.",
-    liveHint: "Speak naturally — I'll handle the rest.",
+    liveHint: "Take a breath, organize the idea, and answer clearly. The examiner will guide the rest.",
     resultHint: "Score saved to your CarreiraHub profile.",
-    controlPanel: "Controls",
-    aiTeacher: "AI examiner",
-    interviewer: "AI examiner",
+    controlPanel: "Assessment brief",
+    aiTeacher: "Carreira USA examiner",
+    interviewer: "Assessment brief",
     candidate: "Student",
     microphone: "Microphone",
     session: "Session",
@@ -249,6 +292,31 @@ function copyFor(lang: Language) {
     examinerLabel: "Examiner",
     studentLabel: "Student",
     transcriptEmptyTitle: "Waiting for audio",
+    aiControlsFinish: "The AI leads the assessment and ends it only when there is enough evidence.",
+    confidenceTitle: "How this assessment works",
+    confidenceBullets: [
+      "The examiner should feel like a human interviewer: calm, clear, and professional.",
+      "You can ask for the question to be repeated or simplified if needed.",
+      "This is not only about grammar. Clarity, confidence, and workplace communication also matter.",
+    ],
+    coachTitle: "What sounds strong in English",
+    coachBullets: [
+      "Lead with the answer, then support it with a concrete example.",
+      "Use short pauses instead of filling silence with um, uh, like, or i mean.",
+      "Aim for clear and direct sentences instead of overcomplicating the wording.",
+    ],
+    delivery: "Examiner read",
+    fillerWords: "Filler words",
+    pace: "Pace and speed",
+    tonePresence: "Clarity and presence",
+    examinerRead: "Examiner final read",
+    conversationMetrics: "Conversation metrics",
+    answers: "Evidence turns",
+    totalWords: "Words",
+    avgAnswer: "Avg answer",
+    estimatedPace: "Estimated pace",
+    topFillers: "Top fillers",
+    briefSummary: "The session mixes career questions, role-play, business scenarios, and reasoning prompts to measure how natural and convincing your professional English really sounds.",
     writtenRequiredTitle: "Written test first",
     writtenRequiredMessage: "Complete the written English test before starting the oral interview.",
     writtenRequiredCta: "Go to written test",
@@ -262,26 +330,35 @@ function openingPrompt(transcriptItems: TranscriptItem[]) {
     return [
       "Resume the existing Carreira USA English speaking assessment now.",
       "Do not repeat the full opening and do not ask the student to repeat information already captured.",
+      "Sound like a polished human examiner: warm, calm, and direct.",
       `Briefly welcome the student back and say the test usually takes about ${REALTIME_ENGLISH_TEST_DURATION_LABEL}.`,
-      `Tell the student they have completed ${progress.completedStageCount} of ${progress.requiredStudentTurns} required sections and must complete the remaining sections before a reliable CEFR result can be prepared.`,
-      "Use the saved conversation context and ask the next best assessment question in English.",
+      `Tell the student they have completed ${progress.completedStageCount} of ${progress.requiredStudentTurns} required sections and that you still need the remaining sections for a reliable CEFR result.`,
+      "Do not tell the student the exact internal completion phrase.",
+      "Use the saved conversation context and either ask the next best assessment question in English or close the assessment if you already have enough evidence.",
       "Choose a different format from what was already covered when possible: workplace role-play, business scenario, behavioral evidence, opinion reasoning, or clarification follow-up.",
+      "If useful, remind the student they can ask you to repeat or clarify the question.",
       "Ask exactly one question.",
     ].join(" ");
   }
 
   return [
     "Start the live Carreira USA English speaking assessment now.",
-    "Briefly introduce yourself as the AI teacher for Carreira USA inside CarreiraHub.",
-    "Explain in English that Carreira USA helps professionals prepare for U.S. corporate opportunities and that this live interview evaluates corporate English communication, fluency, pronunciation, grammar, vocabulary, comprehension, confidence, and CEFR level.",
-    `Tell the student the full test usually takes about ${REALTIME_ENGLISH_TEST_DURATION_LABEL} and has five short sections.`,
-    "Explain that a reliable result can only be prepared after the required sections are completed. If the student stops before then, they must continue later or contact Carreira USA operations for a reset/new test.",
+    "Briefly introduce yourself as the Carreira USA English examiner inside CarreiraHub.",
+    "Sound reassuring, polished, and human, like a strong interviewer from a top company.",
+    "Explain in English that Carreira USA helps professionals prepare for U.S. corporate opportunities and that this live assessment measures professional English communication, fluency, pronunciation, grammar, vocabulary, comprehension, confidence, and CEFR readiness.",
+    `Tell the student the full assessment usually takes about ${REALTIME_ENGLISH_TEST_DURATION_LABEL} and moves through five short sections.`,
+    "Explain that you will guide the full conversation and prepare the result only after you have enough evidence.",
+    "Tell the student they can ask you to repeat or clarify a question if needed.",
     "Tell the student that the interview will use different formats, including professional interview questions, workplace scenarios, role-play, opinion questions, and follow-ups based on their answers.",
-    "Keep the introduction under 25 seconds.",
+    "Keep the introduction under 30 seconds.",
     "Do not start with only 'What is your name?'",
     "Then ask one substantial first question about the student's current role, professional background, or career goal in the United States.",
     "After the student answers, choose a targeted follow-up before moving on if the answer is short, vague, memorized, unclear, or interesting enough to probe deeper.",
   ].join(" ");
+}
+
+function isRealtimeEnglishCompletionCue(text: string) {
+  return text.toLowerCase().includes(REALTIME_ENGLISH_TEST_COMPLETION_PHRASE.toLowerCase());
 }
 
 function isActiveResponseConflict(message: string) {
@@ -317,6 +394,7 @@ export default function RealtimeEnglishTestPage() {
   const recordedUsageResponseIdsRef = useRef<Set<string>>(new Set());
   const pendingExaminerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const lastRequestedExaminerResponseRef = useRef<RealtimeResponseRequest | null>(null);
+  const autoFinishingRef = useRef(false);
 
   useEffect(() => {
     setLang(getLangFromCookie());
@@ -526,7 +604,8 @@ export default function RealtimeEnglishTestPage() {
     const instructions = !evaluation
       ? [
         "Continue the English speaking assessment from the latest substantive student answer.",
-        "Ask exactly one next question in English.",
+        `The student cannot manually finish the assessment. You decide when there is enough evidence and, when ready, say exactly: "${REALTIME_ENGLISH_TEST_COMPLETION_PHRASE}"`,
+        "If there is not enough evidence yet, ask exactly one next question in English.",
         "Use a targeted follow-up if the answer was short, vague, unclear, or interesting.",
         "If the latest audio was only noise, a cough, keyboard sound, breathing, or an unclear fragment, ignore it and do not ask what happened.",
       ]
@@ -534,10 +613,10 @@ export default function RealtimeEnglishTestPage() {
         ? [
             `The latest student answer is accepted evidence for this section: ${evaluation.stageTitle}.`,
             isComplete
-              ? "All required sections now have enough evidence. Do not ask another assessment question unless one final clarification is essential."
+              ? "All required sections now have enough evidence. Decide whether the evidence is already sufficient or whether one final clarification is essential."
               : `Advance to the next section: ${currentStage.title}.`,
             isComplete
-              ? "Tell the student in English that the required speaking sections are complete and they can finish the test to prepare the result."
+              ? `If the evidence is sufficient, say exactly: "${REALTIME_ENGLISH_TEST_COMPLETION_PHRASE}". Otherwise ask exactly one final clarification question.`
               : `Ask exactly one focused question for this section: ${currentStage.promptFocus}.`,
             "Keep the tone professional and concise. Do not overpraise.",
             "Ignore brief noises, coughs, keyboard sounds, breathing, or unclear fragments.",
@@ -696,6 +775,9 @@ export default function RealtimeEnglishTestPage() {
     if (payload.type === "response.output_audio_transcript.done") {
       const text = payload.transcript || payload.text || payload.delta || "";
       addTranscript("examiner", text);
+      if (isRealtimeEnglishCompletionCue(text)) {
+        autoFinishingRef.current = true;
+      }
       return;
     }
 
@@ -703,6 +785,11 @@ export default function RealtimeEnglishTestPage() {
       void persistRealtimeUsageEvent(payload);
       markResponseIdle();
       lastRequestedExaminerResponseRef.current = null;
+      if (autoFinishingRef.current) {
+        autoFinishingRef.current = false;
+        void finishSession();
+        return;
+      }
       flushPendingExaminerResponse();
     }
   }
@@ -735,6 +822,7 @@ export default function RealtimeEnglishTestPage() {
     setEvaluatingTurn(false);
     pendingExaminerResponseRef.current = null;
     lastRequestedExaminerResponseRef.current = null;
+    autoFinishingRef.current = false;
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -822,24 +910,9 @@ export default function RealtimeEnglishTestPage() {
     setMuted(!track.enabled);
   }
 
-  async function stopSession() {
-    setError(null);
-    const durationSeconds = getDurationSeconds();
-    const transcriptSnapshot = transcriptRef.current;
-    await persistProgress(transcriptSnapshot);
-    cancelActiveResponse();
-    cleanupRealtime();
-    startTimeRef.current = 0;
-    restoredDurationSecondsRef.current = durationSeconds;
-    setElapsedSeconds(durationSeconds);
-    setEvaluatingTurn(false);
-    setMuted(false);
-    statusRef.current = "idle";
-    setStatus("idle");
-  }
-
   async function finishSession() {
     setError(null);
+    if (statusRef.current === "scoring" || autoFinishingRef.current) return;
 
     const transcriptSnapshot = transcriptRef.current;
     const progress = getRealtimeEnglishTestProgress(transcriptSnapshot);
@@ -861,6 +934,7 @@ export default function RealtimeEnglishTestPage() {
 
     statusRef.current = "scoring";
     setStatus("scoring");
+    autoFinishingRef.current = true;
     cancelActiveResponse();
 
     try {
@@ -887,9 +961,11 @@ export default function RealtimeEnglishTestPage() {
       statusRef.current = "complete";
       setStatus("complete");
       setActiveTestId(null);
+      autoFinishingRef.current = false;
     } catch (err) {
       statusRef.current = "error";
       setStatus("error");
+      autoFinishingRef.current = false;
       setError(err instanceof Error ? err.message : copy.scoreError);
     }
   }
@@ -903,6 +979,22 @@ export default function RealtimeEnglishTestPage() {
         ["Comprehension", result.comprehensionScore],
       ]
     : [];
+  const reportArtifacts = useMemo(() => {
+    if (!result) return null;
+    if (result.deliveryAnalysis && result.conversationMetrics) {
+      return {
+        deliveryAnalysis: result.deliveryAnalysis,
+        conversationMetrics: result.conversationMetrics,
+      };
+    }
+
+    return buildRealtimeEnglishReportArtifacts({
+      language: lang,
+      transcript,
+      durationSeconds: elapsedSeconds,
+      result,
+    });
+  }, [elapsedSeconds, lang, result, transcript]);
 
   const roomLabel =
     status === "connecting"
@@ -925,7 +1017,6 @@ export default function RealtimeEnglishTestPage() {
   const oralLocked = oralAccess?.unlocked === false;
   const sessionState = testId ? copy.active : copy.ready;
   const microphoneState = muted ? copy.mute : copy.listening;
-  const latestTranscript = transcript.slice(-8);
   const testProgress = getRealtimeEnglishTestProgress(transcript);
   const hasSavedProgress = testProgress.studentTurns > 0 && status !== "complete";
 
@@ -1194,22 +1285,8 @@ export default function RealtimeEnglishTestPage() {
                 )}
 
                 {status === "live" && (
-                  <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
-                    <button
-                      onClick={stopSession}
-                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] py-3.5 text-sm font-extrabold text-white/75 transition hover:bg-white/15 active:scale-[0.99]"
-                    >
-                      <Square className="h-3.5 w-3.5 fill-current" strokeWidth={2} />
-                      {copy.stop}
-                    </button>
-                    <button
-                      onClick={finishSession}
-                      className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold transition hover:bg-gray-100 active:scale-[0.99]"
-                      style={{ color: BRAND_COLORS.VERDE }}
-                    >
-                      <PhoneOff className="h-4 w-4" strokeWidth={2} />
-                      {copy.finish}
-                    </button>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.08] px-4 py-3 text-sm font-semibold leading-5 text-white/75">
+                    {copy.aiControlsFinish}
                   </div>
                 )}
 
@@ -1341,6 +1418,35 @@ export default function RealtimeEnglishTestPage() {
                 <Headphones className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" strokeWidth={2} />
                 <span>{copy.bestExperience}</span>
               </div>
+
+              <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
+                  {copy.confidenceTitle}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-gray-600">{copy.briefSummary}</p>
+                <div className="mt-3 space-y-2.5">
+                  {copy.confidenceBullets.map((item) => (
+                    <div key={item} className="flex items-start gap-2 text-sm text-gray-700">
+                      <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" strokeWidth={2.2} />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-3 rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-700">
+                  {copy.coachTitle}
+                </p>
+                <div className="mt-3 space-y-2.5">
+                  {copy.coachBullets.map((item) => (
+                    <div key={item} className="flex items-start gap-2 text-sm text-orange-900">
+                      <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-500" strokeWidth={2.2} />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Error — fixed height */}
@@ -1369,52 +1475,6 @@ export default function RealtimeEnglishTestPage() {
           </aside>
         </div>
       </section>
-
-      {/* ── Transcript panel — detached from the room layout on desktop ── */}
-      {latestTranscript.length > 0 && !result && (
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:fixed lg:bottom-5 lg:right-5 lg:z-20 lg:w-[420px] lg:shadow-[0_24px_70px_-28px_rgba(15,23,42,0.28)]">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-gray-400" strokeWidth={2} />
-              <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.transcript}</h3>
-            </div>
-            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 font-mono text-xs font-semibold text-gray-500">
-              {latestTranscript.length}
-            </span>
-          </div>
-
-          <div className="max-h-64 space-y-2 overflow-y-auto p-4">
-            {latestTranscript.map((item, idx) => (
-              <div
-                key={`${item.at}-${idx}`}
-                className={`flex ${item.role === "student" ? "justify-end" : "justify-start"}`}
-              >
-                <div
-                  className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
-                    item.role === "student"
-                      ? "rounded-br-sm text-white"
-                      : "rounded-bl-sm border-l-2 bg-gray-50 text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                  }`}
-                  style={
-                    item.role === "student"
-                      ? { backgroundColor: BRAND_COLORS.VERDE }
-                      : { borderLeftColor: BRAND_COLORS.VERDE }
-                  }
-                >
-                  <p
-                    className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
-                      item.role === "student" ? "text-white/40" : "text-gray-400"
-                    }`}
-                  >
-                    {item.role === "student" ? copy.studentLabel : copy.examinerLabel}
-                  </p>
-                  {item.text}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* ── Result card ── */}
       {result && (
@@ -1490,6 +1550,111 @@ export default function RealtimeEnglishTestPage() {
                 </ul>
               </div>
             </div>
+
+            {reportArtifacts && (
+              <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
+                  <h3 className="mb-3 text-sm font-bold text-gray-900">{copy.delivery}</h3>
+                  <div className="space-y-3 text-sm leading-6 text-gray-600">
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.fillerWords}</p>
+                      <p className="mt-1">{reportArtifacts.deliveryAnalysis.fillerWordAssessment}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.pace}</p>
+                      <p className="mt-1">{reportArtifacts.deliveryAnalysis.paceAssessment}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.tonePresence}</p>
+                      <p className="mt-1">{reportArtifacts.deliveryAnalysis.toneAndPresence}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.examinerRead}</p>
+                      <p className="mt-1">{reportArtifacts.deliveryAnalysis.examinerRead}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <h3 className="mb-3 text-sm font-bold text-gray-900">{copy.conversationMetrics}</h3>
+                  <div className="space-y-2.5">
+                    {[
+                      [copy.answers, String(reportArtifacts.conversationMetrics.studentTurns)],
+                      [copy.totalWords, String(reportArtifacts.conversationMetrics.totalStudentWords)],
+                      [copy.avgAnswer, String(reportArtifacts.conversationMetrics.avgWordsPerAnswer)],
+                      [copy.estimatedPace, `${reportArtifacts.conversationMetrics.estimatedWordsPerMinute} wpm`],
+                      [copy.fillerWords, String(reportArtifacts.conversationMetrics.fillerWordCount)],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2.5 text-sm">
+                        <span className="text-gray-500">{label}</span>
+                        <span className="font-semibold text-gray-900">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {reportArtifacts.conversationMetrics.topFillerWords.length > 0 && (
+                    <div className="mt-3">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-gray-400">{copy.topFillers}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {reportArtifacts.conversationMetrics.topFillerWords.map((item) => (
+                          <span key={item} className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-600">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {transcript.length > 0 && (
+              <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/60">
+                <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
+                  <div className="flex items-start gap-2">
+                    <FileText className="mt-0.5 h-4 w-4 text-gray-400" strokeWidth={2} />
+                    <div>
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.fullConversation}</h3>
+                      <p className="mt-1 text-sm text-gray-500">{copy.conversationHint}</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-white px-2.5 py-0.5 font-mono text-xs font-semibold text-gray-500">
+                    {transcript.length}
+                  </span>
+                </div>
+
+                <div className="max-h-[520px] space-y-2 overflow-y-auto p-4">
+                  {transcript.map((item, idx) => (
+                    <div
+                      key={`${item.at}-${idx}`}
+                      className={`flex ${item.role === "student" ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
+                          item.role === "student"
+                            ? "rounded-br-sm text-white"
+                            : "rounded-bl-sm border-l-2 bg-white text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                        }`}
+                        style={
+                          item.role === "student"
+                            ? { backgroundColor: BRAND_COLORS.VERDE }
+                            : { borderLeftColor: BRAND_COLORS.VERDE }
+                        }
+                      >
+                        <p
+                          className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                            item.role === "student" ? "text-white/40" : "text-gray-400"
+                          }`}
+                        >
+                          {item.role === "student" ? copy.studentLabel : copy.examinerLabel}
+                        </p>
+                        {item.text}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <Link
               href="/hub"

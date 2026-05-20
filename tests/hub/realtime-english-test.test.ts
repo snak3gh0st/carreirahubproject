@@ -24,6 +24,10 @@ import {
   normalizeRealtimeEnglishUsage,
 } from "../../lib/hub/realtime-english-test-usage";
 import {
+  buildRealtimeEnglishConversationMetrics,
+  buildRealtimeEnglishDeliveryAnalysis,
+} from "../../lib/hub/realtime-english-test-analysis";
+import {
   buildRealtimeEnglishResetUpdateData,
   canResetRealtimeEnglishTestStatus,
 } from "../../lib/hub/realtime-english-test-ops";
@@ -55,6 +59,11 @@ test("buildRealtimeEnglishTestSession uses GPT Realtime 2 with audio-first defau
   assert.match(session.instructions, /8 to 10 minutes/i);
   assert.match(session.instructions, /five short sections/i);
   assert.match(session.instructions, /operations must reset|new test/i);
+  assert.match(session.instructions, /student cannot manually finish the assessment/i);
+  assert.match(session.instructions, /polished human interviewer/i);
+  assert.match(session.instructions, /Do not sound robotic/i);
+  assert.match(session.instructions, /Allow brief thinking pauses/i);
+  assert.match(session.instructions, /repetition or clarification|repeat or clarification/i);
   assert.match(session.instructions, /Ignore brief noises/i);
   assert.match(session.instructions, /Portuguese/i);
   assert.match(session.instructions, /Do not begin with only a generic name question/i);
@@ -414,4 +423,58 @@ test("normalizeRealtimeEnglishResult clamps scores and level values from model o
     strengths: ["speaks in full sentences"],
     focusAreas: ["past tense accuracy"],
   });
+});
+
+test("buildRealtimeEnglishConversationMetrics counts pace and fillers from student transcript", () => {
+  const metrics = buildRealtimeEnglishConversationMetrics({
+    durationSeconds: 120,
+    transcript: [
+      { role: "examiner", text: "Tell me about a challenge.", at: "2026-05-18T12:00:00.000Z" },
+      {
+        role: "student",
+        text: "Um, I led a migration and, like, had to coordinate product and engineering.",
+        at: "2026-05-18T12:00:10.000Z",
+      },
+      {
+        role: "student",
+        text: "I mean, the hardest part was stakeholder alignment, but we delivered on time.",
+        at: "2026-05-18T12:00:30.000Z",
+      },
+    ],
+  });
+
+  assert.equal(metrics.studentTurns, 2);
+  assert.equal(metrics.totalStudentWords > 10, true);
+  assert.equal(metrics.avgWordsPerAnswer > 5, true);
+  assert.equal(metrics.estimatedWordsPerMinute > 0, true);
+  assert.equal(metrics.fillerWordCount >= 3, true);
+  assert.equal(metrics.topFillerWords.some((item) => item.startsWith("um")), true);
+});
+
+test("buildRealtimeEnglishDeliveryAnalysis produces interviewer-style read", () => {
+  const delivery = buildRealtimeEnglishDeliveryAnalysis({
+    language: "en",
+    result: {
+      cefrLevel: "B2",
+      score: 76,
+      fluencyScore: 7,
+      pronunciationScore: 7,
+      grammarScore: 7,
+      vocabularyScore: 8,
+      comprehensionScore: 8,
+    },
+    conversationMetrics: {
+      studentTurns: 5,
+      totalStudentWords: 340,
+      avgWordsPerAnswer: 68,
+      estimatedWordsPerMinute: 145,
+      fillerWordCount: 4,
+      topFillerWords: ["um (2)", "like (2)"],
+    },
+  });
+
+  assert.match(delivery.fillerWordAssessment, /filler/i);
+  assert.match(delivery.paceAssessment, /pace/i);
+  assert.match(delivery.toneAndPresence, /presence/i);
+  assert.match(delivery.examinerRead, /competitive|readiness|credible|selective/i);
 });

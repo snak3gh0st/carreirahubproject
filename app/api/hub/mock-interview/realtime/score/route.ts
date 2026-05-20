@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { getAiMockInterviewAccess } from "@/lib/hub/ai-mock-interview-access";
 import {
   AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS,
+  buildAiMockInterviewConversationMetrics,
   buildAiMockInterviewFinalReportPrompt,
   countAiMockInterviewCandidateTurns,
   normalizeAiMockInterviewReport,
@@ -103,6 +104,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const durationSeconds = clampDurationSeconds(body?.durationSeconds);
+    const conversationMetrics = buildAiMockInterviewConversationMetrics({
+      transcript,
+      durationSeconds,
+    });
+
     const completion = await createOpenAIChatCompletion({
       apiKey,
       models: getVoiceEnglishTestModelCandidates(),
@@ -119,13 +126,16 @@ export async function POST(request: NextRequest) {
             language,
             context: access.context,
             transcript,
+            durationSeconds,
           }),
         },
       ],
     });
 
-    const report = normalizeAiMockInterviewReport(parseJson(completion.content));
-    const durationSeconds = clampDurationSeconds(body?.durationSeconds);
+    const report = normalizeAiMockInterviewReport(
+      parseJson(completion.content),
+      conversationMetrics
+    );
 
     await recordAiMockInterviewUsage({
       sessionId: existing.id,

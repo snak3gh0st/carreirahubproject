@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AutoChargeStatus, InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { summarizeInvoiceHealthSignals } from "@/lib/invoices/invoice-health";
 import { telegramService } from "@/lib/services/telegram.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 import { queues } from "@/lib/utils/queue";
@@ -117,7 +118,6 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
   const since15m = new Date(now - 15 * 60 * 1000);
   const since60m = new Date(now - 60 * 60 * 1000);
   const since24h = new Date(now - 24 * 60 * 60 * 1000);
-  const invoiceSendWindowEnd = new Date(now + 7 * 24 * 60 * 60 * 1000);
 
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
   const healthPromise: Promise<HealthPayload> = fetch(`${baseUrl}/api/health`, {
@@ -140,8 +140,7 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     circuitBreakers,
     queueSummary,
     recentErrors,
-    dueWindowEmailPendingCount,
-    futureScheduledEmailPendingCount,
+    invoiceHealthRows,
     overdueCandidateCount,
     staleAutoChargeCount,
     wrongRealmIgnoredCount,
@@ -193,21 +192,27 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
-    prisma.invoice.count({
+    prisma.invoice.findMany({
       where: {
         status: { notIn: [InvoiceStatus.PAID, InvoiceStatus.VOID] },
         emailSentAt: null,
-        quickbooks_invoice_id: { not: null },
-        emailSendAttempts: { lt: 5 },
-        dueDate: { lte: invoiceSendWindowEnd },
+        OR: [
+          { quickbooks_invoice_id: { not: null } },
+          { status: InvoiceStatus.DRAFT },
+        ],
       },
-    }),
-    prisma.invoice.count({
-      where: {
-        status: InvoiceStatus.SENT,
-        emailSentAt: null,
-        quickbooks_invoice_id: { not: null },
-        dueDate: { gt: invoiceSendWindowEnd },
+      select: {
+        status: true,
+        dueDate: true,
+        emailSentAt: true,
+        emailSendAttempts: true,
+        quickbooks_invoice_id: true,
+        installments: true,
+        customer: {
+          select: {
+            email: true,
+          },
+        },
       },
     }),
     prisma.invoice.count({
@@ -266,6 +271,27 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     }),
   ]);
 
+  const invoiceSignals = summarizeInvoiceHealthSignals(
+    invoiceHealthRows.map((row) => ({
+      status: row.status,
+      dueDate: row.dueDate,
+      emailSentAt: row.emailSentAt,
+      emailSendAttempts: row.emailSendAttempts,
+      quickbooks_invoice_id: row.quickbooks_invoice_id,
+      installments: row.installments,
+      customerEmail: row.customer.email,
+    })),
+    new Date(now)
+  );
+  const {
+    sendWindowPendingCount,
+    publishWindowPendingCount,
+    qbCreatedAwaitingSendCount,
+    localFutureInstallmentCount,
+    legacyQbFutureUnsentCount,
+    stalePastDueUnsentCount,
+  } = invoiceSignals;
+
   const openCircuitBreakers = circuitBreakers.filter(
     (breaker) => breaker.state !== "CLOSED"
   );
@@ -276,7 +302,8 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
   const hasFinanceWarnings =
     overdueCandidateCount > 0 ||
     staleAutoChargeCount > 0 ||
-    dueWindowEmailPendingCount > 0;
+    sendWindowPendingCount > 0 ||
+    stalePastDueUnsentCount > 0;
 
   const statusEmoji =
     health.ok &&
@@ -359,11 +386,15 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     `${staleAutoChargeCount > 0 ? "⚠️" : "🟢"} auto-charge retry stale/skipped: ${staleAutoChargeCount}`
   );
   lines.push(
-    `${dueWindowEmailPendingCount > 0 ? "⚠️" : "🟢"} invoice emails due in 7d not sent: ${dueWindowEmailPendingCount}`
+    `${sendWindowPendingCount > 0 ? "⚠️" : "🟢"} invoices inside send window needing action: ${sendWindowPendingCount}`
   );
   lines.push(
-    `ℹ️ future scheduled invoices not emailed yet: ${futureScheduledEmailPendingCount}`
+    `${stalePastDueUnsentCount > 0 ? "⚠️" : "🟢"} invoices past due with no send recorded: ${stalePastDueUnsentCount}`
   );
+  lines.push(`ℹ️ local installments in QB publish window (6-7d): ${publishWindowPendingCount}`);
+  lines.push(`ℹ️ QB-created installments waiting for send window: ${qbCreatedAwaitingSendCount}`);
+  lines.push(`ℹ️ local future installments outside QB window: ${localFutureInstallmentCount}`);
+  lines.push(`ℹ️ legacy QB future invoices still unsent: ${legacyQbFutureUnsentCount}`);
 
   const errServices = Object.entries(logs24h.byService)
     .filter(([, v]) => v.err > 0)
@@ -439,8 +470,12 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     invoiceSignals: {
       overdueCandidateCount,
       staleAutoChargeCount,
-      dueWindowEmailPendingCount,
-      futureScheduledEmailPendingCount,
+      sendWindowPendingCount,
+      publishWindowPendingCount,
+      qbCreatedAwaitingSendCount,
+      localFutureInstallmentCount,
+      legacyQbFutureUnsentCount,
+      stalePastDueUnsentCount,
     },
     aiCosts: {
       dashboard: {

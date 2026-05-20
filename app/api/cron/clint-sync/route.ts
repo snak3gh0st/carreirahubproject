@@ -25,3 +25,5 @@ export const GET = withCronTelemetry("clint-sync", async (request) => {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 });
+
+export const POST = GET;

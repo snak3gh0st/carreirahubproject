@@ -7,6 +7,7 @@ import {
   findLinkedQuickBooksInvoiceId,
   isQuickBooksInvoiceMarkedMissing,
   mergeQuickBooksInvoiceMetadata,
+  paymentLinksToQuickBooksInvoice,
   resolveLocalCustomerIdForPayment,
 } from "../lib/quickbooks/sync-helpers";
 
@@ -44,6 +45,19 @@ test("findLinkedQuickBooksInvoiceId scans all payment lines", () => {
   };
 
   assert.equal(findLinkedQuickBooksInvoiceId(qbPayment), "inv_42");
+});
+
+test("paymentLinksToQuickBooksInvoice matches any linked invoice in the payment lines", () => {
+  const qbPayment = {
+    Line: [
+      { LinkedTxn: [{ TxnType: "CreditMemo", TxnId: "cm_1" }] },
+      { LinkedTxn: [{ TxnType: "Invoice", TxnId: "inv_42" }] },
+      { LinkedTxn: [{ TxnType: "Invoice", TxnId: "inv_99" }] },
+    ],
+  };
+
+  assert.equal(paymentLinksToQuickBooksInvoice(qbPayment, "inv_99"), true);
+  assert.equal(paymentLinksToQuickBooksInvoice(qbPayment, "missing"), false);
 });
 
 test("resolveLocalCustomerIdForPayment falls back to the linked local invoice customer id", () => {

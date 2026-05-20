@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
+import { summarizeInvoiceHealthSignals } from '@/lib/invoices/invoice-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +28,6 @@ export async function GET(request: NextRequest) {
     });
 
     const now = new Date();
-    const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // Get recent invoice email logs using the current scheduled-send actions.
     const emailLogs = await prisma.integrationLog.findMany({
@@ -64,35 +64,41 @@ export async function GET(request: NextRequest) {
       take: 20,
     });
 
-    const [pendingDueSoon, pendingTotal, stalePastDue] = await Promise.all([
-      prisma.invoice.count({
-        where: {
-          quickbooks_invoice_id: { not: null },
-          emailSentAt: null,
-          status: { notIn: ['PAID', 'VOID'] },
-          customer: { email: { not: '' } },
-          dueDate: { lte: sevenDaysOut },
+    const invoiceHealthRows = await prisma.invoice.findMany({
+      where: {
+        status: { notIn: ['PAID', 'VOID'] },
+        emailSentAt: null,
+        OR: [
+          { quickbooks_invoice_id: { not: null } },
+          { status: 'DRAFT' },
+        ],
+      },
+      select: {
+        status: true,
+        dueDate: true,
+        emailSentAt: true,
+        emailSendAttempts: true,
+        quickbooks_invoice_id: true,
+        installments: true,
+        customer: {
+          select: {
+            email: true,
+          },
         },
-      }),
-      prisma.invoice.count({
-        where: {
-          quickbooks_invoice_id: { not: null },
-          emailSentAt: null,
-          status: { notIn: ['PAID', 'VOID'] },
-          customer: { email: { not: '' } },
-        },
-      }),
-      prisma.invoice.count({
-        where: {
-          quickbooks_invoice_id: { not: null },
-          emailSentAt: null,
-          emailSendAttempts: 0,
-          status: { notIn: ['PAID', 'VOID'] },
-          customer: { email: { not: '' } },
-          dueDate: { lt: now },
-        },
-      }),
-    ]);
+      },
+    });
+    const queueStats = summarizeInvoiceHealthSignals(
+      invoiceHealthRows.map((row) => ({
+        status: row.status,
+        dueDate: row.dueDate,
+        emailSentAt: row.emailSentAt,
+        emailSendAttempts: row.emailSendAttempts,
+        quickbooks_invoice_id: row.quickbooks_invoice_id,
+        installments: row.installments,
+        customerEmail: row.customer.email,
+      })),
+      now
+    );
 
     // Count successes and failures
     const emailStats = {
@@ -158,17 +164,14 @@ export async function GET(request: NextRequest) {
         lastEmailSendError: inv.lastEmailSendError,
         createdAt: inv.createdAt,
       })),
-      queueStats: {
-        pendingDueSoon,
-        pendingTotal,
-        stalePastDue,
-      },
+      queueStats,
       instructions: {
         howToVerify: [
           '1. Check emailStats above - if sent > 0, the QuickBooks send endpoint was called successfully',
-          '2. queueStats.pendingDueSoon shows invoices already inside the send window',
-          '3. queueStats.stalePastDue highlights overdue invoices with no send attempt recorded locally',
-          '4. If in SANDBOX mode, emails will NOT be sent to real addresses',
+          '2. queueStats.sendWindowPendingCount shows invoices currently needing publish/send work',
+          '3. queueStats.publishWindowPendingCount and queueStats.qbCreatedAwaitingSendCount should usually be informational, not failures',
+          '4. queueStats.stalePastDueUnsentCount highlights invoices overdue with no local send recorded',
+          '5. If in SANDBOX mode, emails will NOT be sent to real addresses',
         ],
         testEmailSend: [
           '1. Create a new invoice (Finance/Admin role)',

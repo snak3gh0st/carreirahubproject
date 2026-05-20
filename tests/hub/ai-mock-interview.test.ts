@@ -8,7 +8,9 @@ import {
 import {
   AI_MOCK_INTERVIEW_DEFAULT_MODEL,
   AI_MOCK_INTERVIEW_FALLBACK_MODEL,
+  buildAiMockInterviewConversationMetrics,
   buildAiMockInterviewFinalReportPrompt,
+  buildAiMockInterviewOpeningPrompt,
   buildAiMockInterviewSession,
   countAiMockInterviewCandidateTurns,
   getAiMockInterviewModelCandidates,
@@ -81,6 +83,9 @@ test("buildAiMockInterviewSession configures a Realtime 2 mock interviewer", () 
   assert.match(session.instructions, /realistic U\.S\. corporate job interview/i);
   assert.match(session.instructions, /CV\/resume context/i);
   assert.match(session.instructions, /Do not announce final scores/i);
+  assert.match(session.instructions, /candidate's name, the interview duration, the areas you will cover/i);
+  assert.match(session.instructions, /Sound like a real interviewer from a top U\.S\. company/i);
+  assert.match(session.instructions, /Humanize the experience/i);
 });
 
 test("getAiMockInterviewModelCandidates normalizes GPT Realtime 2 aliases", () => {
@@ -130,11 +135,21 @@ test("buildAiMockInterviewFinalReportPrompt and normalizer enforce coaching repo
       { role: "interviewer", text: "Tell me about a conflict.", at: "now" },
       { role: "candidate", text: "I aligned finance and operations around a deadline.", at: "now" },
     ],
+    durationSeconds: 120,
   });
 
   assert.match(prompt, /interview readiness/i);
   assert.match(prompt, /Portuguese/i);
   assert.match(prompt, /hiringSignal/i);
+  assert.match(prompt, /deliveryAnalysis/i);
+
+  const metrics = buildAiMockInterviewConversationMetrics({
+    transcript: [
+      { role: "candidate", text: "Um I led the kickoff and, like, aligned stakeholders." },
+      { role: "candidate", text: "I mean, we closed the risk and delivered on time." },
+    ],
+    durationSeconds: 90,
+  });
 
   const report = normalizeAiMockInterviewReport({
     overallScore: "84",
@@ -149,10 +164,42 @@ test("buildAiMockInterviewFinalReportPrompt and normalizer enforce coaching repo
     risks: ["Answers can be long"],
     focusAreas: ["Sharper STAR structure"],
     suggestedPracticeQuestions: ["Tell me about yourself."],
-  });
+    deliveryAnalysis: {
+      fillerWordAssessment: "Some filler words under pressure.",
+      paceAssessment: "Slightly fast at transitions.",
+      toneAndPresence: "Credible and composed overall.",
+      interviewerRead: "Promising for mid-level interviews.",
+    },
+  }, metrics);
 
   assert.equal(report.overallScore, 84);
   assert.equal(report.communicationScore, 80);
   assert.equal(report.hiringSignal, "promising");
   assert.deepEqual(report.focusAreas, ["Sharper STAR structure"]);
+  assert.equal(report.deliveryAnalysis.fillerWordAssessment, "Some filler words under pressure.");
+  assert.equal(report.conversationMetrics.candidateTurns, 2);
+  assert.equal(report.conversationMetrics.fillerWordCount > 0, true);
+});
+
+test("buildAiMockInterviewOpeningPrompt includes name, duration, areas, and CV grounding", () => {
+  const context = buildAiMockInterviewContext({
+    customer: { name: "Marina Costa", email: "marina@example.com" },
+    formAssignments: [
+      {
+        templateId: "onboarding-career",
+        submission: {
+          answers: {
+            resume: "forms/customer/assignment/resume/Marina_Costa.pdf",
+            desiredRole: "Product Operations Manager",
+          },
+        },
+      },
+    ],
+  });
+
+  const prompt = buildAiMockInterviewOpeningPrompt({ context });
+  assert.match(prompt, /Marina Costa/);
+  assert.match(prompt, /10 to 12 minutes/);
+  assert.match(prompt, /resume walkthrough, behavioral evidence, role-specific scenarios/i);
+  assert.match(prompt, /Marina_Costa\.pdf/);
 });

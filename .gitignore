@@ -30,6 +30,7 @@ chub.pub
 # env backups
 .env*.bak*
 .env.local.bak*
+.env.local.shared-backup
 
 # debug
 npm-debug.log*

@@ -4,11 +4,56 @@ import {
   DEFAULT_QB_PUBLISH_WINDOW_DAYS,
   getWindowedQuickBooksDeliveryStage,
 } from "@/lib/invoices/installment-publishing";
+import { isQuickBooksInvoiceQueuedForEmail } from "@/lib/quickbooks/invoice-email";
 import { extractQuickbooksInvoiceLink } from '@/lib/quickbooks/invoice-link';
 import { quickbooksService } from '@/lib/services/quickbooks.service';
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = 'force-dynamic';
+
+async function markInvoiceEmailScheduled(params: {
+  invoiceId: string;
+  qbInvoiceId: string;
+  recipientEmail: string;
+  daysUntilDue: number;
+  isInstallment: boolean;
+  deliveredLink?: string | null;
+  emailStatus?: string | null;
+  deliveryInfo?: unknown;
+  sendAttempts?: number;
+  deliveryMode: "qb_send_endpoint" | "qb_invoice_already_queued";
+}) {
+  await prisma.invoice.update({
+    where: { id: params.invoiceId },
+    data: {
+      emailSentAt: new Date(),
+      emailSendAttempts: { increment: 1 },
+      lastEmailSendError: null,
+      ...(params.deliveredLink ? { quickbooks_invoice_link: params.deliveredLink } : {}),
+    },
+  });
+
+  const action = params.isInstallment ? 'scheduled_installment_sent' : 'scheduled_invoice_sent';
+  await prisma.integrationLog.create({
+    data: {
+      service: 'quickbooks',
+      action,
+      status: 'SUCCESS',
+      payload: {
+        invoiceId: params.invoiceId,
+        qbInvoiceId: params.qbInvoiceId,
+        recipientEmail: params.recipientEmail,
+        daysUntilDue: params.daysUntilDue,
+        sentAt: new Date(),
+        isInstallment: params.isInstallment,
+        deliveryInfo: params.deliveryInfo,
+        emailStatus: params.emailStatus,
+        sendAttempts: params.sendAttempts,
+        deliveryMode: params.deliveryMode,
+      } as any,
+    },
+  });
+}
 
 /**
  * GET /api/cron/send-scheduled-invoices
@@ -203,6 +248,25 @@ export const GET = withCronTelemetry("send-scheduled-invoices", async (request) 
             // Update local reference for the send step below
             (invoice as any).quickbooks_invoice_id = qbInvoice.Id;
             (invoice as any).quickbooks_invoice_link = extractQuickbooksInvoiceLink(qbInvoice);
+            if (isQuickBooksInvoiceQueuedForEmail(qbInvoice)) {
+              await markInvoiceEmailScheduled({
+                invoiceId: invoice.id,
+                qbInvoiceId: qbInvoice.Id,
+                recipientEmail: invoice.customer.email,
+                daysUntilDue,
+                isInstallment,
+                deliveredLink: extractQuickbooksInvoiceLink(qbInvoice),
+                emailStatus: qbInvoice.EmailStatus,
+                deliveryInfo: qbInvoice.DeliveryInfo,
+                sendAttempts: 0,
+                deliveryMode: "qb_invoice_already_queued",
+              });
+
+              sent++;
+              console.log(`[CRON] ✓ DRAFT invoice ${invoice.id} created in QB as ${qbInvoice.Id} and already queued for email`);
+              continue;
+            }
+
             console.log(`[CRON] ✓ DRAFT invoice ${invoice.id} created in QB as ${qbInvoice.Id}, proceeding to send`);
           }
 
@@ -225,10 +289,39 @@ export const GET = withCronTelemetry("send-scheduled-invoices", async (request) 
             continue;
           }
 
-          console.log(`[CRON] Sending email for invoice ${invoice.id} (QB: ${invoice.quickbooks_invoice_id}, due in ${daysUntilDue} days, isInstallment: ${isInstallment})`);
+          if (deliveryStage === "create_only") {
+            console.log(`[CRON] Skipping invoice ${invoice.id} — already created in QB and waiting for the send window`);
+            skipped++;
+            continue;
+          }
 
           // Initialize QB service
           await quickbooksService.initialize();
+
+          const qbInvoiceSnapshot = await quickbooksService.getInvoice(invoice.quickbooks_invoice_id);
+          const qbInvoice = qbInvoiceSnapshot?.Invoice ?? qbInvoiceSnapshot;
+          const qbInvoiceLink = extractQuickbooksInvoiceLink(qbInvoice) || (invoice as any).quickbooks_invoice_link;
+
+          if (isQuickBooksInvoiceQueuedForEmail(qbInvoice)) {
+            await markInvoiceEmailScheduled({
+              invoiceId: invoice.id,
+              qbInvoiceId: invoice.quickbooks_invoice_id,
+              recipientEmail: invoice.customer.email,
+              daysUntilDue,
+              isInstallment,
+              deliveredLink: qbInvoiceLink,
+              emailStatus: qbInvoice?.EmailStatus,
+              deliveryInfo: qbInvoice?.DeliveryInfo,
+              sendAttempts: 0,
+              deliveryMode: "qb_invoice_already_queued",
+            });
+
+            sent++;
+            console.log(`[CRON] ✓ Invoice ${invoice.id} already queued for email in QuickBooks; marked as sent locally`);
+            continue;
+          }
+
+          console.log(`[CRON] Sending email for invoice ${invoice.id} (QB: ${invoice.quickbooks_invoice_id}, due in ${daysUntilDue} days, isInstallment: ${isInstallment})`);
 
           // Send invoice email via QuickBooks
           const sendResult = await quickbooksService.sendInvoice(
@@ -239,39 +332,20 @@ export const GET = withCronTelemetry("send-scheduled-invoices", async (request) 
           if (sendResult.success && sendResult.sent) {
             const deliveredLink = extractQuickbooksInvoiceLink(sendResult.result);
 
-            // Update emailSentAt in our DB to mark as sent
-            await prisma.invoice.update({
-              where: { id: invoice.id },
-              data: {
-                emailSentAt: new Date(),
-                emailSendAttempts: { increment: 1 },
-                lastEmailSendError: null,
-                ...(deliveredLink ? { quickbooks_invoice_link: deliveredLink } : {}),
-              },
+            await markInvoiceEmailScheduled({
+              invoiceId: invoice.id,
+              qbInvoiceId: invoice.quickbooks_invoice_id,
+              recipientEmail: invoice.customer.email,
+              daysUntilDue,
+              isInstallment,
+              deliveredLink,
+              emailStatus: sendResult.emailStatus,
+              deliveryInfo: sendResult.deliveryInfo,
+              sendAttempts: sendResult.attempt,
+              deliveryMode: "qb_send_endpoint",
             });
 
             sent++;
-
-            const action = isInstallment ? 'scheduled_installment_sent' : 'scheduled_invoice_sent';
-            await prisma.integrationLog.create({
-              data: {
-                service: 'quickbooks',
-                action,
-                status: 'SUCCESS',
-                payload: {
-                  invoiceId: invoice.id,
-                  qbInvoiceId: invoice.quickbooks_invoice_id,
-                  recipientEmail: invoice.customer.email,
-                  daysUntilDue,
-                  sentAt: now,
-                  isInstallment,
-                  deliveryInfo: sendResult.deliveryInfo,
-                  emailStatus: sendResult.emailStatus,
-                  sendAttempts: sendResult.attempt,
-                } as any,
-              },
-            });
-
             console.log(`[CRON] ✓ Email sent for invoice ${invoice.id} to ${invoice.customer.email}`);
           } else {
             // Check if QB returned "Object Not Found" (error code 610).
@@ -376,3 +450,5 @@ export const GET = withCronTelemetry("send-scheduled-invoices", async (request) 
     }, { status: 500 });
   }
 });
+
+export const POST = GET;

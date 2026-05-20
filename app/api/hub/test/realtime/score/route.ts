@@ -7,6 +7,7 @@ import {
   getRealtimeEnglishTestProgress,
   normalizeRealtimeEnglishTranscript,
 } from "@/lib/hub/realtime-english-test-flow";
+import { buildRealtimeEnglishReportArtifacts } from "@/lib/hub/realtime-english-test-analysis";
 import { createOpenAIChatCompletion } from "@/lib/services/openai-chat-completions";
 import {
   buildVoiceFinalAssessmentPrompt,
@@ -129,8 +130,14 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    const normalized = normalizeVoiceEnglishResult(parseJson(completion.content));
     const durationSeconds = clampDurationSeconds(body?.durationSeconds);
+    const normalized = normalizeVoiceEnglishResult(parseJson(completion.content));
+    const artifacts = buildRealtimeEnglishReportArtifacts({
+      language,
+      transcript,
+      durationSeconds,
+      result: normalized,
+    });
     await recordRealtimeEnglishUsage({
       testId: existing.id,
       customerId: auth.customerId,
@@ -164,7 +171,14 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     });
 
-    return NextResponse.json({ result: normalized, savedResultId: result.id });
+    return NextResponse.json({
+      result: {
+        ...normalized,
+        deliveryAnalysis: artifacts.deliveryAnalysis,
+        conversationMetrics: artifacts.conversationMetrics,
+      },
+      savedResultId: result.id,
+    });
   } catch (error) {
     console.error("[Hub Realtime English] Error scoring session:", error);
     return NextResponse.json(

@@ -32,6 +32,21 @@ export function findLinkedQuickBooksInvoiceId(qbPayment: { Line?: Array<{ Linked
   return undefined;
 }
 
+export function paymentLinksToQuickBooksInvoice(
+  qbPayment: { Line?: Array<{ LinkedTxn?: Array<{ TxnType?: string; TxnId?: string }> }> },
+  invoiceId: string
+): boolean {
+  for (const line of qbPayment.Line || []) {
+    for (const txn of line.LinkedTxn || []) {
+      if (txn.TxnType === "Invoice" && txn.TxnId === invoiceId) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 export function resolveLocalCustomerIdForPayment(options: {
   linkedInvoiceCustomerId?: string | null;
   linkedInvoiceQbCustomerId?: string | null;

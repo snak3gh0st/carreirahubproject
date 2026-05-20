@@ -74,3 +74,5 @@ export const GET = withCronTelemetry("collection-calls", async (_request) => {
     );
   }
 });
+
+export const POST = GET;

@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/db";
+import {
+  collectPaginatedQuickBooksRecords,
+  paymentLinksToQuickBooksInvoice,
+} from "@/lib/quickbooks/sync-helpers";
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 
@@ -1499,6 +1503,7 @@ export class QuickbooksService {
 
     // Retry logic: 2 attempts with 1s delay
     const maxAttempts = 2;
+    const requestTimeoutMs = 15000;
     let lastError: any = null;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -1537,15 +1542,24 @@ export class QuickbooksService {
         const url = `${this.baseUrl}/v3/company/${this.companyId}${endpoint}`;
         console.log(`[QuickBooks] Calling: POST ${url}`);
 
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${this.accessToken}`,
-            "Accept": "application/json",
-            "Content-Type": "application/octet-stream",  // CRITICAL: Per QB API docs
-          },
-          body: "",  // Empty body as per QB API documentation
-        });
+        const abortController = new AbortController();
+        const timeoutId = setTimeout(() => abortController.abort(), requestTimeoutMs);
+
+        let response: Response;
+        try {
+          response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${this.accessToken}`,
+              "Accept": "application/json",
+              "Content-Type": "application/octet-stream",  // CRITICAL: Per QB API docs
+            },
+            body: "",  // Empty body as per QB API documentation
+            signal: abortController.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -1574,6 +1588,10 @@ export class QuickbooksService {
           result
         };
       } catch (error: any) {
+        if (error?.name === "AbortError") {
+          error = new Error(`QB /send timed out after ${requestTimeoutMs}ms`);
+        }
+
         lastError = error;
         console.error(`[QuickBooks] ✗ Send attempt ${attempt}/${maxAttempts} failed:`, error.message || String(error));
 
@@ -1916,9 +1934,17 @@ export class QuickbooksService {
    * Buscar Payments relacionados a uma Invoice
    */
   async getPaymentsByInvoice(invoiceId: string): Promise<any[]> {
-    const query = `SELECT * FROM Payment WHERE Line.LinkedTxn.TxnId = '${invoiceId}'`;
-    const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
-    return result.QueryResponse?.Payment || [];
+    const payments = await collectPaginatedQuickBooksRecords((startPosition) =>
+      this.getAllPaymentsPaginated({ startPosition }).then((result) => ({
+        records: result.payments,
+        hasMore: result.hasMore,
+        nextPosition: result.nextPosition,
+      }))
+    );
+
+    return payments.filter((payment) =>
+      paymentLinksToQuickBooksInvoice(payment, invoiceId)
+    );
   }
 
   /**

@@ -13,17 +13,17 @@ import {
   Loader2,
   Mic,
   MicOff,
-  PhoneOff,
   Radio,
   ShieldCheck,
-  Square,
   Target,
   UserRound,
 } from "lucide-react";
 import type { Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
 
-const AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS = 4;
+const AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS = 8;
+const AI_MOCK_INTERVIEW_COMPLETION_PHRASE =
+  "Mock interview complete. I have enough evidence to prepare your report now.";
 
 function isMeaningfulAiMockInterviewCandidateTranscript(text: string): boolean {
   const clean = text.trim();
@@ -56,6 +56,20 @@ interface MockInterviewReport {
   risks: string[];
   focusAreas: string[];
   suggestedPracticeQuestions: string[];
+  deliveryAnalysis: {
+    fillerWordAssessment: string;
+    paceAssessment: string;
+    toneAndPresence: string;
+    interviewerRead: string;
+  };
+  conversationMetrics: {
+    candidateTurns: number;
+    totalCandidateWords: number;
+    avgWordsPerAnswer: number;
+    estimatedWordsPerMinute: number;
+    fillerWordCount: number;
+    topFillerWords: string[];
+  };
 }
 
 class RealtimeSessionStartError extends Error {
@@ -98,11 +112,11 @@ function copyFor(lang: Language) {
       roomScoring: "Avaliando entrevista",
       roomComplete: "Relatório gerado",
       roomError: "Sessão interrompida",
-      interviewer: "AI interviewer",
+      interviewer: "Interviewer",
       candidate: "Candidate",
       listening: "Ouvindo sua resposta",
       readyCopy: "Pronto para começar",
-      liveHint: "Responda como em uma entrevista real.",
+      liveHint: "Respire, pense por 1 a 2 segundos se precisar, e responda com exemplos concretos.",
       privacy: "Uso interno para treinamento e avaliação do programa.",
       bestExperience: "Para melhor experiência e análise, faça a mock interview sozinho e de fone.",
       mute: "Mutar",
@@ -112,23 +126,50 @@ function copyFor(lang: Language) {
       evidence: "Evidências",
       target: "Foco",
       duration: "Tempo",
+      durationValue: "10 a 12 min",
+      areas: "Areas",
       interviewMode: "Mock interview",
       interviewBrief: "Brief da entrevista",
       basedOnCv: "Baseado no CV",
       rolePractice: "Treino por função",
-      aiInterviewRoom: "Sala com entrevistador AI",
+      aiInterviewRoom: "Sala do entrevistador",
       candidateRoom: "Sua posição",
       active: "Ativa",
       ready: "Pronta",
       answered: "respostas",
       transcript: "Transcript",
-      emptyTranscript: "As falas capturadas aparecem aqui durante a entrevista.",
+      fullConversation: "Conversa completa",
+      conversationHint: "Veja toda a conversa capturada entre voce e o entrevistador AI.",
+      briefSummary: "A entrevista usa seu CV/resume enviado para conduzir perguntas praticas e medir quao pronto voce esta para entrevistas reais na sua area.",
+      aiControlsFinish: "A AI conduz a entrevista e encerra so quando houver evidencia suficiente.",
+      confidenceTitle: "Como essa entrevista funciona",
+      confidenceBullets: [
+        "O entrevistador vai soar humano, profissional e direto, como em empresas grandes.",
+        "Voce pode pedir para repetir ou esclarecer uma pergunta.",
+        "Respostas especificas com contexto, acao e impacto valem mais do que respostas longas.",
+      ],
+      coachTitle: "O que passa confianca",
+      coachBullets: [
+        "Comece pela resposta principal e depois prove com exemplo.",
+        "Evite fillers em excesso como um, uh, like e i mean.",
+        "Mantenha ritmo calmo, sem correr nem dar voltas.",
+      ],
       result: "Relatório do mock interview",
       resultSaved: "Relatório salvo no programa.",
       strengths: "Pontos fortes",
       risks: "Riscos na entrevista",
       focusAreas: "Treinar agora",
       practiceQuestions: "Perguntas para praticar",
+      delivery: "Leitura de entrevistador",
+      fillerWords: "Filler words",
+      pace: "Ritmo e velocidade",
+      tonePresence: "Tom e presenca",
+      interviewerRead: "Leitura final do entrevistador",
+      conversationMetrics: "Metricas da conversa",
+      totalWords: "Palavras",
+      avgAnswer: "Media por resposta",
+      estimatedPace: "Pace estimado",
+      topFillers: "Fillers mais usados",
       incomplete: `A entrevista precisa de pelo menos ${AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS} respostas substanciais antes do relatório.`,
       connectionError: "Nao foi possivel iniciar o AI mock interview.",
       microphoneBlocked: "Nao foi possivel acessar o microfone. Verifique a permissao do navegador e tente novamente.",
@@ -158,11 +199,11 @@ function copyFor(lang: Language) {
     roomScoring: "Evaluating interview",
     roomComplete: "Report generated",
     roomError: "Session interrupted",
-    interviewer: "AI interviewer",
+    interviewer: "Interviewer",
     candidate: "Candidate",
     listening: "Listening to your answer",
     readyCopy: "Ready to begin",
-    liveHint: "Answer as you would in a real interview.",
+    liveHint: "Take a breath, think for a second if needed, and answer with concrete examples.",
     privacy: "Internal program training and evaluation use.",
     bestExperience: "For the best experience and analysis, take the mock interview alone and with headphones.",
     mute: "Mute",
@@ -172,23 +213,50 @@ function copyFor(lang: Language) {
     evidence: "Evidence",
     target: "Focus",
     duration: "Time",
+    durationValue: "10 to 12 min",
+    areas: "Areas",
     interviewMode: "Mock interview",
     interviewBrief: "Interview brief",
     basedOnCv: "Based on your CV",
     rolePractice: "Role practice",
-    aiInterviewRoom: "AI interviewer room",
+    aiInterviewRoom: "Interviewer room",
     candidateRoom: "Your seat",
     active: "Active",
     ready: "Ready",
     answered: "answers",
     transcript: "Transcript",
-    emptyTranscript: "Captured speech appears here during the interview.",
+    fullConversation: "Full conversation",
+    conversationHint: "Review the complete conversation captured between you and the AI interviewer.",
+    briefSummary: "The interview uses your uploaded CV/resume to drive practical questions and measure how ready you are for real interviews in your target area.",
+    aiControlsFinish: "The AI leads the interview and ends it only when there is enough evidence.",
+    confidenceTitle: "How this interview works",
+    confidenceBullets: [
+      "The interviewer should feel human, professional, and direct, like a strong big-company interviewer.",
+      "You can ask for a question to be repeated or clarified.",
+      "Specific answers with context, action, and impact are stronger than long generic answers.",
+    ],
+    coachTitle: "What sounds confident",
+    coachBullets: [
+      "Lead with the main answer, then back it up with evidence.",
+      "Avoid overusing fillers like um, uh, like, and i mean.",
+      "Keep a calm pace instead of rushing or circling.",
+    ],
     result: "Mock interview report",
     resultSaved: "Report saved to your program.",
     strengths: "Strengths",
     risks: "Interview risks",
     focusAreas: "Train now",
     practiceQuestions: "Practice questions",
+    delivery: "Interviewer delivery read",
+    fillerWords: "Filler words",
+    pace: "Pace and speed",
+    tonePresence: "Tone and presence",
+    interviewerRead: "Interviewer final read",
+    conversationMetrics: "Conversation metrics",
+    totalWords: "Words",
+    avgAnswer: "Avg answer",
+    estimatedPace: "Estimated pace",
+    topFillers: "Top fillers",
     incomplete: `The interview needs at least ${AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS} substantive answers before the report.`,
     connectionError: "Could not start the AI mock interview.",
     microphoneBlocked: "Could not access the microphone. Check browser permission and try again.",
@@ -227,6 +295,10 @@ function hiringSignalLabel(signal: string, copy: ReturnType<typeof copyFor>) {
   return copy.signalMixed;
 }
 
+function isMockInterviewCompletionCue(text: string) {
+  return text.toLowerCase().includes(AI_MOCK_INTERVIEW_COMPLETION_PHRASE.toLowerCase());
+}
+
 export default function AiMockInterviewPage() {
   const [lang, setLang] = useState<Language>("en");
   const copy = useMemo(() => copyFor(lang), [lang]);
@@ -253,6 +325,7 @@ export default function AiMockInterviewPage() {
   const pendingInterviewerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const lastRequestedInterviewerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const recordedUsageResponseIdsRef = useRef<Set<string>>(new Set());
+  const autoFinishingRef = useRef(false);
 
   useEffect(() => {
     setLang(getLangFromCookie());
@@ -435,9 +508,15 @@ export default function AiMockInterviewPage() {
       output_modalities: ["audio"],
       instructions: [
         "Continue the Carreira USA AI mock interview from the candidate's latest answer.",
-        "Ask exactly one next interview question in English.",
+        `The candidate cannot manually end the interview. You decide when there is enough evidence and, when ready, say exactly: "${AI_MOCK_INTERVIEW_COMPLETION_PHRASE}"`,
+        `Do not say the completion phrase before at least ${AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS} substantive candidate answers. Aim for 8 to 10 strong answers and continue longer if readiness is still unclear for the target area.`,
+        "Sound like a polished interviewer from a top U.S. company: warm, concise, sharp, and natural.",
+        "Use brief human acknowledgments and clean transitions. Avoid robotic wording.",
+        "Keep the candidate confident while still probing deeply.",
+        "If you do not have enough evidence yet, ask exactly one next interview question in English.",
         "If the latest answer was vague, generic, or lacked evidence, ask a targeted follow-up before moving to a new topic.",
         "If the answer was strong, increase difficulty with a role-specific scenario, stakeholder conflict, prioritization, or business-impact question.",
+        "If the candidate pauses briefly, do not jump in too fast.",
         "If the latest audio was only noise, cough, keyboard sound, breathing, or an unclear fragment, ignore it and do not ask what happened.",
         `Latest candidate answer: ${candidateAnswer}`,
       ].join(" "),
@@ -520,6 +599,9 @@ export default function AiMockInterviewPage() {
     if (payload.type === "response.output_audio_transcript.done") {
       const text = payload.transcript || payload.text || payload.delta || "";
       addTranscript("interviewer", text);
+      if (isMockInterviewCompletionCue(text)) {
+        autoFinishingRef.current = true;
+      }
       return;
     }
 
@@ -527,6 +609,11 @@ export default function AiMockInterviewPage() {
       void persistRealtimeUsageEvent(payload);
       markResponseIdle();
       lastRequestedInterviewerResponseRef.current = null;
+      if (autoFinishingRef.current) {
+        autoFinishingRef.current = false;
+        void finishSession();
+        return;
+      }
       flushPendingInterviewerResponse();
     }
   }
@@ -544,10 +631,11 @@ export default function AiMockInterviewPage() {
     }
 
     statusRef.current = "connecting";
-    setStatus("connecting");
-    markResponseIdle();
-    pendingInterviewerResponseRef.current = null;
-    lastRequestedInterviewerResponseRef.current = null;
+      setStatus("connecting");
+      markResponseIdle();
+      pendingInterviewerResponseRef.current = null;
+      lastRequestedInterviewerResponseRef.current = null;
+      autoFinishingRef.current = false;
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -579,8 +667,8 @@ export default function AiMockInterviewPage() {
         createRealtimeResponse({
           output_modalities: ["audio"],
           instructions: shouldResume
-            ? "Resume the existing Carreira USA AI mock interview. Welcome the candidate back briefly and ask exactly one next interview question based on the saved context."
-            : "Start the Carreira USA AI mock interview. Introduce yourself briefly as the AI interviewer, explain this is a realistic corporate mock interview based on the candidate profile and CV context, then ask exactly one strong first question.",
+            ? `Resume the existing Carreira USA AI mock interview. Welcome the candidate back briefly, keep control of the session, and only finish when there is enough evidence. When ready, say exactly: "${AI_MOCK_INTERVIEW_COMPLETION_PHRASE}". Otherwise ask exactly one next interview question based on the saved context.`
+            : `Start the Carreira USA AI mock interview. Introduce yourself briefly as the AI interviewer, explicitly state the candidate's name, that the interview takes about 10 to 12 minutes, the areas you will cover, and which uploaded CV/resume or candidate profile you are grounding on. Keep control of the session and, only when there is enough evidence, say exactly: "${AI_MOCK_INTERVIEW_COMPLETION_PHRASE}". Then ask exactly one strong first interview question.`,
         });
       });
 
@@ -628,23 +716,9 @@ export default function AiMockInterviewPage() {
     setMuted(!track.enabled);
   }
 
-  async function stopSession() {
-    setError(null);
-    const durationSeconds = getDurationSeconds();
-    const transcriptSnapshot = transcriptRef.current;
-    await persistProgress(transcriptSnapshot);
-    cancelActiveResponse();
-    cleanupRealtime();
-    startTimeRef.current = 0;
-    restoredDurationSecondsRef.current = durationSeconds;
-    setElapsedSeconds(durationSeconds);
-    setMuted(false);
-    statusRef.current = "idle";
-    setStatus("idle");
-  }
-
   async function finishSession() {
     setError(null);
+    if (statusRef.current === "scoring" || autoFinishingRef.current) return;
     const activeSessionId = sessionIdRef.current;
     if (!activeSessionId) {
       setError(copy.connectionError);
@@ -659,6 +733,7 @@ export default function AiMockInterviewPage() {
 
     statusRef.current = "scoring";
     setStatus("scoring");
+    autoFinishingRef.current = true;
     cancelActiveResponse();
 
     try {
@@ -685,9 +760,11 @@ export default function AiMockInterviewPage() {
       statusRef.current = "complete";
       setStatus("complete");
       setActiveSessionId(null);
+      autoFinishingRef.current = false;
     } catch (err) {
       statusRef.current = "error";
       setStatus("error");
+      autoFinishingRef.current = false;
       setError(err instanceof Error ? err.message : copy.scoreError);
     }
   }
@@ -696,10 +773,12 @@ export default function AiMockInterviewPage() {
   const isWaiting = status === "idle" || status === "error";
   const isBusy = status === "connecting" || status === "scoring";
   const candidateTurns = transcript.filter((item) => item.role === "candidate").length;
-  const latestTranscript = transcript.slice(-8);
   const formattedElapsed = `${Math.floor(elapsedSeconds / 60)
     .toString()
     .padStart(2, "0")}:${(elapsedSeconds % 60).toString().padStart(2, "0")}`;
+  const interviewAreas = lang === "pt-BR"
+    ? ["Resume walkthrough", "Perguntas comportamentais", "Cenarios da funcao", "Stakeholders e conflitos", "Reflexao final"]
+    : ["Resume walkthrough", "Behavioral questions", "Role-specific scenarios", "Stakeholder conflict", "Final reflection"];
 
   const roomLabel =
     status === "connecting"
@@ -937,22 +1016,8 @@ export default function AiMockInterviewPage() {
                   </div>
                 )}
                 {status === "live" && (
-                  <div className="grid gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
-                    <button
-                      onClick={stopSession}
-                      className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] py-3.5 text-sm font-extrabold text-white/75 transition hover:bg-white/15 active:scale-[0.99]"
-                    >
-                      <Square className="h-3.5 w-3.5 fill-current" strokeWidth={2} />
-                      {copy.stop}
-                    </button>
-                    <button
-                      onClick={finishSession}
-                      className="flex items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-extrabold transition hover:bg-gray-100 active:scale-[0.99]"
-                      style={{ color: BRAND_COLORS.VERDE }}
-                    >
-                      <PhoneOff className="h-4 w-4" strokeWidth={2} />
-                      {copy.finish}
-                    </button>
+                  <div className="rounded-xl border border-white/10 bg-white/[0.08] px-4 py-3 text-sm font-semibold leading-5 text-white/75">
+                    {copy.aiControlsFinish}
                   </div>
                 )}
                 {status === "scoring" && (
@@ -983,9 +1048,45 @@ export default function AiMockInterviewPage() {
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">{copy.basedOnCv}</p>
                     <p className="mt-1 text-sm font-semibold leading-5 text-gray-800">
-                      {copy.subtitle}
+                      {copy.briefSummary}
                     </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {interviewAreas.map((area) => (
+                        <span
+                          key={area}
+                          className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-gray-500"
+                        >
+                          {area}
+                        </span>
+                      ))}
+                    </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">{copy.confidenceTitle}</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-5 text-gray-600">
+                    {copy.confidenceBullets.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: BRAND_COLORS.TANGERINA }} />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-white p-4">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">{copy.coachTitle}</p>
+                  <ul className="mt-3 space-y-2 text-sm leading-5 text-gray-600">
+                    {copy.coachBullets.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: BRAND_COLORS.VERDE }} />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
 
@@ -994,7 +1095,8 @@ export default function AiMockInterviewPage() {
                   { label: copy.session, value: sessionId ? copy.active : copy.ready },
                   { label: copy.microphone, value: muted ? copy.mute : copy.listening },
                   { label: copy.evidence, value: `${candidateTurns}/${AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS} ${copy.answered}` },
-                  { label: copy.duration, value: "10-12 min" },
+                  { label: copy.duration, value: copy.durationValue },
+                  { label: copy.areas, value: interviewAreas.length.toString() },
                 ].map(({ label, value }) => (
                   <div key={label} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                     <span className="text-gray-500">{label}</span>
@@ -1025,43 +1127,6 @@ export default function AiMockInterviewPage() {
           </aside>
         </div>
       </section>
-
-      {latestTranscript.length > 0 && !report && (
-        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm lg:fixed lg:bottom-5 lg:right-5 lg:z-20 lg:w-[420px] lg:shadow-[0_24px_70px_-28px_rgba(15,23,42,0.28)]">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-gray-400" strokeWidth={2} />
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.transcript}</p>
-            </div>
-            <span className="rounded-full bg-gray-100 px-2.5 py-0.5 font-mono text-xs font-semibold text-gray-500">
-              {latestTranscript.length}
-            </span>
-          </div>
-
-          <div className="max-h-64 space-y-2 overflow-y-auto p-4">
-            {latestTranscript.map((item, idx) => (
-              <div
-                key={`${item.at}-${idx}`}
-                className={`rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
-                  item.role === "candidate"
-                    ? "ml-8 text-white"
-                    : "mr-8 border-l-2 bg-gray-50 text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
-                }`}
-                style={
-                  item.role === "candidate"
-                    ? { backgroundColor: BRAND_COLORS.VERDE }
-                    : { borderLeftColor: BRAND_COLORS.VERDE }
-                }
-              >
-                <p className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${item.role === "candidate" ? "text-white/40" : "text-gray-400"}`}>
-                  {item.role === "candidate" ? copy.candidate : copy.interviewer}
-                </p>
-                {item.text}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
 
       {report && (
         <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
@@ -1122,6 +1187,107 @@ export default function AiMockInterviewPage() {
                   </div>
                 ))}
               </div>
+
+              <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+                <div className="rounded-2xl border border-gray-100 p-4">
+                  <h3 className="mb-3 text-sm font-bold text-gray-900">{copy.delivery}</h3>
+                  <div className="space-y-3 text-sm leading-5 text-gray-600">
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.fillerWords}</p>
+                      <p className="mt-1">{report.deliveryAnalysis?.fillerWordAssessment}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.pace}</p>
+                      <p className="mt-1">{report.deliveryAnalysis?.paceAssessment}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.tonePresence}</p>
+                      <p className="mt-1">{report.deliveryAnalysis?.toneAndPresence}</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{copy.interviewerRead}</p>
+                      <p className="mt-1">{report.deliveryAnalysis?.interviewerRead}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+                  <h3 className="mb-3 text-sm font-bold text-gray-900">{copy.conversationMetrics}</h3>
+                  <div className="space-y-2.5 text-sm">
+                    {[
+                      [copy.evidence, String(report.conversationMetrics?.candidateTurns ?? 0)],
+                      [copy.totalWords, String(report.conversationMetrics?.totalCandidateWords ?? 0)],
+                      [copy.avgAnswer, String(report.conversationMetrics?.avgWordsPerAnswer ?? 0)],
+                      [copy.estimatedPace, `${report.conversationMetrics?.estimatedWordsPerMinute ?? 0} wpm`],
+                      [copy.fillerWords, String(report.conversationMetrics?.fillerWordCount ?? 0)],
+                    ].map(([label, value]) => (
+                      <div key={label as string} className="flex items-center justify-between gap-3">
+                        <span className="text-gray-500">{label as string}</span>
+                        <span className="font-semibold text-gray-900">{value as string}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {report.conversationMetrics?.topFillerWords?.length > 0 && (
+                    <div className="mt-3 border-t border-gray-200 pt-3">
+                      <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-gray-400">{copy.topFillers}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {report.conversationMetrics.topFillerWords.map((item) => (
+                          <span
+                            key={item}
+                            className="rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-gray-600"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {transcript.length > 0 && (
+                <div className="mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/60">
+                  <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3">
+                    <div className="flex items-start gap-2">
+                      <FileText className="mt-0.5 h-4 w-4 text-gray-400" strokeWidth={2} />
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">{copy.fullConversation}</p>
+                        <p className="mt-1 text-sm text-gray-500">{copy.conversationHint}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-white px-2.5 py-0.5 font-mono text-xs font-semibold text-gray-500">
+                      {transcript.length}
+                    </span>
+                  </div>
+
+                  <div className="max-h-[520px] space-y-2 overflow-y-auto p-4">
+                    {transcript.map((item, idx) => (
+                      <div
+                        key={`${item.at}-${idx}`}
+                        className={`flex ${item.role === "candidate" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-5 ${
+                            item.role === "candidate"
+                              ? "rounded-br-sm text-white"
+                              : "rounded-bl-sm border-l-2 bg-white text-gray-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
+                          }`}
+                          style={
+                            item.role === "candidate"
+                              ? { backgroundColor: BRAND_COLORS.VERDE }
+                              : { borderLeftColor: BRAND_COLORS.VERDE }
+                          }
+                        >
+                          <p className={`mb-1 text-[9px] font-bold uppercase tracking-[0.14em] ${item.role === "candidate" ? "text-white/40" : "text-gray-400"}`}>
+                            {item.role === "candidate" ? copy.candidate : copy.interviewer}
+                          </p>
+                          {item.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>

@@ -13,6 +13,8 @@ export const REALTIME_ENGLISH_TEST_DEFAULT_MODEL = "gpt-realtime-2";
 export const REALTIME_ENGLISH_TEST_FALLBACK_MODEL = "gpt-realtime";
 export const REALTIME_ENGLISH_TEST_LEGACY_FALLBACK_MODEL = "gpt-4o-realtime-preview";
 export const REALTIME_ENGLISH_TEST_DEFAULT_VOICE = "marin";
+export const REALTIME_ENGLISH_TEST_COMPLETION_PHRASE =
+  "English assessment complete. I have enough evidence to prepare your result now.";
 
 const CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"] as const;
 const DISPLAY_BY_CEFR: Record<string, string> = {
@@ -38,6 +40,20 @@ export interface RealtimeEnglishResult {
   summary: string;
   strengths: string[];
   focusAreas: string[];
+  deliveryAnalysis?: {
+    fillerWordAssessment: string;
+    paceAssessment: string;
+    toneAndPresence: string;
+    examinerRead: string;
+  };
+  conversationMetrics?: {
+    studentTurns: number;
+    totalStudentWords: number;
+    avgWordsPerAnswer: number;
+    estimatedWordsPerMinute: number;
+    fillerWordCount: number;
+    topFillerWords: string[];
+  };
 }
 
 export interface RealtimeEnglishSessionConfig {
@@ -120,10 +136,15 @@ export function buildRealtimeEnglishTestInstructions(
     "You are an English oral exam evaluator for Brazilian professionals seeking corporate jobs in the United States.",
     "This interview runs inside CarreiraHub for Carreira USA, a career preparation and mentoring company that helps Brazilian and international professionals improve business English and prepare for corporate opportunities in the United States.",
     "Conduct a realistic corporate English oral interview.",
+    "Sound like a polished human interviewer from a strong U.S. hiring process: calm, warm, observant, and direct.",
+    "Do not sound robotic, scripted, or like a generic language app.",
     "Speak only in English during the interview.",
     "The client controls the first spoken opening prompt, which introduces this as a live Carreira USA English speaking assessment with an AI teacher. Follow it once only; do not repeat the same opening later.",
     `The full assessment is designed to take about ${REALTIME_ENGLISH_TEST_DURATION_LABEL} across five short sections.`,
     `Collect at least ${REALTIME_ENGLISH_TEST_REQUIRED_STUDENT_TURNS} substantive student answers before a final score can be prepared.`,
+    `The student cannot manually finish the assessment. You decide when there is enough evidence and, when ready, you must say exactly: "${REALTIME_ENGLISH_TEST_COMPLETION_PHRASE}"`,
+    "Do not tell the student in advance what the exact completion phrase will be.",
+    `Do not say the completion phrase before at least ${REALTIME_ENGLISH_TEST_REQUIRED_STUDENT_TURNS} accepted student answers. If evidence is still weak after the required sections, continue with targeted follow-up questions until you can judge the level confidently.`,
     `The staged sections are: ${REALTIME_ENGLISH_TEST_STAGES.map((stage) => `${stage.shortTitle} (${stage.promptFocus})`).join("; ")}.`,
     "Do not begin with only a generic name question.",
     "After the short introduction, ask the first substantial warm-up question about the student's current role, professional background, or U.S. career goal.",
@@ -133,6 +154,8 @@ export function buildRealtimeEnglishTestInstructions(
     "If an answer is short, vague, memorized, unclear, or grammatically weak, ask a targeted follow-up such as: Can you give me a specific example? What was the business impact? What happened next? Why did you choose that approach? How would you explain that to a U.S. manager?",
     "If the student performs well, increase complexity with abstract reasoning, negotiation, conflict, prioritization, stakeholder communication, and leadership scenarios.",
     "If the student struggles, simplify the wording, keep the interview in English, and scaffold with clearer follow-ups without giving the answer.",
+    "Allow brief thinking pauses without interrupting immediately.",
+    "If the student asks for repetition or clarification, restate the question naturally in simpler English.",
     "Do not ask the same type of question repeatedly; cover at least three different formats before the final assessment if the session is long enough.",
     "If the student asks to stop before the required sections are complete, explain in English that the test cannot produce a reliable result yet and they should continue; if they must stop, Carreira USA operations must reset or schedule a new test.",
     "Ignore brief noises, coughs, keyboard sounds, breathing, background speech, and unclear fragments. Do not ask what happened because of noise.",
@@ -200,6 +223,9 @@ export function buildRealtimeFinalAssessmentPrompt(language: Language = "pt-BR")
   return [
     "Create the final English assessment result from this voice conversation.",
     feedbackLanguage,
+    "Write like a rigorous but useful interviewer, not like a generic English teacher.",
+    "The summary should explain how interview-ready the student sounds for U.S. corporate conversations.",
+    "Strengths and focusAreas should be concrete, behavioral, and easy to act on.",
     "Return only valid JSON with this exact shape:",
     '{"cefrLevel":"A1|A2|B1|B2|C1|C2","displayLevel":"Beginner|Intermediate|Advanced|Fluent","score":0,"fluencyScore":0,"pronunciationScore":0,"grammarScore":0,"vocabularyScore":0,"comprehensionScore":0,"summary":"string","strengths":["string"],"focusAreas":["string"]}',
     "Use integer scores from 0 to 10 for component scores and 0 to 100 for score.",

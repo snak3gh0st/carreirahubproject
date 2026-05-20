@@ -107,3 +107,5 @@ export const GET = withCronTelemetry('contract-expiration', async (_request) => 
     );
   }
 });
+
+export const POST = GET;

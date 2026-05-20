@@ -236,10 +236,10 @@ export default async function AdminSystemHealthPage() {
         <section className="mb-8">
           <SectionHeader
             title="Access Logs"
-            subtitle="Authenticated users only in the main table; anonymous traffic is counted separately."
+            subtitle="Normal authenticated users only in the main table; admin activity is excluded and anonymous traffic is counted separately."
             action={
               <span className="rounded-md border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-500">
-                Last 24h · {activeUsers.length} users · latest {accessRows.length}
+                Last 24h · {activeUsers.length} non-admin users · latest {accessRows.length}
               </span>
             }
           />
@@ -293,10 +293,17 @@ export default async function AdminSystemHealthPage() {
             <MetricCard
               label="Internal Users"
               value={health.accessAudit.summary.uniqueInternalUsers24h}
-              detail={`${health.accessAudit.summary.internalLoginSuccess24h} internal logins in the last 24h`}
+              detail={`${health.accessAudit.summary.internalLoginSuccess24h} non-admin internal logins in the last 24h`}
               icon={<LogIn className="h-5 w-5" />}
             />
           </div>
+          {health.accessAudit.summary.excludedAdminUsers24h > 0 && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Admin activity is excluded from these access metrics:{" "}
+              {health.accessAudit.summary.excludedAdminUsers24h} admin users and{" "}
+              {health.accessAudit.summary.excludedAdminEvents24h} admin events in the last 24h.
+            </div>
+          )}
           <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
               Last 24h · hub users only ({hubUsers.length}) with latest portal action
@@ -352,7 +359,7 @@ export default async function AdminSystemHealthPage() {
           </div>
           <div className="mb-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
-              Last 24h · all {activeUsers.length} authenticated users with latest action
+              Last 24h · all {activeUsers.length} non-admin authenticated users with latest action
             </div>
             <div className="max-h-[360px] overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -408,7 +415,7 @@ export default async function AdminSystemHealthPage() {
           </div>
           <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 px-4 py-3 text-xs text-gray-500">
-              Last 24h · full authenticated event feed ({accessRows.length} events, {hubRows.length} from hub)
+              Last 24h · full non-admin authenticated event feed ({accessRows.length} events, {hubRows.length} from hub)
             </div>
             <div className="max-h-[520px] overflow-auto">
               <table className="min-w-full divide-y divide-gray-200 text-sm">

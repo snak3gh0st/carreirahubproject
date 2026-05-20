@@ -19,6 +19,39 @@ export type InvoiceHealthSignals = {
   stalePastDueUnsentCount: number;
 };
 
+export function shouldWarnForScheduledInvoiceBacklog(params: {
+  now: Date;
+  lastSendRunAt: Date | null;
+  scheduleHourUtc?: number;
+  scheduleMinuteUtc?: number;
+}) {
+  const {
+    now,
+    lastSendRunAt,
+    scheduleHourUtc = 9,
+    scheduleMinuteUtc = 0,
+  } = params;
+
+  const todayScheduledAt = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      scheduleHourUtc,
+      scheduleMinuteUtc,
+      0,
+      0
+    )
+  );
+
+  if (now.getTime() >= todayScheduledAt.getTime()) {
+    return true;
+  }
+
+  const previousScheduledAt = new Date(todayScheduledAt.getTime() - 24 * 60 * 60 * 1000);
+  return !lastSendRunAt || lastSendRunAt.getTime() < previousScheduledAt.getTime();
+}
+
 export function summarizeInvoiceHealthSignals(
   invoices: InvoiceHealthRow[],
   now: Date

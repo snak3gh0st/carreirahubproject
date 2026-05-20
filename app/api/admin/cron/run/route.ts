@@ -21,6 +21,33 @@ const MANUAL_CRON_ALLOWLIST = new Set([
   "ops-daily-digest",
 ]);
 
+function extractCronErrorMessage(data: unknown, status: number) {
+  if (typeof data === "string" && data.trim()) {
+    return data.trim().slice(0, 500);
+  }
+
+  if (data && typeof data === "object") {
+    const error = "error" in data && typeof data.error === "string" ? data.error : null;
+    if (error?.trim()) return error.trim();
+
+    const message = "message" in data && typeof data.message === "string" ? data.message : null;
+    if (message?.trim()) return message.trim();
+
+    const nested = "data" in data ? (data as { data?: unknown }).data : null;
+    if (nested && typeof nested === "object") {
+      const nestedError =
+        "error" in nested && typeof nested.error === "string" ? nested.error : null;
+      if (nestedError?.trim()) return nestedError.trim();
+
+      const nestedMessage =
+        "message" in nested && typeof nested.message === "string" ? nested.message : null;
+      if (nestedMessage?.trim()) return nestedMessage.trim();
+    }
+  }
+
+  return `HTTP ${status}`;
+}
+
 function getBaseUrl(request: NextRequest) {
   const configured =
     process.env.NEXT_PUBLIC_APP_URL ||
@@ -28,6 +55,39 @@ function getBaseUrl(request: NextRequest) {
     process.env.APP_URL;
 
   return (configured || request.nextUrl.origin).replace(/\/$/, "");
+}
+
+async function invokeCronJob(url: string, cronSecret: string, signal: AbortSignal) {
+  const headers = {
+    Authorization: `Bearer ${cronSecret}`,
+    "x-vercel-cron-secret": cronSecret,
+  };
+
+  let response = await fetch(url, {
+    method: "POST",
+    headers,
+    cache: "no-store",
+    signal,
+  });
+
+  if (response.status === 405) {
+    response = await fetch(url, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      signal,
+    });
+  }
+
+  const text = await response.text();
+  let data: unknown = text;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text.slice(0, 2000);
+  }
+
+  return { response, data };
 }
 
 export async function POST(request: NextRequest) {
@@ -58,23 +118,11 @@ export async function POST(request: NextRequest) {
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetch(`${getBaseUrl(request)}${job.route}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${cronSecret}`,
-        "x-vercel-cron-secret": cronSecret,
-      },
-      cache: "no-store",
-      signal: controller.signal,
-    });
-
-    const text = await response.text();
-    let data: unknown = text;
-    try {
-      data = text ? JSON.parse(text) : null;
-    } catch {
-      data = text.slice(0, 2000);
-    }
+    const { response, data } = await invokeCronJob(
+      `${getBaseUrl(request)}${job.route}`,
+      cronSecret,
+      controller.signal
+    );
 
     return NextResponse.json({
       success: response.ok,
@@ -83,6 +131,7 @@ export async function POST(request: NextRequest) {
       route: job.route,
       status: response.status,
       durationMs: Date.now() - start,
+      error: response.ok ? undefined : extractCronErrorMessage(data, response.status),
       data,
     });
   } catch (error) {

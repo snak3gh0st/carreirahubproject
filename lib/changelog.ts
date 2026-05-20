@@ -7,7 +7,10 @@
  * - `hubChangelog` (client) — client-facing improvements only
  */
 
-export const APP_VERSION = "2.2";
+import packageJson from "../package.json";
+
+export const APP_VERSION = packageJson.version;
+export const APP_VERSION_LABEL = `V${APP_VERSION.split(".")[0]}`;
 
 export type ChangelogEntry = {
   version: string;
@@ -20,12 +23,12 @@ export type ChangelogEntry = {
 /** Admin dashboard changelog — internal team */
 export const changelog: ChangelogEntry[] = [
   {
-    version: "2.2.0",
-    date: "2026-03-25",
-    title: "New Brand Identity",
-    titlePt: "Nova Identidade Visual",
+    version: APP_VERSION,
+    date: "2026-05-19",
+    title: "Platform V3",
+    titlePt: "Plataforma V3",
     items: [
-      { text: "Complete Carreira U.S.A. visual rebrand", textPt: "Rebrand visual completo Carreira U.S.A.", type: "feature" },
+      { text: "Hub V3 with recurring invoices, AI mock interview, and realtime English test workflows.", textPt: "Hub V3 com faturas recorrentes, mock interview com IA e fluxos de teste de inglês em tempo real.", type: "feature" },
     ],
   },
   {
@@ -62,12 +65,12 @@ export const changelog: ChangelogEntry[] = [
 /** Client hub changelog — client-facing only, no internal details */
 export const hubChangelog: ChangelogEntry[] = [
   {
-    version: "2.2.0",
-    date: "2026-03-25",
-    title: "New Look",
-    titlePt: "Novo Visual",
+    version: APP_VERSION,
+    date: "2026-05-19",
+    title: "Portal V3",
+    titlePt: "Portal V3",
     items: [
-      { text: "Fresh new design across the portal", textPt: "Novo design em todo o portal", type: "improvement" },
+      { text: "New portal version with AI mock interview, live English testing, and a better invoice experience.", textPt: "Nova versão do portal com mock interview com IA, teste de inglês ao vivo e melhor experiência de faturas.", type: "feature" },
     ],
   },
   {
@@ -82,3 +85,6 @@ export const hubChangelog: ChangelogEntry[] = [
     ],
   },
 ];
+
+export const latestAdminChangelog = changelog[0];
+export const latestHubChangelog = hubChangelog[0];

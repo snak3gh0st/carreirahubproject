@@ -8,9 +8,12 @@ import {
 export const AI_MOCK_INTERVIEW_DEFAULT_MODEL = "gpt-realtime-2";
 export const AI_MOCK_INTERVIEW_FALLBACK_MODEL = "gpt-realtime";
 export const AI_MOCK_INTERVIEW_DEFAULT_VOICE = "marin";
-export const AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS = 4;
+export const AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS = 8;
+export const AI_MOCK_INTERVIEW_MAX_COMPLETED_SESSIONS = 2;
 export const AI_MOCK_INTERVIEW_MAX_TRANSCRIPT_ITEMS = 120;
 export const AI_MOCK_INTERVIEW_DURATION_LABEL = "10 to 12 minutes";
+export const AI_MOCK_INTERVIEW_COMPLETION_PHRASE =
+  "Mock interview complete. I have enough evidence to prepare your report now.";
 
 const HIRING_SIGNALS = ["strong", "promising", "mixed", "not_ready"] as const;
 
@@ -35,7 +38,42 @@ export interface AiMockInterviewReport {
   risks: string[];
   focusAreas: string[];
   suggestedPracticeQuestions: string[];
+  deliveryAnalysis: {
+    fillerWordAssessment: string;
+    paceAssessment: string;
+    toneAndPresence: string;
+    interviewerRead: string;
+  };
+  conversationMetrics: {
+    candidateTurns: number;
+    totalCandidateWords: number;
+    avgWordsPerAnswer: number;
+    estimatedWordsPerMinute: number;
+    fillerWordCount: number;
+    topFillerWords: string[];
+  };
 }
+
+export interface AiMockInterviewConversationMetrics {
+  candidateTurns: number;
+  totalCandidateWords: number;
+  avgWordsPerAnswer: number;
+  estimatedWordsPerMinute: number;
+  fillerWordCount: number;
+  topFillerWords: string[];
+}
+
+const FILLER_PATTERNS: Array<{ label: string; pattern: RegExp }> = [
+  { label: "um", pattern: /\bum+\b/gi },
+  { label: "uh", pattern: /\buh+\b/gi },
+  { label: "like", pattern: /\blike\b/gi },
+  { label: "you know", pattern: /\byou know\b/gi },
+  { label: "i mean", pattern: /\bi mean\b/gi },
+  { label: "kind of", pattern: /\bkind of\b/gi },
+  { label: "sort of", pattern: /\bsort of\b/gi },
+  { label: "actually", pattern: /\bactually\b/gi },
+  { label: "basically", pattern: /\bbasically\b/gi },
+] as const;
 
 export interface AiMockInterviewSessionConfig {
   type: "realtime";
@@ -87,6 +125,49 @@ function cleanStringList(value: unknown, maxItems = 6): string[] {
     .map((item) => item.trim())
     .filter(Boolean)
     .slice(0, maxItems);
+}
+
+function countWords(text: string): number {
+  return text
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .length;
+}
+
+export function buildAiMockInterviewConversationMetrics(input: {
+  transcript: AiMockInterviewTranscriptItem[];
+  durationSeconds?: number | null;
+}): AiMockInterviewConversationMetrics {
+  const candidateAnswers = normalizeAiMockInterviewTranscript(input.transcript)
+    .filter((item) => item.role === "candidate");
+  const totalCandidateWords = candidateAnswers.reduce((sum, item) => sum + countWords(item.text), 0);
+  const candidateTurns = candidateAnswers.length;
+  const avgWordsPerAnswer = candidateTurns > 0
+    ? Math.round((totalCandidateWords / candidateTurns) * 10) / 10
+    : 0;
+  const durationSeconds = input.durationSeconds && input.durationSeconds > 0
+    ? input.durationSeconds
+    : null;
+  const estimatedWordsPerMinute = durationSeconds
+    ? Math.round((totalCandidateWords / Math.max(durationSeconds / 60, 1 / 60)) * 10) / 10
+    : 0;
+
+  const fillerCounts = FILLER_PATTERNS.map(({ label, pattern }) => ({
+    label,
+    count: candidateAnswers.reduce((sum, item) => sum + (item.text.match(pattern)?.length ?? 0), 0),
+  }))
+    .filter((item) => item.count > 0)
+    .sort((a, b) => b.count - a.count);
+
+  return {
+    candidateTurns,
+    totalCandidateWords,
+    avgWordsPerAnswer,
+    estimatedWordsPerMinute,
+    fillerWordCount: fillerCounts.reduce((sum, item) => sum + item.count, 0),
+    topFillerWords: fillerCounts.slice(0, 5).map((item) => `${item.label} (${item.count})`),
+  };
 }
 
 export function normalizeAiMockInterviewModel(model: string): string {
@@ -168,6 +249,18 @@ function buildResumeContextInstructions(transcript: AiMockInterviewTranscriptIte
   ];
 }
 
+function buildOpeningGroundingLine(context: AiMockInterviewContext): string {
+  if (context.resumeFiles.length > 0) {
+    return `In the opening, explicitly say you are grounding the interview on ${context.resumeFiles.join(", ")} for ${context.candidateName}.`;
+  }
+
+  if (context.cvText) {
+    return `In the opening, explicitly say you are grounding the interview on the uploaded CV/resume context for ${context.candidateName}.`;
+  }
+
+  return `In the opening, explicitly say you will ground the interview on ${context.candidateName}'s candidate profile and ask for a short resume summary if needed.`;
+}
+
 export function buildAiMockInterviewInstructions(input: {
   language: Language;
   context: AiMockInterviewContext;
@@ -182,6 +275,15 @@ export function buildAiMockInterviewInstructions(input: {
     "This is not an English placement test. This is a realistic U.S. corporate job interview simulation for interview training.",
     "Speak only in English during the live interview.",
     `Run a focused mock interview that usually takes ${AI_MOCK_INTERVIEW_DURATION_LABEL}.`,
+    `The candidate cannot manually end the interview. You decide when the interview is complete and, when ready, you must say exactly: "${AI_MOCK_INTERVIEW_COMPLETION_PHRASE}"`,
+    `Do not end the interview before at least ${AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS} substantive candidate answers. Usually aim for 8 to 10 strong answers; continue longer if the evidence is still weak or generic.`,
+    "In the first spoken opening only, explicitly state the candidate's name, the interview duration, the areas you will cover, and the CV/resume grounding you are using.",
+    "Sound like a real interviewer from a top U.S. company: calm, articulate, warm, confident, and sharp.",
+    "Humanize the experience. Make the candidate feel respected and capable, not judged by a robot.",
+    "Use natural interviewer language such as short acknowledgments, precise follow-ups, and polished transitions. Avoid robotic phrasing, repetitive templates, or stiff system-like wording.",
+    "Challenge the candidate like a strong recruiter or hiring manager would, but keep the tone composed and confidence-building.",
+    "If the candidate needs a brief second to think, allow that naturally. Do not cut them off for short pauses.",
+    "If the candidate asks for clarification, clarify briefly like a real interviewer and continue.",
     "Ask one question at a time and keep your speaking turns concise so the candidate speaks most of the time.",
     "Use the candidate profile, CV/resume context, target role, current Carreira USA phase, and onboarding notes below.",
     "If the uploaded CV text is not available, use the onboarding notes and ask the candidate early to summarize the most relevant parts of their resume.",
@@ -256,9 +358,13 @@ export function buildAiMockInterviewOpeningPrompt(input: {
   return [
     "Start the Carreira USA AI mock interview now.",
     "Briefly introduce yourself as the AI interviewer for Carreira USA inside CarreiraHub.",
-    `Explain in English that this is a realistic ${AI_MOCK_INTERVIEW_DURATION_LABEL} U.S. corporate mock interview based on the candidate profile and target role.`,
-    "Say that you will ask practical, behavioral, and role-specific questions, and that the written report will be prepared at the end.",
-    "Keep the introduction under 25 seconds.",
+    `Address the candidate by name: ${input.context.candidateName}.`,
+    `Explain in English that this is a realistic ${AI_MOCK_INTERVIEW_DURATION_LABEL} U.S. corporate mock interview for ${input.context.targetRole || "the candidate's target corporate role"}.`,
+    "Explicitly say you will cover resume walkthrough, behavioral evidence, role-specific scenarios, stakeholder or conflict handling, and a final reflection.",
+    buildOpeningGroundingLine(input.context),
+    "Set a calm, professional, confidence-building tone. Briefly tell the candidate they can take a moment to think and can ask for clarification if needed.",
+    "Say that you will decide when there is enough evidence and then prepare the written report.",
+    "Keep the introduction under 30 seconds.",
     `Then ask one strong first question for this candidate's target role: ${input.context.targetRole || "their target U.S. corporate role"}.`,
   ].join(" ");
 }
@@ -267,21 +373,33 @@ export function buildAiMockInterviewFinalReportPrompt(input: {
   language: Language;
   context: AiMockInterviewContext;
   transcript: AiMockInterviewTranscriptItem[];
+  durationSeconds?: number | null;
 }): string {
   const reportLanguage =
     input.language === "pt-BR"
-      ? "Write summary, strengths, risks, focusAreas, and suggestedPracticeQuestions in Portuguese for a Brazilian candidate."
-      : "Write summary, strengths, risks, focusAreas, and suggestedPracticeQuestions in English.";
+      ? "Write summary, strengths, risks, focusAreas, suggestedPracticeQuestions, and deliveryAnalysis in Portuguese for a Brazilian candidate."
+      : "Write summary, strengths, risks, focusAreas, suggestedPracticeQuestions, and deliveryAnalysis in English.";
+  const metrics = buildAiMockInterviewConversationMetrics({
+    transcript: input.transcript,
+    durationSeconds: input.durationSeconds,
+  });
 
   return [
     "Create the final report for this Carreira USA AI mock interview.",
+    "Act like a real interviewer from major U.S. companies reviewing this candidate after the interview.",
     "Evaluate interview readiness, not only English. Be direct, practical, and useful for coaching.",
+    "Assess not only content but also delivery: filler words, pacing, answer control, clarity, confidence, executive presence, and whether the candidate sounds credible for this target area.",
+    "You do not have raw acoustic pitch data. Infer tone, confidence, and pace only from transcript wording, answer shape, timing context, filler usage, and conversational flow. Do not pretend to have exact acoustic certainty.",
+    "Write the report the way a strong interviewer or hiring panel would debrief a candidate after a high-stakes interview.",
+    "Be specific about whether the candidate sounds polished, rushed, hesitant, vague, executive, junior, over-explaining, under-structured, or genuinely credible.",
     reportLanguage,
     "Return only valid JSON with this exact shape:",
-    '{"overallScore":0,"communicationScore":0,"experienceScore":0,"problemSolvingScore":0,"roleFitScore":0,"executivePresenceScore":0,"hiringSignal":"strong|promising|mixed|not_ready","summary":"string","strengths":["string"],"risks":["string"],"focusAreas":["string"],"suggestedPracticeQuestions":["string"]}',
+    '{"overallScore":0,"communicationScore":0,"experienceScore":0,"problemSolvingScore":0,"roleFitScore":0,"executivePresenceScore":0,"hiringSignal":"strong|promising|mixed|not_ready","summary":"string","strengths":["string"],"risks":["string"],"focusAreas":["string"],"suggestedPracticeQuestions":["string"],"deliveryAnalysis":{"fillerWordAssessment":"string","paceAssessment":"string","toneAndPresence":"string","interviewerRead":"string"}}',
     "Use integer scores from 0 to 100.",
     "Hiring signal rules: strong means likely credible for target interviews now; promising means coachable with focused work; mixed means inconsistent evidence; not_ready means significant preparation gap.",
     "Do not include markdown, commentary, or extra keys.",
+    "Conversation metrics computed from the session:",
+    JSON.stringify(metrics),
     "Candidate context:",
     summarizeAiMockInterviewContextForPrompt(input.context),
     "Interview transcript:",
@@ -289,11 +407,25 @@ export function buildAiMockInterviewFinalReportPrompt(input: {
   ].join("\n");
 }
 
-export function normalizeAiMockInterviewReport(input: unknown): AiMockInterviewReport {
+export function normalizeAiMockInterviewReport(
+  input: unknown,
+  conversationMetrics: AiMockInterviewConversationMetrics = {
+    candidateTurns: 0,
+    totalCandidateWords: 0,
+    avgWordsPerAnswer: 0,
+    estimatedWordsPerMinute: 0,
+    fillerWordCount: 0,
+    topFillerWords: [] as string[],
+  }
+): AiMockInterviewReport {
   const raw = input && typeof input === "object" ? input as Record<string, unknown> : {};
   const signal = typeof raw.hiringSignal === "string" && HIRING_SIGNALS.includes(raw.hiringSignal as AiMockInterviewHiringSignal)
     ? raw.hiringSignal as AiMockInterviewHiringSignal
     : "mixed";
+  const delivery =
+    raw.deliveryAnalysis && typeof raw.deliveryAnalysis === "object"
+      ? raw.deliveryAnalysis as Record<string, unknown>
+      : {};
 
   return {
     overallScore: clampInt(raw.overallScore, 0, 100),
@@ -308,6 +440,13 @@ export function normalizeAiMockInterviewReport(input: unknown): AiMockInterviewR
     risks: cleanStringList(raw.risks),
     focusAreas: cleanStringList(raw.focusAreas),
     suggestedPracticeQuestions: cleanStringList(raw.suggestedPracticeQuestions, 8),
+    deliveryAnalysis: {
+      fillerWordAssessment: cleanString(delivery.fillerWordAssessment, 600),
+      paceAssessment: cleanString(delivery.paceAssessment, 600),
+      toneAndPresence: cleanString(delivery.toneAndPresence, 600),
+      interviewerRead: cleanString(delivery.interviewerRead, 600),
+    },
+    conversationMetrics,
   };
 }
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { AI_MOCK_INTERVIEW_MAX_COMPLETED_SESSIONS } from "@/lib/hub/ai-mock-interview";
 import {
   buildAiMockInterviewContext,
   type AiMockInterviewContext,
@@ -27,7 +28,7 @@ export interface AiMockInterviewAccess {
 export async function getAiMockInterviewAccess(
   customerId: string
 ): Promise<AiMockInterviewAccess | null> {
-  const [customer, enrollment, placementTest, realtimeTest, formAssignments] = await Promise.all([
+  const [customer, enrollment, placementTest, realtimeTest, formAssignments, inProgressMockInterview] = await Promise.all([
     prisma.customer.findUnique({
       where: { id: customerId },
       select: { id: true, name: true, email: true },
@@ -71,9 +72,22 @@ export async function getAiMockInterviewAccess(
         },
       },
     }),
+    prisma.aiMockInterviewSession.findFirst({
+      where: { customerId, status: "IN_PROGRESS" },
+      select: { id: true },
+    }),
   ]);
 
   if (!customer) return null;
+
+  const completedMockInterviewCount = enrollment
+    ? await prisma.mentorshipSession.count({
+        where: {
+          enrollmentId: enrollment.id,
+          sessionType: { in: ["mock_interview_1", "mock_interview_2"] },
+        },
+      })
+    : 0;
 
   const englishLevel =
     realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
@@ -86,11 +100,17 @@ export async function getAiMockInterviewAccess(
     formAssignments,
   });
 
+  const reachedMockInterviewLimit =
+    completedMockInterviewCount >= AI_MOCK_INTERVIEW_MAX_COMPLETED_SESSIONS &&
+    !inProgressMockInterview;
+
   return {
-    allowed: Boolean(enrollment),
-    reason: enrollment
-      ? null
-      : "AI mock interview is available for active Carreira USA program students.",
+    allowed: Boolean(enrollment) && !reachedMockInterviewLimit,
+    reason: !enrollment
+      ? "AI mock interview is available for active Carreira USA program students."
+      : reachedMockInterviewLimit
+        ? `This student has already used the ${AI_MOCK_INTERVIEW_MAX_COMPLETED_SESSIONS} mock interviews allowed in the program.`
+        : null,
     customer,
     enrollment,
     context,

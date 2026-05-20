@@ -1,7 +1,10 @@
 import { AutoChargeStatus, InvoiceStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { ACCESS_AUDIT_SERVICE } from "@/lib/admin/access-audit";
-import { summarizeInvoiceHealthSignals } from "@/lib/invoices/invoice-health";
+import {
+  shouldWarnForScheduledInvoiceBacklog,
+  summarizeInvoiceHealthSignals,
+} from "@/lib/invoices/invoice-health";
 import { getEffectiveSyncTimestamps } from "@/lib/integrations/sync-health";
 import { getDigisacConfig } from "@/lib/services/digisac.service";
 import { queues } from "@/lib/utils/queue";
@@ -749,7 +752,7 @@ async function getAccessAuditRows(since24h: Date) {
     createdAt: { gte: since24h },
   } as const;
 
-  const [aggregateLogs, recentLogs] = await Promise.all([
+  const [aggregateLogs, recentLogs, adminUsers] = await Promise.all([
     prisma.integrationLog.findMany({
       where: baseWhere,
       select: {
@@ -774,6 +777,13 @@ async function getAccessAuditRows(since24h: Date) {
       },
       orderBy: { createdAt: "desc" },
       take: 1000,
+    }),
+    prisma.user.findMany({
+      where: { role: "ADMIN" },
+      select: {
+        id: true,
+        email: true,
+      },
     }),
   ]);
 
@@ -804,14 +814,33 @@ async function getAccessAuditRows(since24h: Date) {
 
   const aggregateRows = aggregateLogs.map(mapRow);
   const recentRows = recentLogs.map(mapRow);
+  const adminUserIds = new Set(adminUsers.map((user) => user.id));
+  const adminEmails = new Set(
+    adminUsers.map((user) => user.email.trim().toLowerCase())
+  );
 
   const isRealActor = (row: (typeof aggregateRows)[number]) =>
     row.actorType !== "anonymous" &&
     Boolean(row.email || row.actorName || row.userId || row.clientUserId || row.customerId);
 
+  const isAdminActor = (row: (typeof aggregateRows)[number]) =>
+    row.actorType === "internal" && (
+      row.role?.trim().toUpperCase() === "ADMIN" ||
+      (row.userId ? adminUserIds.has(row.userId) : false) ||
+      (row.email ? adminEmails.has(row.email.trim().toLowerCase()) : false)
+    );
+
+  const getActorKey = (row: (typeof aggregateRows)[number]) =>
+    String(row.email || row.userId || row.clientUserId || row.customerId || row.actorName);
+
   const authenticatedRows = aggregateRows.filter(isRealActor);
+  const nonAdminAuthenticatedRows = authenticatedRows.filter((row) => !isAdminActor(row));
+  const adminRows = authenticatedRows.filter(isAdminActor);
   const anonymousRows = aggregateRows.filter((row) => !isRealActor(row));
   const recentAuthenticatedRows = recentRows.filter(isRealActor);
+  const recentNonAdminAuthenticatedRows = recentAuthenticatedRows.filter(
+    (row) => !isAdminActor(row)
+  );
 
   const uniqueUsers = new Map<string, {
     key: string;
@@ -832,8 +861,8 @@ async function getAccessAuditRows(since24h: Date) {
     lastAction: string;
   }>();
 
-  for (const row of authenticatedRows) {
-    const key = String(row.email || row.userId || row.clientUserId || row.customerId || row.actorName);
+  for (const row of nonAdminAuthenticatedRows) {
+    const key = getActorKey(row);
     const current = uniqueUsers.get(key);
     if (!current) {
       uniqueUsers.set(key, {
@@ -871,33 +900,39 @@ async function getAccessAuditRows(since24h: Date) {
     }
   }
 
+  const uniqueAdminUsers24h = new Set(adminRows.map(getActorKey)).size;
+
   const summary = {
-    total24h: aggregateRows.length,
-    authenticatedEvents24h: authenticatedRows.length,
+    total24h: nonAdminAuthenticatedRows.length + anonymousRows.length,
+    authenticatedEvents24h: nonAdminAuthenticatedRows.length,
     anonymousEvents24h: anonymousRows.length,
     uniqueAuthenticatedUsers24h: uniqueUsers.size,
     uniqueClientUsers24h: [...uniqueUsers.values()].filter((user) => user.actorType === "client").length,
     uniqueInternalUsers24h: [...uniqueUsers.values()].filter((user) => user.actorType === "internal").length,
-    loginSuccess24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_SUCCESS")).length,
-    loginFailure24h: authenticatedRows.filter((row) => row.action.endsWith("_LOGIN_FAILED")).length,
-    clientLoginSuccess24h: authenticatedRows.filter((row) => row.action === "CLIENT_LOGIN_SUCCESS").length,
-    internalLoginSuccess24h: authenticatedRows.filter((row) => row.action === "INTERNAL_LOGIN_SUCCESS").length,
-    endpointAccess24h: authenticatedRows.filter((row) => row.action === "ENDPOINT_ACCESS").length,
-    endpointDenied24h: aggregateRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
+    loginSuccess24h: nonAdminAuthenticatedRows.filter((row) => row.action.endsWith("_LOGIN_SUCCESS")).length,
+    loginFailure24h: nonAdminAuthenticatedRows.filter((row) => row.action.endsWith("_LOGIN_FAILED")).length,
+    clientLoginSuccess24h: nonAdminAuthenticatedRows.filter((row) => row.action === "CLIENT_LOGIN_SUCCESS").length,
+    internalLoginSuccess24h: nonAdminAuthenticatedRows.filter((row) => row.action === "INTERNAL_LOGIN_SUCCESS").length,
+    endpointAccess24h: nonAdminAuthenticatedRows.filter((row) => row.action === "ENDPOINT_ACCESS").length,
+    endpointDenied24h: aggregateRows.filter(
+      (row) => row.action === "ENDPOINT_DENIED" && !isAdminActor(row)
+    ).length,
     anonymousDenied24h: anonymousRows.filter((row) => row.action === "ENDPOINT_DENIED").length,
-    hubEvents24h: authenticatedRows.filter((row) => row.routeType === "hub").length,
-    hubApiEvents24h: authenticatedRows.filter((row) => row.routeType === "hub_api").length,
-    dashboardEvents24h: authenticatedRows.filter((row) => row.routeType === "dashboard").length,
-    dashboardApiEvents24h: authenticatedRows.filter((row) => row.routeType === "dashboard_api").length,
-    opsEvents24h: authenticatedRows.filter((row) => row.routeType === "ops").length,
-    opsApiEvents24h: authenticatedRows.filter((row) => row.routeType === "ops_api").length,
+    hubEvents24h: nonAdminAuthenticatedRows.filter((row) => row.routeType === "hub").length,
+    hubApiEvents24h: nonAdminAuthenticatedRows.filter((row) => row.routeType === "hub_api").length,
+    dashboardEvents24h: nonAdminAuthenticatedRows.filter((row) => row.routeType === "dashboard").length,
+    dashboardApiEvents24h: nonAdminAuthenticatedRows.filter((row) => row.routeType === "dashboard_api").length,
+    opsEvents24h: nonAdminAuthenticatedRows.filter((row) => row.routeType === "ops").length,
+    opsApiEvents24h: nonAdminAuthenticatedRows.filter((row) => row.routeType === "ops_api").length,
+    excludedAdminEvents24h: adminRows.length,
+    excludedAdminUsers24h: uniqueAdminUsers24h,
   };
 
   return {
     summary,
     users: [...uniqueUsers.values()]
       .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime()),
-    rows: recentAuthenticatedRows,
+    rows: recentNonAdminAuthenticatedRows,
     anonymousRows,
   };
 }
@@ -1103,10 +1138,20 @@ export async function getAdminSystemHealth() {
     },
   ];
 
+  const sendScheduledInvoicesCron = cronRows.find(
+    (row) => row.name === "send-scheduled-invoices"
+  );
+  const sendWindowBacklogWarningCount = shouldWarnForScheduledInvoiceBacklog({
+    now,
+    lastSendRunAt: sendScheduledInvoicesCron?.lastRunAt ?? null,
+  })
+    ? sendWindowPendingCount
+    : 0;
+
   const invoiceWarningCount =
     overdueCandidateCount +
     staleAutoChargeCount +
-    sendWindowPendingCount +
+    sendWindowBacklogWarningCount +
     stalePastDueUnsentCount;
 
   const overallLevel = deriveOverallHealthLevel({
@@ -1161,6 +1206,7 @@ export async function getAdminSystemHealth() {
     circuitBreakers,
     invoiceSignals: {
       sendWindowPendingCount,
+      sendWindowBacklogWarningCount,
       publishWindowPendingCount,
       qbCreatedAwaitingSendCount,
       localFutureInstallmentCount,

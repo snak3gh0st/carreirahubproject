@@ -1,6 +1,6 @@
 {
   "name": "carreira-ai-hub",
-  "version": "0.1.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -21,6 +21,8 @@
     "user:test-login": "npx tsx scripts/test-user-login.ts",
     "db:seed": "node scripts/seed-test-data.js",
     "db:clear": "node scripts/clear-database.js",
+    "db:push:local-safe": "node scripts/run-with-env.js .env.uat.local prisma db push",
+    "db:seed:local-safe": "node scripts/run-with-env.js .env.uat.local node scripts/seed-test-data.js",
     "test:quickbooks": "npx tsx scripts/test-quickbooks.ts",
     "test:workflow": "npx tsx scripts/test-invoice-workflow.ts",
     "test:digisac": "npx tsx scripts/test-digisac.ts",
@@ -31,7 +33,14 @@
     "diagnose:openai-realtime": "npx tsx scripts/diagnose-openai-realtime.ts",
     "check:realtime-deploy": "npx tsx scripts/check-realtime-deploy-readiness.ts",
     "test:system": "npx tsx scripts/test-system-comprehensive.ts",
-    "test:system:api": "npx tsx scripts/test-system-comprehensive.ts --api-only"
+    "test:system:api": "npx tsx scripts/test-system-comprehensive.ts --api-only",
+    "dev:local-safe": "node scripts/require-local-safe-env-active.js && next dev",
+    "uat:local:db:up": "docker compose -f docker-compose.local-safe.yml up -d",
+    "uat:local:db:down": "docker compose -f docker-compose.local-safe.yml down -v",
+    "uat:local:check": "node scripts/verify-local-safe-env.js .env.uat.local",
+    "uat:local:check:dry": "node scripts/verify-local-safe-env.js .env.uat.local --skip-db",
+    "uat:local:env:on": "node scripts/activate-local-safe-env.js",
+    "uat:local:env:off": "node scripts/restore-local-safe-env.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.53",
