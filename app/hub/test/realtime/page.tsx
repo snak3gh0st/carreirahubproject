@@ -34,6 +34,10 @@ import {
   getMicrophoneAccessErrorMessage,
   getRealtimeSessionErrorMessage,
 } from "@/lib/hub/realtime-browser-errors";
+import {
+  REALTIME_TURN_RESUME_GRACE_MS,
+  RealtimeTurnAccumulator,
+} from "@/lib/hub/realtime-turn-accumulator";
 
 const REALTIME_ENGLISH_TEST_COMPLETION_PHRASE =
   "English assessment complete. I have enough evidence to prepare your result now.";
@@ -395,11 +399,14 @@ export default function RealtimeEnglishTestPage() {
   const pendingExaminerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const lastRequestedExaminerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const autoFinishingRef = useRef(false);
+  const studentTurnAccumulatorRef = useRef<RealtimeTurnAccumulator | null>(null);
+  const handleStudentTurnFinalizedRef = useRef<(text: string) => void>(() => undefined);
 
   useEffect(() => {
     setLang(getLangFromCookie());
     void loadSavedProgress();
     return () => cleanupRealtime();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -416,6 +423,15 @@ export default function RealtimeEnglishTestPage() {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  useEffect(() => {
+    studentTurnAccumulatorRef.current = new RealtimeTurnAccumulator({
+      graceMs: REALTIME_TURN_RESUME_GRACE_MS,
+      onFinalized: (text) => handleStudentTurnFinalizedRef.current(text),
+    });
+
+    return () => studentTurnAccumulatorRef.current?.reset();
+  }, []);
 
   function setActiveTestId(nextTestId: string | null) {
     testIdRef.current = nextTestId;
@@ -531,6 +547,7 @@ export default function RealtimeEnglishTestPage() {
     queuedStudentTranscriptRef.current = null;
     pendingExaminerResponseRef.current = null;
     lastRequestedExaminerResponseRef.current = null;
+    studentTurnAccumulatorRef.current?.reset();
   }
 
   function sendRealtimeEvent(payload: Record<string, unknown>) {
@@ -700,6 +717,11 @@ export default function RealtimeEnglishTestPage() {
     }
   }
 
+  handleStudentTurnFinalizedRef.current = (text: string) => {
+    if (!isMeaningfulRealtimeStudentTranscript(text)) return;
+    void handleStudentTranscript(text);
+  };
+
   async function persistRealtimeUsageEvent(payload: any) {
     const activeTestId = testIdRef.current;
     if (!activeTestId) return;
@@ -738,10 +760,19 @@ export default function RealtimeEnglishTestPage() {
       return;
     }
 
+    if (payload.type === "input_audio_buffer.speech_started") {
+      studentTurnAccumulatorRef.current?.handleSpeechStarted();
+      return;
+    }
+
+    if (payload.type === "input_audio_buffer.speech_stopped") {
+      studentTurnAccumulatorRef.current?.handleSpeechStopped();
+      return;
+    }
+
     if (payload.type === "conversation.item.input_audio_transcription.completed") {
       const text = payload.transcript || "";
-      if (!isMeaningfulRealtimeStudentTranscript(text)) return;
-      void handleStudentTranscript(text);
+      studentTurnAccumulatorRef.current?.pushTranscriptFragment(text);
       return;
     }
 
@@ -823,6 +854,7 @@ export default function RealtimeEnglishTestPage() {
     pendingExaminerResponseRef.current = null;
     lastRequestedExaminerResponseRef.current = null;
     autoFinishingRef.current = false;
+    studentTurnAccumulatorRef.current?.reset();
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -1133,11 +1165,7 @@ export default function RealtimeEnglishTestPage() {
                     />
                     <div
                       className="absolute inset-0 animate-ping rounded-full border border-white/20 opacity-40"
-                      style={{ animationDuration: "2.6s" }}
-                    />
-                    <div
-                      className="absolute inset-0 animate-ping rounded-full border border-white/12 opacity-25"
-                      style={{ animationDuration: "2.6s", animationDelay: "1.3s" }}
+                      style={{ animationDuration: "3.4s" }}
                     />
                   </>
                 )}
@@ -1172,7 +1200,7 @@ export default function RealtimeEnglishTestPage() {
 
               {/* Waveform — 28 bars, real EQ height animation */}
               <div className="mt-8 flex items-end justify-center gap-[3px]" aria-hidden>
-                {[4, 7, 11, 16, 12, 22, 16, 30, 22, 40, 30, 50, 38, 60, 46, 64, 46, 60, 38, 50, 30, 40, 22, 30, 16, 22, 12, 8].map((h, i) => (
+                {[6, 10, 16, 24, 18, 30, 22, 40, 30, 52, 40, 60, 40, 28, 18, 10].map((h, i) => (
                   <span
                     key={i}
                     className={`w-[4px] rounded-full transition-opacity duration-500 ${
@@ -1194,7 +1222,7 @@ export default function RealtimeEnglishTestPage() {
               </div>
 
               {/* Status text */}
-              <div className="mt-8 px-8 text-center">
+              <div className="mt-8 min-h-[92px] px-8 text-center">
                 <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-white">
                   {isBusy ? copy.scoring : evaluatingTurn ? copy.evaluatingAnswer : isCallActive ? copy.listening : copy.readyCopy}
                 </h2>

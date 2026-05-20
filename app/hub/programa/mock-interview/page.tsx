@@ -20,6 +20,10 @@ import {
 } from "lucide-react";
 import type { Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
+import {
+  REALTIME_TURN_RESUME_GRACE_MS,
+  RealtimeTurnAccumulator,
+} from "@/lib/hub/realtime-turn-accumulator";
 
 const AI_MOCK_INTERVIEW_MIN_CANDIDATE_TURNS = 8;
 const AI_MOCK_INTERVIEW_COMPLETION_PHRASE =
@@ -326,6 +330,8 @@ export default function AiMockInterviewPage() {
   const lastRequestedInterviewerResponseRef = useRef<RealtimeResponseRequest | null>(null);
   const recordedUsageResponseIdsRef = useRef<Set<string>>(new Set());
   const autoFinishingRef = useRef(false);
+  const candidateTurnAccumulatorRef = useRef<RealtimeTurnAccumulator | null>(null);
+  const handleCandidateTurnFinalizedRef = useRef<(text: string) => void>(() => undefined);
 
   useEffect(() => {
     setLang(getLangFromCookie());
@@ -337,6 +343,15 @@ export default function AiMockInterviewPage() {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  useEffect(() => {
+    candidateTurnAccumulatorRef.current = new RealtimeTurnAccumulator({
+      graceMs: REALTIME_TURN_RESUME_GRACE_MS,
+      onFinalized: (text) => handleCandidateTurnFinalizedRef.current(text),
+    });
+
+    return () => candidateTurnAccumulatorRef.current?.reset();
+  }, []);
 
   useEffect(() => {
     if (status !== "live" && status !== "scoring") return undefined;
@@ -440,6 +455,7 @@ export default function AiMockInterviewPage() {
     markResponseIdle();
     pendingInterviewerResponseRef.current = null;
     lastRequestedInterviewerResponseRef.current = null;
+    candidateTurnAccumulatorRef.current?.reset();
   }
 
   function sendRealtimeEvent(payload: Record<string, unknown>) {
@@ -523,6 +539,12 @@ export default function AiMockInterviewPage() {
     });
   }
 
+  handleCandidateTurnFinalizedRef.current = (text: string) => {
+    if (!isMeaningfulAiMockInterviewCandidateTranscript(text)) return;
+    addTranscript("candidate", text);
+    requestNextInterviewerTurn(text);
+  };
+
   async function persistRealtimeUsageEvent(payload: any) {
     const activeSessionId = sessionIdRef.current;
     if (!activeSessionId) return;
@@ -561,11 +583,19 @@ export default function AiMockInterviewPage() {
       return;
     }
 
+    if (payload.type === "input_audio_buffer.speech_started") {
+      candidateTurnAccumulatorRef.current?.handleSpeechStarted();
+      return;
+    }
+
+    if (payload.type === "input_audio_buffer.speech_stopped") {
+      candidateTurnAccumulatorRef.current?.handleSpeechStopped();
+      return;
+    }
+
     if (payload.type === "conversation.item.input_audio_transcription.completed") {
       const text = payload.transcript || "";
-      if (!isMeaningfulAiMockInterviewCandidateTranscript(text)) return;
-      addTranscript("candidate", text);
-      requestNextInterviewerTurn(text);
+      candidateTurnAccumulatorRef.current?.pushTranscriptFragment(text);
       return;
     }
 
@@ -636,6 +666,7 @@ export default function AiMockInterviewPage() {
       pendingInterviewerResponseRef.current = null;
       lastRequestedInterviewerResponseRef.current = null;
       autoFinishingRef.current = false;
+      candidateTurnAccumulatorRef.current?.reset();
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
