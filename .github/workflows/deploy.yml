@@ -1,0 +1,95 @@
+name: Deploy CarreiraHub
+
+run-name: "Deploy CarreiraHub (${{ github.ref_name }} @ ${{ github.sha }})"
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carreirahub-production
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  APP_URL: https://app.carreirausa.com
+  IMAGE: registry.gitlab.com/sigma-group192807/carreirausahub
+  REGISTRY: registry.gitlab.com
+
+jobs:
+  deploy:
+    name: Build And Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment:
+      name: production
+      url: https://app.carreirausa.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and push image
+        env:
+          REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
+          REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
+        run: |
+          set -euo pipefail
+
+          short_sha="${GITHUB_SHA::8}"
+
+          echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin "$REGISTRY"
+          docker build --pull --platform linux/amd64 -t "$IMAGE:$short_sha" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$short_sha"
+          docker push "$IMAGE:latest"
+
+      - name: Configure SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+
+      - name: Deploy on Swarm
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
+          REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
+        run: |
+          set -euo pipefail
+
+          short_sha="${GITHUB_SHA::8}"
+
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "
+            set -euo pipefail
+            echo '$REGISTRY_PASSWORD' | docker login -u '$REGISTRY_USER' --password-stdin '$REGISTRY'
+            docker service update --with-registry-auth --image '$IMAGE:$short_sha' carreirahub_hub || docker stack deploy --with-registry-auth -c /opt/carreirahub/hub-stack.yml carreirahub
+          "
+
+      - name: Verify runtime
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+        run: |
+          set -euo pipefail
+
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service inspect carreirahub_hub --format 'IMAGE={{.Spec.TaskTemplate.ContainerSpec.Image}}'"
+          ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service ps carreirahub_hub --no-trunc --format 'table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.Error}}\t{{.Image}}'"
+
+          curl -fsS "$APP_URL/api/health"
+          curl -IfsS "$APP_URL/ops/login"
+          curl -IfsS "$APP_URL/hub/login"
