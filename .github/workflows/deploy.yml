@@ -90,6 +90,6 @@ jobs:
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service inspect carreirahub_hub --format 'IMAGE={{.Spec.TaskTemplate.ContainerSpec.Image}}'"
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "docker service ps carreirahub_hub --no-trunc --format 'table {{.ID}}\t{{.Name}}\t{{.CurrentState}}\t{{.Error}}\t{{.Image}}'"
 
-          curl -fsS "$APP_URL/api/health"
-          curl -IfsS "$APP_URL/ops/login"
-          curl -IfsS "$APP_URL/hub/login"
+          curl --retry 10 --retry-delay 3 --retry-all-errors -fsS "$APP_URL/api/health"
+          curl --retry 10 --retry-delay 3 --retry-all-errors -IfsS "$APP_URL/ops/login"
+          curl --retry 10 --retry-delay 3 --retry-all-errors -IfsS "$APP_URL/hub/login"
