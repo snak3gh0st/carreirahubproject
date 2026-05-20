@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
 
   const role = (session.user as any).role;
   const userId = (session.user as any).id;
-  const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL"];
+  const allowedRoles = ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"];
   if (!allowedRoles.includes(role)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

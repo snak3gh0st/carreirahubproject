@@ -770,6 +770,41 @@ export class EmailService {
     });
   }
 
+  async sendInternalPasswordReset(data: {
+    name?: string | null;
+    email: string;
+    resetUrl: string;
+  }): Promise<boolean> {
+    const firstName = (data.name || data.email).split(" ")[0];
+
+    const bodyHtml = `
+      <p>Olá, ${esc(firstName)}!</p>
+      <p>Recebemos uma solicitação para redefinir a senha da sua conta no Carreira U.S.A. Hub.</p>
+      <p>Clique no botão abaixo para criar uma nova senha:</p>
+      ${calloutBox('<strong>Este link expira em 1 hora.</strong> Se você não solicitou essa alteração, pode ignorar este e-mail com segurança.', 'warn')}
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:8px; padding:18px; margin:18px 0;">
+        <div style="font-size:12px; color:${BRAND_COLORS.textMuted}; text-transform:uppercase; font-weight:bold; letter-spacing:0.5px; margin-bottom:8px;">Acesso seguro</div>
+        <div style="font-size:15px; margin-bottom:6px;"><strong>E-mail:</strong> ${esc(data.email)}</div>
+        <div style="font-size:13px; color:${BRAND_COLORS.textMuted};">Por segurança, nunca compartilhe este link nem sua nova senha.</div>
+      </div>
+    `;
+
+    const html = renderBaseLayout({
+      title: 'Redefina sua senha',
+      preheader: 'Link seguro para redefinir sua senha',
+      bodyHtml,
+      ctaLabel: 'Redefinir senha',
+      ctaUrl: data.resetUrl,
+      footerNote: 'Se precisar de ajuda, fale com o administrador do sistema.',
+    });
+
+    return this.sendEmailSimple({
+      to: data.email,
+      subject: 'Redefina sua senha — Carreira U.S.A.',
+      html,
+    });
+  }
+
   // =========================================================================
   // Contract templates
   // =========================================================================

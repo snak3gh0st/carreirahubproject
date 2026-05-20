@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
  *
  * This endpoint is used for:
  * 1. Initial password setup after user creation via /api/users
- * 2. Future password reset flows
+ * 2. Password reset flows using a reset token
  *
  * Request body:
  * {
@@ -28,18 +28,9 @@ import { prisma } from "@/lib/db";
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
     // Parse request body
     const body = await request.json();
-    const { password } = body;
+    const { password, token } = body as { password?: string; token?: string };
 
     // Validate password length
     if (!password || typeof password !== "string") {
@@ -56,7 +47,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash the password using authService
     let hashedPassword: string;
     try {
       hashedPassword = await authService.hashPassword(password);
@@ -68,8 +58,52 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update user with hashed password
+    if (token) {
+      const user = await prisma.user.findUnique({
+        where: { resetToken: token },
+        select: {
+          id: true,
+          resetTokenExpiresAt: true,
+        },
+      });
+
+      if (!user || !user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
+        return NextResponse.json(
+          { error: "Invalid or expired token" },
+          { status: 400 }
+        );
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password: hashedPassword,
+          passwordHashedAt: new Date(),
+          resetToken: null,
+          resetTokenExpiresAt: null,
+          active: true,
+        },
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Password reset successfully. Please log in with your new password.",
+        },
+        { status: 200 }
+      );
+    }
+
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
     const userId = (session.user as any).id as string;
+
     try {
       await prisma.user.update({
         where: { id: userId },
@@ -78,14 +112,6 @@ export async function POST(request: NextRequest) {
           passwordHashedAt: new Date(),
         },
       });
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: "Password set successfully. Please log in again with your new password.",
-        },
-        { status: 200 }
-      );
     } catch (updateError) {
       console.error("[SET_PASSWORD] Error updating user password:", updateError);
       return NextResponse.json(
@@ -93,6 +119,14 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Password set successfully. Please log in again with your new password.",
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("[SET_PASSWORD] Error in set-password endpoint:", error);
     return NextResponse.json(

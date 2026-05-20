@@ -121,7 +121,7 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/invoices/new",
         label: "Criar Fatura",
         icon: PlusCircle,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/invoices",
@@ -211,7 +211,7 @@ const navigationSections: NavSection[] = [
         href: "/dashboard/invoices/new",
         label: "Criar Fatura",
         icon: PlusCircle,
-        roles: ["ADMIN", "COMMERCIAL"],
+        roles: ["ADMIN", "COMMERCIAL", "HEAD_COMERCIAL"],
       },
       {
         href: "/dashboard/invoices",

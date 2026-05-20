@@ -18,6 +18,8 @@ model User {
   updatedAt              DateTime                 @updatedAt
   password               String?
   passwordHashedAt       DateTime?
+  resetToken             String?                  @unique
+  resetTokenExpiresAt    DateTime?
   bulkImports            BulkImport[]             @relation("BulkImports")
   escalatedConversations Conversation[]           @relation("EscalatedConversations")
   sales                  Deal[]

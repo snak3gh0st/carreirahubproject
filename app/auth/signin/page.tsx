@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useState, Suspense } from "react";
@@ -13,6 +14,11 @@ function SignInForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const callbackUrl = buildSafeCallbackUrl(searchParams.get("callbackUrl"));
+  const resetStatus = searchParams.get("reset");
+  const forgotPasswordHref =
+    callbackUrl !== "/dashboard"
+      ? `/auth/reset-password?callbackUrl=${encodeURIComponent(callbackUrl)}`
+      : "/auth/reset-password";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +60,12 @@ function SignInForm() {
 
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-7">
+          {resetStatus === "success" && (
+            <div className="mb-4 px-4 py-3 border rounded-xl text-sm text-brand-verde" style={{ backgroundColor: "#EFF8F2", borderColor: "#B7D8C0" }}>
+              Sua senha foi redefinida. Entre com a nova senha.
+            </div>
+          )}
+
           {error && (
             <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-700">
               {error}
@@ -100,6 +112,12 @@ function SignInForm() {
               {loading ? "Entrando..." : "Entrar"}
             </button>
           </form>
+
+          <div className="mt-4 text-center">
+            <Link href={forgotPasswordHref} className="text-sm text-brand-verde hover:underline">
+              Esqueceu a senha?
+            </Link>
+          </div>
         </div>
 
         <p className="text-center text-xs text-white/40 mt-6">
