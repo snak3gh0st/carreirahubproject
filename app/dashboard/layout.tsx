@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * Professional Dashboard Layout
- * 
+ *
  * Matches Pencil Design:
  * - Fixed 240px sidebar (left)
  * - Logo, navigation, user profile, Sigma footer
@@ -42,26 +42,29 @@ export default async function DashboardLayout({
   const userId = (session.user as any).id;
   const userName = (session.user as any).name || "User";
   const userEmail = (session.user as any).email || "";
-  const isTeamRole = isOperationalAccessRole(userRole) || ["FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole);
+  const isTeamRole =
+    isOperationalAccessRole(userRole) ||
+    ["FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"].includes(userRole);
 
   return (
     <div data-portal="dashboard" className="min-h-screen bg-gray-50">
       {/* Professional Sidebar - Matches Pencil Design */}
-      <ProfessionalSidebar 
+      <ProfessionalSidebar
         userRole={userRole}
         userName={userName}
         userEmail={userEmail}
       />
 
-      {/* Main Content Area - 240px left padding for sidebar */}
-      <main id="main-content" className="min-h-screen pl-60">
+      {/* Main Content Area - desktop sidebar, mobile top/bottom navigation */}
+      <main
+        id="main-content"
+        className="min-h-screen pb-24 pt-16 md:pb-0 md:pl-60 md:pt-0"
+      >
         {children}
       </main>
 
       {/* Support Chat Bubble - only for non-team users */}
-      {!isTeamRole && (
-        <SupportChatBubble userId={userId} userName={userName} />
-      )}
+      {!isTeamRole && <SupportChatBubble userId={userId} userName={userName} />}
     </div>
   );
 }
