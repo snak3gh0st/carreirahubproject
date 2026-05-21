@@ -297,11 +297,11 @@ export function OperationalHubSection({
   });
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6">
-        <section className="bg-white rounded-2xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between gap-3 mb-5">
-            <div>
+    <div className="space-y-5 md:space-y-6">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:gap-6">
+        <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <h2 className="text-base font-display font-semibold text-brand-verde">
                 Perfil operacional
               </h2>
@@ -313,14 +313,14 @@ export function OperationalHubSection({
               type="button"
               onClick={() => saveProfile.mutate()}
               disabled={saveProfile.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-verde text-white text-xs font-semibold hover:opacity-90 disabled:opacity-50"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50 sm:w-auto"
             >
               <Save className="h-3.5 w-3.5" />
               {saveProfile.isPending ? "Salvando..." : "Salvar"}
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <label className="text-xs font-medium text-gray-600">
               OPT
               <select
@@ -411,7 +411,7 @@ export function OperationalHubSection({
             </label>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[
               ["boardUrl", "Board URL"],
               ["notionUrl", "Notion URL"],
@@ -453,12 +453,12 @@ export function OperationalHubSection({
           </label>
         </section>
 
-        <section className="bg-white rounded-2xl border border-gray-200 p-6">
+        <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           <h2 className="text-base font-display font-semibold text-brand-verde flex items-center gap-2">
             <CalendarDays className="h-4 w-4" />
             Sinais rápidos
           </h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 min-[420px]:grid-cols-2">
             <div className="rounded-xl bg-gray-50 p-4">
               <p className="text-xs text-gray-400">Renovação</p>
               <p className="text-sm font-semibold text-gray-900 mt-1">
@@ -493,7 +493,7 @@ export function OperationalHubSection({
                   href={value}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:border-brand-verde/40 hover:text-brand-verde"
+                  className="flex min-h-10 items-center gap-2 break-all rounded-lg border border-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:border-brand-verde/40 hover:text-brand-verde"
                 >
                   <Link2 className="h-3.5 w-3.5" />
                   {key === "boardUrl"
@@ -510,22 +510,22 @@ export function OperationalHubSection({
         </section>
       </div>
 
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <FileText className="h-4 w-4 text-brand-verde" />
           <h2 className="text-base font-display font-semibold text-brand-verde">
             CV, material e documentos
           </h2>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-[0.95fr_1.05fr] gap-5">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <form
             onSubmit={(e) => {
               e.preventDefault();
               uploadDocument.mutate();
             }}
-            className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-3"
+            className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-3 sm:p-4"
           >
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <select
                 value={documentState.kind}
                 onChange={(e) => setDocumentState((s) => ({ ...s, kind: e.target.value }))}
@@ -586,7 +586,7 @@ export function OperationalHubSection({
                 type="file"
                 accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
                 onChange={(e) => setDocumentState((s) => ({ ...s, file: e.target.files?.[0] ?? null }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
               />
             )}
             <textarea
@@ -599,7 +599,7 @@ export function OperationalHubSection({
             <button
               type="submit"
               disabled={uploadDocument.isPending}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+              className="inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:w-auto"
             >
               <Upload className="h-3.5 w-3.5" />
               {uploadDocument.isPending ? "Subindo..." : "Salvar documento"}
@@ -611,12 +611,12 @@ export function OperationalHubSection({
               <p className="text-sm text-gray-400">Nenhum documento operacional salvo ainda.</p>
             ) : (
               documents.map((document) => (
-                <div key={document.id} className="py-3 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
+                <div key={document.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-semibold text-gray-900">
                       {document.title || document.filename}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="mt-0.5 break-words text-xs text-gray-400">
                       {formatKind(document.kind)} · v{document.version} · {document.status} · {document.visibility === "STUDENT_VISIBLE" ? "visível ao aluno" : "interno"} ·{" "}
                       {format(new Date(document.uploadedAt), "dd/MM/yyyy")}
                     </p>
@@ -625,13 +625,13 @@ export function OperationalHubSection({
                     )}
                   </div>
                   {document.resourceType === "EXTERNAL_LINK" && document.externalUrl ? (
-                    <a href={document.externalUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand-verde hover:underline">
+                    <a href={document.externalUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-9 items-center text-xs font-semibold text-brand-verde hover:underline">
                       Abrir
                     </a>
                   ) : (
                     <a
                       href={`/api/storage/local?key=${encodeURIComponent(document.storageKey)}&download=1`}
-                      className="text-xs font-semibold text-brand-verde hover:underline"
+                      className="inline-flex min-h-9 items-center text-xs font-semibold text-brand-verde hover:underline"
                     >
                       Baixar
                     </a>
@@ -643,7 +643,7 @@ export function OperationalHubSection({
         </div>
       </section>
 
-      <section className="bg-white rounded-2xl border border-gray-200 p-6">
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
         <div className="flex items-center gap-2 mb-4">
           <BriefcaseBusiness className="h-4 w-4 text-brand-verde" />
           <h2 className="text-base font-display font-semibold text-brand-verde">
@@ -655,7 +655,7 @@ export function OperationalHubSection({
             e.preventDefault();
             addActivity.mutate();
           }}
-          className="rounded-xl bg-gray-50 border border-gray-100 p-4 grid grid-cols-1 sm:grid-cols-4 gap-3"
+          className="grid grid-cols-1 gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-4"
         >
           <select
             value={activityState.type}
@@ -737,7 +737,7 @@ export function OperationalHubSection({
           <button
             type="submit"
             disabled={addActivity.isPending}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
           >
             <Plus className="h-3.5 w-3.5" />
             {addActivity.isPending ? "Salvando..." : "Registrar"}
@@ -750,19 +750,19 @@ export function OperationalHubSection({
           ) : (
             activities.map((activity) => (
               <div key={activity.id} className="py-3">
-                <p className="text-sm font-semibold text-gray-900">
+                <p className="break-words text-sm font-semibold text-gray-900">
                   {formatActivity(activity.type)}
                   {activity.company ? ` · ${activity.company}` : ""}
                   {activity.roleTitle ? ` · ${activity.roleTitle}` : ""}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="mt-0.5 break-words text-xs text-gray-400">
                   {format(new Date(activity.activityDate), "dd/MM/yyyy")}
                   {activity.status ? ` · ${activity.status.replace("_", " ")}` : ""}
                   {activity.outcome ? ` · ${activity.outcome}` : ""}
                   {activity.jobUrl ? " · com link" : ""}
                   {activity.createdBy?.name ? ` · ${activity.createdBy.name}` : ""}
                 </p>
-                {activity.notes && <p className="text-xs text-gray-500 mt-1">{activity.notes}</p>}
+                {activity.notes && <p className="mt-1 break-words text-xs text-gray-500">{activity.notes}</p>}
               </div>
             ))
           )}

@@ -220,8 +220,8 @@ function getStatusBadge(status: string) {
 function InfoLine({ label, value }: { label: string; value: string | number | null | undefined }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-gray-50 py-2 last:border-0">
-      <span className="text-xs text-gray-400">{label}</span>
-      <span className="max-w-[60%] text-right text-xs font-semibold text-gray-700">{value || "—"}</span>
+      <span className="min-w-0 text-xs text-gray-400">{label}</span>
+      <span className="min-w-0 max-w-[62%] break-words text-right text-xs font-semibold text-gray-700">{value || "—"}</span>
     </div>
   );
 }
@@ -269,7 +269,7 @@ export function StudentProfileClient({
   ].filter(Boolean);
 
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 md:space-y-6 md:p-8">
       {/* Back nav */}
       <Link
         href="/ops/pipeline"
@@ -280,17 +280,17 @@ export function StudentProfileClient({
       </Link>
 
       {/* Header card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 shadow-sm">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 md:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="h-12 w-12 rounded-full bg-brand-verde/10 flex items-center justify-center">
+          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand-verde/10 sm:h-12 sm:w-12">
               <User className="h-6 w-6 text-brand-verde" />
             </div>
-            <div>
-              <h1 className="text-xl font-display font-bold text-brand-verde">
+            <div className="min-w-0">
+              <h1 className="break-words text-lg font-display font-bold text-brand-verde sm:text-xl">
                 {enrollment.customer.name}
               </h1>
-              <p className="text-sm text-gray-500">{enrollment.customer.email}</p>
+              <p className="break-all text-sm text-gray-500">{enrollment.customer.email}</p>
               {enrollment.customer.phone && (
                 <p className="text-sm text-gray-400">{enrollment.customer.phone}</p>
               )}
@@ -309,15 +309,15 @@ export function StudentProfileClient({
               </div>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:justify-end">
             <Link
               href={`/ops/students/${enrollmentId}/portal-preview`}
-              className="inline-flex items-center gap-2 rounded-lg border border-brand-verde/20 bg-brand-verde px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-verde/20 bg-brand-verde px-3 py-2 text-center text-xs font-semibold text-white hover:opacity-90"
             >
               <Eye className="h-3.5 w-3.5" />
               Ver portal do aluno
             </Link>
-            <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${
+            <span className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-center text-xs font-bold ${
               attentionItems.length ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
             }`}>
               {attentionItems.length ? <AlertTriangle className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
@@ -326,7 +326,7 @@ export function StudentProfileClient({
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 md:grid-cols-4 xl:grid-cols-7">
+        <div className="mt-5 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 min-[420px]:grid-cols-2 md:mt-6 md:grid-cols-4 xl:grid-cols-7">
           <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Fase Atual</p>
             <p className="text-sm font-medium text-gray-800 mt-1">
@@ -397,8 +397,8 @@ export function StudentProfileClient({
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <Clock className="h-4 w-4" />
             Jornada
@@ -408,7 +408,7 @@ export function StudentProfileClient({
           <InfoLine label="No show" value={noShowSessions} />
           <InfoLine label="Remarcadas" value={rescheduledSessions} />
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <User className="h-4 w-4" />
             Dados do cliente
@@ -420,7 +420,7 @@ export function StudentProfileClient({
           <InfoLine label="Endereço" value={[enrollment.customer.address, enrollment.customer.city, enrollment.customer.country].filter(Boolean).join(", ")} />
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <WalletCards className="h-4 w-4" />
             Contrato & financeiro
@@ -448,7 +448,7 @@ export function StudentProfileClient({
           <InfoLine label="Aberto QB" value={formatMoney(enrollment.customer.qbBalance)} />
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <BriefcaseBusiness className="h-4 w-4" />
             Testes & mock
@@ -460,7 +460,7 @@ export function StudentProfileClient({
           <InfoLine label="Score mock" value={latestMock?.overallScore ? `${latestMock.overallScore}/100` : "—"} />
           <InfoLine label="Sinal de contratação" value={latestMock?.hiringSignal} />
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <Eye className="h-4 w-4" />
             Visível ao aluno
@@ -472,12 +472,12 @@ export function StudentProfileClient({
         </div>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
           <ListChecks className="h-4 w-4" />
           Como isso alimenta o Hub do cliente
         </h2>
-        <div className="grid gap-3 text-xs text-gray-600 md:grid-cols-4">
+        <div className="grid gap-3 text-xs text-gray-600 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg bg-gray-50 p-3">
             <p className="font-semibold text-gray-900">Formulários</p>
             <p className="mt-1">{pendingHubTasks} tarefas liberadas pelo operacional.</p>
@@ -506,7 +506,7 @@ export function StudentProfileClient({
       />
 
       {/* Phase timeline */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
         <h2 className="text-base font-display font-semibold text-brand-verde mb-4 flex items-center gap-2">
           <Clock className="h-4 w-4" />
           Histórico de Fases
@@ -514,11 +514,11 @@ export function StudentProfileClient({
         {enrollment.transitions.length === 0 ? (
           <p className="text-sm text-gray-400">Nenhuma transição registrada ainda.</p>
         ) : (
-          <ol className="relative border-l border-gray-200 space-y-4 pl-6">
+          <ol className="relative space-y-4 border-l border-gray-200 pl-5 sm:pl-6">
             {enrollment.transitions.map((t) => (
               <li key={t.id} className="relative">
                 <span className="absolute -left-[1.4rem] top-1 h-3 w-3 rounded-full bg-brand-verde/20 border-2 border-brand-verde" />
-                <p className="text-sm font-medium text-gray-800">
+                <p className="break-words text-sm font-medium text-gray-800">
                   {t.fromPhase ? `${t.fromPhase.label} → ` : "Início → "}
                   {t.toPhase.label}
                 </p>
@@ -540,7 +540,7 @@ export function StudentProfileClient({
       />
 
       {data.mockInterviews.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">
           <h2 className="mb-4 flex items-center gap-2 text-base font-display font-semibold text-brand-verde">
             <FileText className="h-4 w-4" />
             Mock interviews AI
@@ -548,8 +548,8 @@ export function StudentProfileClient({
           <div className="space-y-3">
             {data.mockInterviews.map((mock) => (
               <div key={mock.id} className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold text-gray-900">{mock.targetRole || "Mock interview"}</p>
                     <p className="text-xs text-gray-400">
                       {formatDate(mock.completedAt ?? mock.createdAt)} · {mock.interviewFocus || "Treinamento geral"}

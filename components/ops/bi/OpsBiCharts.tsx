@@ -48,11 +48,11 @@ function ChartTooltip({ active, payload, label }: any) {
 function ChartLegend({ payload }: any) {
   if (!payload?.length) return null;
   return (
-    <div className="flex flex-wrap justify-center gap-4 pt-2">
+    <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 pt-2">
       {payload.map((entry: any) => (
-        <div key={entry.value} className="flex items-center gap-1.5 text-xs">
+        <div key={entry.value} className="flex min-w-0 items-center gap-1.5 text-xs">
           <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
-          <span className="text-gray-500">{entry.value}</span>
+          <span className="break-words text-gray-500">{entry.value}</span>
         </div>
       ))}
     </div>
@@ -69,29 +69,29 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-      <div className="border-b border-gray-50 px-5 py-4">
+    <section className="min-w-0 rounded-xl border border-gray-100 bg-white shadow-sm">
+      <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
         <h2 className="font-display text-base font-bold text-gray-900">{title}</h2>
         <p className="text-xs text-gray-400">{subtitle}</p>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 sm:p-5">{children}</div>
     </section>
   );
 }
 
 export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid min-w-0 gap-5 xl:grid-cols-2 xl:gap-6">
       <Panel
         title="Produção operacional"
         subtitle="Sessões, mock interviews e recolocações nos últimos 6 meses."
       >
-        <div className="h-80 w-full">
+        <div className="h-72 w-full sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data.trend} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+            <LineChart data={data.trend} margin={{ top: 16, right: 8, bottom: 12, left: -12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
-              <XAxis dataKey="month" stroke="var(--gray-500)" fontSize={12} />
-              <YAxis stroke="var(--gray-500)" fontSize={12} allowDecimals={false} />
+              <XAxis dataKey="month" stroke="var(--gray-500)" fontSize={10} tickMargin={8} />
+              <YAxis stroke="var(--gray-500)" fontSize={10} allowDecimals={false} width={28} />
               <Tooltip content={<ChartTooltip />} />
               <Legend content={<ChartLegend />} />
               <Line type="monotone" name="Sessões" dataKey="sessions" stroke="var(--brand-verde)" strokeWidth={2} isAnimationActive={false} />
@@ -103,7 +103,8 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
       </Panel>
 
       <Panel title="Alunos por fase" subtitle="Volume ativo e quantidade em risco por área/fase.">
-        <div className="h-80 w-full">
+        <div className="h-80 w-full overflow-x-auto">
+          <div className="h-full min-w-[520px] sm:min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data.phaseDistribution} layout="vertical" margin={{ top: 8, right: 20, bottom: 8, left: 88 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
@@ -115,11 +116,13 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
               <Bar name="Risco" dataKey="risk" fill="var(--error-600)" radius={[0, 4, 4, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </Panel>
 
       <Panel title="Entregáveis por tipo" subtitle="Materiais/documentos registrados no Hub.">
-        <div className="h-80 w-full">
+        <div className="h-80 w-full overflow-x-auto">
+          <div className="h-full min-w-[560px] sm:min-w-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data.documentMix} margin={{ top: 20, right: 20, bottom: 44, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
@@ -129,16 +132,17 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
               <Bar name="Quantidade" dataKey="value" fill="var(--info-500)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
+          </div>
         </div>
       </Panel>
 
       <Panel title="Aplicações e entrevistas" subtitle="Distribuição por status operacional.">
-        <div className="h-80 w-full">
+        <div className="h-72 w-full sm:h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            <PieChart margin={{ top: 16, right: 8, bottom: 16, left: 8 }}>
               <Tooltip content={<ChartTooltip />} />
               <Legend content={<ChartLegend />} />
-              <Pie data={data.activityStatusMix} dataKey="value" nameKey="name" innerRadius={64} outerRadius={104} paddingAngle={2} isAnimationActive={false}>
+              <Pie data={data.activityStatusMix} dataKey="value" nameKey="name" innerRadius={46} outerRadius={82} paddingAngle={2} isAnimationActive={false}>
                 {data.activityStatusMix.map((entry, index) => (
                   <Cell key={entry.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                 ))}
@@ -156,8 +160,8 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
             return (
               <div key={row.owner}>
                 <div className="mb-1 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-gray-800">{row.owner}</p>
-                  <p className="text-xs text-gray-400">{row.students} alunos · {row.sessions} sessões</p>
+                  <p className="min-w-0 break-words text-sm font-semibold text-gray-800">{row.owner}</p>
+                  <p className="flex-shrink-0 text-xs text-gray-400">{row.students} alunos · {row.sessions} sessões</p>
                 </div>
                 <div className="h-2 rounded-full bg-gray-100">
                   <div className="h-full rounded-full bg-brand-verde" style={{ width: `${width}%` }} />
@@ -177,16 +181,16 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
               <a
                 key={row.enrollmentId}
                 href={`/ops/students/${row.enrollmentId}`}
-                className="flex items-center gap-3 py-3 hover:bg-gray-50"
+                className="flex flex-col gap-2 py-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600">
+                <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-red-50 text-xs font-bold text-red-600">
                   {row.riskScore}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-gray-900">{row.studentName}</p>
-                  <p className="text-xs text-gray-400">{row.phase} · {row.owner}</p>
+                  <p className="break-words text-xs text-gray-400">{row.phase} · {row.owner}</p>
                 </div>
-                <span className="text-xs font-semibold text-gray-400">
+                <span className="text-xs font-semibold text-gray-400 sm:text-right">
                   {row.daysSinceLastSession === null ? "Sem sessão" : `${row.daysSinceLastSession}d sem sessão`}
                 </span>
               </a>

@@ -23,14 +23,14 @@ export function OpsKpiCard({
   } as const;
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+    <div className="min-w-0 rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wide text-gray-400">{label}</p>
-          <p className="mt-2 text-2xl font-display font-bold text-gray-900">{value}</p>
-          {detail && <p className="mt-1 text-xs text-gray-500">{detail}</p>}
+          <p className="mt-2 break-words text-2xl font-display font-bold text-gray-900">{value}</p>
+          {detail && <p className="mt-1 break-words text-xs text-gray-500">{detail}</p>}
         </div>
-        <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${tones[tone]}`}>
+        <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${tones[tone]}`}>
           <Icon className="h-4 w-4" />
         </div>
       </div>

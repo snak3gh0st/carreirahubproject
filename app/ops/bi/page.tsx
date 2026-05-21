@@ -120,11 +120,11 @@ export default async function OpsBiPage() {
   const maxPhaseCount = Math.max(...phases.map((phase) => phase.enrollments.length), 1);
 
   return (
-    <div className="p-6 md:p-8">
-      <div className="mb-8">
+    <div className="min-w-0 px-4 py-5 sm:px-6 md:p-8">
+      <div className="mb-6 md:mb-8">
         <div className="mb-1 flex items-center gap-3">
-          <BarChart3 className="h-7 w-7 text-brand-verde" />
-          <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">
+          <BarChart3 className="h-6 w-6 flex-shrink-0 text-brand-verde sm:h-7 sm:w-7" />
+          <h1 className="text-2xl font-display font-bold tracking-tight text-brand-verde sm:text-3xl">
             BI Operacional
           </h1>
         </div>
@@ -133,7 +133,7 @@ export default async function OpsBiPage() {
         </p>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+      <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <OpsKpiCard label="Ativos" value={biDashboard.kpis.activeStudents} detail="alunos em programa" icon={UsersRound} tone="info" />
         <OpsKpiCard label="Em risco" value={biDashboard.kpis.atRiskStudents} detail="precisam de ação" icon={AlertTriangle} tone={biDashboard.kpis.atRiskStudents ? "danger" : "success"} />
         <OpsKpiCard label="Sessões mês" value={biDashboard.kpis.sessionsThisMonth} detail="produção registrada" icon={TrendingUp} tone="success" />
@@ -146,7 +146,7 @@ export default async function OpsBiPage() {
         <OpsBiCharts data={biDashboard} />
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[
           { label: "Alunos ativos", value: activeCount, icon: UsersRound, color: "text-brand-verde", bg: "bg-brand-verde/10" },
           { label: "Em risco", value: riskRows.length, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
@@ -156,7 +156,7 @@ export default async function OpsBiPage() {
         ].map((item) => {
           const Icon = item.icon;
           return (
-            <div key={item.label} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div key={item.label} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
               <div className="mb-3 flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${item.bg}`}>
                   <Icon className={`h-5 w-5 ${item.color}`} />
@@ -169,28 +169,28 @@ export default async function OpsBiPage() {
         })}
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Pausados</p>
           <p className="mt-2 text-2xl font-display font-bold text-orange-600">{pausedCount}</p>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Concluidos</p>
           <p className="mt-2 text-2xl font-display font-bold text-gray-900">{completedCount}</p>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Formularios pendentes</p>
           <p className="mt-2 text-2xl font-display font-bold text-amber-600">{pendingForms}</p>
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:gap-6">
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-50 px-5 py-4">
+          <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
             <h2 className="font-display text-base font-bold text-gray-900">Distribuicao por area/fase</h2>
             <p className="text-xs text-gray-400">Volume, SLA e progresso medio por fase.</p>
           </div>
-          <div className="space-y-4 p-5">
+          <div className="space-y-4 p-4 sm:p-5">
             {phases.map((phase) => {
               const phaseRows = rows.filter((row) => row.phase.id === phase.id);
               const phaseAvg = phaseRows.length > 0
@@ -201,14 +201,14 @@ export default async function OpsBiPage() {
 
               return (
                 <div key={phase.id}>
-                  <div className="mb-2 flex items-center justify-between gap-3">
+                  <div className="mb-2 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-gray-800">{phase.label}</p>
-                      <p className="text-xs text-gray-400">
+                      <p className="break-words text-xs text-gray-400">
                         {phase.enrollments.length} aluno{phase.enrollments.length !== 1 ? "s" : ""} · {phaseRisk} em risco · checklist {pct(phaseAvg)}
                       </p>
                     </div>
-                    <span className="text-xs font-bold text-brand-verde">{phase.slaDays}d SLA</span>
+                    <span className="text-xs font-bold text-brand-verde sm:text-right">{phase.slaDays}d SLA</span>
                   </div>
                   <div className="h-3 overflow-hidden rounded-full bg-gray-100">
                     <div className="h-full rounded-full bg-brand-verde" style={{ width: `${width}%` }} />
@@ -220,7 +220,7 @@ export default async function OpsBiPage() {
         </section>
 
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-50 px-5 py-4">
+          <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
             <h2 className="font-display text-base font-bold text-gray-900">Alunos que precisam de acao</h2>
             <p className="text-xs text-gray-400">Ordenado por risco operacional.</p>
           </div>
@@ -238,8 +238,8 @@ export default async function OpsBiPage() {
                     {row.riskScore}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-gray-900">{row.enrollment.customer.name}</p>
-                    <p className="text-xs text-gray-400">{row.phase.label} · {row.enrollment.assignedTo.name ?? "Sem responsavel"}</p>
+                    <p className="break-words text-sm font-semibold text-gray-900">{row.enrollment.customer.name}</p>
+                    <p className="break-words text-xs text-gray-400">{row.phase.label} · {row.enrollment.assignedTo.name ?? "Sem responsavel"}</p>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {row.overdueSla && (
                         <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
@@ -266,9 +266,9 @@ export default async function OpsBiPage() {
         </section>
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+      <div className="mt-6 grid min-w-0 gap-5 xl:grid-cols-2 xl:gap-6">
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-50 px-5 py-4">
+          <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
             <h2 className="font-display text-base font-bold text-gray-900">Debitos que afetam operacao</h2>
             <p className="text-xs text-gray-400">Alunos ativos com saldo QuickBooks aberto.</p>
           </div>
@@ -277,13 +277,13 @@ export default async function OpsBiPage() {
               <div className="p-10 text-center text-sm text-gray-400">Nenhum debito aberto em alunos ativos.</div>
             ) : (
               debtRows.slice(0, 8).map((row) => (
-                <Link key={row.enrollment.id} href={`/ops/students/${row.enrollment.id}`} className="flex items-center gap-3 p-4 hover:bg-gray-50">
-                  <WalletCards className="h-5 w-5 text-amber-600" />
+                <Link key={row.enrollment.id} href={`/ops/students/${row.enrollment.id}`} className="flex flex-col gap-2 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3">
+                  <WalletCards className="h-5 w-5 flex-shrink-0 text-amber-600" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-gray-900">{row.enrollment.customer.name}</p>
-                    <p className="text-xs text-gray-400">{row.phase.label}</p>
+                    <p className="break-words text-sm font-semibold text-gray-900">{row.enrollment.customer.name}</p>
+                    <p className="break-words text-xs text-gray-400">{row.phase.label}</p>
                   </div>
-                  <span className="text-sm font-bold text-amber-700">{money(row.debt)}</span>
+                  <span className="text-sm font-bold text-amber-700 sm:text-right">{money(row.debt)}</span>
                 </Link>
               ))
             )}
@@ -291,11 +291,11 @@ export default async function OpsBiPage() {
         </section>
 
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-50 px-5 py-4">
+          <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
             <h2 className="font-display text-base font-bold text-gray-900">Cadencia de sessoes</h2>
             <p className="text-xs text-gray-400">Alunos sem sessao recente por faixa.</p>
           </div>
-          <div className="grid gap-3 p-5 sm:grid-cols-3">
+          <div className="grid gap-3 p-4 min-[420px]:grid-cols-3 sm:p-5">
             {[
               { label: "Sem registro", value: rows.filter((row) => row.daysSinceLastSession === null).length },
               { label: "7+ dias", value: rows.filter((row) => (row.daysSinceLastSession ?? 0) >= 7).length },
