@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { deleteInternalUser } from "@/lib/team/delete-internal-user";
 import { UserRole } from "@prisma/client";
 import { isOperationalManagerRole, isOperationalTeamRole } from "@/lib/roles";
 
@@ -86,9 +87,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Deactivate user before deleting" }, { status: 403 });
     }
 
-    await prisma.user.delete({ where: { id: params.id } });
+    const result = await deleteInternalUser({
+      targetUserId: params.id,
+      replacementUserId: adminId,
+    });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, summary: result.summary });
   } catch (error) {
     console.error("[TEAM] DELETE error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
