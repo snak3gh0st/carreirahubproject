@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  X,
   UserRound,
   WalletCards,
 } from "lucide-react";
@@ -952,7 +953,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
         </div>
       </div>
 
-      <div className="min-w-0 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
+      <div className="hidden min-w-0 xl:block xl:min-h-0 xl:overflow-y-auto xl:pr-1">
         {selected ? (
           <StudentDetail
             phase={selected.phase}
@@ -967,6 +968,43 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
           </div>
         )}
       </div>
+
+      {selectedId && selected && (
+        <div className="fixed inset-0 z-50 bg-gray-950/35 xl:hidden" role="dialog" aria-modal="true">
+          <button
+            type="button"
+            className="absolute inset-0 h-full w-full cursor-default"
+            aria-label="Fechar detalhe do aluno"
+            onClick={() => setSelectedId(null)}
+          />
+          <div className="absolute inset-x-0 bottom-0 max-h-[86dvh] overflow-hidden rounded-t-3xl bg-gray-50 shadow-2xl">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Detalhe do aluno</p>
+                <p className="truncate text-sm font-display font-bold text-gray-900">
+                  {selected.enrollment.customer.name}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-500"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[calc(86dvh-64px)] overflow-y-auto p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+              <StudentDetail
+                phase={selected.phase}
+                enrollment={selected.enrollment}
+                phases={phases}
+                currentUserRole={currentUserRole}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
