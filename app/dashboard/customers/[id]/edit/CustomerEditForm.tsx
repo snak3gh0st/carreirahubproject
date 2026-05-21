@@ -25,10 +25,11 @@ interface CustomerEditFormProps {
 
 export function CustomerEditForm({ customer }: CustomerEditFormProps) {
   const router = useRouter();
+  const ssnLast4 = customer.ssn?.replace(/\D/g, "").slice(-4) || "";
   const [form, setForm] = useState({
     name: customer.name || "",
     phone: customer.phone || "",
-    ssn: customer.ssn || "",
+    ssn: ssnLast4,
     passport: customer.passport || "",
     cpf: customer.cpf || "",
     address: customer.address || "",
@@ -188,13 +189,16 @@ export function CustomerEditForm({ customer }: CustomerEditFormProps) {
               type="text"
               value={form.ssn}
               onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                const val = e.target.value.replace(/\D/g, '').slice(-4);
                 handleChange("ssn", val);
               }}
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="1234"
               maxLength={4}
             />
+            <p className="text-xs text-gray-500 mt-1">
+              O SSN e protegido no sistema; apenas os 4 ultimos digitos ficam visiveis.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">

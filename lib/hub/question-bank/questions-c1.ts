@@ -212,11 +212,12 @@ export const C1_QUESTIONS: BankQuestion[] = [
     question: 'Which sentence contains an error?',
     options: [
       '"The committee has made its decision."',
-      '"Neither of the candidates were qualified for the role."',
+      '"The series of workshops were scheduled for June."',
       '"Everyone on the team was informed about the change."',
       '"The staff has been notified of the new policy."',
     ],
     correctIndex: 1,
+    explanation: 'The subject "series" is singular, so the correct verb would be "was scheduled."',
   },
   {
     id: 'c1_errid_03',

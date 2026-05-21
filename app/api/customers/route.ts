@@ -7,6 +7,7 @@ import { integrationLogger } from "@/lib/utils/logger";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { z } from "zod";
+import { normalizeSsnLast4 } from "@/lib/customers/sensitive-identification";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +31,10 @@ const createCustomerSchema = z.object({
   quickbooks_id: z.string().optional(),
   metadata: z.any().optional(),
 }).superRefine((data, ctx) => {
-  if (!data.passport?.trim() && !data.cpf?.trim()) {
+  if (!data.ssn?.trim() && !data.passport?.trim() && !data.cpf?.trim()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
-      message: "Informe passaporte ou CPF",
+      message: "Informe SSN, passaporte ou CPF",
       path: ["passport"],
     });
   }
@@ -169,6 +170,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = createCustomerSchema.parse(body);
+    const ssnLast4 = normalizeSsnLast4(data.ssn);
 
     const userId = (session.user as any).id as string;
 
@@ -178,7 +180,7 @@ export async function POST(request: NextRequest) {
       name: data.name,
       phone: data.phone,
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-      ssn: data.ssn,
+      ssn: ssnLast4,
       passport: data.passport,
       cpf: data.cpf,
       address: data.address,

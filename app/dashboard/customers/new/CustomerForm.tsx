@@ -31,6 +31,10 @@ export function NewCustomerForm() {
     setSuccess(null);
   };
 
+  const handleSsnChange = (value: string) => {
+    handleChange("ssn", value.replace(/\D/g, "").slice(-4));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
@@ -48,7 +52,7 @@ export function NewCustomerForm() {
           name: form.name,
           phone: form.phone || undefined,
           dateOfBirth: form.dateOfBirth || undefined,
-          ssn: form.ssn || undefined,
+          ssn: form.identificationType === "ssn" ? form.ssn : undefined,
           passport: form.identificationType === "passport" ? form.passport : undefined,
           cpf: form.identificationType === "cpf" ? form.cpf : undefined,
           address: form.address || undefined,
@@ -214,6 +218,7 @@ export function NewCustomerForm() {
                 setForm((prev) => ({
                   ...prev,
                   identificationType: nextType,
+                  ssn: nextType === "ssn" ? prev.ssn : "",
                   passport: nextType === "passport" ? prev.passport : "",
                   cpf: nextType === "cpf" ? prev.cpf : "",
                 }));
@@ -223,11 +228,31 @@ export function NewCustomerForm() {
               className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
+              <option value="ssn">SSN</option>
               <option value="passport">Passaporte</option>
               <option value="cpf">CPF</option>
             </select>
           </div>
-          {form.identificationType === "passport" ? (
+          {form.identificationType === "ssn" ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                SSN (ultimos 4 digitos) <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.ssn}
+                onChange={(e) => handleSsnChange(e.target.value)}
+                className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="1234"
+                maxLength={4}
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                O SSN e protegido no sistema; apenas os 4 ultimos digitos ficam visiveis.
+              </p>
+            </div>
+          ) : form.identificationType === "passport" ? (
             <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Passaporte <span className="text-red-500">*</span>

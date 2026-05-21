@@ -34,3 +34,18 @@ export interface TestResult {
   displayLevel: string;
   displayLevelPt: string;
 }
+
+export interface PlacementTestIncorrectReviewItem {
+  id: string;
+  position: number;
+  section: number;
+  skillType: SkillType;
+  question: string;
+  options: string[];
+  passage?: string;
+  explanation?: string;
+  selectedIndex: number | null;
+  selectedOption: string | null;
+  correctIndex: number;
+  correctOption: string;
+}

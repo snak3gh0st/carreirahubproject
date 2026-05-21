@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { quickbooksService } from "@/lib/services/quickbooks.service";
+import { normalizeSsnLast4 } from "@/lib/customers/sensitive-identification";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+const CUSTOMER_MANAGEMENT_ROLES = ["ADMIN", "FINANCE", "COMMERCIAL", "HEAD_COMERCIAL"];
+
+async function requireCustomerManagementAccess() {
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+  }
+
+  const userRole = (session.user as any).role;
+  if (!CUSTOMER_MANAGEMENT_ROLES.includes(userRole)) {
+    return { response: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
+  }
+
+  return { session };
+}
 
 const updateCustomerSchema = z.object({
   name: z.string().min(1).optional(),
@@ -28,6 +47,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const access = await requireCustomerManagementAccess();
+    if ("response" in access) return access.response;
+
     const customer = await prisma.customer.findUnique({
       where: { id: params.id },
       include: {
@@ -69,13 +91,20 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const access = await requireCustomerManagementAccess();
+    if ("response" in access) return access.response;
+
     const body = await request.json();
     const data = updateCustomerSchema.parse(body);
+    const updateData = {
+      ...data,
+      ...(data.ssn !== undefined ? { ssn: normalizeSsnLast4(data.ssn) ?? null } : {}),
+    };
 
     // Update customer in database
     const customer = await prisma.customer.update({
       where: { id: params.id },
-      data,
+      data: updateData,
     });
 
     // Prepare QuickBooks sync response
@@ -166,4 +195,3 @@ export async function PATCH(
     );
   }
 }
-

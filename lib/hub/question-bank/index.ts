@@ -2,7 +2,12 @@
 // Question Bank — Loader, Randomizer, Scoring, and Type Re-exports
 // ---------------------------------------------------------------------------
 
-import { BankQuestion, ClientQuestion, TestResult } from './types';
+import {
+  BankQuestion,
+  ClientQuestion,
+  PlacementTestIncorrectReviewItem,
+  TestResult,
+} from './types';
 import { A1_QUESTIONS } from './questions-a1';
 import { A2_QUESTIONS } from './questions-a2';
 import { B1_QUESTIONS } from './questions-b1';
@@ -10,7 +15,12 @@ import { B2_QUESTIONS } from './questions-b2';
 import { C1_QUESTIONS } from './questions-c1';
 import { C2_QUESTIONS } from './questions-c2';
 
-export type { BankQuestion, ClientQuestion, TestResult };
+export type {
+  BankQuestion,
+  ClientQuestion,
+  PlacementTestIncorrectReviewItem,
+  TestResult,
+};
 
 // ---------------------------------------------------------------------------
 // Display-level mapping
@@ -92,6 +102,55 @@ export function toClientQuestion(q: BankQuestion): ClientQuestion {
     client.passage = q.passage;
   }
   return client;
+}
+
+// ---------------------------------------------------------------------------
+// Result review
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns only the incorrect or unanswered questions from a completed test,
+ * preserving the original served order for result-page review.
+ */
+export function buildPlacementTestIncorrectReview(
+  questionIds: string[],
+  answers: Record<string, number>,
+): PlacementTestIncorrectReviewItem[] {
+  const map = getBankMap();
+
+  return questionIds.flatMap((id, index) => {
+    const question = map.get(id);
+    if (!question) return [];
+
+    const rawSelected = answers[id];
+    const selectedIndex =
+      Number.isInteger(rawSelected) &&
+      rawSelected >= 0 &&
+      rawSelected < question.options.length
+        ? rawSelected
+        : null;
+
+    if (selectedIndex === question.correctIndex) {
+      return [];
+    }
+
+    return [
+      {
+        id: question.id,
+        position: index + 1,
+        section: question.section,
+        skillType: question.skillType,
+        question: question.question,
+        options: question.options,
+        passage: question.passage,
+        explanation: question.explanation,
+        selectedIndex,
+        selectedOption: selectedIndex === null ? null : question.options[selectedIndex] || null,
+        correctIndex: question.correctIndex,
+        correctOption: question.options[question.correctIndex] || "",
+      },
+    ];
+  });
 }
 
 // ---------------------------------------------------------------------------

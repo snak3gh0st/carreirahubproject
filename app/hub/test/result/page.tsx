@@ -5,6 +5,7 @@ import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
 import { canStartPlacementTest } from "@/lib/hub/placement-test-policy";
+import { buildPlacementTestIncorrectReview } from "@/lib/hub/question-bank";
 
 const LEVEL_COLORS: Record<string, { bg: string; text: string }> = {
   Beginner: { bg: "#FEF2F2", text: "#DC2626" },
@@ -20,6 +21,22 @@ function getPayload(token: string) {
   } catch {
     return null;
   }
+}
+
+function normalizeStoredAnswers(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const normalized: Record<string, number> = {};
+
+  for (const [questionId, rawAnswer] of Object.entries(value)) {
+    if (typeof rawAnswer === "number" && Number.isInteger(rawAnswer)) {
+      normalized[questionId] = rawAnswer;
+    }
+  }
+
+  return normalized;
 }
 
 export default async function HubTestResultPage() {
@@ -55,6 +72,10 @@ export default async function HubTestResultPage() {
   const sectionLabels = ["A1-A2", "A2-B1", "B1-B2", "B2-C1", "C1-C2"];
   const levelColor = LEVEL_COLORS[result.displayLevel] || LEVEL_COLORS.Beginner!;
   const minutes = result.timeSpentSeconds ? Math.round(result.timeSpentSeconds / 60) : null;
+  const incorrectReview = buildPlacementTestIncorrectReview(
+    result.questionIds,
+    normalizeStoredAnswers(result.answers)
+  );
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -108,6 +129,82 @@ export default async function HubTestResultPage() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-2">
+          {t(lang, "testResult.reviewWrongAnswers")}
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {t(lang, "testResult.reviewDescription")}
+        </p>
+
+        {incorrectReview.length === 0 ? (
+          <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-4">
+            <p className="text-sm font-semibold text-green-700">
+              {t(lang, "testResult.allCorrectTitle")}
+            </p>
+            <p className="mt-1 text-sm text-green-700/90">
+              {t(lang, "testResult.allCorrectDescription")}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {incorrectReview.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-2xl border border-orange-100 bg-orange-50/60 p-5"
+              >
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs font-semibold text-gray-700">
+                    {t(lang, "testResult.questionLabel")} {item.position}
+                  </span>
+                  <span className="inline-flex rounded-full bg-white px-3 py-1 text-xs text-gray-500">
+                    {t(lang, "testResult.section")} {item.section}
+                  </span>
+                </div>
+
+                {item.passage ? (
+                  <div className="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                      {t(lang, "testResult.readingPassage")}
+                    </p>
+                    <p className="text-sm leading-6 text-gray-600">{item.passage}</p>
+                  </div>
+                ) : null}
+
+                <p className="text-sm font-semibold leading-6 text-gray-900">{item.question}</p>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-red-100 bg-white px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-red-500 mb-1.5">
+                      {t(lang, "testResult.yourAnswer")}
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      {item.selectedOption || t(lang, "testResult.notAnswered")}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-green-100 bg-white px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-green-600 mb-1.5">
+                      {t(lang, "testResult.correctAnswer")}
+                    </p>
+                    <p className="text-sm font-medium text-gray-900">{item.correctOption}</p>
+                  </div>
+                </div>
+
+                {item.explanation ? (
+                  <div className="mt-3 rounded-2xl border border-gray-100 bg-white px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+                      {t(lang, "testResult.explanation")}
+                    </p>
+                    <p className="text-sm leading-6 text-gray-600">{item.explanation}</p>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Actions */}
