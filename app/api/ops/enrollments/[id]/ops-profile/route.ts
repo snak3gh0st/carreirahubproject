@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
 import { isOperationalAccessRole } from "@/lib/roles";
+import { OPS_SENIORITY_LEVELS } from "@/lib/ops/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ const nullableDate = z
 
 const profileSchema = z.object({
   optStatus: nullableString,
+  seniority: z.enum(OPS_SENIORITY_LEVELS).nullable().optional(),
   coachCohort: nullableString,
   classAttendancePercent: z
     .union([z.number(), z.string(), z.null()])
@@ -42,10 +44,22 @@ const profileSchema = z.object({
   boardUrl: nullableString,
   notionUrl: nullableString,
   linkedinUrl: nullableString,
+  canvaUrl: nullableString,
+  studentMaterialUrl: nullableString,
   interviewRecordingFolderUrl: nullableString,
   contractPdfKey: nullableString,
   renewalDate: nullableDate,
   renewalState: nullableString,
+  renewalAdjustmentReason: nullableString,
+  pauseExtensionDays: z
+    .union([z.number(), z.string(), z.null()])
+    .optional()
+    .transform((value) => {
+      if (value === undefined || value === null || value === "") return 0;
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed)) return 0;
+      return Math.max(0, Math.round(parsed));
+    }),
   lastOperationalContactAt: nullableDate,
   notes: nullableString,
 });

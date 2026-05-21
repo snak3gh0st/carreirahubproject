@@ -1090,15 +1090,20 @@ model MentorshipEnrollment {
 model OpsStudentProfile {
   id                          String    @id @default(cuid())
   optStatus                   String?
+  seniority                   String?
   coachCohort                 String?
   classAttendancePercent      Int?
   boardUrl                    String?
   notionUrl                   String?
   linkedinUrl                 String?
+  canvaUrl                    String?
+  studentMaterialUrl          String?
   interviewRecordingFolderUrl String?
   contractPdfKey              String?
   renewalDate                 DateTime?
   renewalState                String    @default("NOT_DUE")
+  renewalAdjustmentReason     String?   @db.Text
+  pauseExtensionDays          Int       @default(0)
   renewalReminder30SentAt     DateTime?
   renewalReminder15SentAt     DateTime?
   renewalReminder7SentAt      DateTime?
@@ -1121,10 +1126,13 @@ model OpsStudentProfile {
 model OpsStudentDocument {
   id            String    @id @default(cuid())
   kind          String
+  resourceType  String    @default("FILE")
+  visibility    String    @default("INTERNAL")
   status        String    @default("UPLOADED")
   title         String?
   filename      String
   storageKey    String
+  externalUrl   String?
   mimeType      String?
   sizeBytes     Int?
   extractedText String?   @db.Text
@@ -1148,6 +1156,7 @@ model OpsStudentDocument {
   @@index([enrollmentId, kind])
   @@index([customerId, uploadedAt])
   @@index([status])
+  @@index([visibility])
   @@map("ops_student_documents")
 }
 
@@ -1160,6 +1169,10 @@ model OpsStudentActivity {
   area         String?
   industry     String?
   source       String?
+  jobUrl       String?
+  salary       String?
+  status       String?
+  visibility   String   @default("INTERNAL")
   outcome      String?
   notes        String?  @db.Text
   metadata     Json?
@@ -1173,13 +1186,17 @@ model OpsStudentActivity {
 
   @@index([enrollmentId, activityDate])
   @@index([type, activityDate])
+  @@index([status])
+  @@index([visibility])
   @@map("ops_student_activities")
 }
 
 model MentorshipSession {
   id          String   @id @default(cuid())
   sessionType String // controlled values per D-12
+  status      String   @default("REALIZADO")
   sessionDate DateTime
+  rescheduleCount Int  @default(0)
   notes       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1192,6 +1209,7 @@ model MentorshipSession {
   @@index([enrollmentId])
   @@index([conductorId])
   @@index([sessionDate])
+  @@index([status])
   @@map("mentorship_sessions")
 }
 
@@ -1205,6 +1223,7 @@ model PhaseTransition {
   fromPhase     MentorshipPhase?     @relation("TransitionFrom", fields: [fromPhaseId], references: [id])
   toPhaseId     String
   toPhase       MentorshipPhase      @relation("TransitionTo", fields: [toPhaseId], references: [id])
+  reason        String?              @db.Text
   triggeredById String
   triggeredBy   User                 @relation("TriggeredTransitions", fields: [triggeredById], references: [id])
 
@@ -1236,6 +1255,8 @@ model PhaseChecklistProgress {
 model OpsStudentComment {
   id        String   @id @default(cuid())
   body      String   @db.Text
+  category  String   @default("SUPORTE")
+  visibility String  @default("INTERNAL")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1246,6 +1267,8 @@ model OpsStudentComment {
 
   @@index([enrollmentId, createdAt])
   @@index([authorId])
+  @@index([category])
+  @@index([visibility])
   @@map("ops_student_comments")
 }
 

@@ -17,15 +17,20 @@ import {
 type OpsProfile = {
   id: string;
   optStatus: string | null;
+  seniority: string | null;
   coachCohort: string | null;
   classAttendancePercent: number | null;
   boardUrl: string | null;
   notionUrl: string | null;
   linkedinUrl: string | null;
+  canvaUrl: string | null;
+  studentMaterialUrl: string | null;
   interviewRecordingFolderUrl: string | null;
   contractPdfKey: string | null;
   renewalDate: string | null;
   renewalState: string;
+  renewalAdjustmentReason?: string | null;
+  pauseExtensionDays?: number | null;
   lastOperationalContactAt: string | null;
   notes: string | null;
 } | null;
@@ -33,10 +38,13 @@ type OpsProfile = {
 type OpsDocument = {
   id: string;
   kind: string;
+  resourceType?: string;
+  visibility?: string;
   status: string;
   title: string | null;
   filename: string;
   storageKey: string;
+  externalUrl?: string | null;
   version: number;
   uploadedAt: string;
   reviewedAt: string | null;
@@ -54,6 +62,10 @@ type OpsActivity = {
   area: string | null;
   industry: string | null;
   source: string | null;
+  jobUrl?: string | null;
+  salary?: string | null;
+  status?: string | null;
+  visibility?: string | null;
   outcome: string | null;
   notes: string | null;
   createdBy: { name: string } | null;
@@ -62,7 +74,11 @@ type OpsActivity = {
 const DOCUMENT_KINDS = [
   ["CV_ORIGINAL", "CV original"],
   ["CV_FINAL", "CV final"],
-  ["MATERIAL", "Material"],
+  ["COVER_LETTER_ORIGINAL", "Cover letter original"],
+  ["COVER_LETTER_FINAL", "Cover letter final"],
+  ["CANVA_LINK", "Link Canva"],
+  ["STUDENT_MATERIAL", "Material do aluno"],
+  ["SUPPORT_MATERIAL", "Material interno"],
   ["CONTRACT_PDF", "Contrato PDF"],
   ["FORM_PDF", "Formulário PDF"],
   ["OTHER", "Outro"],
@@ -85,6 +101,30 @@ const ACTIVITY_TYPES = [
   ["MOCK_INTERVIEW", "Mock interview"],
   ["SUPPORT_SALE", "Venda suporte"],
   ["OTHER", "Outro"],
+] as const;
+
+const VISIBILITIES = [
+  ["INTERNAL", "Interno"],
+  ["STUDENT_VISIBLE", "Visível ao aluno"],
+] as const;
+
+const ACTIVITY_STATUSES = [
+  ["EM_PROCESSO", "Em processo"],
+  ["PASSOU", "Passou"],
+  ["NAO_PASSOU", "Não passou"],
+  ["NO_SHOW", "No show"],
+  ["REMARCADO", "Remarcado"],
+  ["CANCELADO", "Cancelado"],
+  ["OFERTA", "Oferta"],
+  ["RECOLOCADO", "Recolocado"],
+  ["PERDIDO", "Perdido"],
+] as const;
+
+const SENIORITY_LEVELS = [
+  ["ENTRY_LEVEL", "Entry level"],
+  ["MID_LEVEL", "Mid level"],
+  ["SENIOR", "Senior"],
+  ["DIRECTOR", "Director"],
 ] as const;
 
 function dateInput(value: string | null | undefined) {
@@ -115,6 +155,7 @@ export function OperationalHubSection({
   const qc = useQueryClient();
   const [profileState, setProfileState] = useState({
     optStatus: profile?.optStatus ?? "",
+    seniority: profile?.seniority ?? "",
     coachCohort: profile?.coachCohort ?? "",
     classAttendancePercent: profile?.classAttendancePercent?.toString() ?? "",
     renewalDate: dateInput(profile?.renewalDate),
@@ -123,14 +164,21 @@ export function OperationalHubSection({
     boardUrl: profile?.boardUrl ?? "",
     notionUrl: profile?.notionUrl ?? "",
     linkedinUrl: profile?.linkedinUrl ?? "",
+    canvaUrl: profile?.canvaUrl ?? "",
+    studentMaterialUrl: profile?.studentMaterialUrl ?? "",
     interviewRecordingFolderUrl: profile?.interviewRecordingFolderUrl ?? "",
     contractPdfKey: profile?.contractPdfKey ?? "",
+    pauseExtensionDays: profile?.pauseExtensionDays?.toString() ?? "0",
+    renewalAdjustmentReason: profile?.renewalAdjustmentReason ?? "",
     notes: profile?.notes ?? "",
   });
   const [documentState, setDocumentState] = useState({
     kind: "CV_ORIGINAL",
+    resourceType: "FILE",
+    visibility: "INTERNAL",
     status: "UPLOADED",
     title: "",
+    externalUrl: "",
     extractedText: "",
     notes: "",
     file: null as File | null,
@@ -143,6 +191,10 @@ export function OperationalHubSection({
     area: "",
     industry: "",
     source: "",
+    jobUrl: "",
+    salary: "",
+    status: "EM_PROCESSO",
+    visibility: "INTERNAL",
     outcome: "",
     notes: "",
   });
@@ -171,12 +223,20 @@ export function OperationalHubSection({
 
   const uploadDocument = useMutation({
     mutationFn: async () => {
-      if (!documentState.file) throw new Error("Selecione um arquivo.");
+      if (documentState.resourceType === "FILE" && !documentState.file) {
+        throw new Error("Selecione um arquivo.");
+      }
+      if (documentState.resourceType === "EXTERNAL_LINK" && !documentState.externalUrl.trim()) {
+        throw new Error("Informe o link externo.");
+      }
       const formData = new FormData();
-      formData.set("file", documentState.file);
+      if (documentState.file) formData.set("file", documentState.file);
       formData.set("kind", documentState.kind);
+      formData.set("resourceType", documentState.resourceType);
+      formData.set("visibility", documentState.visibility);
       formData.set("status", documentState.status);
       formData.set("title", documentState.title);
+      formData.set("externalUrl", documentState.externalUrl);
       formData.set("extractedText", documentState.extractedText);
       formData.set("notes", documentState.notes);
       const res = await fetch(`/api/ops/enrollments/${enrollmentId}/documents`, {
@@ -190,8 +250,11 @@ export function OperationalHubSection({
       qc.invalidateQueries({ queryKey: ["student-profile", enrollmentId] });
       setDocumentState({
         kind: "CV_ORIGINAL",
+        resourceType: "FILE",
+        visibility: "INTERNAL",
         status: "UPLOADED",
         title: "",
+        externalUrl: "",
         extractedText: "",
         notes: "",
         file: null,
@@ -221,6 +284,10 @@ export function OperationalHubSection({
         area: "",
         industry: "",
         source: "",
+        jobUrl: "",
+        salary: "",
+        status: "EM_PROCESSO",
+        visibility: "INTERNAL",
         outcome: "",
         notes: "",
       });
@@ -264,6 +331,19 @@ export function OperationalHubSection({
                 <option value="">Não informado</option>
                 <option value="YES">Sim</option>
                 <option value="NO">Não</option>
+              </select>
+            </label>
+            <label className="text-xs font-medium text-gray-600">
+              Senioridade
+              <select
+                value={profileState.seniority}
+                onChange={(e) => setProfileState((s) => ({ ...s, seniority: e.target.value }))}
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="">Não informado</option>
+                {SENIORITY_LEVELS.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             </label>
             <label className="text-xs font-medium text-gray-600">
@@ -319,6 +399,16 @@ export function OperationalHubSection({
                 className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
               />
             </label>
+            <label className="text-xs font-medium text-gray-600">
+              Dias extras/pausa
+              <input
+                type="number"
+                min={0}
+                value={profileState.pauseExtensionDays}
+                onChange={(e) => setProfileState((s) => ({ ...s, pauseExtensionDays: e.target.value }))}
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            </label>
           </div>
 
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -326,6 +416,8 @@ export function OperationalHubSection({
               ["boardUrl", "Board URL"],
               ["notionUrl", "Notion URL"],
               ["linkedinUrl", "LinkedIn"],
+              ["canvaUrl", "Canva"],
+              ["studentMaterialUrl", "Material visível ao aluno"],
               ["interviewRecordingFolderUrl", "Pasta gravações"],
             ].map(([key, label]) => (
               <label key={key} className="text-xs font-medium text-gray-600">
@@ -339,6 +431,16 @@ export function OperationalHubSection({
               </label>
             ))}
           </div>
+
+          <label className="mt-4 block text-xs font-medium text-gray-600">
+            Motivo de ajuste de renovação
+            <input
+              value={profileState.renewalAdjustmentReason}
+              onChange={(e) => setProfileState((s) => ({ ...s, renewalAdjustmentReason: e.target.value }))}
+              placeholder="Ex.: pausa por emergência familiar, viagem, licença..."
+              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+            />
+          </label>
 
           <label className="mt-4 block text-xs font-medium text-gray-600">
             Observações internas
@@ -453,12 +555,40 @@ export function OperationalHubSection({
               placeholder="Título interno"
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
             />
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
-              onChange={(e) => setDocumentState((s) => ({ ...s, file: e.target.files?.[0] ?? null }))}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
-            />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <select
+                value={documentState.resourceType}
+                onChange={(e) => setDocumentState((s) => ({ ...s, resourceType: e.target.value }))}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="FILE">Arquivo</option>
+                <option value="EXTERNAL_LINK">Link externo</option>
+              </select>
+              <select
+                value={documentState.visibility}
+                onChange={(e) => setDocumentState((s) => ({ ...s, visibility: e.target.value }))}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              >
+                {VISIBILITIES.map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            {documentState.resourceType === "EXTERNAL_LINK" ? (
+              <input
+                value={documentState.externalUrl}
+                onChange={(e) => setDocumentState((s) => ({ ...s, externalUrl: e.target.value }))}
+                placeholder="https://canva.com/..."
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              />
+            ) : (
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+                onChange={(e) => setDocumentState((s) => ({ ...s, file: e.target.files?.[0] ?? null }))}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm bg-white"
+              />
+            )}
             <textarea
               value={documentState.extractedText}
               onChange={(e) => setDocumentState((s) => ({ ...s, extractedText: e.target.value }))}
@@ -487,19 +617,25 @@ export function OperationalHubSection({
                       {document.title || document.filename}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {formatKind(document.kind)} · v{document.version} · {document.status} ·{" "}
+                      {formatKind(document.kind)} · v{document.version} · {document.status} · {document.visibility === "STUDENT_VISIBLE" ? "visível ao aluno" : "interno"} ·{" "}
                       {format(new Date(document.uploadedAt), "dd/MM/yyyy")}
                     </p>
                     {document.uploadedBy?.name && (
                       <p className="text-xs text-gray-400 mt-1">Por {document.uploadedBy.name}</p>
                     )}
                   </div>
-                  <a
-                    href={`/api/storage/local?key=${encodeURIComponent(document.storageKey)}&download=1`}
-                    className="text-xs font-semibold text-brand-verde hover:underline"
-                  >
-                    Baixar
-                  </a>
+                  {document.resourceType === "EXTERNAL_LINK" && document.externalUrl ? (
+                    <a href={document.externalUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-brand-verde hover:underline">
+                      Abrir
+                    </a>
+                  ) : (
+                    <a
+                      href={`/api/storage/local?key=${encodeURIComponent(document.storageKey)}&download=1`}
+                      className="text-xs font-semibold text-brand-verde hover:underline"
+                    >
+                      Baixar
+                    </a>
+                  )}
                 </div>
               ))
             )}
@@ -563,6 +699,36 @@ export function OperationalHubSection({
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           />
           <input
+            value={activityState.jobUrl}
+            onChange={(e) => setActivityState((s) => ({ ...s, jobUrl: e.target.value }))}
+            placeholder="Link da vaga"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+          <input
+            value={activityState.salary}
+            onChange={(e) => setActivityState((s) => ({ ...s, salary: e.target.value }))}
+            placeholder="Salário"
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          />
+          <select
+            value={activityState.status}
+            onChange={(e) => setActivityState((s) => ({ ...s, status: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          >
+            {ACTIVITY_STATUSES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select
+            value={activityState.visibility}
+            onChange={(e) => setActivityState((s) => ({ ...s, visibility: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          >
+            {VISIBILITIES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <input
             value={activityState.outcome}
             onChange={(e) => setActivityState((s) => ({ ...s, outcome: e.target.value }))}
             placeholder="Resultado"
@@ -591,7 +757,9 @@ export function OperationalHubSection({
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
                   {format(new Date(activity.activityDate), "dd/MM/yyyy")}
+                  {activity.status ? ` · ${activity.status.replace("_", " ")}` : ""}
                   {activity.outcome ? ` · ${activity.outcome}` : ""}
+                  {activity.jobUrl ? " · com link" : ""}
                   {activity.createdBy?.name ? ` · ${activity.createdBy.name}` : ""}
                 </p>
                 {activity.notes && <p className="text-xs text-gray-500 mt-1">{activity.notes}</p>}

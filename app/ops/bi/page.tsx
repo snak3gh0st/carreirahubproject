@@ -16,6 +16,9 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
 import { isOperationalAccessRole } from "@/lib/roles";
+import { getOpsBiDashboard } from "@/lib/ops/ops-bi";
+import { OpsKpiCard } from "@/components/ops/bi/OpsKpiCard";
+import { OpsBiCharts } from "@/components/ops/bi/OpsBiCharts";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "BI Operacional | Ops Hub" };
@@ -44,7 +47,8 @@ export default async function OpsBiPage() {
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
 
-  const [phases, pausedCount, completedCount, pendingForms, sessionsThisWeek] = await Promise.all([
+  const [biDashboard, phases, pausedCount, completedCount, pendingForms, sessionsThisWeek] = await Promise.all([
+    getOpsBiDashboard(),
     prisma.mentorshipPhase.findMany({
       orderBy: { sortOrder: "asc" },
       include: {
@@ -127,6 +131,19 @@ export default async function OpsBiPage() {
         <p className="text-sm text-gray-500">
           Progresso, risco e gargalos de cada aluno ativo no fluxo operacional.
         </p>
+      </div>
+
+      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <OpsKpiCard label="Ativos" value={biDashboard.kpis.activeStudents} detail="alunos em programa" icon={UsersRound} tone="info" />
+        <OpsKpiCard label="Em risco" value={biDashboard.kpis.atRiskStudents} detail="precisam de ação" icon={AlertTriangle} tone={biDashboard.kpis.atRiskStudents ? "danger" : "success"} />
+        <OpsKpiCard label="Sessões mês" value={biDashboard.kpis.sessionsThisMonth} detail="produção registrada" icon={TrendingUp} tone="success" />
+        <OpsKpiCard label="No-show" value={`${biDashboard.kpis.noShowRate}%`} detail={`${biDashboard.kpis.rescheduleRate}% remarcadas`} icon={Clock} tone="warning" />
+        <OpsKpiCard label="Mocks AI" value={biDashboard.kpis.mockInterviews} detail="últimos 6 meses" icon={BarChart3} tone="ai" />
+        <OpsKpiCard label="NPS médio" value={biDashboard.kpis.averageNps ?? "—"} detail="respostas capturadas" icon={CheckCircle2} tone="neutral" />
+      </div>
+
+      <div className="mb-6">
+        <OpsBiCharts data={biDashboard} />
       </div>
 
       <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">

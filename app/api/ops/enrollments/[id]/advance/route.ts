@@ -25,6 +25,7 @@ export async function POST(
 
   const body = await req.json().catch(() => null);
   const toPhaseId = body?.toPhaseId;
+  const reason = typeof body?.reason === "string" ? body.reason.trim() || null : null;
   if (!toPhaseId) {
     return NextResponse.json(
       { error: "toPhaseId is required" },
@@ -38,6 +39,7 @@ export async function POST(
       toPhaseId,
       triggeredById: userId,
       triggeredByRole: role,
+      reason,
     });
 
     // Notify Slack — phase advance (fire-and-forget)

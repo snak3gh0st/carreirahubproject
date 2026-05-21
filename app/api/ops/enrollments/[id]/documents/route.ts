@@ -6,6 +6,12 @@ import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
 import { isOperationalAccessRole } from "@/lib/roles";
 import { documentStorageService } from "@/lib/services/document-storage.service";
+import {
+  OPS_DOCUMENT_RESOURCE_TYPES,
+  OPS_DOCUMENT_STATUSES,
+  OPS_STUDENT_DOCUMENT_KINDS,
+  normalizeOpsVisibility,
+} from "@/lib/ops/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +40,27 @@ function safeSegment(raw: string | null, fallback: string) {
   return value || fallback;
 }
 
+function safeControlledValue<T extends readonly string[]>(
+  raw: string | null,
+  allowed: T,
+  fallback: T[number],
+): T[number] {
+  const value = (raw || "").trim().toUpperCase();
+  return allowed.includes(value) ? value : fallback;
+}
+
+function normalizeExternalUrl(raw: string | null): string | null {
+  const value = (raw || "").trim();
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -47,10 +74,6 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  if (!documentStorageService.isConfigured()) {
-    return NextResponse.json({ error: "Document storage is not configured" }, { status: 503 });
-  }
-
   const enrollment = await prisma.mentorshipEnrollment.findUnique({
     where: { id: params.id },
     select: { id: true, customerId: true },
@@ -61,26 +84,53 @@ export async function POST(
 
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
-  const kind = safeSegment(formData.get("kind") as string | null, "cv_original").toUpperCase();
-  const status = safeSegment(formData.get("status") as string | null, "UPLOADED").toUpperCase();
+  const resourceType = safeControlledValue(
+    formData.get("resourceType") as string | null,
+    OPS_DOCUMENT_RESOURCE_TYPES,
+    "FILE"
+  );
+  const visibility = normalizeOpsVisibility(formData.get("visibility"));
+  const kind = safeControlledValue(
+    formData.get("kind") as string | null,
+    OPS_STUDENT_DOCUMENT_KINDS,
+    "CV_ORIGINAL"
+  );
+  const status = safeControlledValue(
+    formData.get("status") as string | null,
+    OPS_DOCUMENT_STATUSES,
+    "UPLOADED"
+  );
   const title = ((formData.get("title") as string | null) || "").trim() || null;
+  const externalUrl = normalizeExternalUrl(formData.get("externalUrl") as string | null);
   const extractedText = ((formData.get("extractedText") as string | null) || "").trim() || null;
   const notes = ((formData.get("notes") as string | null) || "").trim() || null;
 
-  if (!file || !(file instanceof File)) {
+  if (resourceType === "EXTERNAL_LINK") {
+    if (!externalUrl) {
+      return NextResponse.json({ error: "External link must be a valid http(s) URL" }, { status: 400 });
+    }
+  } else if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "Missing file" }, { status: 400 });
   }
-  if (file.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: "File size exceeds 20 MB limit" }, { status: 400 });
-  }
-  if (file.type && !ALLOWED_MIME_TYPES.has(file.type)) {
-    return NextResponse.json(
-      { error: "File type not allowed. Accepted: PDF, DOC, DOCX, TXT, JPEG, PNG" },
-      { status: 400 }
-    );
+
+  if (resourceType === "FILE") {
+    if (!documentStorageService.isConfigured()) {
+      return NextResponse.json({ error: "Document storage is not configured" }, { status: 503 });
+    }
+    if (file!.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: "File size exceeds 20 MB limit" }, { status: 400 });
+    }
+    if (file!.type && !ALLOWED_MIME_TYPES.has(file!.type)) {
+      return NextResponse.json(
+        { error: "File type not allowed. Accepted: PDF, DOC, DOCX, TXT, JPEG, PNG" },
+        { status: 400 }
+      );
+    }
   }
 
-  const filename = sanitizeFilename(file.name);
+  const filename = resourceType === "EXTERNAL_LINK"
+    ? sanitizeFilename(title || new URL(externalUrl!).hostname)
+    : sanitizeFilename(file!.name);
   let version = 1;
   try {
     const existingCount = await prisma.opsStudentDocument.count({
@@ -96,29 +146,36 @@ export async function POST(
     }
     throw error;
   }
-  const storageKey = `ops/${enrollment.customerId}/${enrollment.id}/${kind.toLowerCase()}/${Date.now()}-${filename}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const storageKey = resourceType === "EXTERNAL_LINK"
+    ? `external:${externalUrl}`
+    : `ops/${enrollment.customerId}/${enrollment.id}/${kind.toLowerCase()}/${Date.now()}-${filename}`;
 
-  await documentStorageService.uploadObject(storageKey, buffer, {
-    contentType: file.type || "application/octet-stream",
-    metadata: {
-      customerId: enrollment.customerId,
-      enrollmentId: enrollment.id,
-      kind,
-      filename,
-    },
-  });
+  if (resourceType === "FILE") {
+    const buffer = Buffer.from(await file!.arrayBuffer());
+    await documentStorageService.uploadObject(storageKey, buffer, {
+      contentType: file!.type || "application/octet-stream",
+      metadata: {
+        customerId: enrollment.customerId,
+        enrollmentId: enrollment.id,
+        kind,
+        filename,
+      },
+    });
+  }
 
   try {
     const document = await prisma.opsStudentDocument.create({
       data: {
         kind,
+        resourceType,
+        visibility,
         status,
         title,
         filename,
         storageKey,
-        mimeType: file.type || null,
-        sizeBytes: file.size,
+        externalUrl,
+        mimeType: resourceType === "FILE" ? file!.type || null : "text/uri-list",
+        sizeBytes: resourceType === "FILE" ? file!.size : null,
         extractedText,
         notes,
         version,

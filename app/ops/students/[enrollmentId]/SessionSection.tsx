@@ -14,7 +14,9 @@ import {
 type SessionItem = {
   id: string;
   sessionType: string;
+  status?: string;
   sessionDate: string;
+  rescheduleCount?: number;
   notes: string | null;
   conductor: { name: string };
 };
@@ -40,6 +42,8 @@ function useLogSession(enrollmentId: string) {
       sessionType: string;
       conductorId: string;
       sessionDate: string;
+      status: string;
+      rescheduleCount?: number;
       notes?: string;
     }) =>
       fetch("/api/ops/sessions", {
@@ -84,6 +88,8 @@ export function SessionSection({
     sessionType: "",
     conductorId: currentUserId,
     sessionDate: new Date().toISOString().slice(0, 10),
+    status: "REALIZADO",
+    rescheduleCount: 0,
     notes: "",
   });
 
@@ -104,6 +110,8 @@ export function SessionSection({
         sessionType: formState.sessionType,
         conductorId: formState.conductorId,
         sessionDate: formState.sessionDate,
+        status: formState.status,
+        rescheduleCount: formState.rescheduleCount,
         notes: formState.notes || undefined,
       },
       {
@@ -112,6 +120,8 @@ export function SessionSection({
             sessionType: "",
             conductorId: currentUserId,
             sessionDate: new Date().toISOString().slice(0, 10),
+            status: "REALIZADO",
+            rescheduleCount: 0,
             notes: "",
           });
           setShowForm(false);
@@ -187,6 +197,29 @@ export function SessionSection({
               />
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Status</label>
+              <select
+                value={formState.status}
+                onChange={(e) => setFormState((s) => ({ ...s, status: e.target.value }))}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-verde/30"
+              >
+                <option value="REALIZADO">Realizado</option>
+                <option value="NO_SHOW">No show</option>
+                <option value="REMARCADO">Remarcado</option>
+                <option value="CANCELADO">Cancelado</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Remarcações</label>
+              <input
+                type="number"
+                min={0}
+                value={formState.rescheduleCount}
+                onChange={(e) => setFormState((s) => ({ ...s, rescheduleCount: Number(e.target.value) }))}
+                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-verde/30"
+              />
+            </div>
+            <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 Notas <span className="text-gray-400">(opcional)</span>
               </label>
@@ -232,6 +265,8 @@ export function SessionSection({
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     {format(new Date(s.sessionDate), "dd/MM/yyyy")} · {s.conductor.name}
+                    {s.status ? ` · ${s.status.replace("_", " ")}` : ""}
+                    {s.rescheduleCount ? ` · ${s.rescheduleCount} remarcação${s.rescheduleCount !== 1 ? "ões" : ""}` : ""}
                   </p>
                   {s.notes && <p className="text-xs text-gray-500 mt-1 italic">{s.notes}</p>}
                 </div>

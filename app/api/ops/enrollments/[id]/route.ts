@@ -7,6 +7,7 @@ import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { extractNpsFromSubmissions } from "@/lib/ops/nps";
 import { deriveOpsWorkflowState } from "@/lib/ops/workflow";
 import { isOperationalAccessRole } from "@/lib/roles";
+import { sanitizeOperationalCustomerIdentification } from "@/lib/customers/sensitive-identification";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +37,6 @@ export async function GET(
         state: true,
         zipCode: true,
         country: true,
-        cpf: true,
-        passport: true,
         qbBalance: true,
         qbTotalInvoiced: true,
         qbTotalPaid: true,
@@ -98,10 +97,10 @@ export async function GET(
     },
     sessions: {
       orderBy: { sessionDate: "desc" as const },
-      take: 20,
-      include: {
-        conductor: { select: { name: true } },
-      },
+          take: 20,
+          include: {
+            conductor: { select: { name: true } },
+          },
     },
   };
 
@@ -112,7 +111,7 @@ export async function GET(
       where: { id: params.id },
       include: {
         ...baseInclude,
-        opsProfile: true,
+      opsProfile: true,
         opsDocuments: {
           orderBy: [{ uploadedAt: "desc" as const }],
           take: 12,
@@ -238,9 +237,14 @@ export async function GET(
       }))
   );
 
+  const safeEnrollment = {
+    ...enrollment,
+    customer: sanitizeOperationalCustomerIdentification(enrollment.customer),
+  };
+
   return NextResponse.json({
     enrollment: {
-      ...enrollment,
+      ...safeEnrollment,
       formAssignments,
     },
     placementTest: englishTest,

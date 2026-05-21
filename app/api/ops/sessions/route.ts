@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { mentorshipService } from "@/lib/services/mentorship.service";
 import { OPS_SESSION_TYPES } from "@/lib/ops/workflow";
 import { isOperationalAccessRole } from "@/lib/roles";
+import { OPS_SESSION_STATUSES, normalizeOpsSessionStatus } from "@/lib/ops/visibility";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ const sessionSchema = z.object({
   sessionType: z.enum(OPS_SESSION_TYPES),
   conductorId: z.string().min(1),
   sessionDate: z.string().min(1),
+  status: z.enum(OPS_SESSION_STATUSES).optional(),
+  rescheduleCount: z.union([z.number(), z.string()]).optional(),
   notes: z.string().optional(),
 });
 
@@ -35,6 +38,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { enrollmentId, sessionType, conductorId, sessionDate, notes } = parsed.data;
+  const rescheduleCount = parsed.data.rescheduleCount === undefined
+    ? 0
+    : Math.max(0, Math.round(Number(parsed.data.rescheduleCount) || 0));
 
   try {
     const result = await mentorshipService.logSession({
@@ -42,6 +48,8 @@ export async function POST(req: NextRequest) {
       sessionType,
       conductorId,
       sessionDate: new Date(sessionDate),
+      status: normalizeOpsSessionStatus(parsed.data.status),
+      rescheduleCount,
       notes,
     });
     return NextResponse.json({ session: result }, { status: 201 });

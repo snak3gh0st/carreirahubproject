@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isOperationalAccessRole } from "@/lib/roles";
+import { normalizeOpsCommentCategory, normalizeOpsVisibility } from "@/lib/ops/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export async function GET(
       select: {
         id: true,
         body: true,
+        category: true,
+        visibility: true,
         createdAt: true,
         author: {
           select: { id: true, name: true, email: true },
@@ -65,6 +68,8 @@ export async function POST(
 
   const body = await request.json().catch(() => null);
   const text = typeof body?.body === "string" ? body.body.trim() : "";
+  const category = normalizeOpsCommentCategory(body?.category);
+  const visibility = normalizeOpsVisibility(body?.visibility);
   if (!text) return NextResponse.json({ error: "Comentario vazio" }, { status: 400 });
   if (text.length > 2000) {
     return NextResponse.json({ error: "Comentario muito longo" }, { status: 400 });
@@ -84,10 +89,14 @@ export async function POST(
         enrollmentId: params.id,
         authorId: userId,
         body: text,
+        category,
+        visibility,
       },
       select: {
         id: true,
         body: true,
+        category: true,
+        visibility: true,
         createdAt: true,
         author: {
           select: { id: true, name: true, email: true },

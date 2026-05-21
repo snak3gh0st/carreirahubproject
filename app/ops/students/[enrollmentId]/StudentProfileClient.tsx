@@ -4,7 +4,19 @@ import { useQuery } from "@tanstack/react-query";
 import { FormsSection } from "./FormsSection";
 import { OperationalHubSection } from "./OperationalHubSection";
 import { SessionSection } from "./SessionSection";
-import { ArrowLeft, User, GraduationCap, Clock, FileText, WalletCards, BriefcaseBusiness, ListChecks } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  BriefcaseBusiness,
+  Clock,
+  Eye,
+  FileText,
+  GraduationCap,
+  ListChecks,
+  ShieldCheck,
+  User,
+  WalletCards,
+} from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 
@@ -26,8 +38,6 @@ type ProfileData = {
       state: string | null;
       zipCode: string | null;
       country: string | null;
-      cpf: string | null;
-      passport: string | null;
       qbBalance: string | null;
       qbTotalInvoiced: string | null;
       qbTotalPaid: string | null;
@@ -63,7 +73,7 @@ type ProfileData = {
         owner: { name: string | null } | null;
       }>;
     };
-    currentPhase: { label: string; sortOrder: number } | null;
+    currentPhase: { id?: string; key?: string; label: string; sortOrder: number; slaDays?: number } | null;
     assignedTo: { id: string; name: string };
     transitions: Array<{
       id: string;
@@ -75,32 +85,42 @@ type ProfileData = {
     sessions: Array<{
       id: string;
       sessionType: string;
+      status?: string;
       sessionDate: string;
+      rescheduleCount?: number;
       notes: string | null;
       conductor: { name: string };
     }>;
     opsProfile: {
       id: string;
       optStatus: string | null;
+      seniority: string | null;
       coachCohort: string | null;
       classAttendancePercent: number | null;
       boardUrl: string | null;
       notionUrl: string | null;
       linkedinUrl: string | null;
+      canvaUrl: string | null;
+      studentMaterialUrl: string | null;
       interviewRecordingFolderUrl: string | null;
       contractPdfKey: string | null;
       renewalDate: string | null;
       renewalState: string;
+      renewalAdjustmentReason?: string | null;
+      pauseExtensionDays?: number | null;
       lastOperationalContactAt: string | null;
       notes: string | null;
     } | null;
     opsDocuments: Array<{
       id: string;
       kind: string;
+      resourceType?: string;
+      visibility?: string;
       status: string;
       title: string | null;
       filename: string;
       storageKey: string;
+      externalUrl?: string | null;
       version: number;
       uploadedAt: string;
       reviewedAt: string | null;
@@ -117,6 +137,10 @@ type ProfileData = {
       area: string | null;
       industry: string | null;
       source: string | null;
+      jobUrl?: string | null;
+      salary?: string | null;
+      status?: string | null;
+      visibility?: string | null;
       outcome: string | null;
       notes: string | null;
       createdBy: { name: string } | null;
@@ -202,6 +226,11 @@ function InfoLine({ label, value }: { label: string; value: string | number | nu
   );
 }
 
+function daysUntil(value: string | null | undefined) {
+  if (!value) return null;
+  return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
+}
+
 export function StudentProfileClient({
   enrollmentId,
   currentUserId,
@@ -223,9 +252,24 @@ export function StudentProfileClient({
   const latestMock = data.mockInterviews[0];
   const pendingHubTasks = enrollment.formAssignments.filter((assignment) => assignment.status !== "COMPLETED").length;
   const completedHubTasks = enrollment.formAssignments.filter((assignment) => assignment.status === "COMPLETED").length;
+  const finalDocuments = enrollment.opsDocuments.filter((document) => document.status === "FINAL");
+  const studentVisibleDocuments = enrollment.opsDocuments.filter((document) => document.visibility === "STUDENT_VISIBLE");
+  const applications = enrollment.opsActivities.filter((activity) => activity.type === "APPLICATION");
+  const interviews = enrollment.opsActivities.filter((activity) => activity.type === "INTERVIEW");
+  const applicationsMissingLink = applications.filter((activity) => !activity.jobUrl).length;
+  const interviewsMissingStatus = interviews.filter((activity) => !activity.status).length;
+  const noShowSessions = enrollment.sessions.filter((session) => session.status === "NO_SHOW").length;
+  const rescheduledSessions = enrollment.sessions.filter((session) => session.status === "REMARCADO").length;
+  const renewalInDays = daysUntil(enrollment.opsProfile?.renewalDate);
+  const attentionItems = [
+    pendingHubTasks > 0 ? `${pendingHubTasks} formulário${pendingHubTasks !== 1 ? "s" : ""} pendente${pendingHubTasks !== 1 ? "s" : ""}` : null,
+    applicationsMissingLink > 0 ? `${applicationsMissingLink} aplicação${applicationsMissingLink !== 1 ? "ões" : ""} sem link` : null,
+    interviewsMissingStatus > 0 ? `${interviewsMissingStatus} entrevista${interviewsMissingStatus !== 1 ? "s" : ""} sem status` : null,
+    renewalInDays !== null && renewalInDays <= 30 ? `Renovação em ${renewalInDays} dia${renewalInDays !== 1 ? "s" : ""}` : null,
+  ].filter(Boolean);
 
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
+    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6">
       {/* Back nav */}
       <Link
         href="/ops/pipeline"
@@ -236,8 +280,8 @@ export function StudentProfileClient({
       </Link>
 
       {/* Header card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6">
-        <div className="flex items-start justify-between gap-4">
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 md:p-6 shadow-sm">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex items-center gap-4">
             <div className="h-12 w-12 rounded-full bg-brand-verde/10 flex items-center justify-center">
               <User className="h-6 w-6 text-brand-verde" />
@@ -250,48 +294,71 @@ export function StudentProfileClient({
               {enrollment.customer.phone && (
                 <p className="text-sm text-gray-400">{enrollment.customer.phone}</p>
               )}
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                  {enrollment.programType}
+                </span>
+                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                  {enrollment.assignedTo.name}
+                </span>
+                {enrollment.opsProfile?.seniority && (
+                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                    {enrollment.opsProfile.seniority.replace("_", " ")}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <span
-            className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-              enrollment.programType === "ADVANCED"
-                ? "bg-purple-50 text-purple-700"
-                : "bg-blue-50 text-blue-700"
-            }`}
-          >
-            {enrollment.programType}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <Link
+              href={`/ops/students/${enrollmentId}/portal-preview`}
+              className="inline-flex items-center gap-2 rounded-lg border border-brand-verde/20 bg-brand-verde px-3 py-2 text-xs font-semibold text-white hover:opacity-90"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Ver portal do aluno
+            </Link>
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold ${
+              attentionItems.length ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+            }`}>
+              {attentionItems.length ? <AlertTriangle className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+              {attentionItems.length ? `${attentionItems.length} alerta${attentionItems.length !== 1 ? "s" : ""}` : "Em dia"}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
-          <div>
+        <div className="mt-6 grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 md:grid-cols-4 xl:grid-cols-7">
+          <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Fase Atual</p>
             <p className="text-sm font-medium text-gray-800 mt-1">
               {enrollment.currentPhase?.label ?? "—"}
             </p>
           </div>
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Responsável</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">{enrollment.assignedTo.name}</p>
-          </div>
-          <div>
+          <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Início</p>
             <p className="text-sm font-medium text-gray-800 mt-1">
               {format(new Date(enrollment.startDate), "dd/MM/yyyy")}
             </p>
           </div>
-          <div>
+          <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Contrato assinado</p>
             <p className="text-sm font-medium text-gray-800 mt-1">{formatDate(signedContract?.signedAt)}</p>
           </div>
-          <div>
+          <div className="rounded-xl bg-gray-50 p-3">
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Tasks no Hub</p>
             <p className="text-sm font-medium text-gray-800 mt-1">
               {pendingHubTasks} pendente{pendingHubTasks !== 1 ? "s" : ""} · {completedHubTasks} feita{completedHubTasks !== 1 ? "s" : ""}
             </p>
           </div>
+          <div className="rounded-xl bg-gray-50 p-3">
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Materiais finais</p>
+            <p className="text-sm font-medium text-gray-800 mt-1">{finalDocuments.length}</p>
+          </div>
+          <div className="rounded-xl bg-gray-50 p-3">
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Aplicações</p>
+            <p className="text-sm font-medium text-gray-800 mt-1">{applications.length}</p>
+          </div>
           {placementTest && (
-            <div>
+            <div className="rounded-xl bg-gray-50 p-3">
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium flex items-center gap-1">
                 <GraduationCap className="h-3.5 w-3.5" />
                 Inglês (CEFR)
@@ -305,6 +372,16 @@ export function StudentProfileClient({
             </div>
           )}
         </div>
+
+        {attentionItems.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3">
+            {attentionItems.map((item) => (
+              <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">
+                {item}
+              </span>
+            ))}
+          </div>
+        )}
 
         {data.npsResults.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
@@ -320,7 +397,17 @@ export function StudentProfileClient({
         )}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
+            <Clock className="h-4 w-4" />
+            Jornada
+          </h2>
+          <InfoLine label="Fase" value={enrollment.currentPhase?.label} />
+          <InfoLine label="Renovação" value={formatDate(enrollment.opsProfile?.renewalDate)} />
+          <InfoLine label="No show" value={noShowSessions} />
+          <InfoLine label="Remarcadas" value={rescheduledSessions} />
+        </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <User className="h-4 w-4" />
@@ -331,7 +418,6 @@ export function StudentProfileClient({
           <InfoLine label="Nascimento" value={formatDate(enrollment.customer.dateOfBirth)} />
           <InfoLine label="Estado" value={enrollment.customer.state} />
           <InfoLine label="Endereço" value={[enrollment.customer.address, enrollment.customer.city, enrollment.customer.country].filter(Boolean).join(", ")} />
-          <InfoLine label="CPF/Passport" value={enrollment.customer.cpf || enrollment.customer.passport} />
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -373,6 +459,16 @@ export function StudentProfileClient({
           <InfoLine label="Mock interview" value={latestMock?.targetRole || latestMock?.interviewFocus || "—"} />
           <InfoLine label="Score mock" value={latestMock?.overallScore ? `${latestMock.overallScore}/100` : "—"} />
           <InfoLine label="Sinal de contratação" value={latestMock?.hiringSignal} />
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
+            <Eye className="h-4 w-4" />
+            Visível ao aluno
+          </h2>
+          <InfoLine label="Documentos públicos" value={studentVisibleDocuments.length} />
+          <InfoLine label="Canva" value={enrollment.opsProfile?.canvaUrl ? "Configurado" : "—"} />
+          <InfoLine label="Material" value={enrollment.opsProfile?.studentMaterialUrl ? "Configurado" : "—"} />
+          <InfoLine label="Forms pendentes" value={pendingHubTasks} />
         </div>
       </div>
 

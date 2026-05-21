@@ -6,6 +6,12 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
 import { isOperationalAccessRole } from "@/lib/roles";
+import {
+  OPS_ACTIVITY_STATUSES,
+  OPS_ACTIVITY_TYPES,
+  normalizeOpsActivityStatus,
+  normalizeOpsVisibility,
+} from "@/lib/ops/visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +25,17 @@ const nullableString = z
   });
 
 const activitySchema = z.object({
-  type: z.string().min(1),
+  type: z.enum(OPS_ACTIVITY_TYPES),
   activityDate: z.string().min(1),
   company: nullableString,
   roleTitle: nullableString,
   area: nullableString,
   industry: nullableString,
   source: nullableString,
+  jobUrl: nullableString,
+  salary: nullableString,
+  status: z.enum(OPS_ACTIVITY_STATUSES).nullable().optional(),
+  visibility: z.string().optional(),
   outcome: nullableString,
   notes: nullableString,
 });
@@ -60,12 +70,16 @@ export async function POST(
   if (Number.isNaN(activityDate.getTime())) {
     return NextResponse.json({ error: "Invalid activityDate" }, { status: 400 });
   }
+  if (parsed.data.type === "APPLICATION" && !parsed.data.jobUrl) {
+    return NextResponse.json({ error: "Link da vaga é obrigatório para aplicações." }, { status: 400 });
+  }
 
   try {
     const activity = await prisma.opsStudentActivity.create({
       data: {
         ...parsed.data,
-        type: parsed.data.type.trim().toUpperCase(),
+        status: normalizeOpsActivityStatus(parsed.data.status) ?? null,
+        visibility: normalizeOpsVisibility(parsed.data.visibility),
         activityDate,
         enrollmentId: enrollment.id,
         createdById: userId,

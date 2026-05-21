@@ -33,6 +33,8 @@ export interface LogSessionInput {
   sessionType: string;
   conductorId: string;
   sessionDate: Date;
+  status?: string;
+  rescheduleCount?: number;
   notes?: string;
 }
 
@@ -41,6 +43,7 @@ export interface AdvancePhaseInput {
   toPhaseId: string;
   triggeredById: string;
   triggeredByRole: string; // "ADMIN" | "OPERATIONAL" | ...
+  reason?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +140,7 @@ export class MentorshipService {
       data: {
         enrollmentId: result.enrollment.id,
         customerId,
-        renewalDate: new Date(startDate.getTime() + 180 * 86_400_000),
+        renewalDate: new Date(startDate.getTime() + 185 * 86_400_000),
       },
     }).catch((error) => {
       if (!isMissingOpsNativeTable(error)) {
@@ -157,7 +160,7 @@ export class MentorshipService {
    * enrollment is missing or not ACTIVE.
    */
   async logSession(data: LogSessionInput) {
-    const { enrollmentId, sessionType, conductorId, sessionDate, notes } = data;
+    const { enrollmentId, sessionType, conductorId, sessionDate, notes, status, rescheduleCount } = data;
 
     // Guard: enrollment must exist and be ACTIVE (read-only, outside transaction)
     const enrollment = await prisma.mentorshipEnrollment.findFirstOrThrow({
@@ -170,7 +173,15 @@ export class MentorshipService {
     // Session write + checklist auto-mark in a single atomic transaction.
     const session = await prisma.$transaction(async (tx) => {
       const created = await tx.mentorshipSession.create({
-        data: { enrollmentId, sessionType, conductorId, sessionDate, notes },
+        data: {
+          enrollmentId,
+          sessionType,
+          conductorId,
+          sessionDate,
+          status: status ?? "REALIZADO",
+          rescheduleCount: rescheduleCount ?? 0,
+          notes,
+        },
       });
 
       const phaseKey = enrollment.currentPhase?.key;
@@ -204,7 +215,7 @@ export class MentorshipService {
    * Throws MentorshipError(INVALID_TRANSITION) when the constraint is violated.
    */
   async advancePhase(data: AdvancePhaseInput) {
-    const { enrollmentId, toPhaseId, triggeredById, triggeredByRole } = data;
+    const { enrollmentId, toPhaseId, triggeredById, triggeredByRole, reason } = data;
 
     // 1. Fetch the active enrollment including its current phase
     const enrollment = await prisma.mentorshipEnrollment.findFirstOrThrow({
@@ -237,6 +248,7 @@ export class MentorshipService {
           enrollmentId,
           fromPhaseId: enrollment.currentPhaseId,
           toPhaseId,
+          reason,
           triggeredById,
         },
       });
