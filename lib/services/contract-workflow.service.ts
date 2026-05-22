@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { docusignService, validateCustomerForContract } from './docusign.service';
 import { notificationService } from './notification.service';
 import { ContractStatus } from '@prisma/client';
+import { shouldVoidInvoiceForContractFailure } from '@/lib/invoices/contract-invoice-policy';
 
 interface Invoice {
   id: string;
@@ -298,13 +299,18 @@ export class ContractWorkflowService {
 
       console.log(`[CONTRACT_WORKFLOW] Contract ${contractId} marked as DECLINED`);
 
-      // Void ALL linked invoices
+      // Void only open/unpaid linked invoices. Paid invoices must remain paid even
+      // if the DocuSign envelope later expires or is declined.
       if (contract.invoices && contract.invoices.length > 0) {
+        const voidableInvoiceIds = contract.invoices
+          .filter(shouldVoidInvoiceForContractFailure)
+          .map((invoice) => invoice.id);
+
         await prisma.invoice.updateMany({
-          where: { contractId: contractId },
+          where: { contractId: contractId, id: { in: voidableInvoiceIds } },
           data: { status: 'VOID' },
         });
-        console.log(`[CONTRACT_WORKFLOW] ${contract.invoices.length} invoice(s) marked as VOID`);
+        console.log(`[CONTRACT_WORKFLOW] ${voidableInvoiceIds.length} invoice(s) marked as VOID`);
       }
 
       // Notification will be sent by webhook handler or manually
@@ -357,13 +363,18 @@ export class ContractWorkflowService {
         }
       }
 
-      // Void ALL linked invoices
+      // Void only open/unpaid linked invoices. Paid invoices must remain paid even
+      // if the DocuSign envelope later expires.
       if (contract.invoices && contract.invoices.length > 0) {
+        const voidableInvoiceIds = contract.invoices
+          .filter(shouldVoidInvoiceForContractFailure)
+          .map((invoice) => invoice.id);
+
         await prisma.invoice.updateMany({
-          where: { contractId: contractId },
+          where: { contractId: contractId, id: { in: voidableInvoiceIds } },
           data: { status: 'VOID' },
         });
-        console.log(`[CONTRACT_WORKFLOW] ${contract.invoices.length} invoice(s) marked as VOID`);
+        console.log(`[CONTRACT_WORKFLOW] ${voidableInvoiceIds.length} invoice(s) marked as VOID`);
       }
 
       // Send expiration notification to finance team

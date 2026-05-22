@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { InvoiceStatus } from "@prisma/client";
 import { normalizeDateOnly, differenceInCalendarDaysUTC } from "@/lib/utils/date";
+import { isInvoicePaymentComplete } from "@/lib/invoices/contract-invoice-policy";
 
 interface PaymentStatusCardProps {
   invoice: {
@@ -17,6 +18,62 @@ interface PaymentStatusCardProps {
     paymentMethod: string | null;
     lastPaymentReminderAt: Date | null;
     paymentReminderCount: number;
+  };
+}
+
+export function getPaymentStatusDisplay({
+  status,
+  amount,
+  amountPaid,
+  paidAt,
+  daysUntilDue,
+}: {
+  status: InvoiceStatus;
+  amount: any;
+  amountPaid: any | null;
+  paidAt: Date | null;
+  daysUntilDue: number;
+}) {
+  const isVoid = status === InvoiceStatus.VOID;
+  const isPaid = isInvoicePaymentComplete({ status, amount, amountPaid, paidAt });
+  const isOverdue = !isPaid && !isVoid && daysUntilDue < 0;
+
+  if (isPaid) {
+    return {
+      label: "Pago",
+      badgeClass: "bg-green-100 text-green-800",
+      isPaid,
+      isOverdue,
+      isVoid,
+    };
+  }
+
+  if (isVoid) {
+    return {
+      label: "Anulada",
+      badgeClass: "bg-gray-100 text-gray-700",
+      isPaid,
+      isOverdue,
+      isVoid,
+    };
+  }
+
+  if (isOverdue) {
+    return {
+      label: "Em atraso",
+      badgeClass: "bg-red-100 text-red-800",
+      isPaid,
+      isOverdue,
+      isVoid,
+    };
+  }
+
+  return {
+    label: "Pendente",
+    badgeClass: "bg-yellow-100 text-yellow-800",
+    isPaid,
+    isOverdue,
+    isVoid,
   };
 }
 
@@ -51,8 +108,15 @@ export function PaymentStatusCard({ invoice }: PaymentStatusCardProps) {
 
   const dueDateOnly = normalizeDateOnly(invoice.dueDate);
   const daysUntilDue = differenceInCalendarDaysUTC(dueDateOnly, new Date());
-  const isOverdue = daysUntilDue < 0;
-  const isPaid = invoice.status === InvoiceStatus.PAID;
+  const paymentStatus = getPaymentStatusDisplay({
+    status: invoice.status,
+    amount: invoice.amount,
+    amountPaid: invoice.amountPaid,
+    paidAt: invoice.paidAt,
+    daysUntilDue,
+  });
+  const isOverdue = paymentStatus.isOverdue;
+  const isPaid = paymentStatus.isPaid;
   const canSendPaymentLink =
     !isPaid &&
     invoice.status !== InvoiceStatus.VOID &&
@@ -63,15 +127,9 @@ export function PaymentStatusCard({ invoice }: PaymentStatusCardProps) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold">Status do Pagamento</h3>
         <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            isPaid
-              ? "bg-green-100 text-green-800"
-              : isOverdue
-              ? "bg-red-100 text-red-800"
-              : "bg-yellow-100 text-yellow-800"
-          }`}
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${paymentStatus.badgeClass}`}
         >
-          {isPaid ? "Pago" : isOverdue ? "Em atraso" : "Pendente"}
+          {paymentStatus.label}
         </span>
       </div>
 
@@ -93,7 +151,7 @@ export function PaymentStatusCard({ invoice }: PaymentStatusCardProps) {
             }`}
           >
             {dueDateOnly.toLocaleDateString("pt-BR", { timeZone: "UTC" })}
-            {!isPaid && (
+            {!isPaid && !paymentStatus.isVoid && (
               <span className="ml-1">
                 ({isOverdue ? `${Math.abs(daysUntilDue)} dias em atraso` : `${daysUntilDue} dias`})
               </span>
