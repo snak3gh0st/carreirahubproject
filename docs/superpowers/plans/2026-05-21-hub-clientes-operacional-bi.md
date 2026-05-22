@@ -195,10 +195,11 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
   - Regra inicial: 2 sessões liberadas por aluno; sessões extras exigem crédito/override interno.
   - Critério de aceite: aluno não inicia 3ª sessão sem permissão.
 
-- [ ] **P6.2 Melhorar resumo analítico do aluno**
+- [x] **P6.2 Melhorar resumo analítico do aluno**
   - Montar contexto com entrevistas, aplicações, documentos finais, sessões, comentários internos permitidos para IA interna, NPS e formulário.
   - Aumentar prompt para resposta executiva detalhada.
   - Critério de aceite: pergunta como "quantas entrevistas Roberta realizou?" responde com número, fonte e recorte.
+  - Implementado também: painel de IA interna no perfil operacional do aluno para perguntas livres com contexto do aluno selecionado.
 
 - [x] **P6.3 Regras do teste de inglês**
   - Se não passou, bloquear avanço automático para onboarding e criar fila de análise manual.

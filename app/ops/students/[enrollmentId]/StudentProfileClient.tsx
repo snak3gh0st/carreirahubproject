@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FormsSection } from "./FormsSection";
 import { OperationalHubSection } from "./OperationalHubSection";
+import { OpsStudentAiPanel } from "./OpsStudentAiPanel";
 import { SessionSection } from "./SessionSection";
 import {
   AlertTriangle,
@@ -555,6 +556,13 @@ export function StudentProfileClient({
         profile={enrollment.opsProfile}
         documents={enrollment.opsDocuments}
         activities={enrollment.opsActivities}
+      />
+
+      <OpsStudentAiPanel
+        enrollmentId={enrollmentId}
+        studentName={enrollment.customer.name}
+        currentPhase={enrollment.currentPhase?.label}
+        ownerName={enrollment.assignedTo.name}
       />
 
       {/* Phase timeline */}

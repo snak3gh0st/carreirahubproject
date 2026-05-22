@@ -21,6 +21,7 @@ import { getDocumentStatus } from './contracts/get-document-status';
 // Ops
 import { getDailyActionView } from './ops/get-daily-action-view';
 import { getCoordinatorOverview } from './ops/get-coordinator-overview';
+import { getStudentOperationalIntelligence } from './ops/get-student-operational-intelligence';
 // Meta
 import { listCapabilities } from './meta/list-capabilities';
 import { explainDataModel } from './meta/explain-data-model';
@@ -35,7 +36,7 @@ export const toolRegistry: AiToolDefinition<any, any>[] = [
   getStudentsByPhase, getStudentProfile, getStudentSessions, getStudentNextActions,
   getLeadsByStatus, getLeadQualification, getLeadsBySource,
   getContracts, getDocumentStatus,
-  getDailyActionView, getCoordinatorOverview,
+  getDailyActionView, getCoordinatorOverview, getStudentOperationalIntelligence,
   listCapabilities, explainDataModel, getCurrentDate, getProcessGuide,
   searchCustomers, searchStudents,
 ];
