@@ -172,6 +172,71 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
         </div>
       </Panel>
 
+      <Panel title="Pendências críticas" subtitle="Fila operacional que precisa de decisão ou cobrança interna.">
+        <div className="grid gap-3 min-[420px]:grid-cols-2">
+          {data.criticalPendencies.map((item) => {
+            const toneClass = {
+              danger: "border-red-100 bg-red-50 text-red-700",
+              warning: "border-amber-100 bg-amber-50 text-amber-700",
+              info: "border-blue-100 bg-blue-50 text-blue-700",
+            }[item.tone];
+
+            return (
+              <div key={item.name} className={`rounded-lg border p-3 ${toneClass}`}>
+                <p className="text-2xl font-display font-bold">{item.value}</p>
+                <p className="mt-1 text-xs font-semibold">{item.name}</p>
+              </div>
+            );
+          })}
+        </div>
+      </Panel>
+
+      <Panel title="Entregáveis por responsável" subtitle="Materiais criados, finalizados e publicados ao aluno.">
+        <div className="space-y-3">
+          {data.deliverablesByOwner.length === 0 ? (
+            <div className="py-8 text-center text-sm text-gray-400">Nenhum entregável registrado no período.</div>
+          ) : (
+            data.deliverablesByOwner.map((row) => {
+              const maxTotal = Math.max(...data.deliverablesByOwner.map((item) => item.total), 1);
+              const width = Math.max((row.total / maxTotal) * 100, row.total ? 8 : 0);
+              return (
+                <div key={row.owner}>
+                  <div className="mb-1 flex items-center justify-between gap-3">
+                    <p className="min-w-0 break-words text-sm font-semibold text-gray-800">{row.owner}</p>
+                    <p className="flex-shrink-0 text-xs text-gray-400">
+                      {row.final} finais · {row.public} públicos
+                    </p>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-100">
+                    <div className="h-full rounded-full bg-blue-500" style={{ width: `${width}%` }} />
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </Panel>
+
+      <Panel title="Recolocações por indústria" subtitle="Classificação para leitura de sucesso e mercado.">
+        <div className="h-72 w-full sm:h-80">
+          {data.placementIndustries.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-gray-400">
+              Nenhuma recolocação classificada no período.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.placementIndustries} margin={{ top: 20, right: 20, bottom: 44, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--gray-200)" />
+                <XAxis dataKey="name" stroke="var(--gray-500)" fontSize={11} angle={-20} textAnchor="end" interval={0} />
+                <YAxis stroke="var(--gray-500)" fontSize={12} allowDecimals={false} />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar name="Recolocações" dataKey="value" fill="var(--success-600)" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </Panel>
+
       <Panel title="Risco operacional" subtitle="Alunos que mais precisam de ação agora.">
         <div className="divide-y divide-gray-50">
           {data.riskRows.length === 0 ? (

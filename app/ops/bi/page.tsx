@@ -136,10 +136,10 @@ export default async function OpsBiPage() {
       <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <OpsKpiCard label="Ativos" value={biDashboard.kpis.activeStudents} detail="alunos em programa" icon={UsersRound} tone="info" />
         <OpsKpiCard label="Em risco" value={biDashboard.kpis.atRiskStudents} detail="precisam de ação" icon={AlertTriangle} tone={biDashboard.kpis.atRiskStudents ? "danger" : "success"} />
-        <OpsKpiCard label="Sessões mês" value={biDashboard.kpis.sessionsThisMonth} detail="produção registrada" icon={TrendingUp} tone="success" />
+        <OpsKpiCard label="Sessões mês" value={biDashboard.kpis.sessionsThisMonth} detail={`${biDashboard.kpis.sessionsLast7Days} nos últimos 7 dias`} icon={TrendingUp} tone="success" />
         <OpsKpiCard label="No-show" value={`${biDashboard.kpis.noShowRate}%`} detail={`${biDashboard.kpis.rescheduleRate}% remarcadas`} icon={Clock} tone="warning" />
-        <OpsKpiCard label="Mocks AI" value={biDashboard.kpis.mockInterviews} detail="últimos 6 meses" icon={BarChart3} tone="ai" />
-        <OpsKpiCard label="NPS médio" value={biDashboard.kpis.averageNps ?? "—"} detail="respostas capturadas" icon={CheckCircle2} tone="neutral" />
+        <OpsKpiCard label="Entregáveis" value={biDashboard.kpis.documentsDelivered} detail="materiais finais" icon={ClipboardList} tone="info" />
+        <OpsKpiCard label="Mocks AI" value={biDashboard.kpis.completedMocks} detail={`${biDashboard.kpis.mockInterviews} criados`} icon={BarChart3} tone="ai" />
       </div>
 
       <div className="mb-6">

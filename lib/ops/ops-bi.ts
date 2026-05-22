@@ -23,9 +23,43 @@ function increment(map: Map<string, number>, key: string, amount = 1) {
   map.set(key, (map.get(key) ?? 0) + amount);
 }
 
+export function displayOpsBiDocumentKind(kind: string) {
+  const labels: Record<string, string> = {
+    CV_ORIGINAL: "CV original",
+    CV_FINAL: "CV final",
+    COVER_LETTER_ORIGINAL: "Cover original",
+    COVER_LETTER_FINAL: "Cover final",
+    CANVA_LINK: "Canva",
+    STUDENT_MATERIAL: "Material aluno",
+    SUPPORT_MATERIAL: "Material suporte",
+    CONTRACT_PDF: "Contrato",
+    FORM_PDF: "Formulário",
+  };
+  return labels[kind] ?? kind.replaceAll("_", " ").toLowerCase();
+}
+
+export function displayOpsBiActivityStatus(status: string) {
+  const labels: Record<string, string> = {
+    APPLICATION: "Aplicação",
+    INTERVIEW: "Entrevista",
+    OFFER: "Oferta",
+    JOB_PLACED: "Recolocação",
+    EM_PROCESSO: "Em processo",
+    PASSOU: "Passou",
+    NAO_PASSOU: "Não passou",
+    NO_SHOW: "No show",
+    REMARCADO: "Remarcado",
+    CANCELADO: "Cancelado",
+    RECOLOCADO: "Recolocado",
+  };
+  return labels[status] ?? status.replaceAll("_", " ").toLowerCase();
+}
+
 export async function getOpsBiDashboard() {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 7);
   const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
   const [
@@ -40,7 +74,17 @@ export async function getOpsBiDashboard() {
     prisma.mentorshipEnrollment.findMany({
       where: { status: { in: ["ACTIVE", "PAUSED", "COMPLETED"] } },
       include: {
-        customer: { select: { id: true, name: true, qbBalance: true } },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            qbBalance: true,
+            formAssignments: {
+              where: { status: { not: "COMPLETED" } },
+              select: { id: true },
+            },
+          },
+        },
         assignedTo: { select: { id: true, name: true } },
         currentPhase: { select: { id: true, key: true, label: true, slaDays: true } },
         transitions: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
@@ -61,11 +105,26 @@ export async function getOpsBiDashboard() {
     }),
     prisma.opsStudentDocument.findMany({
       where: { uploadedAt: { gte: sixMonthsAgo } },
-      select: { kind: true, status: true, visibility: true, uploadedAt: true, uploadedBy: { select: { name: true } } },
+      select: {
+        kind: true,
+        status: true,
+        visibility: true,
+        uploadedAt: true,
+        finalizedAt: true,
+        uploadedBy: { select: { name: true } },
+      },
     }).catch(() => []),
     prisma.opsStudentActivity.findMany({
       where: { activityDate: { gte: sixMonthsAgo } },
-      select: { type: true, status: true, industry: true, roleTitle: true, activityDate: true },
+      select: {
+        enrollmentId: true,
+        type: true,
+        status: true,
+        industry: true,
+        roleTitle: true,
+        jobUrl: true,
+        activityDate: true,
+      },
     }).catch(() => []),
     prisma.aiMockInterviewSession.findMany({
       where: { createdAt: { gte: sixMonthsAgo } },
@@ -82,6 +141,12 @@ export async function getOpsBiDashboard() {
   ]);
 
   const activeEnrollments = enrollments.filter((enrollment) => enrollment.status === "ACTIVE");
+  const activeEnrollmentIds = new Set(activeEnrollments.map((enrollment) => enrollment.id));
+  const activeActivities = activities.filter((activity) => activeEnrollmentIds.has(activity.enrollmentId));
+
+  let overdueSlaCount = 0;
+  let staleSessionCount = 0;
+  let renewalSoonCount = 0;
   const riskRows = activeEnrollments
     .map((enrollment) => {
       const lastTransition = enrollment.transitions[0]?.createdAt ?? enrollment.startDate;
@@ -97,6 +162,9 @@ export async function getOpsBiDashboard() {
         ? Math.ceil((new Date(renewalDate).getTime() - now.getTime()) / 86_400_000)
         : null;
       const renewalSoon = renewalInDays !== null && renewalInDays <= 30;
+      if (overdueSla) overdueSlaCount += 1;
+      if (staleSession) staleSessionCount += 1;
+      if (renewalSoon) renewalSoonCount += 1;
       const riskScore =
         (overdueSla ? 35 : 0) +
         (staleSession ? 30 : 0) +
@@ -146,10 +214,32 @@ export async function getOpsBiDashboard() {
   });
 
   const documentMap = new Map<string, number>();
-  documents.forEach((document) => increment(documentMap, document.kind));
+  documents.forEach((document) => increment(documentMap, displayOpsBiDocumentKind(document.kind)));
+
+  const deliverablesByOwnerMap = new Map<string, { owner: string; total: number; final: number; public: number }>();
+  documents.forEach((document) => {
+    const owner = document.uploadedBy?.name ?? "Sem responsável";
+    const current = deliverablesByOwnerMap.get(owner) ?? { owner, total: 0, final: 0, public: 0 };
+    current.total += 1;
+    if (document.status === "FINAL" || document.finalizedAt) current.final += 1;
+    if (document.visibility === "STUDENT_VISIBLE") current.public += 1;
+    deliverablesByOwnerMap.set(owner, current);
+  });
 
   const activityStatusMap = new Map<string, number>();
-  activities.forEach((activity) => increment(activityStatusMap, activity.status ?? activity.type));
+  activities.forEach((activity) => increment(activityStatusMap, displayOpsBiActivityStatus(activity.status ?? activity.type)));
+
+  const placementIndustryMap = new Map<string, number>();
+  activities
+    .filter((activity) => activity.type === "JOB_PLACED" || activity.status === "RECOLOCADO")
+    .forEach((activity) => increment(placementIndustryMap, activity.industry || "Não classificada"));
+
+  const applicationsMissingLink = activeActivities.filter(
+    (activity) => activity.type === "APPLICATION" && !activity.jobUrl
+  ).length;
+  const interviewsMissingStatus = activeActivities.filter(
+    (activity) => activity.type === "INTERVIEW" && !activity.status
+  ).length;
 
   const workloadMap = new Map<string, { owner: string; sessions: number; students: number }>();
   activeEnrollments.forEach((enrollment) => {
@@ -179,8 +269,10 @@ export async function getOpsBiDashboard() {
     .filter((score): score is number => score !== null);
 
   const sessionsThisMonth = sessions.filter((session) => session.sessionDate >= monthStart).length;
+  const sessionsLast7Days = sessions.filter((session) => session.sessionDate >= weekStart).length;
   const noShows = sessions.filter((session) => session.status === "NO_SHOW").length;
   const rescheduled = sessions.filter((session) => session.status === "REMARCADO").length;
+  const completedMocks = mockInterviews.filter((mock) => mock.status === "COMPLETED" || mock.completedAt).length;
 
   return {
     kpis: {
@@ -189,9 +281,11 @@ export async function getOpsBiDashboard() {
       completedStudents: enrollments.filter((enrollment) => enrollment.status === "COMPLETED").length,
       atRiskStudents: riskRows.length,
       sessionsThisMonth,
+      sessionsLast7Days,
       noShowRate: sessions.length ? Math.round((noShows / sessions.length) * 100) : 0,
       rescheduleRate: sessions.length ? Math.round((rescheduled / sessions.length) * 100) : 0,
       mockInterviews: mockInterviews.length,
+      completedMocks,
       pendingForms,
       documentsDelivered: documents.filter((document) => document.status === "FINAL").length,
       placements: activities.filter((activity) => activity.type === "JOB_PLACED" || activity.status === "RECOLOCADO").length,
@@ -203,6 +297,21 @@ export async function getOpsBiDashboard() {
     phaseDistribution: Array.from(phaseMap.values()).sort((a, b) => b.active - a.active).slice(0, 12),
     documentMix: Array.from(documentMap.entries()).map(([name, value]) => ({ name, value })),
     activityStatusMix: Array.from(activityStatusMap.entries()).map(([name, value]) => ({ name, value })),
+    criticalPendencies: [
+      { name: "SLA vencido", value: overdueSlaCount, tone: "danger" as const },
+      { name: "Sem sessão recente", value: staleSessionCount, tone: "warning" as const },
+      { name: "Formulário pendente", value: pendingForms, tone: "warning" as const },
+      { name: "Aplicação sem link", value: applicationsMissingLink, tone: "danger" as const },
+      { name: "Entrevista sem status", value: interviewsMissingStatus, tone: "warning" as const },
+      { name: "Renovação próxima", value: renewalSoonCount, tone: "info" as const },
+    ],
+    deliverablesByOwner: Array.from(deliverablesByOwnerMap.values())
+      .sort((a, b) => b.final - a.final || b.total - a.total)
+      .slice(0, 10),
+    placementIndustries: Array.from(placementIndustryMap.entries())
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8),
     workload: Array.from(workloadMap.values()).sort((a, b) => b.students - a.students),
     riskRows: riskRows.slice(0, 12),
   };

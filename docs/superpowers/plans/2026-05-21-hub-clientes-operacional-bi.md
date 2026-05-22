@@ -65,6 +65,7 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
   - Auditar chamadas de email/WhatsApp/Digisac ligadas a renovação, material e fases.
   - Alterar automações novas para criar tarefa/alerta interno, não mensagem ao aluno.
   - Critério de aceite: alertas operacionais aparecem para equipe, mas nenhum envio externo ocorre sem ação manual.
+  - Parcial implementado: atribuição/lembrete de formulários do Hub agora geram alerta interno manual-only em vez de disparo automático ao aluno.
 
 ## Priority 1: Documentos, materiais e links externos
 
@@ -149,11 +150,11 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
   - Exigir motivo textual.
   - Critério de aceite: histórico mostra quem moveu, de qual fase e por quê.
 
-- [ ] **P4.2 Renomear fase Material**
+- [x] **P4.2 Renomear fase Material**
   - Alterar seed/label de `material` para "Em processo de revisão", preservando `key`.
   - Critério de aceite: UI mostra novo nome sem quebrar relatórios por `phaseKey`.
 
-- [ ] **P4.3 Renovação automática com ajuste manual**
+- [x] **P4.3 Renovação automática com ajuste manual**
   - Definir `renewalDate = contratação + 185 dias`.
   - Adicionar extensão manual por pausa/situação pessoal com motivo.
   - Critério de aceite: prazo final recalcula e histórico preserva alterações.
@@ -183,7 +184,7 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
 
 ## Priority 6: IA, limites e resumos
 
-- [ ] **P6.1 Limitar uso de IA**
+- [x] **P6.1 Limitar uso de IA**
   - Consolidar regras em `ai-mock-interview-access` e stores de uso.
   - Regra inicial: 2 sessões liberadas por aluno; sessões extras exigem crédito/override interno.
   - Critério de aceite: aluno não inicia 3ª sessão sem permissão.
@@ -193,7 +194,7 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
   - Aumentar prompt para resposta executiva detalhada.
   - Critério de aceite: pergunta como "quantas entrevistas Roberta realizou?" responde com número, fonte e recorte.
 
-- [ ] **P6.3 Regras do teste de inglês**
+- [x] **P6.3 Regras do teste de inglês**
   - Se não passou, bloquear avanço automático para onboarding e criar fila de análise manual.
   - Critério de aceite: resultado insuficiente aparece no card e exige decisão interna.
 
@@ -235,6 +236,7 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
     - Cada gráfico deve ter CTA para lista filtrada de alunos.
     - Usar cores consistentes: verde para em dia, âmbar para atenção, vermelho para risco, azul para produção, roxo somente para IA/mock.
   - Critério de aceite: liderança consegue abrir `/ops/bi` e responder rapidamente: onde está o gargalo, quem está sobrecarregado, quantos entregáveis saíram, quantos alunos avançaram e quais alunos precisam de ação.
+  - Implementado também: pendências críticas por categoria, entregáveis por responsável, mocks concluídos/criados e recolocações por indústria.
 
 - [x] **P7.3 Criar camada de agregação de BI**
   - Criar serviço dedicado, por exemplo `lib/ops/ops-bi.ts`, para não deixar toda a lógica dentro da página.
@@ -268,7 +270,7 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
   - Criar relatório de divergências entre planilha e Hub.
   - Critério de aceite: time entende quais métricas já vêm do sistema e quais ainda dependem de importação.
 
-- [ ] **P7.6 Alertas internos de prazo**
+- [x] **P7.6 Alertas internos de prazo**
   - Gerar alertas para entregáveis críticos e atrasos por SLA.
   - Não enviar mensagem ao aluno.
   - Critério de aceite: operação recebe lembrete interno antes do prazo.
