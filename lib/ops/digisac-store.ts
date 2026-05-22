@@ -4,6 +4,8 @@ import {
   buildDigisacContactUrl,
   findDigisacContactById,
   findDigisacContactByPhone,
+  formatDigisacPhone,
+  isMatchingDigisacPhone,
   normalizePhone,
 } from "@/lib/services/digisac.service";
 import type { extractDigisacWebhookMessage } from "@/lib/services/digisac.service";
@@ -25,8 +27,8 @@ async function findCustomerIdByPhone(phoneNumber: string | null) {
   const suffix = digits.slice(-10);
   const withoutBrazilCode = digits.startsWith("55") ? digits.slice(2) : digits;
 
-  const rows = await prisma.$queryRaw<Array<{ id: string }>>`
-    SELECT id
+  const rows = await prisma.$queryRaw<Array<{ id: string; phone: string | null }>>`
+    SELECT id, phone
     FROM customers
     WHERE phone IS NOT NULL
       AND (
@@ -34,10 +36,11 @@ async function findCustomerIdByPhone(phoneNumber: string | null) {
         OR regexp_replace(phone, '[^0-9]', '', 'g') = ${withoutBrazilCode}
         OR regexp_replace(phone, '[^0-9]', '', 'g') LIKE ${`%${suffix}`}
       )
-    LIMIT 1
+    LIMIT 10
   `;
 
-  return rows[0]?.id ?? null;
+  const exact = rows.find((row) => isMatchingDigisacPhone(row.phone, digits));
+  return exact?.id ?? null;
 }
 
 async function findActiveEnrollmentId(customerId: string | null) {
@@ -63,7 +66,8 @@ export async function getOrCreateDigisacThreadForEnrollment(enrollmentId: string
     console.warn("[DIGISAC] Failed to resolve contact by phone:", error);
     return null;
   });
-  const phoneNumber = normalizePhone(digisacContact?.phoneNumber) || normalizePhone(enrollment.customer.phone);
+  const fallbackPhoneNumber = formatDigisacPhone(enrollment.customer.phone ?? "");
+  const phoneNumber = normalizePhone(digisacContact?.phoneNumber) || fallbackPhoneNumber;
 
   let thread = digisacContact?.id
     ? await prisma.opsDigisacThread.findFirst({
@@ -73,15 +77,19 @@ export async function getOrCreateDigisacThreadForEnrollment(enrollmentId: string
     : null;
 
   if (!thread) {
-    thread = await prisma.opsDigisacThread.findFirst({
+    const candidateThreads = await prisma.opsDigisacThread.findMany({
       where: {
         OR: [
           { enrollmentId: enrollment.id },
-          { customerId: enrollment.customerId, phoneNumber },
+          { customerId: enrollment.customerId },
         ],
       },
       orderBy: { updatedAt: "desc" },
+      take: 20,
     });
+    thread = candidateThreads.find((candidate) =>
+      isMatchingDigisacPhone(enrollment.customer.phone, candidate.phoneNumber)
+    ) ?? null;
   }
 
   const contactName =

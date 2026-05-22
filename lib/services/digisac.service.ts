@@ -159,14 +159,57 @@ export function normalizePhone(value: string | null | undefined) {
   return value?.replace(/\D/g, "") ?? "";
 }
 
+export function getDigisacPhoneCandidates(
+  value: string | null | undefined,
+  defaultCountryCode = getDigisacConfig().defaultCountryCode
+) {
+  const raw = value?.trim() ?? "";
+  const digits = normalizePhone(raw);
+  if (!digits) return [];
+
+  const candidates = new Set<string>();
+  const countryCode = normalizePhone(defaultCountryCode) || "55";
+  const hasExplicitCountry = raw.startsWith("+");
+
+  if (hasExplicitCountry) {
+    candidates.add(digits);
+    return Array.from(candidates);
+  }
+
+  if (digits.length <= 11 && countryCode) {
+    candidates.add(`${countryCode}${digits}`);
+  }
+
+  candidates.add(digits);
+
+  if (digits.length === 10) {
+    candidates.add(`1${digits}`);
+    candidates.add(`55${digits}`);
+  }
+
+  if (digits.startsWith("55") && digits.length > 11) {
+    candidates.add(digits.slice(2));
+  }
+
+  if (digits.startsWith("1") && digits.length === 11) {
+    candidates.add(digits.slice(1));
+  }
+
+  return Array.from(candidates).filter(Boolean);
+}
+
 export function formatDigisacPhone(value: string, defaultCountryCode = getDigisacConfig().defaultCountryCode) {
-  const digits = normalizePhone(value);
-  if (!digits) return "";
-  // US numbers in NANP format start with 1 + 10 digits (11 total) and already include the country code.
-  // Brazilian DDDs never start with 1, so this discriminates safely.
-  if (digits.length === 11 && digits.startsWith("1")) return digits;
-  if (digits.length <= 11 && defaultCountryCode) return `${defaultCountryCode}${digits}`;
-  return digits;
+  return getDigisacPhoneCandidates(value, defaultCountryCode)[0] ?? "";
+}
+
+export function isMatchingDigisacPhone(
+  expectedPhone: string | null | undefined,
+  actualPhone: string | null | undefined,
+  defaultCountryCode = getDigisacConfig().defaultCountryCode
+) {
+  const actualDigits = normalizePhone(actualPhone);
+  if (!actualDigits) return false;
+  return getDigisacPhoneCandidates(expectedPhone, defaultCountryCode).includes(actualDigits);
 }
 
 export function buildDigisacContactUrl(contactId: string | null | undefined) {
@@ -187,13 +230,7 @@ export async function findDigisacContactByPhone(phone: string | null | undefined
   const digits = normalizePhone(phone);
   if (!digits || !config.enabled) return null;
 
-  const candidates = Array.from(
-    new Set([
-      formatDigisacPhone(digits, config.defaultCountryCode),
-      digits,
-      digits.slice(-10),
-    ].filter(Boolean))
-  );
+  const candidates = getDigisacPhoneCandidates(phone, config.defaultCountryCode);
 
   for (const candidate of candidates) {
     const data = await requestDigisacJson(`/contacts?search=${encodeURIComponent(candidate)}`);
@@ -203,10 +240,9 @@ export async function findDigisacContactByPhone(phone: string | null | undefined
     if (contacts.length === 0) continue;
 
     const exact = contacts.find((contact) => {
-      const contactDigits = normalizePhone(contact.phoneNumber);
-      return contactDigits === digits || contactDigits.endsWith(digits.slice(-10));
+      return isMatchingDigisacPhone(phone, contact.phoneNumber, config.defaultCountryCode);
     });
-    return exact ?? contacts[0];
+    if (exact) return exact;
   }
 
   return null;
