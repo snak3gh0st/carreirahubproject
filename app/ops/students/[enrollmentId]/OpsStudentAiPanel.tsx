@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Bot, Loader2, MessageCircle, Send } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 function extractText(message: any) {
   return (message.parts ?? [])
@@ -14,12 +16,12 @@ function extractText(message: any) {
 
 export function OpsStudentAiPanel({
   enrollmentId,
-  studentName,
+  customerName,
   currentPhase,
   ownerName,
 }: {
   enrollmentId: string;
-  studentName: string;
+  customerName: string;
   currentPhase: string | null | undefined;
   ownerName: string | null | undefined;
 }) {
@@ -29,11 +31,11 @@ export function OpsStudentAiPanel({
   const { messages, sendMessage, status, error } = useChat({ transport } as any);
   const isStreaming = status === "streaming" || status === "submitted";
   const opsContext = [
-    `Aluno selecionado: ${studentName}`,
+    `Cliente selecionado: ${customerName}`,
     `Enrollment ID: ${enrollmentId}`,
     `Fase atual: ${currentPhase ?? "sem fase"}`,
     `Responsável: ${ownerName ?? "sem responsável"}`,
-    "Use getStudentOperationalIntelligence para responder perguntas sobre este aluno.",
+    "Use getStudentOperationalIntelligence para responder perguntas sobre este cliente.",
   ].join(" | ");
 
   async function ensureConversation(prompt: string) {
@@ -42,7 +44,7 @@ export function OpsStudentAiPanel({
     const response = await fetch("/api/dashboard/ai/conversations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ hub: "operational", title: `Aluno - ${studentName}: ${prompt.slice(0, 40)}` }),
+      body: JSON.stringify({ hub: "operational", title: `Cliente - ${customerName}: ${prompt.slice(0, 40)}` }),
     });
     if (!response.ok) throw new Error("Falha ao criar conversa da IA.");
     const payload = await response.json();
@@ -72,20 +74,25 @@ export function OpsStudentAiPanel({
   }
 
   const suggestions = [
-    "Resuma o caso operacional deste aluno com pendências e próxima ação.",
-    "Quantas sessões e mock interviews este aluno já realizou? Separe por responsável.",
-    "Liste aplicações, entrevistas e status deste aluno.",
+    "Monte a ficha completa deste cliente com cadastro, programa, financeiro, fase, pendências e próxima ação.",
+    "Quantas sessões e mock interviews este cliente já realizou? Separe por responsável.",
+    "Liste aplicações, entrevistas, status e links faltantes deste cliente.",
   ];
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="border-b border-gray-100 px-4 py-4 sm:px-5">
-        <div className="flex items-center gap-2">
-          <MessageCircle className="h-4 w-4 text-brand-verde" />
-          <h2 className="text-base font-display font-semibold text-brand-verde">IA interna do aluno</h2>
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 bg-gray-50/70 px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4 text-brand-verde" />
+            <h2 className="text-base font-display font-semibold text-brand-verde">IA interna do cliente</h2>
+          </div>
+          <span className="rounded-full border border-brand-verde/15 bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand-verde">
+            contexto completo
+          </span>
         </div>
         <p className="mt-1 text-xs text-gray-500">
-          Pergunte sobre histórico, sessões, documentos, entrevistas, comentários internos e próximos passos.
+          Pergunte sobre cadastro, financeiro, histórico, sessões, documentos, entrevistas, comentários internos e próximos passos.
         </p>
       </div>
 
@@ -119,12 +126,18 @@ export function OpsStudentAiPanel({
                   }`}
                 >
                   {!isUser && (
-                    <div className="mb-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-brand-verde">
+                    <div className="mb-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-brand-verde">
                       <Bot className="h-3 w-3" />
                       Operacional AI
                     </div>
                   )}
-                  <p className="whitespace-pre-wrap">{content}</p>
+                  {isUser ? (
+                    <p className="whitespace-pre-wrap">{content}</p>
+                  ) : (
+                    <div className="prose prose-sm max-w-none prose-headings:mb-2 prose-headings:mt-3 prose-headings:text-gray-900 prose-p:my-2 prose-ul:my-2 prose-li:my-0 prose-strong:text-gray-900 prose-table:my-3 prose-th:border prose-th:border-gray-200 prose-th:bg-white prose-th:px-2 prose-th:py-1 prose-td:border prose-td:border-gray-200 prose-td:px-2 prose-td:py-1">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -134,7 +147,7 @@ export function OpsStudentAiPanel({
         {isStreaming && (
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Consultando dados internos do aluno...
+            Consultando dados internos do cliente...
           </div>
         )}
         {error && <p className="text-xs text-red-500">Erro ao consultar a IA. Verifique se o AI Copilot está habilitado.</p>}
@@ -151,7 +164,7 @@ export function OpsStudentAiPanel({
                 void ask(text);
               }
             }}
-            placeholder="Pergunte algo sobre este aluno..."
+            placeholder="Pergunte algo sobre este cliente..."
             rows={2}
             disabled={isStreaming}
             className="min-h-[44px] flex-1 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10 disabled:opacity-60"

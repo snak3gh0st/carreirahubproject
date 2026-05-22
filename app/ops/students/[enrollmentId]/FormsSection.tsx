@@ -187,7 +187,7 @@ export function FormsSection({
           <FileText className="h-8 w-8 text-gray-300 mx-auto mb-3" />
           <p className="text-sm font-semibold text-gray-500">Nenhum formulário atribuído</p>
           <p className="text-xs text-gray-400 mt-1">
-            Atribua um formulário de entrada ou NPS para este aluno.
+            Atribua um formulário de entrada ou NPS para este cliente.
           </p>
         </div>
       ) : (
@@ -211,7 +211,7 @@ export function FormsSection({
                         )}`}
                     </p>
                     {assignment.status === "IN_PROGRESS" && !assignment.submission && (
-                      <p className="text-xs text-blue-500 mt-1">Aluno iniciou o preenchimento.</p>
+                      <p className="text-xs text-blue-500 mt-1">Cliente iniciou o preenchimento.</p>
                     )}
                     {nps && (
                       <p className="text-xs text-gray-500 mt-2">

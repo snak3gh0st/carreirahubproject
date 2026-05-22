@@ -8,7 +8,7 @@ import { prisma } from "@/lib/db";
 import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Prévia do portal do aluno | Ops Hub" };
+export const metadata = { title: "Prévia do portal do cliente | Ops Hub" };
 
 function money(value: unknown) {
   return Number(value ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "USD" });
@@ -117,11 +117,11 @@ export default async function StudentPortalPreviewPage({
         <div className="mx-auto flex max-w-6xl flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-amber-800">
             <Eye className="h-4 w-4" />
-            Prévia interna - visão do aluno
+            Prévia interna - visão do cliente
           </div>
           <div className="flex items-center gap-2 text-xs text-amber-700">
             <Lock className="h-3.5 w-3.5" />
-            Somente leitura. Nenhuma ação do aluno é executada aqui.
+            Somente leitura. Nenhuma ação do cliente é executada aqui.
           </div>
         </div>
       </div>
@@ -136,7 +136,7 @@ export default async function StudentPortalPreviewPage({
         </Link>
 
         <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Portal do aluno</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Portal do cliente</p>
           <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div className="min-w-0">
               <h1 className="break-words text-2xl font-display font-bold text-brand-verde">
@@ -183,7 +183,7 @@ export default async function StudentPortalPreviewPage({
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="border-b border-gray-50 px-5 py-4">
             <h2 className="font-display text-base font-bold text-gray-900">Materiais e documentos visíveis</h2>
-            <p className="text-xs text-gray-400">Somente itens marcados como visíveis ao aluno aparecem aqui.</p>
+            <p className="text-xs text-gray-400">Somente itens marcados como visíveis ao cliente aparecem aqui.</p>
           </div>
           <div className="divide-y divide-gray-50">
             {enrollment.opsDocuments.length === 0 ? (

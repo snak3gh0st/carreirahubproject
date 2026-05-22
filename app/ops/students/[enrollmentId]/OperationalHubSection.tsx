@@ -77,7 +77,7 @@ const DOCUMENT_KINDS = [
   ["COVER_LETTER_ORIGINAL", "Cover letter original"],
   ["COVER_LETTER_FINAL", "Cover letter final"],
   ["CANVA_LINK", "Link Canva"],
-  ["STUDENT_MATERIAL", "Material do aluno"],
+  ["STUDENT_MATERIAL", "Material do cliente"],
   ["SUPPORT_MATERIAL", "Material interno"],
   ["CONTRACT_PDF", "Contrato PDF"],
   ["FORM_PDF", "Formulário PDF"],
@@ -105,7 +105,7 @@ const ACTIVITY_TYPES = [
 
 const VISIBILITIES = [
   ["INTERNAL", "Interno"],
-  ["STUDENT_VISIBLE", "Visível ao aluno"],
+  ["STUDENT_VISIBLE", "Visível ao cliente"],
 ] as const;
 
 const ACTIVITY_STATUSES = [
@@ -417,7 +417,7 @@ export function OperationalHubSection({
               ["notionUrl", "Notion URL"],
               ["linkedinUrl", "LinkedIn"],
               ["canvaUrl", "Canva"],
-              ["studentMaterialUrl", "Material visível ao aluno"],
+              ["studentMaterialUrl", "Material visível ao cliente"],
               ["interviewRecordingFolderUrl", "Pasta gravações"],
             ].map(([key, label]) => (
               <label key={key} className="text-xs font-medium text-gray-600">
@@ -617,7 +617,7 @@ export function OperationalHubSection({
                       {document.title || document.filename}
                     </p>
                     <p className="mt-0.5 break-words text-xs text-gray-400">
-                      {formatKind(document.kind)} · v{document.version} · {document.status} · {document.visibility === "STUDENT_VISIBLE" ? "visível ao aluno" : "interno"} ·{" "}
+                      {formatKind(document.kind)} · v{document.version} · {document.status} · {document.visibility === "STUDENT_VISIBLE" ? "visível ao cliente" : "interno"} ·{" "}
                       {format(new Date(document.uploadedAt), "dd/MM/yyyy")}
                     </p>
                     {document.uploadedBy?.name && (

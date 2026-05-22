@@ -23,7 +23,7 @@ function truncateText(value: string | null | undefined, max = 500) {
 export const getStudentOperationalIntelligence = defineAiTool({
   name: "getStudentOperationalIntelligence",
   description:
-    "Monta um dossiê operacional interno de um aluno: fase, checklist, sessões por responsável, documentos, aplicações, entrevistas, comentários internos, formulários, NPS, mock interviews e pendências. Use para perguntas detalhadas sobre um aluno específico.",
+    "Monta um dossiê operacional interno de um cliente: dados cadastrais permitidos, fase, checklist, sessões por responsável, documentos, aplicações, entrevistas, comentários internos, formulários, NPS, mock interviews e pendências. Use para perguntas detalhadas sobre um cliente específico.",
   allowedRoles: OPERATIONAL_AI_ROLES,
   inputSchema: z.object({
     enrollmentId: z.string(),
@@ -40,7 +40,41 @@ export const getStudentOperationalIntelligence = defineAiTool({
               id: true,
               name: true,
               email: true,
+              phone: true,
+              preferredLanguage: true,
+              dateOfBirth: true,
+              address: true,
+              city: true,
+              state: true,
+              zipCode: true,
+              country: true,
               qbBalance: true,
+              qbTotalInvoiced: true,
+              qbTotalPaid: true,
+              lastQbBalanceSync: true,
+              contracts: {
+                orderBy: { createdAt: "desc" },
+                take: 8,
+                select: {
+                  status: true,
+                  sentAt: true,
+                  signedAt: true,
+                  expiresAt: true,
+                  createdAt: true,
+                },
+              },
+              deals: {
+                orderBy: { createdAt: "desc" },
+                take: 8,
+                select: {
+                  title: true,
+                  value: true,
+                  currency: true,
+                  status: true,
+                  createdAt: true,
+                  owner: { select: { name: true } },
+                },
+              },
               placementTests: {
                 where: { totalScore: { not: -1 } },
                 orderBy: { createdAt: "desc" },
@@ -213,11 +247,21 @@ export const getStudentOperationalIntelligence = defineAiTool({
       return {
         source: "Ops Hub interno",
         generatedAt: now.toISOString(),
-        student: {
+        customer: {
           enrollmentId: enrollment.id,
           customerId: enrollment.customerId,
           name: enrollment.customer.name,
           email: enrollment.customer.email,
+          phone: enrollment.customer.phone,
+          preferredLanguage: enrollment.customer.preferredLanguage,
+          dateOfBirth: enrollment.customer.dateOfBirth?.toISOString() ?? null,
+          address: {
+            line1: enrollment.customer.address,
+            city: enrollment.customer.city,
+            state: enrollment.customer.state,
+            zipCode: enrollment.customer.zipCode,
+            country: enrollment.customer.country,
+          },
           programType: enrollment.programType,
           status: enrollment.status,
           owner: enrollment.assignedTo.name,
@@ -332,6 +376,9 @@ export const getStudentOperationalIntelligence = defineAiTool({
         },
         finance: {
           qbBalance: Number(enrollment.customer.qbBalance ?? 0),
+          qbTotalInvoiced: Number(enrollment.customer.qbTotalInvoiced ?? 0),
+          qbTotalPaid: Number(enrollment.customer.qbTotalPaid ?? 0),
+          lastQbBalanceSync: enrollment.customer.lastQbBalanceSync?.toISOString() ?? null,
           openInvoices: openInvoices.map((invoice) => ({
             invoiceNumber: invoice.invoiceNumber,
             status: invoice.status,
@@ -340,6 +387,21 @@ export const getStudentOperationalIntelligence = defineAiTool({
             dueDate: invoice.dueDate.toISOString(),
           })),
         },
+        contracts: enrollment.customer.contracts.map((contract) => ({
+          status: contract.status,
+          sentAt: contract.sentAt?.toISOString() ?? null,
+          signedAt: contract.signedAt?.toISOString() ?? null,
+          expiresAt: contract.expiresAt?.toISOString() ?? null,
+          createdAt: contract.createdAt.toISOString(),
+        })),
+        deals: enrollment.customer.deals.map((deal) => ({
+          title: deal.title,
+          value: Number(deal.value ?? 0),
+          currency: deal.currency,
+          status: deal.status,
+          createdAt: deal.createdAt.toISOString(),
+          owner: deal.owner?.name ?? null,
+        })),
         outcomes: {
           englishTest,
           npsAverage: npsScores.length
@@ -353,12 +415,18 @@ export const getStudentOperationalIntelligence = defineAiTool({
           renewalDate: enrollment.opsProfile?.renewalDate?.toISOString() ?? null,
           renewalState: enrollment.opsProfile?.renewalState ?? null,
           pauseExtensionDays: enrollment.opsProfile?.pauseExtensionDays ?? null,
+          boardUrl: enrollment.opsProfile?.boardUrl ?? null,
+          notionUrl: enrollment.opsProfile?.notionUrl ?? null,
+          linkedinUrl: enrollment.opsProfile?.linkedinUrl ?? null,
+          canvaUrl: enrollment.opsProfile?.canvaUrl ?? null,
+          studentMaterialUrl: enrollment.opsProfile?.studentMaterialUrl ?? null,
+          interviewRecordingFolderUrl: enrollment.opsProfile?.interviewRecordingFolderUrl ?? null,
           canvaConfigured: Boolean(enrollment.opsProfile?.canvaUrl),
           studentMaterialConfigured: Boolean(enrollment.opsProfile?.studentMaterialUrl),
         },
       };
     } catch (err) {
-      return { error: `Falha ao montar inteligência operacional do aluno: ${(err as Error).message}` };
+      return { error: `Falha ao montar inteligência operacional do cliente: ${(err as Error).message}` };
     }
   },
 });

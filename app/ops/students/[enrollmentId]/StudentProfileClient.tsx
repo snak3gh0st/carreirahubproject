@@ -7,16 +7,13 @@ import { OperationalHubSection } from "./OperationalHubSection";
 import { OpsStudentAiPanel } from "./OpsStudentAiPanel";
 import { SessionSection } from "./SessionSection";
 import {
-  AlertTriangle,
   ArrowLeft,
   BriefcaseBusiness,
   Clock,
   Eye,
   FileText,
-  GraduationCap,
   ListChecks,
   Send,
-  ShieldCheck,
   User,
   WalletCards,
 } from "lucide-react";
@@ -229,6 +226,43 @@ function InfoLine({ label, value }: { label: string; value: string | number | nu
   );
 }
 
+function getInitials(name: string) {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "C";
+}
+
+function MetricTile({
+  label,
+  value,
+  detail,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string | number;
+  detail?: string;
+  tone?: "neutral" | "success" | "warning" | "danger" | "info";
+}) {
+  const tones = {
+    neutral: "border-gray-100 bg-white text-gray-900",
+    success: "border-emerald-100 bg-emerald-50 text-emerald-700",
+    warning: "border-amber-100 bg-amber-50 text-amber-700",
+    danger: "border-red-100 bg-red-50 text-red-700",
+    info: "border-blue-100 bg-blue-50 text-blue-700",
+  } as const;
+
+  return (
+    <div className={`min-w-0 rounded-xl border p-3 ${tones[tone]}`}>
+      <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="mt-1 break-words text-lg font-display font-bold">{value}</p>
+      {detail && <p className="mt-1 break-words text-[11px] font-medium opacity-75">{detail}</p>}
+    </div>
+  );
+}
+
 function daysUntil(value: string | null | undefined) {
   if (!value) return null;
   return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
@@ -250,7 +284,7 @@ export function StudentProfileClient({
 
   if (isLoading) return <div className="p-8 text-sm text-gray-400">Carregando perfil...</div>;
   if (error || !data?.enrollment) {
-    return <div className="p-8 text-sm text-red-500">Erro ao carregar perfil do aluno.</div>;
+    return <div className="p-8 text-sm text-red-500">Erro ao carregar perfil do cliente.</div>;
   }
 
   const { enrollment, placementTest, totalSessions } = data;
@@ -258,6 +292,7 @@ export function StudentProfileClient({
   const latestInvoice = enrollment.customer.invoices[0];
   const latestDeal = enrollment.customer.deals[0];
   const latestMock = data.mockInterviews[0];
+  const latestSession = enrollment.sessions[0];
   const pendingHubTasks = enrollment.formAssignments.filter((assignment) => assignment.status !== "COMPLETED").length;
   const completedHubTasks = enrollment.formAssignments.filter((assignment) => assignment.status === "COMPLETED").length;
   const finalDocuments = enrollment.opsDocuments.filter((document) => document.status === "FINAL");
@@ -269,6 +304,10 @@ export function StudentProfileClient({
   const noShowSessions = enrollment.sessions.filter((session) => session.status === "NO_SHOW").length;
   const rescheduledSessions = enrollment.sessions.filter((session) => session.status === "REMARCADO").length;
   const renewalInDays = daysUntil(enrollment.opsProfile?.renewalDate);
+  const openBalance = Number(enrollment.customer.qbBalance ?? 0);
+  const phaseAgeDays = enrollment.transitions[0]?.createdAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(enrollment.transitions[0].createdAt).getTime()) / 86_400_000))
+    : Math.max(0, Math.floor((Date.now() - new Date(enrollment.startDate).getTime()) / 86_400_000));
   const attentionItems = [
     pendingHubTasks > 0 ? `${pendingHubTasks} formulário${pendingHubTasks !== 1 ? "s" : ""} pendente${pendingHubTasks !== 1 ? "s" : ""}` : null,
     applicationsMissingLink > 0 ? `${applicationsMissingLink} aplicação${applicationsMissingLink !== 1 ? "ões" : ""} sem link` : null,
@@ -301,143 +340,142 @@ export function StudentProfileClient({
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 md:space-y-6 md:p-8">
+    <div className="mx-auto max-w-7xl space-y-5 bg-gray-50/40 px-4 py-5 sm:px-6 md:space-y-6 md:p-8">
       {/* Back nav */}
       <Link
         href="/ops/pipeline"
         className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-verde transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Voltar a lista de alunos
+        Voltar à lista de clientes
       </Link>
 
-      {/* Header card */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 md:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full bg-brand-verde/10 sm:h-12 sm:w-12">
-              <User className="h-6 w-6 text-brand-verde" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="break-words text-lg font-display font-bold text-brand-verde sm:text-xl">
-                {enrollment.customer.name}
-              </h1>
-              <p className="break-all text-sm text-gray-500">{enrollment.customer.email}</p>
-              {enrollment.customer.phone && (
-                <p className="text-sm text-gray-400">{enrollment.customer.phone}</p>
-              )}
-              <div className="mt-2 flex flex-wrap gap-2">
-                <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
-                  {enrollment.programType}
-                </span>
-                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-bold text-gray-600">
-                  {enrollment.assignedTo.name}
-                </span>
-                {enrollment.opsProfile?.seniority && (
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                    {enrollment.opsProfile.seniority.replace("_", " ")}
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="min-w-0 p-4 sm:p-5 md:p-6">
+            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-verde text-lg font-display font-bold text-white shadow-sm">
+                {getInitials(enrollment.customer.name)}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                    Cliente
                   </span>
-                )}
+                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
+                    attentionItems.length ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                  }`}>
+                    {attentionItems.length ? `${attentionItems.length} alerta${attentionItems.length !== 1 ? "s" : ""}` : "Em dia"}
+                  </span>
+                </div>
+                <h1 className="break-words text-2xl font-display font-bold tracking-tight text-gray-950 sm:text-3xl">
+                  {enrollment.customer.name}
+                </h1>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                  <span className="break-all">{enrollment.customer.email}</span>
+                  {enrollment.customer.phone && <span>{enrollment.customer.phone}</span>}
+                  {enrollment.customer.state && <span>{enrollment.customer.state}</span>}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
+                    {enrollment.programType}
+                  </span>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-bold text-gray-600">
+                    Responsável: {enrollment.assignedTo.name}
+                  </span>
+                  {enrollment.opsProfile?.seniority && (
+                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                      {enrollment.opsProfile.seniority.replace("_", " ")}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center lg:justify-end">
-            <Link
-              href={`/ops/students/${enrollmentId}/portal-preview`}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-verde/20 bg-brand-verde px-3 py-2 text-center text-xs font-semibold text-white hover:opacity-90"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Ver portal do aluno
-            </Link>
-            <button
-              type="button"
-              onClick={resendHubAccess}
-              disabled={accessAction.loading}
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Send className="h-3.5 w-3.5" />
-              {accessAction.loading ? "Enviando..." : "Reenviar acesso"}
-            </button>
-            <span className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-center text-xs font-bold ${
-              attentionItems.length ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
-            }`}>
-              {attentionItems.length ? <AlertTriangle className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
-              {attentionItems.length ? `${attentionItems.length} alerta${attentionItems.length !== 1 ? "s" : ""}` : "Em dia"}
-            </span>
-          </div>
-        </div>
 
-        {(accessAction.message || accessAction.error) && (
-          <div
-            className={`mt-4 rounded-xl border px-3 py-2 text-xs font-semibold ${
-              accessAction.error
-                ? "border-red-100 bg-red-50 text-red-700"
-                : "border-emerald-100 bg-emerald-50 text-emerald-700"
-            }`}
-          >
-            {accessAction.error ?? accessAction.message}
-          </div>
-        )}
-
-        <div className="mt-5 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 min-[420px]:grid-cols-2 md:mt-6 md:grid-cols-4 xl:grid-cols-7">
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Fase Atual</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">
-              {enrollment.currentPhase?.label ?? "—"}
-            </p>
-          </div>
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Início</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">
-              {format(new Date(enrollment.startDate), "dd/MM/yyyy")}
-            </p>
-          </div>
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Contrato assinado</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">{formatDate(signedContract?.signedAt)}</p>
-          </div>
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Tasks no Hub</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">
-              {pendingHubTasks} pendente{pendingHubTasks !== 1 ? "s" : ""} · {completedHubTasks} feita{completedHubTasks !== 1 ? "s" : ""}
-            </p>
-          </div>
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Materiais finais</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">{finalDocuments.length}</p>
-          </div>
-          <div className="rounded-xl bg-gray-50 p-3">
-            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Aplicações</p>
-            <p className="text-sm font-medium text-gray-800 mt-1">{applications.length}</p>
-          </div>
-          {placementTest && (
-            <div className="rounded-xl bg-gray-50 p-3">
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium flex items-center gap-1">
-                <GraduationCap className="h-3.5 w-3.5" />
-                Inglês (CEFR)
-              </p>
-              <p className="text-sm font-semibold text-brand-verde mt-1">
-                {placementTest.displayLevel}{" "}
-                <span className="text-xs text-gray-400 font-normal">
-                  ({Math.round(placementTest.percentage)}%)
-                </span>
-              </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricTile
+                label="Fase"
+                value={enrollment.currentPhase?.label ?? "Sem fase"}
+                detail={`${phaseAgeDays} dia${phaseAgeDays !== 1 ? "s" : ""} na fase`}
+                tone={enrollment.currentPhase?.slaDays && phaseAgeDays > enrollment.currentPhase.slaDays ? "danger" : "neutral"}
+              />
+              <MetricTile
+                label="Próxima renovação"
+                value={formatDate(enrollment.opsProfile?.renewalDate)}
+                detail={renewalInDays === null ? "sem data" : `${renewalInDays} dia${renewalInDays !== 1 ? "s" : ""}`}
+                tone={renewalInDays !== null && renewalInDays <= 30 ? "warning" : "neutral"}
+              />
+              <MetricTile
+                label="Sessões"
+                value={totalSessions}
+                detail={latestSession ? `última ${formatDate(latestSession.sessionDate)}` : "sem registro"}
+                tone={latestSession ? "success" : "warning"}
+              />
+              <MetricTile
+                label="Aberto QB"
+                value={formatMoney(enrollment.customer.qbBalance)}
+                detail={`${formatMoney(enrollment.customer.qbTotalPaid)} pago`}
+                tone={openBalance > 0 ? "warning" : "success"}
+              />
             </div>
-          )}
-        </div>
 
-        {attentionItems.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3">
-            {attentionItems.map((item) => (
-              <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">
-                {item}
-              </span>
-            ))}
+            {attentionItems.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                {attentionItems.map((item) => (
+                  <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">
+                    {item}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <aside className="border-t border-gray-100 bg-gray-50/70 p-4 sm:p-5 lg:border-l lg:border-t-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Ações rápidas</p>
+            <div className="mt-3 grid gap-2">
+              <Link
+                href={`/ops/students/${enrollmentId}/portal-preview`}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-verde/20 bg-brand-verde px-3 py-2 text-center text-xs font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Ver portal do cliente
+              </Link>
+              <button
+                type="button"
+                onClick={resendHubAccess}
+                disabled={accessAction.loading}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Send className="h-3.5 w-3.5" />
+                {accessAction.loading ? "Enviando..." : "Reenviar acesso"}
+              </button>
+            </div>
+
+            {(accessAction.message || accessAction.error) && (
+              <div
+                className={`mt-3 rounded-xl border px-3 py-2 text-xs font-semibold ${
+                  accessAction.error
+                    ? "border-red-100 bg-red-50 text-red-700"
+                    : "border-emerald-100 bg-emerald-50 text-emerald-700"
+                }`}
+              >
+                {accessAction.error ?? accessAction.message}
+              </div>
+            )}
+
+            <div className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-white p-3">
+              <InfoLine label="Início" value={format(new Date(enrollment.startDate), "dd/MM/yyyy")} />
+              <InfoLine label="Contrato" value={formatDate(signedContract?.signedAt)} />
+              <InfoLine label="Tasks Hub" value={`${pendingHubTasks} pend. · ${completedHubTasks} feitas`} />
+              <InfoLine label="Materiais finais" value={finalDocuments.length} />
+              <InfoLine label="Aplicações" value={applications.length} />
+              <InfoLine label="Inglês" value={placementTest ? `${placementTest.displayLevel} (${Math.round(placementTest.percentage)}%)` : "—"} />
+            </div>
+          </aside>
+        </div>
 
         {data.npsResults.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="border-t border-gray-100 px-4 py-3 sm:px-5">
             {data.npsResults.map((result) => (
               <span
                 key={result.templateId}
@@ -516,7 +554,7 @@ export function StudentProfileClient({
         <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
           <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
             <Eye className="h-4 w-4" />
-            Visível ao aluno
+            Visível ao cliente
           </h2>
           <InfoLine label="Documentos públicos" value={studentVisibleDocuments.length} />
           <InfoLine label="Canva" value={enrollment.opsProfile?.canvaUrl ? "Configurado" : "—"} />
@@ -528,12 +566,12 @@ export function StudentProfileClient({
       <div className="rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-display font-semibold text-brand-verde">
           <ListChecks className="h-4 w-4" />
-          Como isso alimenta o Hub do cliente
+          Publicação no portal do cliente
         </h2>
         <div className="grid gap-3 text-xs text-gray-600 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-lg bg-gray-50 p-3">
             <p className="font-semibold text-gray-900">Formulários</p>
-            <p className="mt-1">{pendingHubTasks} tarefas liberadas pelo operacional.</p>
+            <p className="mt-1">{pendingHubTasks} tarefas pendentes para o cliente.</p>
           </div>
           <div className="rounded-lg bg-gray-50 p-3">
             <p className="font-semibold text-gray-900">Documentos</p>
@@ -560,7 +598,7 @@ export function StudentProfileClient({
 
       <OpsStudentAiPanel
         enrollmentId={enrollmentId}
-        studentName={enrollment.customer.name}
+        customerName={enrollment.customer.name}
         currentPhase={enrollment.currentPhase?.label}
         ownerName={enrollment.assignedTo.name}
       />

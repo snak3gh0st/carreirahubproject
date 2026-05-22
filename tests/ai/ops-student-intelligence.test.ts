@@ -11,6 +11,10 @@ test("operational student intelligence tool is registered for the AI copilot", (
   assert.match(tool, /comments:\s*\{/);
   assert.match(tool, /mockInterviews:\s*\{/);
   assert.match(tool, /applicationsAndInterviews:\s*\{/);
+  assert.match(tool, /customer:\s*\{/);
+  assert.match(tool, /phone:\s*true/);
+  assert.match(tool, /contracts:/);
+  assert.match(tool, /deals:/);
   assert.match(tool, /byConductor/);
 });
 
@@ -23,6 +27,8 @@ test("student profile embeds the operational AI panel with enrollment context", 
   assert.match(panel, /params:\s*\{\s*enrollmentId\s*\}/);
   assert.match(panel, /opsContext/);
   assert.match(panel, /getStudentOperationalIntelligence/);
+  assert.match(panel, /IA interna do cliente/);
+  assert.match(panel, /ReactMarkdown/);
 });
 
 test("operational prompt allows detailed student analysis when asked", () => {
