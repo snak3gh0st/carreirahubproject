@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
 import { normalizeRealtimeEnglishResult } from "@/lib/hub/realtime-english-test";
+import { handleCompletedEnglishTestOutcome } from "@/lib/hub/english-test-outcome";
 import {
   WRITTEN_TEST_REQUIRED_CODE,
   getOralEnglishTestAccess,
@@ -87,6 +88,17 @@ export async function POST(request: NextRequest) {
         ...(durationSeconds !== null ? { durationSeconds } : {}),
         completedAt: new Date(),
       },
+    });
+
+    await handleCompletedEnglishTestOutcome({
+      customerId: auth.customerId,
+      testKind: "REALTIME",
+      testId: result.id,
+      cefrLevel: normalized.cefrLevel,
+      displayLevel: normalized.displayLevel,
+      score: normalized.score,
+    }).catch((outcomeError) => {
+      console.warn("[Hub Realtime English] Could not process English test outcome:", outcomeError);
     });
 
     return NextResponse.json({ result });

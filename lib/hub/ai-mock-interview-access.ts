@@ -85,6 +85,7 @@ export async function getAiMockInterviewAccess(
         where: {
           enrollmentId: enrollment.id,
           sessionType: { in: ["mock_interview_1", "mock_interview_2"] },
+          status: "REALIZADO",
         },
       })
     : 0;

@@ -14,6 +14,7 @@ import {
   WRITTEN_TEST_REQUIRED_CODE,
   getOralEnglishTestAccess,
 } from "@/lib/hub/english-test-access";
+import { handleCompletedEnglishTestOutcome } from "@/lib/hub/english-test-outcome";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -120,6 +121,17 @@ export async function POST(request: NextRequest) {
         ...(durationSeconds !== null ? { durationSeconds } : {}),
         completedAt: new Date(),
       },
+    });
+
+    await handleCompletedEnglishTestOutcome({
+      customerId: auth.customerId,
+      testKind: "VOICE",
+      testId: result.id,
+      cefrLevel: normalized.cefrLevel,
+      displayLevel: normalized.displayLevel,
+      score: normalized.score,
+    }).catch((outcomeError) => {
+      console.warn("[Hub Voice English] Could not process English test outcome:", outcomeError);
     });
 
     return NextResponse.json({ result: normalized, savedResultId: result.id });

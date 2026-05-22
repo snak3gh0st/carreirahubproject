@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getHubAuth, verifyCsrf } from "@/lib/hub-auth";
 import { prisma } from "@/lib/db";
+import { handleCompletedEnglishTestOutcome } from "@/lib/hub/english-test-outcome";
 import { scoreAnswers } from "@/lib/hub/question-bank";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +75,18 @@ export async function POST(request: NextRequest) {
         timeSpentSeconds: timeSpentSeconds ?? null,
         answers,
       },
+    });
+
+    await handleCompletedEnglishTestOutcome({
+      customerId: auth.customerId,
+      testKind: "WRITTEN",
+      testId: pendingTest.id,
+      cefrLevel: result.cefrLevel,
+      displayLevel: result.displayLevel,
+      score: result.percentage,
+      percentage: result.percentage,
+    }).catch((outcomeError) => {
+      console.warn("[Hub Test] Could not process English test outcome:", outcomeError);
     });
 
     // Invalidate cached pages so dashboard shows updated test result
