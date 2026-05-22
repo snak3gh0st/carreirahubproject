@@ -83,6 +83,51 @@ export function chooseInvoiceSyncMatch<T extends { id: string }>(options: {
   return null;
 }
 
+export type QuickBooksInvoiceStatus = "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "PARTIALLY_PAID";
+
+function formatDateKeyInTimeZone(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+export function determineQuickBooksInvoiceStatus({
+  balance,
+  totalAmount,
+  dueDate,
+  now = new Date(),
+  emailStatus,
+  businessTimeZone = "America/Sao_Paulo",
+}: {
+  balance: number;
+  totalAmount: number;
+  dueDate: Date;
+  now?: Date;
+  emailStatus?: string | null;
+  businessTimeZone?: string;
+}): QuickBooksInvoiceStatus {
+  if (balance === 0) return "PAID";
+  if (balance < totalAmount && balance > 0) return "PARTIALLY_PAID";
+  if (
+    formatDateKeyInTimeZone(dueDate, businessTimeZone) <
+      formatDateKeyInTimeZone(now, businessTimeZone) &&
+    balance > 0
+  ) {
+    return "OVERDUE";
+  }
+  if (emailStatus === "EmailSent") return "SENT";
+  return "SENT";
+}
+
 function asPlainObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return {};

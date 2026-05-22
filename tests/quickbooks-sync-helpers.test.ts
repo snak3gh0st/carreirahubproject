@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   chooseInvoiceSyncMatch,
   collectPaginatedQuickBooksRecords,
+  determineQuickBooksInvoiceStatus,
   findLinkedQuickBooksInvoiceId,
   isQuickBooksInvoiceMarkedMissing,
   mergeQuickBooksInvoiceMetadata,
@@ -94,6 +95,30 @@ test("chooseInvoiceSyncMatch falls back to doc number before draft when QuickBoo
     record: { id: "local-doc" },
     strategy: "doc_number",
   });
+});
+
+test("determineQuickBooksInvoiceStatus marks fully open past-due invoices overdue", () => {
+  assert.equal(
+    determineQuickBooksInvoiceStatus({
+      balance: 300,
+      totalAmount: 300,
+      dueDate: new Date("2026-05-20T12:00:00.000Z"),
+      now: new Date("2026-05-22T12:00:00.000Z"),
+    }),
+    "OVERDUE"
+  );
+});
+
+test("determineQuickBooksInvoiceStatus keeps fully open invoices sent on the due date", () => {
+  assert.equal(
+    determineQuickBooksInvoiceStatus({
+      balance: 300,
+      totalAmount: 300,
+      dueDate: new Date("2026-05-22T12:00:00.000Z"),
+      now: new Date("2026-05-22T23:00:00.000Z"),
+    }),
+    "SENT"
+  );
 });
 
 test("mergeQuickBooksInvoiceMetadata preserves existing installment data while updating quickbooks metadata", () => {

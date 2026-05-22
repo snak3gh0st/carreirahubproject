@@ -19,6 +19,7 @@ import { buildQbHistoryStartDate } from "@/lib/financial/qb-window";
 import { parseLocalDate } from "@/lib/utils/date";
 import {
   collectPaginatedQuickBooksRecords,
+  determineQuickBooksInvoiceStatus,
   findLinkedQuickBooksInvoiceId,
   chooseInvoiceSyncMatch,
   isQuickBooksInvoiceMarkedMissing,
@@ -26,23 +27,7 @@ import {
   resolveLocalCustomerIdForPayment,
 } from "@/lib/quickbooks/sync-helpers";
 
-const BUSINESS_TIME_ZONE = "America/Sao_Paulo";
 const HUB_LEGACY_RECEIVABLE_CUTOFF = buildQbHistoryStartDate();
-
-function formatDateKeyInTimeZone(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-
-  return `${year}-${month}-${day}`;
-}
 
 function parseQuickBooksDueDate(dueDate?: string): Date {
   if (!dueDate) {
@@ -399,24 +384,18 @@ export class QuickBooksSyncService {
       }
 
       // Map QuickBooks status to our status enum with enhanced logic
-      let status: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "PARTIALLY_PAID" | "VOID" = "SENT";
       const balance = qbInvoice.Balance || 0;
       const totalAmt = qbInvoice.TotalAmt || 0;
       const dueDate = parseQuickBooksDueDate(qbInvoice.DueDate);
-      const dueDateKey = formatDateKeyInTimeZone(dueDate, BUSINESS_TIME_ZONE);
-      const todayKey = formatDateKeyInTimeZone(new Date(), BUSINESS_TIME_ZONE);
       const quickbooksInvoiceLink = extractQuickbooksInvoiceLink(qbInvoice);
       const excludeFromHub = shouldExcludeOpenQuickBooksInvoiceFromHub(dueDate, balance);
-
-      if (balance === 0) {
-        status = "PAID";
-      } else if (balance < totalAmt && balance > 0) {
-        status = "PARTIALLY_PAID";
-      } else if (dueDateKey < todayKey && balance > 0) {
-        status = "OVERDUE";
-      } else if (qbInvoice.EmailStatus === "EmailSent") {
-        status = "SENT";
-      }
+      const status = determineQuickBooksInvoiceStatus({
+        balance,
+        totalAmount: totalAmt,
+        dueDate,
+        now: new Date(),
+        emailStatus: qbInvoice.EmailStatus,
+      });
 
       // Check if invoice exists
       const existing = await prisma.invoice.findUnique({
@@ -1760,8 +1739,14 @@ export class QuickBooksSyncService {
 
           const totalAmount = qbInvoice.TotalAmt || 0;
           const balance = qbInvoice.Balance ?? totalAmount;
-          const qbStatus = balance === 0 ? "PAID" : balance === totalAmount ? "SENT" : "OVERDUE";
           const dueDate = parseQuickBooksDueDate(qbInvoice.DueDate);
+          const qbStatus = determineQuickBooksInvoiceStatus({
+            balance,
+            totalAmount,
+            dueDate,
+            now: new Date(),
+            emailStatus: qbInvoice.EmailStatus,
+          });
           const excludeFromHub = shouldExcludeOpenQuickBooksInvoiceFromHub(dueDate, balance);
 
           if (excludeFromHub) {
