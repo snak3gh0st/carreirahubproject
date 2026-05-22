@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { emailService } from '@/lib/services/email.service';
 import { subDays, differenceInDays } from 'date-fns';
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
+import { createOpsManualStudentCommunicationAlert } from '@/lib/ops/internal-alerts';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/cron/form-completion-reminder
  *
- * Sends up to 2 reminders to Hub customers with PENDING form assignments:
+ * Creates up to 2 internal reminders for Hub customers with PENDING form assignments:
  *   - Reminder 1: 3 days after assignment (reminderCount = 0)
  *   - Reminder 2: ~7 days after assignment (4 days after reminder 1)
  *
  * Tracks state via FormAssignment.reminderCount + FormAssignment.lastReminderAt.
  * Skips customers without a ClientUser (no Hub account).
+ * Customer communication is manual-only: this cron does not send external email.
  *
  * Schedule (vercel.json): 15 9 * * *  (9:15 AM UTC — avoids 9:00 AM cluster)
  * Auth: Bearer ${CRON_SECRET}
@@ -50,7 +51,7 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
 
     console.log(`[FormCompletionReminder] Found ${assignments.length} assignment(s) to remind`);
 
-    let sent = 0;
+    let alertsCreated = 0;
     let skipped = 0;
     let failed = 0;
 
@@ -67,13 +68,24 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
         const daysPending = differenceInDays(now, assignment.assignedAt);
         const language = customer.clientUser.language || 'en';
 
-        await emailService.sendHubFormReminder(
-          { id: customer.id, email: customer.email, name: customer.name },
-          assignment.templateId,
-          assignment.assignedAt,
-          daysPending,
-          language
-        );
+        const nextReminderNumber = assignment.reminderCount + 1;
+        const result = await createOpsManualStudentCommunicationAlert({
+          customerId: customer.id,
+          customerName: customer.name,
+          customerEmail: customer.email,
+          title: `Formulario pendente: ${customer.name}`,
+          description: `${customer.name} tem formulario ${assignment.templateId} pendente ha ${daysPending} dia(s). Fazer contato manual antes de reenviar qualquer mensagem ao aluno.`,
+          dedupeKey: `form-reminder:${assignment.id}:${nextReminderNumber}`,
+          data: {
+            source: "form-completion-reminder",
+            formAssignmentId: assignment.id,
+            templateId: assignment.templateId,
+            assignedAt: assignment.assignedAt.toISOString(),
+            daysPending,
+            reminderNumber: nextReminderNumber,
+            language,
+          },
+        });
 
         await prisma.formAssignment.update({
           where: { id: assignment.id },
@@ -83,8 +95,8 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
           },
         });
 
-        sent++;
-        console.log(`[FormCompletionReminder] Sent to ${customer.email} (pending ${daysPending}d)`);
+        if (result.created) alertsCreated++;
+        console.log(`[FormCompletionReminder] Created internal alert for ${customer.email} (pending ${daysPending}d)`);
       } catch (err) {
         failed++;
         console.error(`[FormCompletionReminder] Failed for assignment ${assignment.id}:`, err);
@@ -93,7 +105,8 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
 
     return NextResponse.json({
       success: true,
-      sent,
+      sent: 0,
+      alertsCreated,
       skipped,
       failed,
       total: assignments.length,

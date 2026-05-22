@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { FORM_TEMPLATES } from "@/lib/hub/form-templates";
 import { hashPassword } from "@/lib/hub-auth";
-import { emailService } from "@/lib/services/email.service";
+import { createOpsManualStudentCommunicationAlert } from "@/lib/ops/internal-alerts";
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 
@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       })),
     });
 
-    // Provision hub accounts and send email notifications (fire-and-forget)
+    // Provision hub accounts and create internal alerts. Student communication
+    // stays manual-only so operations can choose timing/context before outreach.
     const customers = await prisma.customer.findMany({
       where: { id: { in: customerIds } },
       select: { id: true, name: true, email: true },
@@ -67,12 +68,13 @@ export async function POST(request: NextRequest) {
     });
     const hasHubAccount = new Set(existingHubUsers.map((u) => u.customerId));
 
-    await Promise.allSettled(
+    const alertResults = await Promise.allSettled(
       customers.map(async (customer) => {
+        let tempPassword: string | undefined;
         if (hasHubAccount.has(customer.id)) {
-          await emailService.sendHubFormAssigned(customer, formTitle);
+          tempPassword = undefined;
         } else {
-          const tempPassword = randomBytes(5).toString("hex"); // 10-char hex
+          tempPassword = randomBytes(5).toString("hex"); // 10-char hex
           const passwordHash = await hashPassword(tempPassword);
           await prisma.clientUser.create({
             data: {
@@ -83,13 +85,37 @@ export async function POST(request: NextRequest) {
               customerId: customer.id,
             },
           });
-          await emailService.sendHubFormAssigned(customer, formTitle, tempPassword);
         }
+
+        await createOpsManualStudentCommunicationAlert({
+          customerId: customer.id,
+          customerName: customer.name,
+          customerEmail: customer.email,
+          title: `Formulario atribuido: ${customer.name}`,
+          description: `${formTitle} foi atribuido a ${customer.name}. Contato com aluno deve ser manual antes de enviar instrucoes do Hub.`,
+          dedupeKey: `form-assigned:${templateId}:${customer.id}`,
+          data: {
+            source: "dashboard-form-assignment",
+            templateId,
+            formTitle,
+            hasExistingHubAccount: hasHubAccount.has(customer.id),
+            tempPasswordCreated: Boolean(tempPassword),
+            accessNote: tempPassword
+              ? "Hub account was provisioned without external email. Use manual access/reset flow before contacting the student."
+              : "Student already had a Hub account. Confirm timing before manual outreach.",
+          },
+        });
       })
     );
 
     revalidatePath("/dashboard/forms");
-    return NextResponse.json({ success: true, count: created.count });
+    return NextResponse.json({
+      success: true,
+      count: created.count,
+      externalEmailsSent: 0,
+      internalAlertsCreated: alertResults.filter((result) => result.status === "fulfilled").length,
+      internalAlertFailures: alertResults.filter((result) => result.status === "rejected").length,
+    });
   } catch (error) {
     console.error("[Dashboard Forms Assign Error]:", error);
     return NextResponse.json(
