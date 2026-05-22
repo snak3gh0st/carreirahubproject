@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FormsSection } from "./FormsSection";
 import { OperationalHubSection } from "./OperationalHubSection";
@@ -13,6 +14,7 @@ import {
   FileText,
   GraduationCap,
   ListChecks,
+  Send,
   ShieldCheck,
   User,
   WalletCards,
@@ -239,6 +241,11 @@ export function StudentProfileClient({
   currentUserId: string;
 }) {
   const { data, isLoading, error } = useProfileData(enrollmentId);
+  const [accessAction, setAccessAction] = useState<{
+    loading: boolean;
+    message: string | null;
+    error: string | null;
+  }>({ loading: false, message: null, error: null });
 
   if (isLoading) return <div className="p-8 text-sm text-gray-400">Carregando perfil...</div>;
   if (error || !data?.enrollment) {
@@ -267,6 +274,30 @@ export function StudentProfileClient({
     interviewsMissingStatus > 0 ? `${interviewsMissingStatus} entrevista${interviewsMissingStatus !== 1 ? "s" : ""} sem status` : null,
     renewalInDays !== null && renewalInDays <= 30 ? `Renovação em ${renewalInDays} dia${renewalInDays !== 1 ? "s" : ""}` : null,
   ].filter(Boolean);
+
+  async function resendHubAccess() {
+    setAccessAction({ loading: true, message: null, error: null });
+    try {
+      const response = await fetch(`/api/ops/enrollments/${enrollmentId}/resend-access`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Falha ao reenviar acesso.");
+      }
+      setAccessAction({
+        loading: false,
+        message: `Acesso reenviado para ${payload.email ?? enrollment.customer.email}.`,
+        error: null,
+      });
+    } catch (err) {
+      setAccessAction({
+        loading: false,
+        message: null,
+        error: err instanceof Error ? err.message : "Falha ao reenviar acesso.",
+      });
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-4 py-5 sm:px-6 md:space-y-6 md:p-8">
@@ -317,6 +348,15 @@ export function StudentProfileClient({
               <Eye className="h-3.5 w-3.5" />
               Ver portal do aluno
             </Link>
+            <button
+              type="button"
+              onClick={resendHubAccess}
+              disabled={accessAction.loading}
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Send className="h-3.5 w-3.5" />
+              {accessAction.loading ? "Enviando..." : "Reenviar acesso"}
+            </button>
             <span className={`inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-center text-xs font-bold ${
               attentionItems.length ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
             }`}>
@@ -325,6 +365,18 @@ export function StudentProfileClient({
             </span>
           </div>
         </div>
+
+        {(accessAction.message || accessAction.error) && (
+          <div
+            className={`mt-4 rounded-xl border px-3 py-2 text-xs font-semibold ${
+              accessAction.error
+                ? "border-red-100 bg-red-50 text-red-700"
+                : "border-emerald-100 bg-emerald-50 text-emerald-700"
+            }`}
+          >
+            {accessAction.error ?? accessAction.message}
+          </div>
+        )}
 
         <div className="mt-5 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 min-[420px]:grid-cols-2 md:mt-6 md:grid-cols-4 xl:grid-cols-7">
           <div className="rounded-xl bg-gray-50 p-3">

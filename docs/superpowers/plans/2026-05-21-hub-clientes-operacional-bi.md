@@ -182,6 +182,12 @@ As anotações do Gemini estão úteis como ata operacional, mas precisam virar 
   - Mostrar na sessão bússola e no resumo de IA.
   - Critério de aceite: senioridade fica disponível em perfil e filtros.
 
+- [x] **P5.4 Criar botão de reenviar acesso do Hub**
+  - Adicionar ação manual no perfil operacional do aluno.
+  - Criar/renovar token de definição de senha do `ClientUser`, desbloqueando a conta quando necessário.
+  - Enviar link do portal apenas após clique do operacional.
+  - Critério de aceite: operação consegue reenviar acesso sem impersonar aluno e sem automação externa involuntária.
+
 ## Priority 6: IA, limites e resumos
 
 - [x] **P6.1 Limitar uso de IA**
