@@ -21,7 +21,7 @@ const PHASES = [
   { sortOrder: 16, key: "marcar_raio_x",                  label: "Marcar Sessão Raio-X",            slaDays: 5  },
   { sortOrder: 17, key: "raio_x",                         label: "Sessão Raio-X Realizada",         slaDays: 14 },
   { sortOrder: 18, key: "construcao_material",            label: "Construção de Material",          slaDays: 21 },
-  { sortOrder: 19, key: "material",                       label: "Material",                        slaDays: 21 },
+  { sortOrder: 19, key: "material",                       label: "Em processo de revisão",           slaDays: 21 },
   { sortOrder: 20, key: "em_revisao",                     label: "Em Processo de Revisão",          slaDays: 10 },
   { sortOrder: 21, key: "realizar_devolutiva",            label: "Realizar Devolutiva",             slaDays: 5  },
   { sortOrder: 22, key: "devolutiva",                     label: "Devolutiva Feita",                slaDays: 7  },

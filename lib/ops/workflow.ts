@@ -584,8 +584,8 @@ const WORKFLOW_DEFINITIONS: OpsWorkflowDefinition[] = [
   }),
   {
     key: "material",
-    label: "Escrita / Material",
-    shortLabel: "Material",
+    label: "Em processo de revisão",
+    shortLabel: "Revisão",
     description:
       "Janela de produção do material técnico do aluno, com acompanhamento de aulas e alinhamento com o time de escrita.",
     primaryOwner: "Dária",

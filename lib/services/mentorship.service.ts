@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { getSessionItemKey } from "@/lib/ops/phase-checklists";
+import { calculateMentorshipRenewalDate } from "@/lib/ops/renewal";
 
 /**
  * MentorshipError — business rule violations that API routes can distinguish
@@ -140,7 +141,7 @@ export class MentorshipService {
       data: {
         enrollmentId: result.enrollment.id,
         customerId,
-        renewalDate: new Date(startDate.getTime() + 185 * 86_400_000),
+        renewalDate: calculateMentorshipRenewalDate(startDate),
       },
     }).catch((error) => {
       if (!isMissingOpsNativeTable(error)) {

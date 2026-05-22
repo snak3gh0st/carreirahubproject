@@ -5,6 +5,10 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
+import {
+  calculateMentorshipRenewalDate,
+  shouldRecalculateRenewalDateOnProfilePatch,
+} from "@/lib/ops/renewal";
 import { isOperationalAccessRole } from "@/lib/roles";
 import { OPS_SENIORITY_LEVELS } from "@/lib/ops/visibility";
 
@@ -78,7 +82,17 @@ export async function PATCH(
 
   const enrollment = await prisma.mentorshipEnrollment.findUnique({
     where: { id: params.id },
-    select: { id: true, customerId: true },
+    select: {
+      id: true,
+      customerId: true,
+      startDate: true,
+      opsProfile: {
+        select: {
+          renewalDate: true,
+          pauseExtensionDays: true,
+        },
+      },
+    },
   });
   if (!enrollment) {
     return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
@@ -89,9 +103,19 @@ export async function PATCH(
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
+  const shouldRecalculateRenewalDate = shouldRecalculateRenewalDateOnProfilePatch({
+    requestedRenewalDate: parsed.data.renewalDate,
+    existingRenewalDate: enrollment.opsProfile?.renewalDate ?? null,
+    requestedPauseExtensionDays: parsed.data.pauseExtensionDays,
+    existingPauseExtensionDays: enrollment.opsProfile?.pauseExtensionDays ?? 0,
+  });
+
   const data = {
     ...parsed.data,
     renewalState: parsed.data.renewalState || "NOT_DUE",
+    renewalDate: shouldRecalculateRenewalDate
+      ? calculateMentorshipRenewalDate(enrollment.startDate, parsed.data.pauseExtensionDays)
+      : parsed.data.renewalDate,
   };
 
   try {
