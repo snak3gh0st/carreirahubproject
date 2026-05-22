@@ -55,7 +55,7 @@ function SignInForm() {
           <h1 className="font-display text-3xl font-bold text-white">
             Carreira <span className="text-brand-tangerina">U.S.A.</span>
           </h1>
-          <p className="text-white/60 text-sm mt-2">Admin Dashboard</p>
+          <p className="text-white/60 text-sm mt-2">Internal Hub</p>
         </div>
 
         {/* Form Card */}
