@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
-import { retellService, RetellWebhookEvent } from "./retell.service";
+import { collectionVoiceService } from "@/lib/services/collection-voice.service";
+import {
+  COLLECTION_CALL_PROVIDER,
+  mapTwilioCallStatus,
+} from "@/lib/services/collection-call-voice";
+import { resolveAiGatewayModel } from "@/lib/ai/gateway";
 import { CollectionCallStatus, CollectionCallOutcome, InvoiceStatus } from "@prisma/client";
 import OpenAI from "openai";
 
@@ -14,8 +19,6 @@ function getOpenAI(): OpenAI {
 
   return _openai;
 }
-
-const AI_MODEL = process.env.AI_MODEL || "gpt-4-turbo-preview";
 
 export interface CollectionCallResult {
   id: string;
@@ -36,6 +39,13 @@ export interface AutoCallSummary {
   errors: string[];
 }
 
+export interface TwilioCollectionCallStatus {
+  collectionCallId: string;
+  callSid?: string | null;
+  callStatus?: string | null;
+  callDuration?: string | null;
+}
+
 /**
  * Collection Call Service
  *
@@ -54,11 +64,8 @@ export class CollectionCallService {
     this.hoursEnd = parseInt(process.env.COLLECTION_CALL_HOURS_END || "18");
   }
 
-  /**
-   * Check if RetellAI is configured
-   */
   isConfigured(): boolean {
-    return retellService.isConfigured();
+    return collectionVoiceService.isConfigured();
   }
 
   /**
@@ -99,7 +106,6 @@ export class CollectionCallService {
       throw new Error("Customer has no phone number");
     }
 
-    // Check if RetellAI is configured
     if (!this.isConfigured()) {
       throw new Error("Collection call service is not configured");
     }
@@ -123,18 +129,13 @@ export class CollectionCallService {
       }
     }
 
-    // Calculate days overdue
-    const daysOverdue = Math.floor(
-      (Date.now() - invoice.dueDate.getTime()) / (1000 * 60 * 60 * 24)
-    );
-
     // Create collection call record
     const collectionCall = await prisma.collectionCall.create({
       data: {
         invoiceId: invoice.id,
         customerId: invoice.customerId,
         phoneNumber: invoice.customer.phone,
-        provider: "RETELL",
+        provider: COLLECTION_CALL_PROVIDER,
         status: CollectionCallStatus.PENDING,
         initiatedBy: params.initiatedBy,
         scheduledAt: new Date(),
@@ -142,27 +143,19 @@ export class CollectionCallService {
     });
 
     try {
-      // Initiate call via RetellAI
-      const result = await retellService.initiateCall({
+      const result = await collectionVoiceService.initiateCall({
+        collectionCallId: collectionCall.id,
         phoneNumber: invoice.customer.phone,
-        customerName: invoice.customer.name,
-        invoiceNumber: invoice.invoiceNumber || invoice.id.slice(0, 8),
-        amountDue: Number(invoice.amount),
-        daysOverdue,
-        metadata: {
-          collection_call_id: collectionCall.id,
-          invoice_id: invoice.id,
-          customer_id: invoice.customerId,
-        },
       });
 
       // Update collection call with external ID
+      const providerStatus = mapTwilioCallStatus(result.status);
       await prisma.collectionCall.update({
         where: { id: collectionCall.id },
         data: {
           externalCallId: result.callId,
-          status: CollectionCallStatus.IN_PROGRESS,
-          startedAt: new Date(),
+          status: providerStatus,
+          startedAt: providerStatus === CollectionCallStatus.IN_PROGRESS ? new Date() : undefined,
         },
       });
 
@@ -178,7 +171,7 @@ export class CollectionCallService {
       // Log the action
       await prisma.integrationLog.create({
         data: {
-          service: "RETELL",
+          service: COLLECTION_CALL_PROVIDER,
           action: "COLLECTION_CALL_INITIATED",
           status: "SUCCESS",
           payload: {
@@ -193,7 +186,7 @@ export class CollectionCallService {
 
       return {
         id: collectionCall.id,
-        status: CollectionCallStatus.IN_PROGRESS,
+        status: providerStatus,
         externalCallId: result.callId,
       };
     } catch (error) {
@@ -209,7 +202,7 @@ export class CollectionCallService {
       // Log the error
       await prisma.integrationLog.create({
         data: {
-          service: "RETELL",
+          service: COLLECTION_CALL_PROVIDER,
           action: "COLLECTION_CALL_FAILED",
           status: "ERROR",
           error: error instanceof Error ? error.message : "Unknown error",
@@ -225,83 +218,37 @@ export class CollectionCallService {
     }
   }
 
-  /**
-   * Handle call started webhook
-   */
-  async handleCallStarted(event: RetellWebhookEvent): Promise<void> {
-    const externalCallId = event.call.call_id;
-    const collectionCallId = event.call.metadata?.collection_call_id;
-
-    if (!collectionCallId) {
-      console.warn("No collection_call_id in webhook metadata");
-      return;
-    }
+  async handleTwilioStatusCallback(input: TwilioCollectionCallStatus): Promise<void> {
+    const status = mapTwilioCallStatus(input.callStatus);
+    const duration = input.callDuration ? Number(input.callDuration) : undefined;
 
     await prisma.collectionCall.update({
-      where: { id: collectionCallId },
-      data: {
-        status: CollectionCallStatus.IN_PROGRESS,
-        startedAt: event.call.start_timestamp
-          ? new Date(event.call.start_timestamp)
-          : new Date(),
-      },
-    });
-  }
-
-  /**
-   * Handle call ended webhook
-   */
-  async handleCallEnded(event: RetellWebhookEvent): Promise<void> {
-    const collectionCallId = event.call.metadata?.collection_call_id;
-
-    if (!collectionCallId) {
-      console.warn("No collection_call_id in webhook metadata");
-      return;
-    }
-
-    // Map disconnection reason to status
-    let status: CollectionCallStatus = CollectionCallStatus.COMPLETED;
-    const reason = event.call.disconnection_reason?.toLowerCase();
-
-    if (reason?.includes("no_answer") || reason?.includes("no answer")) {
-      status = CollectionCallStatus.NO_ANSWER;
-    } else if (reason?.includes("busy")) {
-      status = CollectionCallStatus.BUSY;
-    } else if (reason?.includes("error") || reason?.includes("fail")) {
-      status = CollectionCallStatus.FAILED;
-    }
-
-    // Calculate duration
-    let duration: number | undefined;
-    if (event.call.start_timestamp && event.call.end_timestamp) {
-      duration = Math.floor(
-        (event.call.end_timestamp - event.call.start_timestamp) / 1000
-      );
-    }
-
-    await prisma.collectionCall.update({
-      where: { id: collectionCallId },
+      where: { id: input.collectionCallId },
       data: {
         status,
-        endedAt: event.call.end_timestamp
-          ? new Date(event.call.end_timestamp)
-          : new Date(),
-        duration,
-        transcript: event.call.transcript,
+        ...(input.callSid ? { externalCallId: input.callSid } : {}),
+        ...(status === CollectionCallStatus.IN_PROGRESS ? { startedAt: new Date() } : {}),
+        ...(
+          status === CollectionCallStatus.COMPLETED ||
+          status === CollectionCallStatus.BUSY ||
+          status === CollectionCallStatus.NO_ANSWER ||
+          status === CollectionCallStatus.FAILED ||
+          status === CollectionCallStatus.CANCELLED
+            ? {
+                endedAt: new Date(),
+                ...(Number.isFinite(duration) ? { duration } : {}),
+              }
+            : {}
+        ),
       },
     });
   }
 
-  /**
-   * Handle call analyzed webhook (transcript analysis complete)
-   */
-  async handleCallAnalyzed(event: RetellWebhookEvent): Promise<void> {
-    const collectionCallId = event.call.metadata?.collection_call_id;
-
-    if (!collectionCallId) {
-      console.warn("No collection_call_id in webhook metadata");
-      return;
-    }
+  async recordAnalyzedTranscript(params: {
+    collectionCallId: string;
+    transcript: string;
+  }): Promise<void> {
+    const collectionCallId = params.collectionCallId;
 
     const collectionCall = await prisma.collectionCall.findUnique({
       where: { id: collectionCallId },
@@ -312,8 +259,7 @@ export class CollectionCallService {
       return;
     }
 
-    // Use AI to analyze the transcript
-    const transcript = event.call.transcript || collectionCall.transcript;
+    const transcript = params.transcript || collectionCall.transcript;
     if (transcript) {
       try {
         const analysis = await this.analyzeCallOutcome(transcript);
@@ -333,7 +279,7 @@ export class CollectionCallService {
         if (analysis.paymentPromised) {
           await prisma.integrationLog.create({
             data: {
-              service: "RETELL",
+              service: COLLECTION_CALL_PROVIDER,
               action: "PAYMENT_PROMISED",
               status: "SUCCESS",
               payload: {
@@ -446,7 +392,7 @@ export class CollectionCallService {
 
     try {
       const response = await getOpenAI().chat.completions.create({
-        model: AI_MODEL,
+        model: resolveAiGatewayModel({ task: "collection_call_analysis" }),
         messages: [
           {
             role: "system",
@@ -521,9 +467,9 @@ The transcript is in Portuguese (Brazilian).`,
     // Try to end the call if it's in progress
     if (call.status === CollectionCallStatus.IN_PROGRESS && call.externalCallId) {
       try {
-        await retellService.endCall(call.externalCallId);
+        await collectionVoiceService.endCall(call.externalCallId);
       } catch (error) {
-        console.error("Error ending call via RetellAI:", error);
+        console.error("Error ending collection call via Twilio:", error);
       }
     }
 

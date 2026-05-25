@@ -6,7 +6,7 @@ import { telegramService } from "@/lib/services/telegram.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 import { queues } from "@/lib/utils/queue";
 import { estimateCostUSD } from "@/lib/ai/pricing";
-import { resolveDashboardAiModel } from "@/lib/ai/model-selection";
+import { resolveAiGatewayModel } from "@/lib/ai/gateway";
 
 export const dynamic = "force-dynamic";
 
@@ -416,7 +416,7 @@ export const GET = withCronTelemetry("health-digest", async (request: NextReques
     }
   }
 
-  const dashboardAiModel = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
+  const dashboardAiModel = resolveAiGatewayModel({ task: "dashboard_copilot" });
   const dashboardTokensIn = dashboardAiUsage24h._sum.tokensIn ?? 0;
   const dashboardTokensOut = dashboardAiUsage24h._sum.tokensOut ?? 0;
   const dashboardAiCostUsd = estimateCostUSD(

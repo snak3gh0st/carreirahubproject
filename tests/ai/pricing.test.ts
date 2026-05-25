@@ -7,6 +7,11 @@ test("estimateCostUSD prices GPT-5.2 dashboard usage by current default rate", (
   assert.equal(estimateCostUSD(1_000_000, 1_000_000, "gpt-5.2-chat-latest"), 15.75);
 });
 
+test("estimateCostUSD prices gateway economy models", () => {
+  assert.equal(estimateCostUSD(1_000_000, 1_000_000, "gpt-5-mini"), 2.25);
+  assert.equal(estimateCostUSD(1_000_000, 1_000_000, "gpt-5-nano"), 0.45);
+});
+
 test("estimateCostUSD uses env fallback for unknown configured models", () => {
   const originalIn = process.env.AI_MODEL_INPUT_USD_PER_1M;
   const originalOut = process.env.AI_MODEL_OUTPUT_USD_PER_1M;

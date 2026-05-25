@@ -1,7 +1,10 @@
-// USD per 1M tokens (2026-04 pricing — update as needed)
+// USD per 1M tokens (OpenAI pricing checked 2026-05-25 — update as needed)
 export const PRICING: Record<string, { in: number; out: number }> = {
   'gpt-4o-mini': { in: 0.15, out: 0.60 },
   'gpt-4o':      { in: 2.50, out: 10.00 },
+  'gpt-5': { in: 1.25, out: 10.00 },
+  'gpt-5-mini': { in: 0.25, out: 2.00 },
+  'gpt-5-nano': { in: 0.05, out: 0.40 },
   'gpt-5.2': { in: 1.75, out: 14.00 },
   'gpt-5.2-chat-latest': { in: 1.75, out: 14.00 },
 };

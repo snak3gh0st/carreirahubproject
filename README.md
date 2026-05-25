@@ -251,9 +251,16 @@ NEXTAUTH_URL=                  # App URL (http://localhost:3000 in dev)
 
 ```bash
 # OpenAI (for chatbot and lead qualification)
-OPENAI_API_KEY=                # GPT-4 API key
-AI_MODEL=gpt-4-turbo-preview   # Model to use
+OPENAI_API_KEY=                # OpenAI API key
+AI_MODEL=gpt-5-mini            # Legacy fallback
 AI_TEMPERATURE=0.7             # Temperature setting
+
+# Internal AI Gateway model routing
+AI_GATEWAY_MODEL_DASHBOARD_COPILOT=gpt-5-mini
+AI_GATEWAY_MODEL_PERSONA_ANALYSIS=gpt-5.2-chat-latest
+AI_GATEWAY_MODEL_COLLECTION_CALL_ANALYSIS=gpt-5-nano
+AI_GATEWAY_MODEL_CRITICAL_REPORT=gpt-5.2-chat-latest
+AI_GATEWAY_MODEL_GENERAL_CHAT=gpt-5-mini
 
 # Pipedrive
 PIPEDRIVE_API_TOKEN=           # Pipedrive API key
@@ -268,10 +275,17 @@ QUICKBOOKS_ENVIRONMENT=        # "sandbox" or "production"
 # Stripe
 STRIPE_SECRET_KEY=             # Stripe API key
 
-# Twilio (WhatsApp)
+# Twilio (WhatsApp + collection phone calls)
 TWILIO_ACCOUNT_SID=            # Twilio account SID
 TWILIO_AUTH_TOKEN=             # Twilio auth token
 TWILIO_WHATSAPP_FROM=          # Twilio WhatsApp number
+TWILIO_PHONE_NUMBER=           # Twilio voice-capable number for collection calls
+
+# Collection Calls (Twilio Voice + OpenAI Realtime SIP)
+COLLECTION_CALL_PROVIDER=twilio_openai_realtime
+COLLECTION_CALL_PUBLIC_BASE_URL=https://your-domain.com
+COLLECTION_CALL_OPENAI_REALTIME_MODEL=gpt-realtime-2
+COLLECTION_CALL_OPENAI_VOICE=marin
 
 # DocuSign
 DOCUSIGN_INTEGRATION_KEY=      # DocuSign app integration key

@@ -7,7 +7,7 @@ import { createHash } from "crypto";
  * - QuickBooks: Combination of realmId + entity ID for uniqueness
  * - DocuSign: eventId or envelopeId as fallback
  * - Twilio: MessageSid for WhatsApp messages
- * - RetellAI: call_id
+ * - Twilio Voice: CallSid for collection calls
  *
  * If no event ID is available, generates a deterministic SHA-256 hash of the payload.
  *
@@ -40,15 +40,9 @@ export function extractEventId(service: string, payload: any): string | null {
       return payload?.eventId || payload?.data?.envelopeId || null;
 
     case "twilio":
-      // Use MessageSid for WhatsApp messages
-      // Example: { MessageSid: "SM1234567890", ... }
-      return payload?.MessageSid || null;
-
-    case "retell":
-    case "retellai":
-      // Use call_id from RetellAI
-      // Example: { call_id: "call_1234567890", ... }
-      return payload?.call_id || null;
+      // Use MessageSid for WhatsApp messages or CallSid for voice callbacks.
+      // Example: { MessageSid: "SM1234567890" } or { CallSid: "CA1234567890" }
+      return payload?.MessageSid || payload?.CallSid || null;
 
     default:
       // Fallback: generate deterministic hash of payload if no event ID available

@@ -133,7 +133,8 @@ function getServiceDisplayName(serviceName: string): string {
     quickbooks: "QuickBooks",
     docusign: "DocuSign",
     whatsapp: "WhatsApp",
-    retell: "RetellAI",
+    "collection-voice": "Collection Voice",
+    TWILIO_OPENAI_REALTIME: "Collection Voice",
     openai: "OpenAI",
     email: "Email Service",
   };

@@ -11,7 +11,7 @@ import { currentDateInET, buildPageContext } from '@/lib/ai/prompts/context-buil
 import { prisma } from '@/lib/db';
 import { logAiEvent } from '@/lib/ai/logger';
 import { truncateJson } from '@/lib/ai/dto';
-import { resolveDashboardAiModel } from '@/lib/ai/model-selection';
+import { resolveAiGatewayProfile } from '@/lib/ai/gateway';
 import type { AiToolDefinition } from '@/lib/ai/tools/_base';
 import type { ToolContext } from '@/lib/ai/types';
 import { AiMessageRole } from '@prisma/client';
@@ -318,7 +318,10 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const modelId = resolveDashboardAiModel(process.env.AI_MODEL_DEFAULT);
+  const gatewayProfile = resolveAiGatewayProfile({
+    task: persona ? "persona_analysis" : "dashboard_copilot",
+  });
+  const modelId = gatewayProfile.model;
   const model = openai(modelId);
 
   logAiEvent({ kind: 'request', userId: user.id, conversationId: conversation.id, model: modelId });

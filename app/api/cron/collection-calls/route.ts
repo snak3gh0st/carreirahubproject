@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { collectionCallService } from "@/lib/services/collection-call.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
+import { COLLECTION_CALL_PROVIDER } from "@/lib/services/collection-call-voice";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,7 +34,7 @@ export const GET = withCronTelemetry("collection-calls", async (_request) => {
     // Log the cron execution
     await prisma.integrationLog.create({
       data: {
-        service: "RETELL",
+        service: COLLECTION_CALL_PROVIDER,
         action: "CRON_COLLECTION_CALLS",
         status: summary.errors.length > 0 ? "PARTIAL" : "SUCCESS",
         payload: {
@@ -61,7 +62,7 @@ export const GET = withCronTelemetry("collection-calls", async (_request) => {
     // Log the error
     await prisma.integrationLog.create({
       data: {
-        service: "RETELL",
+        service: COLLECTION_CALL_PROVIDER,
         action: "CRON_COLLECTION_CALLS_FAILED",
         status: "ERROR",
         error: error instanceof Error ? error.message : "Unknown error",
