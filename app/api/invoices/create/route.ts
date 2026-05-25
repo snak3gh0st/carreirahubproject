@@ -19,6 +19,7 @@ import {
 } from "@/lib/invoices/installment-publishing";
 import { extractQuickbooksInvoiceLink } from "@/lib/quickbooks/invoice-link";
 import { resolveInvoiceQuickBooksItemRefs } from "@/lib/invoices/quickbooks-item-resolution";
+import { getQuickBooksDiscountForInvoice } from "@/lib/invoices/invoice-discount";
 
 /** Create a Date at UTC noon for today - safe for date-only operations */
 function todayUTCNoon(): Date {
@@ -391,7 +392,7 @@ export async function POST(request: NextRequest) {
       docNumber: firstMeta.number,
       emailStatus: "NeedToSend",
       lineItems: firstLineItems,
-      discount: discount > 0 ? (invoiceCountToCreate === 1 ? discount : Number((discount * (firstMeta.amount / totalAmount)).toFixed(2)) || undefined) : undefined,
+      discount: getQuickBooksDiscountForInvoice({ discount, invoiceCountToCreate }),
       billingAddress: {
         line1: customer.address || undefined,
         city: customer.city || undefined,
@@ -439,6 +440,12 @@ export async function POST(request: NextRequest) {
       totalInvoices: invoiceCountToCreate,
       seriesId,
     });
+    const firstInstallmentsMetadata = firstPersistencePlan.installmentsMetadata
+      ? {
+          ...firstPersistencePlan.installmentsMetadata,
+          isEntryPayment: entryAmount > 0 && installmentCount > 0,
+        }
+      : undefined;
     const firstInvoice = await prisma.invoice.create({
       data: {
         invoiceNumber: firstMeta.number,
@@ -454,8 +461,8 @@ export async function POST(request: NextRequest) {
         emailSentAt: firstEmailSentAt,
         emailSendAttempts: firstEmailAttempts,
         lastEmailSendError: firstEmailError,
-        ...(firstPersistencePlan.installmentsMetadata && {
-          installments: firstPersistencePlan.installmentsMetadata as any,
+        ...(firstInstallmentsMetadata && {
+          installments: firstInstallmentsMetadata as any,
         }),
       },
     });
@@ -479,6 +486,12 @@ export async function POST(request: NextRequest) {
           totalInvoices: invoiceCountToCreate,
           seriesId,
         });
+        const installmentsMetadata = persistencePlan.installmentsMetadata
+          ? {
+              ...persistencePlan.installmentsMetadata,
+              isEntryPayment: false,
+            }
+          : undefined;
         const draftInvoice = await prisma.invoice.create({
           data: {
             invoiceNumber: meta.number,
@@ -490,7 +503,9 @@ export async function POST(request: NextRequest) {
             dealId,
             customerId,
             lineItems: meta.lineItems as any,
-            installments: persistencePlan.installmentsMetadata as any,
+            ...(installmentsMetadata && {
+              installments: installmentsMetadata as any,
+            }),
           },
         });
         invoices.push(draftInvoice);

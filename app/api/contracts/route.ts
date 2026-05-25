@@ -4,6 +4,10 @@ import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { ContractStatus } from '@prisma/client';
 import { docusignService, validateCustomerForContract } from '@/lib/services/docusign.service';
+import {
+  isEntryPaymentInvoice,
+  splitEntryAndRegularInvoices,
+} from '@/lib/invoices/contract-payment-plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -469,12 +473,7 @@ export async function POST(request: NextRequest) {
             customFields['installment_count'] = seriesInvoices.length.toString();
 
             // Build payment plan description
-            const entryInvoice = seriesInvoices.find(
-              (inv) => (inv.installments as any)?.isFirstInstallment
-            );
-            const regularInvoices = seriesInvoices.filter(
-              (inv) => !(inv.installments as any)?.isFirstInstallment
-            );
+            const { entryInvoice, regularInvoices } = splitEntryAndRegularInvoices(seriesInvoices as any[]);
 
             if (entryInvoice && regularInvoices.length > 0) {
               const entryAmt = parseFloat(entryInvoice.amount.toString());
@@ -506,7 +505,7 @@ export async function POST(request: NextRequest) {
 
               // Also set description for each line
               const instData = inv.installments as any;
-              if (instData?.isFirstInstallment) {
+              if (isEntryPaymentInvoice(inv as any)) {
                 customFields[`installment_desc_${num}`] = 'Entrada';
               } else {
                 const installmentNum = instData?.current ? instData.current - (entryInvoice ? 1 : 0) : idx + 1;

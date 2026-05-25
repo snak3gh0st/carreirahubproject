@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 import { prisma } from "@/lib/db";
+import { splitEntryAndRegularInvoices } from "@/lib/invoices/contract-payment-plan";
 
 interface Invoice {
   id: string;
@@ -251,12 +252,7 @@ async function buildDocuSignCustomFields(
     customFields.total_amount = `$${totalAmount.toFixed(2)}`;
     customFields.installment_count = seriesInvoices.length.toString();
 
-    const entryInvoice = seriesInvoices.find(
-      (seriesInvoice) => (seriesInvoice.installments as any)?.isFirstInstallment
-    );
-    const regularInvoices = seriesInvoices.filter(
-      (seriesInvoice) => !(seriesInvoice.installments as any)?.isFirstInstallment
-    );
+    const { entryInvoice, regularInvoices } = splitEntryAndRegularInvoices(seriesInvoices as any[]);
 
     if (entryInvoice && regularInvoices.length > 0) {
       const entryAmount = Number(entryInvoice.amount);
@@ -285,8 +281,6 @@ async function buildDocuSignCustomFields(
         month: 'short',
         day: 'numeric',
       });
-      const installmentMeta = seriesInvoice.installments as any;
-
       customFields[`installment_amount_${slot}`] = `$${installmentAmount.toFixed(2)}`;
       customFields[`due_date_${slot}`] = dueDateLong;
       customFields[`due_date_short_${slot}`] = new Date(seriesInvoice.dueDate).toLocaleDateString('pt-BR');
