@@ -100,6 +100,8 @@ export async function GET(
           take: 20,
           include: {
             conductor: { select: { name: true } },
+            performedByUser: { select: { name: true } },
+            performedByStaff: { select: { name: true, status: true } },
           },
     },
   };
@@ -125,6 +127,8 @@ export async function GET(
           take: 20,
           include: {
             createdBy: { select: { name: true } },
+            performedByUser: { select: { name: true } },
+            performedByStaff: { select: { name: true, status: true } },
           },
         },
       },

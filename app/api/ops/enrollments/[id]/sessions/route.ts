@@ -28,7 +28,11 @@ export async function GET(
       orderBy: { sessionDate: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      include: { conductor: { select: { name: true } } },
+      include: {
+        conductor: { select: { name: true } },
+        performedByUser: { select: { name: true } },
+        performedByStaff: { select: { name: true, status: true } },
+      },
     }),
     prisma.mentorshipSession.count({ where: { enrollmentId: params.id } }),
   ]);

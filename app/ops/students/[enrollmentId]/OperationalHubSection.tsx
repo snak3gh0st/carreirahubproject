@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import {
@@ -69,6 +69,20 @@ type OpsActivity = {
   outcome: string | null;
   notes: string | null;
   createdBy: { name: string } | null;
+  performedByUser?: { name: string | null } | null;
+  performedByStaff?: { name: string; status: string } | null;
+};
+
+type OpsUserOption = {
+  id: string;
+  name: string | null;
+};
+
+type OpsStaffOption = {
+  id: string;
+  name: string;
+  status: string;
+  areas: string[];
 };
 
 const DOCUMENT_KINDS = [
@@ -140,19 +154,49 @@ function formatActivity(value: string) {
   return ACTIVITY_TYPES.find(([key]) => key === value)?.[1] ?? value;
 }
 
+function formatFormerStaffLabel(staff: { name: string; status?: string | null }) {
+  return staff.status === "FORMER" ? `${staff.name} (ex-funcionário)` : staff.name;
+}
+
+function getActivityActorName(activity: OpsActivity) {
+  if (activity.performedByStaff) return formatFormerStaffLabel(activity.performedByStaff);
+  return activity.performedByUser?.name ?? activity.createdBy?.name ?? null;
+}
+
+function useOperationalActorOptions() {
+  const users = useQuery<{ users: OpsUserOption[] }>({
+    queryKey: ["ops-users"],
+    queryFn: () => fetch("/api/ops/users").then((res) => res.json()),
+    staleTime: 5 * 60 * 1000,
+  });
+  const staffMembers = useQuery<{ staffMembers: OpsStaffOption[] }>({
+    queryKey: ["ops-staff-members", "former"],
+    queryFn: () => fetch("/api/ops/staff-members?status=FORMER").then((res) => res.json()),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  return {
+    users: users.data?.users ?? [],
+    staffMembers: staffMembers.data?.staffMembers ?? [],
+  };
+}
+
 export function OperationalHubSection({
   enrollmentId,
+  currentUserId,
   profile,
   documents,
   activities,
 }: {
   enrollmentId: string;
   customerId: string;
+  currentUserId: string;
   profile: OpsProfile;
   documents: OpsDocument[];
   activities: OpsActivity[];
 }) {
   const qc = useQueryClient();
+  const actorOptions = useOperationalActorOptions();
   const [profileState, setProfileState] = useState({
     optStatus: profile?.optStatus ?? "",
     seniority: profile?.seniority ?? "",
@@ -197,6 +241,7 @@ export function OperationalHubSection({
     visibility: "INTERNAL",
     outcome: "",
     notes: "",
+    actorId: "",
   });
 
   const latestFinalCv = useMemo(
@@ -290,6 +335,7 @@ export function OperationalHubSection({
         visibility: "INTERNAL",
         outcome: "",
         notes: "",
+        actorId: "",
       });
       toast.success("Atividade registrada.");
     },
@@ -674,6 +720,23 @@ export function OperationalHubSection({
             onChange={(e) => setActivityState((s) => ({ ...s, activityDate: e.target.value }))}
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
           />
+          <select
+            value={activityState.actorId}
+            onChange={(e) => setActivityState((s) => ({ ...s, actorId: e.target.value }))}
+            className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+          >
+            <option value="">Quem atuou: usuário atual</option>
+            {actorOptions.users.map((user) => (
+              <option key={user.id} value={`user:${user.id}`}>
+                {user.id === currentUserId ? "Eu" : user.name ?? "Sem nome"} (ativo)
+              </option>
+            ))}
+            {actorOptions.staffMembers.map((staff) => (
+              <option key={staff.id} value={`staff:${staff.id}`}>
+                {formatFormerStaffLabel(staff)}
+              </option>
+            ))}
+          </select>
           <input
             value={activityState.company}
             onChange={(e) => setActivityState((s) => ({ ...s, company: e.target.value }))}
@@ -760,7 +823,7 @@ export function OperationalHubSection({
                   {activity.status ? ` · ${activity.status.replace("_", " ")}` : ""}
                   {activity.outcome ? ` · ${activity.outcome}` : ""}
                   {activity.jobUrl ? " · com link" : ""}
-                  {activity.createdBy?.name ? ` · ${activity.createdBy.name}` : ""}
+                  {getActivityActorName(activity) ? ` · Atuou: ${getActivityActorName(activity)}` : ""}
                 </p>
                 {activity.notes && <p className="mt-1 break-words text-xs text-gray-500">{activity.notes}</p>}
               </div>

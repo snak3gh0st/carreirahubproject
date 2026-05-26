@@ -43,6 +43,8 @@ model User {
   checklistProgress      PhaseChecklistProgress[] @relation("CompletedByUser")
   opsStudentComments     OpsStudentComment[]      @relation("OpsStudentComments")
   sentOpsDigisacMessages OpsDigisacMessage[]      @relation("OpsDigisacSentBy")
+  performedOpsActivities OpsStudentActivity[]     @relation("OpsActivityPerformedByUser")
+  performedSessions      MentorshipSession[]      @relation("MentorshipSessionPerformedByUser")
 
   @@index([id])
   @@map("users")
@@ -1087,6 +1089,24 @@ model MentorshipEnrollment {
   @@map("mentorship_enrollments")
 }
 
+model OpsStaffMember {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  status    String   @default("FORMER")
+  areas     String[] @default([])
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  performedOpsActivities OpsStudentActivity[] @relation("OpsActivityPerformedByStaff")
+  performedSessions      MentorshipSession[]  @relation("MentorshipSessionPerformedByStaff")
+
+  @@index([status])
+  @@index([name])
+  @@map("ops_staff_members")
+}
+
 model OpsStudentProfile {
   id                          String    @id @default(cuid())
   optStatus                   String?
@@ -1183,11 +1203,17 @@ model OpsStudentActivity {
   enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   createdById  String?
   createdBy    User?                @relation("CreatedOpsActivities", fields: [createdById], references: [id], onDelete: SetNull)
+  performedByUserId  String?
+  performedByUser    User?           @relation("OpsActivityPerformedByUser", fields: [performedByUserId], references: [id], onDelete: SetNull)
+  performedByStaffId String?
+  performedByStaff   OpsStaffMember? @relation("OpsActivityPerformedByStaff", fields: [performedByStaffId], references: [id], onDelete: SetNull)
 
   @@index([enrollmentId, activityDate])
   @@index([type, activityDate])
   @@index([status])
   @@index([visibility])
+  @@index([performedByUserId])
+  @@index([performedByStaffId])
   @@map("ops_student_activities")
 }
 
@@ -1205,11 +1231,17 @@ model MentorshipSession {
   enrollment   MentorshipEnrollment @relation(fields: [enrollmentId], references: [id])
   conductorId  String
   conductor    User                 @relation("ConductedSessions", fields: [conductorId], references: [id])
+  performedByUserId  String?
+  performedByUser    User?           @relation("MentorshipSessionPerformedByUser", fields: [performedByUserId], references: [id], onDelete: SetNull)
+  performedByStaffId String?
+  performedByStaff   OpsStaffMember? @relation("MentorshipSessionPerformedByStaff", fields: [performedByStaffId], references: [id], onDelete: SetNull)
 
   @@index([enrollmentId])
   @@index([conductorId])
   @@index([sessionDate])
   @@index([status])
+  @@index([performedByUserId])
+  @@index([performedByStaffId])
   @@map("mentorship_sessions")
 }
 

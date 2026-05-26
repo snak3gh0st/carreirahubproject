@@ -90,6 +90,8 @@ type ProfileData = {
       rescheduleCount?: number;
       notes: string | null;
       conductor: { name: string };
+      performedByUser?: { name: string | null } | null;
+      performedByStaff?: { name: string; status: string } | null;
     }>;
     opsProfile: {
       id: string;
@@ -144,6 +146,8 @@ type ProfileData = {
       outcome: string | null;
       notes: string | null;
       createdBy: { name: string } | null;
+      performedByUser?: { name: string | null } | null;
+      performedByStaff?: { name: string; status: string } | null;
     }>;
     formAssignments: Array<{
       id: string;
@@ -591,6 +595,7 @@ export function StudentProfileClient({
       <OperationalHubSection
         enrollmentId={enrollmentId}
         customerId={enrollment.customer.id}
+        currentUserId={currentUserId}
         profile={enrollment.opsProfile}
         documents={enrollment.opsDocuments}
         activities={enrollment.opsActivities}

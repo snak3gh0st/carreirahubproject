@@ -19,6 +19,8 @@ type SessionItem = {
   rescheduleCount?: number;
   notes: string | null;
   conductor: { name: string };
+  performedByUser?: { name: string | null } | null;
+  performedByStaff?: { name: string; status: string } | null;
 };
 
 const SESSION_TYPE_OPTIONS = OPS_SESSION_TYPES.map((value) => ({
@@ -40,7 +42,7 @@ function useLogSession(enrollmentId: string) {
   return useMutation({
     mutationFn: (body: {
       sessionType: string;
-      conductorId: string;
+      actorId: string;
       sessionDate: string;
       status: string;
       rescheduleCount?: number;
@@ -71,6 +73,23 @@ function useOpsUsers() {
   });
 }
 
+function useFormerStaffMembers() {
+  return useQuery<{ staffMembers: { id: string; name: string; status: string }[] }>({
+    queryKey: ["ops-staff-members", "former"],
+    queryFn: () => fetch("/api/ops/staff-members?status=FORMER").then((r) => r.json()),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+function formatFormerStaffLabel(staff: { name: string; status?: string | null }) {
+  return staff.status === "FORMER" ? `${staff.name} (ex-funcionário)` : staff.name;
+}
+
+function getSessionActorName(session: SessionItem) {
+  if (session.performedByStaff) return formatFormerStaffLabel(session.performedByStaff);
+  return session.performedByUser?.name ?? session.conductor.name;
+}
+
 export function SessionSection({
   enrollmentId,
   initialSessions,
@@ -86,7 +105,7 @@ export function SessionSection({
   const [showForm, setShowForm] = useState(false);
   const [formState, setFormState] = useState({
     sessionType: "",
-    conductorId: currentUserId,
+    actorId: "",
     sessionDate: new Date().toISOString().slice(0, 10),
     status: "REALIZADO",
     rescheduleCount: 0,
@@ -95,6 +114,7 @@ export function SessionSection({
 
   const { data: pageData } = useSessionsPage(enrollmentId, page);
   const { data: usersData } = useOpsUsers();
+  const { data: staffData } = useFormerStaffMembers();
   const logSession = useLogSession(enrollmentId);
 
   const sessions = page === 1 ? initialSessions : (pageData?.sessions ?? []);
@@ -104,11 +124,11 @@ export function SessionSection({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.sessionType || !formState.conductorId || !formState.sessionDate) return;
+    if (!formState.sessionType || !formState.sessionDate) return;
     logSession.mutate(
       {
         sessionType: formState.sessionType,
-        conductorId: formState.conductorId,
+        actorId: formState.actorId,
         sessionDate: formState.sessionDate,
         status: formState.status,
         rescheduleCount: formState.rescheduleCount,
@@ -118,7 +138,7 @@ export function SessionSection({
         onSuccess: () => {
           setFormState({
             sessionType: "",
-            conductorId: currentUserId,
+            actorId: "",
             sessionDate: new Date().toISOString().slice(0, 10),
             status: "REALIZADO",
             rescheduleCount: 0,
@@ -172,16 +192,21 @@ export function SessionSection({
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Condutor</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Quem atuou</label>
               <select
-                required
-                value={formState.conductorId}
-                onChange={(e) => setFormState((s) => ({ ...s, conductorId: e.target.value }))}
+                value={formState.actorId}
+                onChange={(e) => setFormState((s) => ({ ...s, actorId: e.target.value }))}
                 className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-brand-verde/30"
               >
+                <option value="">Usuário atual</option>
                 {(usersData?.users ?? []).map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}
+                  <option key={u.id} value={`user:${u.id}`}>
+                    {u.id === currentUserId ? "Eu" : u.name} (ativo)
+                  </option>
+                ))}
+                {(staffData?.staffMembers ?? []).map((staff) => (
+                  <option key={staff.id} value={`staff:${staff.id}`}>
+                    {formatFormerStaffLabel(staff)}
                   </option>
                 ))}
               </select>
@@ -264,7 +289,7 @@ export function SessionSection({
                     {OPS_SESSION_TYPE_LABELS[s.sessionType as OpsSessionType] ?? s.sessionType}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {format(new Date(s.sessionDate), "dd/MM/yyyy")} · {s.conductor.name}
+                    {format(new Date(s.sessionDate), "dd/MM/yyyy")} · Atuou: {getSessionActorName(s)}
                     {s.status ? ` · ${s.status.replace("_", " ")}` : ""}
                     {s.rescheduleCount ? ` · ${s.rescheduleCount} remarcação${s.rescheduleCount !== 1 ? "ões" : ""}` : ""}
                   </p>

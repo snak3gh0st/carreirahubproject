@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isOperationalManagerRole, OPERATIONAL_TEAM_ROLES } from "@/lib/roles";
 import { PhaseAssignment } from "../coordinator/PhaseAssignment";
+import { OpsFormerStaffClient } from "./OpsFormerStaffClient";
 import { OpsTeamClient } from "./OpsTeamClient";
 
 export const dynamic = "force-dynamic";
@@ -17,19 +18,38 @@ export default async function OpsTeamPage() {
   const role = (session.user as any).role as string;
   if (!isOperationalManagerRole(role)) redirect("/ops");
 
-  const users = await prisma.user.findMany({
-    where: { role: { in: [...OPERATIONAL_TEAM_ROLES] } },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      active: true,
-      createdAt: true,
-      assignedPhases: true,
-    },
-    orderBy: [{ active: "desc" }, { name: "asc" }],
-  });
+  const [users, phases, staffMembers] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: { in: [...OPERATIONAL_TEAM_ROLES] } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+        createdAt: true,
+        assignedPhases: true,
+      },
+      orderBy: [{ active: "desc" }, { name: "asc" }],
+    }),
+    prisma.mentorshipPhase.findMany({
+      select: { key: true, label: true, sortOrder: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+    prisma.opsStaffMember.findMany({
+      where: { status: "FORMER" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        status: true,
+        areas: true,
+        notes: true,
+        createdAt: true,
+      },
+      orderBy: [{ name: "asc" }],
+    }),
+  ]);
 
   return (
     <div className="p-6 md:p-8">
@@ -54,6 +74,17 @@ export default async function OpsTeamPage() {
         />
 
         <PhaseAssignment />
+
+        <OpsFormerStaffClient
+          initialStaffMembers={staffMembers.map((staff) => ({
+            ...staff,
+            createdAt: staff.createdAt.toISOString(),
+          }))}
+          phaseOptions={phases.map((phase) => ({
+            key: phase.key,
+            label: phase.label,
+          }))}
+        />
       </div>
     </div>
   );

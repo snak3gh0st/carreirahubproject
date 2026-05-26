@@ -5,6 +5,7 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
+import { buildOperationalActorPayload } from "@/lib/ops/staff-members";
 import { isOperationalAccessRole } from "@/lib/roles";
 import {
   OPS_ACTIVITY_STATUSES,
@@ -38,6 +39,7 @@ const activitySchema = z.object({
   visibility: z.string().optional(),
   outcome: nullableString,
   notes: nullableString,
+  actorId: nullableString,
 });
 
 export async function POST(
@@ -74,18 +76,30 @@ export async function POST(
     return NextResponse.json({ error: "Link da vaga é obrigatório para aplicações." }, { status: 400 });
   }
 
+  let actor;
   try {
+    actor = buildOperationalActorPayload(parsed.data.actorId, userId);
+  } catch {
+    return NextResponse.json({ error: "Funcionario selecionado invalido" }, { status: 400 });
+  }
+
+  try {
+    const { actorId: _actorId, ...activityData } = parsed.data;
     const activity = await prisma.opsStudentActivity.create({
       data: {
-        ...parsed.data,
-        status: normalizeOpsActivityStatus(parsed.data.status) ?? null,
-        visibility: normalizeOpsVisibility(parsed.data.visibility),
+        ...activityData,
+        status: normalizeOpsActivityStatus(activityData.status) ?? null,
+        visibility: normalizeOpsVisibility(activityData.visibility),
         activityDate,
         enrollmentId: enrollment.id,
         createdById: userId,
+        performedByUserId: actor.performedByUserId,
+        performedByStaffId: actor.performedByStaffId,
       },
       include: {
         createdBy: { select: { name: true } },
+        performedByUser: { select: { name: true } },
+        performedByStaff: { select: { name: true, status: true } },
       },
     });
 
