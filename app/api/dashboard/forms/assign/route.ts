@@ -4,6 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { FORM_TEMPLATES } from "@/lib/hub/form-templates";
 import { hashPassword } from "@/lib/hub-auth";
+import {
+  buildDigisacLifecycleDedupeKey,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { createOpsManualStudentCommunicationAlert } from "@/lib/ops/internal-alerts";
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -46,17 +50,21 @@ export async function POST(request: NextRequest) {
     const template = FORM_TEMPLATES[templateId];
     const formTitle = template.titlePt || template.title;
 
-    // Create a FormAssignment for each customer
-    const created = await prisma.formAssignment.createMany({
-      data: customerIds.map((cId) => ({
-        templateId,
-        customerId: cId,
-        assignedById,
-      })),
-    });
+    // Create a FormAssignment for each customer and keep ids for Digisac lifecycle dedupe.
+    const createdAssignments = await prisma.$transaction(
+      customerIds.map((cId) =>
+        prisma.formAssignment.create({
+          data: {
+            templateId,
+            customerId: cId,
+            assignedById,
+          },
+        })
+      )
+    );
 
-    // Provision hub accounts and create internal alerts. Student communication
-    // stays manual-only so operations can choose timing/context before outreach.
+    // Provision hub accounts, keep an internal audit alert, and send a best-effort
+    // Digisac lifecycle message after the form assignment exists.
     const customers = await prisma.customer.findMany({
       where: { id: { in: customerIds } },
       select: { id: true, name: true, email: true },
@@ -92,7 +100,7 @@ export async function POST(request: NextRequest) {
           customerName: customer.name,
           customerEmail: customer.email,
           title: `Formulario atribuido: ${customer.name}`,
-          description: `${formTitle} foi atribuido a ${customer.name}. Contato com aluno deve ser manual antes de enviar instrucoes do Hub.`,
+          description: `${formTitle} foi atribuido a ${customer.name}. Digisac lifecycle tenta avisar automaticamente quando ha matricula ativa; confirme acesso do Hub se o aluno responder com duvida.`,
           dedupeKey: `form-assigned:${templateId}:${customer.id}`,
           data: {
             source: "dashboard-form-assignment",
@@ -108,13 +116,50 @@ export async function POST(request: NextRequest) {
       })
     );
 
+    const activeEnrollments = await prisma.mentorshipEnrollment.findMany({
+      where: {
+        customerId: { in: customerIds },
+        status: "ACTIVE",
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, customerId: true },
+    });
+    const enrollmentByCustomerId = new Map<string, string>();
+    for (const enrollment of activeEnrollments) {
+      if (!enrollmentByCustomerId.has(enrollment.customerId)) {
+        enrollmentByCustomerId.set(enrollment.customerId, enrollment.id);
+      }
+    }
+
+    const lifecycleResults = await Promise.allSettled(
+      createdAssignments.map(async (assignment) => {
+        const enrollmentId = enrollmentByCustomerId.get(assignment.customerId);
+        if (!enrollmentId) return { sent: false, skippedReason: "missing_enrollment" };
+        return sendDigisacLifecycleMessageSafely({
+          event: "form_assigned",
+          enrollmentId,
+          dedupeKey: buildDigisacLifecycleDedupeKey("form_assigned", assignment.id),
+          title: formTitle,
+          metadata: {
+            source: "dashboard.forms.assign",
+            formAssignmentId: assignment.id,
+            templateId,
+          },
+        });
+      })
+    );
+
     revalidatePath("/dashboard/forms");
     return NextResponse.json({
       success: true,
-      count: created.count,
+      count: createdAssignments.length,
       externalEmailsSent: 0,
       internalAlertsCreated: alertResults.filter((result) => result.status === "fulfilled").length,
       internalAlertFailures: alertResults.filter((result) => result.status === "rejected").length,
+      digisacLifecycleSent: lifecycleResults.filter(
+        (result) => result.status === "fulfilled" && result.value.sent
+      ).length,
+      digisacLifecycleFailures: lifecycleResults.filter((result) => result.status === "rejected").length,
     });
   } catch (error) {
     console.error("[Dashboard Forms Assign Error]:", error);

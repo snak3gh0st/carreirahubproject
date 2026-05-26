@@ -142,7 +142,7 @@ export async function getDigisacMessagesForEnrollment(enrollmentId: string) {
 
 export async function storeOutboundDigisacMessage(args: {
   enrollmentId: string;
-  sentById: string;
+  sentById?: string | null;
   text: string;
   result: {
     externalId: string | null;
@@ -174,7 +174,7 @@ export async function storeOutboundDigisacMessage(args: {
     content: args.text,
     type: "chat",
     status: args.result.status,
-    sentById: args.sentById,
+    sentById: args.sentById ?? null,
     raw: args.result.raw as Prisma.InputJsonValue,
     externalCreatedAt: new Date(),
   };

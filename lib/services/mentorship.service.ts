@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/db";
+import {
+  buildDigisacLifecycleDedupeKey,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { getSessionItemKey } from "@/lib/ops/phase-checklists";
 import { calculateMentorshipRenewalDate } from "@/lib/ops/renewal";
@@ -149,6 +153,17 @@ export class MentorshipService {
       }
     });
 
+    await sendDigisacLifecycleMessageSafely({
+      event: "program_welcome",
+      enrollmentId: result.enrollment.id,
+      dedupeKey: buildDigisacLifecycleDedupeKey("program_welcome", result.enrollment.id),
+      metadata: {
+        source: "mentorship.createEnrollment",
+        programType,
+        startDate: startDate.toISOString(),
+      },
+    });
+
     return result;
   }
 
@@ -261,6 +276,23 @@ export class MentorshipService {
 
       return { transition, enrollment: updatedEnrollment };
     });
+
+    if (toPhase.key === "marcar_teste_ingles" || toPhase.key === "teste_de_ingles") {
+      await sendDigisacLifecycleMessageSafely({
+        event: "english_test_ready",
+        enrollmentId,
+        dedupeKey: buildDigisacLifecycleDedupeKey(
+          "english_test_ready",
+          `${result.transition.id}:${toPhase.key}`
+        ),
+        title: toPhase.label,
+        metadata: {
+          source: "mentorship.advancePhase",
+          phaseKey: toPhase.key,
+          transitionId: result.transition.id,
+        },
+      });
+    }
 
     return result;
   }

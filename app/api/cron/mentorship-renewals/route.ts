@@ -3,6 +3,13 @@ import { UserRole } from "@prisma/client";
 import { addDays } from "date-fns";
 
 import { prisma } from "@/lib/db";
+import {
+  buildDigisacLifecycleDedupeKey,
+  getDigisacLifecycleRenewalMilestone,
+  getDigisacLifecycleStartAt,
+  isEligibleForDigisacLifecycleBackfillProtection,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
@@ -11,6 +18,7 @@ export const dynamic = "force-dynamic";
 export const GET = withCronTelemetry("mentorship-renewals", async () => {
   const now = new Date();
   const thirtyDaysOut = addDays(now, 30);
+  const lifecycleStartAt = getDigisacLifecycleStartAt();
 
   let dueSoon;
   try {
@@ -33,6 +41,83 @@ export const GET = withCronTelemetry("mentorship-renewals", async () => {
       });
     }
     throw error;
+  }
+
+  let digisacSent = 0;
+  let digisacSkipped = 0;
+  let digisacFailed = 0;
+
+  const reminderProfiles = await prisma.opsStudentProfile.findMany({
+    where: {
+      createdAt: { gte: lifecycleStartAt },
+      renewalDate: { gt: now, lte: thirtyDaysOut },
+      renewalState: { in: ["NOT_DUE", "DUE_SOON"] },
+      enrollment: { status: "ACTIVE" },
+    },
+    include: {
+      enrollment: {
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  for (const profile of reminderProfiles) {
+    if (!profile.renewalDate) {
+      digisacSkipped++;
+      continue;
+    }
+    if (!isEligibleForDigisacLifecycleBackfillProtection({ createdAt: profile.createdAt })) {
+      digisacSkipped++;
+      continue;
+    }
+
+    const daysUntilRenewal = Math.ceil((profile.renewalDate.getTime() - now.getTime()) / 86_400_000);
+    const milestone = getDigisacLifecycleRenewalMilestone(daysUntilRenewal);
+    if (!milestone) {
+      digisacSkipped++;
+      continue;
+    }
+
+    const sentField = milestone === "30"
+      ? "renewalReminder30SentAt"
+      : milestone === "15"
+        ? "renewalReminder15SentAt"
+        : "renewalReminder7SentAt";
+
+    if (profile[sentField]) {
+      digisacSkipped++;
+      continue;
+    }
+
+    const result = await sendDigisacLifecycleMessageSafely({
+      event: "renewal_reminder",
+      enrollmentId: profile.enrollment.id,
+      dedupeKey: buildDigisacLifecycleDedupeKey(
+        "renewal_reminder",
+        `${profile.id}:${milestone}`
+      ),
+      daysUntilRenewal,
+      renewalDate: profile.renewalDate,
+      metadata: {
+        source: "cron.mentorship-renewals",
+        opsStudentProfileId: profile.id,
+        milestone,
+      },
+    });
+
+    if (result.sent || result.skippedReason === "duplicate") {
+      await prisma.opsStudentProfile.update({
+        where: { id: profile.id },
+        data: { [sentField]: now },
+      });
+      if (result.sent) digisacSent++;
+      else digisacSkipped++;
+    } else {
+      if (result.skippedReason === "send_failed") digisacFailed++;
+      else digisacSkipped++;
+    }
   }
 
   const [needsRenewalPhase, systemUser, profiles] = await Promise.all([
@@ -119,6 +204,9 @@ export const GET = withCronTelemetry("mentorship-renewals", async () => {
     dueSoon: dueSoon.count,
     movedToNeedsRenewal: moved,
     stateOnly,
+    digisacRenewalSent: digisacSent,
+    digisacRenewalSkipped: digisacSkipped,
+    digisacRenewalFailed: digisacFailed,
     missingPhase: !needsRenewalPhase,
     missingSystemUser: !systemUser,
   });

@@ -4,6 +4,10 @@ import { z } from "zod";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { FORM_TEMPLATES, NPS_TEMPLATE_IDS } from "@/lib/hub/form-templates";
+import {
+  buildDigisacLifecycleDedupeKey,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -37,9 +41,9 @@ export async function POST(req: NextRequest) {
 
   // Enforce programType-scoped whitelist — mirrors GET /api/ops/enrollments/[id] logic.
   const enrollment = await prisma.mentorshipEnrollment.findFirst({
-    where: { customerId },
+    where: { customerId, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
-    select: { programType: true },
+    select: { id: true, programType: true },
   });
 
   if (!enrollment) {
@@ -85,5 +89,18 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ assignment }, { status: 201 });
+  const template = FORM_TEMPLATES[templateId];
+  const digisacLifecycle = await sendDigisacLifecycleMessageSafely({
+    event: "form_assigned",
+    enrollmentId: enrollment.id,
+    dedupeKey: buildDigisacLifecycleDedupeKey("form_assigned", assignment.id),
+    title: template.titlePt || template.title,
+    metadata: {
+      source: "ops.forms.assign",
+      formAssignmentId: assignment.id,
+      templateId,
+    },
+  });
+
+  return NextResponse.json({ assignment, digisacLifecycle }, { status: 201 });
 }

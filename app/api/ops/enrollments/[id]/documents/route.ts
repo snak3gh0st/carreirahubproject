@@ -4,6 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
+import {
+  buildDigisacLifecycleDedupeKey,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { isOperationalAccessRole } from "@/lib/roles";
 import { documentStorageService } from "@/lib/services/document-storage.service";
 import {
@@ -192,7 +196,22 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ document }, { status: 201 });
+    const digisacLifecycle = document.visibility === "STUDENT_VISIBLE"
+      ? await sendDigisacLifecycleMessageSafely({
+          event: "document_available",
+          enrollmentId: enrollment.id,
+          dedupeKey: buildDigisacLifecycleDedupeKey("document_available", document.id),
+          title: document.title || document.filename,
+          metadata: {
+            source: "ops.enrollments.documents",
+            documentId: document.id,
+            kind: document.kind,
+            resourceType: document.resourceType,
+          },
+        })
+      : null;
+
+    return NextResponse.json({ document, digisacLifecycle }, { status: 201 });
   } catch (error) {
     if (isMissingOpsNativeTable(error)) {
       return NextResponse.json(
