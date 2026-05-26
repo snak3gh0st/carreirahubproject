@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDown,
   ArrowLeft,
   Check,
   CheckCircle2,
@@ -38,9 +39,11 @@ import {
   REALTIME_TURN_RESUME_GRACE_MS,
   RealtimeTurnAccumulator,
 } from "@/lib/hub/realtime-turn-accumulator";
+import { getRealtimeEnglishTestBriefCopy } from "@/lib/hub/realtime-english-test-brief";
 
 const REALTIME_ENGLISH_TEST_COMPLETION_PHRASE =
   "English assessment complete. I have enough evidence to prepare your result now.";
+const REALTIME_ENGLISH_AUTO_FINISH_AUDIO_GRACE_MS = 1800;
 
 type SessionStatus = "idle" | "connecting" | "live" | "scoring" | "complete" | "error";
 type RealtimeResponseRequest = Record<string, unknown>;
@@ -134,7 +137,7 @@ function copyFor(lang: Language) {
     return {
       title: "Teste de inglês ao vivo",
       eyebrow: "English Speaking Test",
-      subtitle: "Simulação oral premium com avaliador AI, áudio em tempo real e leitura final no padrão de entrevista corporativa.",
+      subtitle: "Analise oral premium com teacher AI, audio em tempo real e leitura final de nivel CEFR.",
       start: "Iniciar teste",
       stop: "Parar",
       connecting: "Conectando áudio...",
@@ -142,9 +145,9 @@ function copyFor(lang: Language) {
       finish: "Finalizar e gerar resultado",
       mute: "Mutar microfone",
       unmute: "Ativar microfone",
-      scoring: "Gerando resultado...",
+      scoring: "Gerando analise...",
       fallback: "Fazer teste escrito",
-      result: "Resultado da avaliação oral",
+      result: "Resultado da analise oral",
       back: "Voltar ao painel",
       retry: "Tentar novamente",
       microphoneError: "Nao foi possivel acessar o microfone.",
@@ -157,7 +160,7 @@ function copyFor(lang: Language) {
       saved: "Resultado salvo.",
       transcript: "Transcrição",
       fullConversation: "Conversa completa",
-      conversationHint: "Veja toda a conversa capturada entre voce e o avaliador AI.",
+      conversationHint: "Veja toda a conversa capturada entre voce e a teacher AI.",
       strengths: "Pontos fortes",
       focusAreas: "Focar agora",
       signal: "Conexão de voz",
@@ -165,11 +168,11 @@ function copyFor(lang: Language) {
       readyCopy: "Pronto para iniciar",
       privacy: "Uso interno para avaliação",
       bestExperience: "Para melhor experiência e análise, faça o teste sozinho e de fone.",
-      liveHint: "Respire, organize a ideia em inglês e responda com calma. O avaliador vai conduzir o resto.",
+      liveHint: "Respire, organize a ideia em ingles e responda com calma. A teacher vai conduzir o resto.",
       resultHint: "Pontuação salva no seu perfil CarreiraHub.",
-      controlPanel: "Brief da avaliação",
-      aiTeacher: "Avaliador Carreira USA",
-      interviewer: "Brief da avaliacao",
+      controlPanel: "Brief da analise",
+      aiTeacher: "Teacher de ingles Carreira USA",
+      interviewer: "Brief da analise",
       candidate: "Aluno",
       microphone: "Microfone",
       session: "Sessão",
@@ -190,20 +193,20 @@ function copyFor(lang: Language) {
       cefrReady: "CEFR",
       roomIdle: "Sala pronta",
       roomConnecting: "Abrindo canal seguro",
-      roomLive: "Entrevista em andamento",
-      roomScoring: "Calculando resultado",
+      roomLive: "Analise em andamento",
+      roomScoring: "Calculando analise",
       roomComplete: "Resultado gerado",
       roomError: "Sessão interrompida",
       roomEvaluating: "Validando etapa",
-      examinerLabel: "Examiner",
+      examinerLabel: "Teacher",
       studentLabel: "Student",
       transcriptEmptyTitle: "Aguardando áudio",
-      aiControlsFinish: "A AI conduz a avaliacao e encerra so quando houver evidencia suficiente.",
-      confidenceTitle: "Como essa avaliacao funciona",
+      aiControlsFinish: "A teacher AI conduz a analise e encerra so quando houver evidencia suficiente.",
+      confidenceTitle: "Como essa analise funciona",
       confidenceBullets: [
-        "O avaliador conduz como um entrevistador humano: claro, calmo e profissional.",
+        "A teacher conduz como uma professora humana: clara, calma e profissional.",
         "Voce pode pedir para repetir ou simplificar a pergunta se necessario.",
-        "O foco nao e apenas gramatica: tambem conta clareza, confianca e comunicacao profissional.",
+        "O foco e ingles oral: fluencia, pronuncia, gramatica, vocabulario, compreensao e clareza.",
       ],
       coachTitle: "O que soa forte em ingles",
       coachBullets: [
@@ -211,28 +214,30 @@ function copyFor(lang: Language) {
         "Use pausas curtas em vez de preencher silencio com um, uh, like ou i mean.",
         "Priorize frases claras e objetivas, em vez de tentar parecer rebuscado.",
       ],
-      delivery: "Leitura do avaliador",
+      delivery: "Feedback da teacher",
       fillerWords: "Filler words",
       pace: "Ritmo e velocidade",
       tonePresence: "Clareza e presenca",
-      examinerRead: "Leitura final do avaliador",
+      examinerRead: "Leitura final da teacher",
       conversationMetrics: "Metricas da conversa",
       answers: "Respostas consideradas",
       totalWords: "Palavras",
       avgAnswer: "Media por resposta",
       estimatedPace: "Pace estimado",
       topFillers: "Fillers mais usados",
-      briefSummary: "A sessao mistura perguntas de carreira, role-play, cenarios de trabalho e reasoning para medir quao natural e convincente seu ingles profissional realmente soa.",
+      briefSummary: "A sessao mistura perguntas simples, pequenas situacoes do dia a dia, opinioes e explicacoes para medir como seu ingles oral soa hoje.",
       writtenRequiredTitle: "Teste escrito primeiro",
-      writtenRequiredMessage: "Complete o teste escrito de ingles antes de iniciar a entrevista oral.",
+      writtenRequiredMessage: "Complete o teste escrito de ingles antes de iniciar a analise oral.",
       writtenRequiredCta: "Ir para o teste escrito",
+      resultReadyNote: "Analise pronta. Veja o resultado logo abaixo.",
+      jumpToResult: "Ver resultado",
     };
   }
 
   return {
     title: "Live English test",
     eyebrow: "English speaking test",
-    subtitle: "Premium live speaking assessment with a human-style AI examiner and a final CEFR read built for corporate English.",
+    subtitle: "Premium live oral analysis with an AI English teacher and a final CEFR read.",
     start: "Start test",
     stop: "Stop",
     connecting: "Connecting audio...",
@@ -240,7 +245,7 @@ function copyFor(lang: Language) {
     finish: "Finish and score",
     mute: "Mute microphone",
     unmute: "Unmute microphone",
-    scoring: "Preparing result...",
+    scoring: "Preparing analysis...",
     fallback: "Take written test",
     result: "Speaking assessment result",
     back: "Back to dashboard",
@@ -255,7 +260,7 @@ function copyFor(lang: Language) {
     saved: "Result saved.",
     transcript: "Transcript",
     fullConversation: "Full conversation",
-    conversationHint: "Review the complete conversation captured between you and the AI examiner.",
+    conversationHint: "Review the complete conversation captured between you and the AI teacher.",
     strengths: "Strengths",
     focusAreas: "Focus areas",
     signal: "Voice connection",
@@ -263,11 +268,11 @@ function copyFor(lang: Language) {
     readyCopy: "Speak when ready",
     privacy: "Internal assessment use",
     bestExperience: "For the best experience and analysis, take the test alone and with headphones.",
-    liveHint: "Take a breath, organize the idea, and answer clearly. The examiner will guide the rest.",
+    liveHint: "Take a breath, organize the idea, and answer clearly. The teacher will guide the rest.",
     resultHint: "Score saved to your CarreiraHub profile.",
-    controlPanel: "Assessment brief",
-    aiTeacher: "Carreira USA examiner",
-    interviewer: "Assessment brief",
+    controlPanel: "Analysis brief",
+    aiTeacher: "Carreira USA English teacher",
+    interviewer: "Analysis brief",
     candidate: "Student",
     microphone: "Microphone",
     session: "Session",
@@ -289,19 +294,19 @@ function copyFor(lang: Language) {
     roomIdle: "Room ready",
     roomConnecting: "Opening secure channel",
     roomLive: "Test in progress",
-    roomScoring: "Preparing score",
+    roomScoring: "Preparing analysis",
     roomComplete: "Result generated",
     roomError: "Session interrupted",
     roomEvaluating: "Evaluating section",
-    examinerLabel: "Examiner",
+    examinerLabel: "Teacher",
     studentLabel: "Student",
     transcriptEmptyTitle: "Waiting for audio",
-    aiControlsFinish: "The AI leads the assessment and ends it only when there is enough evidence.",
-    confidenceTitle: "How this assessment works",
+    aiControlsFinish: "The AI teacher leads the analysis and ends it only when there is enough evidence.",
+    confidenceTitle: "How this oral analysis works",
     confidenceBullets: [
-      "The examiner should feel like a human interviewer: calm, clear, and professional.",
+      "The teacher should feel human: calm, clear, and professional.",
       "You can ask for the question to be repeated or simplified if needed.",
-      "This is not only about grammar. Clarity, confidence, and workplace communication also matter.",
+      "The focus is oral English: fluency, pronunciation, grammar, vocabulary, comprehension, and clarity.",
     ],
     coachTitle: "What sounds strong in English",
     coachBullets: [
@@ -309,21 +314,23 @@ function copyFor(lang: Language) {
       "Use short pauses instead of filling silence with um, uh, like, or i mean.",
       "Aim for clear and direct sentences instead of overcomplicating the wording.",
     ],
-    delivery: "Examiner read",
+    delivery: "Teacher feedback",
     fillerWords: "Filler words",
     pace: "Pace and speed",
     tonePresence: "Clarity and presence",
-    examinerRead: "Examiner final read",
+    examinerRead: "Teacher final read",
     conversationMetrics: "Conversation metrics",
     answers: "Evidence turns",
     totalWords: "Words",
     avgAnswer: "Avg answer",
     estimatedPace: "Estimated pace",
     topFillers: "Top fillers",
-    briefSummary: "The session mixes career questions, role-play, business scenarios, and reasoning prompts to measure how natural and convincing your professional English really sounds.",
+    briefSummary: "The session mixes simple questions, everyday situations, opinions, and explanations to measure how your oral English sounds today.",
     writtenRequiredTitle: "Written test first",
-    writtenRequiredMessage: "Complete the written English test before starting the oral interview.",
+    writtenRequiredMessage: "Complete the written English test before starting the oral analysis.",
     writtenRequiredCta: "Go to written test",
+    resultReadyNote: "Analysis ready. Your result is just below.",
+    jumpToResult: "View result",
   };
 }
 
@@ -334,12 +341,12 @@ function openingPrompt(transcriptItems: TranscriptItem[]) {
     return [
       "Resume the existing Carreira USA English speaking assessment now.",
       "Do not repeat the full opening and do not ask the student to repeat information already captured.",
-      "Sound like a polished human examiner: warm, calm, and direct.",
+      "Sound like a polished human English teacher: warm, calm, and direct.",
       `Briefly welcome the student back and say the test usually takes about ${REALTIME_ENGLISH_TEST_DURATION_LABEL}.`,
       `Tell the student they have completed ${progress.completedStageCount} of ${progress.requiredStudentTurns} required sections and that you still need the remaining sections for a reliable CEFR result.`,
       "Do not tell the student the exact internal completion phrase.",
       "Use the saved conversation context and either ask the next best assessment question in English or close the assessment if you already have enough evidence.",
-      "Choose a different format from what was already covered when possible: workplace role-play, business scenario, behavioral evidence, opinion reasoning, or clarification follow-up.",
+      "Choose a different teacher-led format from what was already covered when possible: warm-up, simple past-tense storytelling, everyday situation, practical explanation, opinion reasoning, pronunciation check, or clarification follow-up.",
       "If useful, remind the student they can ask you to repeat or clarify the question.",
       "Ask exactly one question.",
     ].join(" ");
@@ -347,16 +354,16 @@ function openingPrompt(transcriptItems: TranscriptItem[]) {
 
   return [
     "Start the live Carreira USA English speaking assessment now.",
-    "Briefly introduce yourself as the Carreira USA English examiner inside CarreiraHub.",
-    "Sound reassuring, polished, and human, like a strong interviewer from a top company.",
-    "Explain in English that Carreira USA helps professionals prepare for U.S. corporate opportunities and that this live assessment measures professional English communication, fluency, pronunciation, grammar, vocabulary, comprehension, confidence, and CEFR readiness.",
+    "Briefly introduce yourself as the Carreira USA English teacher inside CarreiraHub.",
+    "Sound reassuring, polished, and human, like a strong English teacher.",
+    "Explain in English that this is an oral English analysis, not a mock interview or job interview, and that it measures fluency, pronunciation, grammar, vocabulary, comprehension, clarity, and CEFR readiness.",
     `Tell the student the full assessment usually takes about ${REALTIME_ENGLISH_TEST_DURATION_LABEL} and moves through five short sections.`,
     "Explain that you will guide the full conversation and prepare the result only after you have enough evidence.",
     "Tell the student they can ask you to repeat or clarify a question if needed.",
-    "Tell the student that the interview will use different formats, including professional interview questions, workplace scenarios, role-play, opinion questions, and follow-ups based on their answers.",
+    "Tell the student that the analysis will use different teacher-led formats, including simple questions, everyday situations, opinions, explanations, pronunciation checks, and follow-ups based on their answers.",
     "Keep the introduction under 30 seconds.",
     "Do not start with only 'What is your name?'",
-    "Then ask one substantial first question about the student's current role, professional background, or career goal in the United States.",
+    "Then ask one substantial first question about the student's day, studies, work routine, hobbies, or how they use English today.",
     "After the student answers, choose a targeted follow-up before moving on if the answer is short, vague, memorized, unclear, or interesting enough to probe deeper.",
   ].join(" ");
 }
@@ -372,6 +379,7 @@ function isActiveResponseConflict(message: string) {
 export default function RealtimeEnglishTestPage() {
   const [lang, setLang] = useState<Language>("en");
   const copy = useMemo(() => copyFor(lang), [lang]);
+  const oralBrief = useMemo(() => getRealtimeEnglishTestBriefCopy(lang), [lang]);
   const [status, setStatus] = useState<SessionStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
@@ -386,6 +394,7 @@ export default function RealtimeEnglishTestPage() {
   const dcRef = useRef<RTCDataChannel | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const resultRef = useRef<HTMLDivElement | null>(null);
   const transcriptRef = useRef<TranscriptItem[]>([]);
   const testIdRef = useRef<string | null>(null);
   const statusRef = useRef<SessionStatus>("idle");
@@ -423,6 +432,14 @@ export default function RealtimeEnglishTestPage() {
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
+
+  useEffect(() => {
+    if (status !== "complete" || !result) return;
+    const timer = window.setTimeout(() => {
+      resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [result, status]);
 
   useEffect(() => {
     studentTurnAccumulatorRef.current = new RealtimeTurnAccumulator({
@@ -635,7 +652,7 @@ export default function RealtimeEnglishTestPage() {
             isComplete
               ? `If the evidence is sufficient, say exactly: "${REALTIME_ENGLISH_TEST_COMPLETION_PHRASE}". Otherwise ask exactly one final clarification question.`
               : `Ask exactly one focused question for this section: ${currentStage.promptFocus}.`,
-            "Keep the tone professional and concise. Do not overpraise.",
+            "Keep the tone teacher-like, professional, and concise. Do not overpraise.",
             "Ignore brief noises, coughs, keyboard sounds, breathing, or unclear fragments.",
           ]
         : [
@@ -645,7 +662,7 @@ export default function RealtimeEnglishTestPage() {
             "Do not advance the section.",
             `Re-ask or reframe one question for the same section: ${currentStage.title}.`,
             "If the student was joking, off-topic, evasive, or unfocused, politely ask them to stay focused and take their time.",
-            "Keep the response in English, professional, and under 35 seconds.",
+            "Keep the response in English, teacher-like, and under 35 seconds.",
             "Ignore brief noises, coughs, keyboard sounds, breathing, or unclear fragments.",
           ];
 
@@ -818,7 +835,9 @@ export default function RealtimeEnglishTestPage() {
       lastRequestedExaminerResponseRef.current = null;
       if (autoFinishingRef.current) {
         autoFinishingRef.current = false;
-        void finishSession();
+        window.setTimeout(() => {
+          void finishSession();
+        }, REALTIME_ENGLISH_AUTO_FINISH_AUDIO_GRACE_MS);
         return;
       }
       flushPendingExaminerResponse();
@@ -1191,7 +1210,7 @@ export default function RealtimeEnglishTestPage() {
                     <>
                       <div className="font-mono text-4xl font-black leading-none tracking-tight text-white">AI</div>
                       <div className="mt-1.5 text-[9px] font-bold uppercase tracking-[0.22em] text-white/30">
-                        examiner
+                        teacher
                       </div>
                     </>
                   )}
@@ -1324,6 +1343,19 @@ export default function RealtimeEnglishTestPage() {
                     {copy.scoring}
                   </div>
                 )}
+
+                {status === "complete" && result && (
+                  <button
+                    onClick={() => resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                    className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl border border-white/15 bg-white/[0.08] py-3.5 text-sm font-bold text-white/80 transition hover:bg-white/15 active:scale-[0.99]"
+                  >
+                    <ArrowDown className="h-4 w-4" strokeWidth={2.5} />
+                    <span>{copy.resultReadyNote}</span>
+                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-white/60">
+                      {copy.jumpToResult}
+                    </span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1447,6 +1479,24 @@ export default function RealtimeEnglishTestPage() {
                 <span>{copy.bestExperience}</span>
               </div>
 
+              <div className="mt-4 rounded-2xl border border-orange-100 bg-orange-50/70 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-orange-700">
+                  {oralBrief.title}
+                </p>
+                <p className="mt-2 text-sm leading-5 text-orange-950/80">{oralBrief.summary}</p>
+                <div className="mt-3 space-y-2.5">
+                  {oralBrief.bullets.map((item) => (
+                    <div key={item} className="flex items-start gap-2 text-sm text-orange-950">
+                      <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-orange-500" strokeWidth={2.2} />
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold leading-5 text-orange-900">
+                  {oralBrief.resultBelowNote}
+                </p>
+              </div>
+
               <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4">
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gray-400">
                   {copy.confidenceTitle}
@@ -1506,7 +1556,7 @@ export default function RealtimeEnglishTestPage() {
 
       {/* ── Result card ── */}
       {result && (
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div ref={resultRef} className="scroll-mt-6 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="flex items-start justify-between gap-4 p-6 pb-5">
             <div>
               <h2 className="text-lg font-bold text-gray-950">{copy.result}</h2>

@@ -39,13 +39,14 @@ function buildTurnEvaluationPrompt(input: {
   stageFocus: string;
 }) {
   return [
-    "You are a strict but supportive English oral examiner for Brazilian professionals preparing for U.S. corporate interviews.",
+    "You are a strict but supportive English teacher evaluating an oral English analysis.",
+    "This is not a mock interview, not a job interview, and not a hiring simulation.",
     "Your task is not to score the full test. Your task is to decide whether the latest student answer provides acceptable evidence for the current section.",
     "Accept weak English if the answer meaningfully attempts the task. Do not reject only because grammar, pronunciation, or vocabulary is limited.",
     "Reject the answer if it is mostly noise, too short, joking, unfocused, mostly not English, a refusal, evasive, off-topic, or does not answer the current section.",
-    "If the student jokes, avoids the task, or loses focus, direct the examiner to stay professional, ask the student to focus, and re-ask the section without advancing.",
-    "If the answer is accepted, direct the examiner to move to the next section or ask only one concise targeted follow-up if truly needed.",
-    `User language for operational fallback messages: ${input.language}. The live interview itself stays in English.`,
+    "If the student jokes, avoids the task, or loses focus, direct the teacher to stay professional, ask the student to focus, and re-ask the section without advancing.",
+    "If the answer is accepted, direct the teacher to move to the next section or ask only one concise targeted follow-up if truly needed.",
+    `User language for operational fallback messages: ${input.language}. The live oral analysis itself stays in English.`,
     `Current section: ${input.stageTitle}.`,
     `Current section focus: ${input.stageFocus}.`,
     "Recent transcript:",

@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: "Return only valid JSON. You are a structured English oral interviewer.",
+          content: "Return only valid JSON. You are a structured English teacher for oral analysis.",
         },
         {
           role: "user",

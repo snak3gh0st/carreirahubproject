@@ -5,33 +5,33 @@ export const REALTIME_ENGLISH_TEST_MAX_TRANSCRIPT_ITEMS = 120;
 export const REALTIME_ENGLISH_TEST_STAGES = [
   {
     id: "baseline",
-    title: "Professional baseline",
+    title: "Speaking baseline",
     shortTitle: "Baseline",
-    promptFocus: "current role, professional background, and U.S. career goal",
+    promptFocus: "short introduction, familiar topics, and how the student uses English today",
   },
   {
     id: "behavioral",
-    title: "Behavioral evidence",
-    shortTitle: "Behavioral",
-    promptFocus: "past experience, business impact, and STAR-style follow-up",
+    title: "Past-tense storytelling",
+    shortTitle: "Storytelling",
+    promptFocus: "a simple past experience, sequence of events, result, and clarity",
   },
   {
     id: "workplace",
-    title: "Workplace role-play",
-    shortTitle: "Role-play",
-    promptFocus: "realistic U.S. workplace conversation or stakeholder communication",
+    title: "Functional communication",
+    shortTitle: "Functional",
+    promptFocus: "requests, clarification, explanations, and everyday communication",
   },
   {
     id: "scenario",
-    title: "Business scenario",
-    shortTitle: "Scenario",
-    promptFocus: "practical problem solving, prioritization, or conflict handling",
+    title: "Practical explanation",
+    shortTitle: "Explanation",
+    promptFocus: "describing a plan, preference, problem, or process in clear English",
   },
   {
     id: "reasoning",
     title: "Opinion and reasoning",
     shortTitle: "Reasoning",
-    promptFocus: "TOEFL-style opinion, structured reasoning, and clarification checks",
+    promptFocus: "opinion, structured reasoning, and clarification checks",
   },
 ] as const;
 
@@ -197,7 +197,7 @@ export function buildFallbackRealtimeTurnEvaluation(input: {
       : "The answer was too short or unclear to evaluate this stage reliably.",
     examinerDirective: acceptedEvidence
       ? `Move to the next section after acknowledging the answer briefly.`
-      : `Do not advance. Ask the student to take their time and answer the ${input.stage.shortTitle.toLowerCase()} question with a full professional example.`,
+      : `Do not advance. Ask the student to take their time and answer the ${input.stage.shortTitle.toLowerCase()} question with a complete English answer.`,
   };
 }
 

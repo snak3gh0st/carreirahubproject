@@ -53,10 +53,10 @@ function getLangFromCookie(): Language {
 function copyFor(lang: Language) {
   if (lang === "pt-BR") {
     return {
-      eyebrow: "Entrevista oral guiada",
+      eyebrow: "Analise oral guiada",
       title: "Teste de ingles por voz",
-      subtitle: "Uma entrevista oral estruturada com perguntas em ingles, gravacao por fala do navegador e avaliacao por GPT.",
-      start: "Iniciar entrevista",
+      subtitle: "Uma analise oral com teacher AI, gravacao por fala do navegador e avaliacao por GPT.",
+      start: "Iniciar analise",
       starting: "Preparando...",
       record: "Gravar resposta",
       stop: "Parar e enviar",
@@ -66,11 +66,11 @@ function copyFor(lang: Language) {
       speakAgain: "Ouvir pergunta",
       realtime: "Tentar Realtime 2",
       written: "Teste escrito",
-      transcript: "Transcricao da entrevista",
+      transcript: "Transcricao da analise oral",
       emptyTranscript: "As perguntas e respostas aparecem aqui.",
       unsupported: "Seu navegador nao oferece reconhecimento de fala. Use Chrome ou Edge para este modo.",
       noAnswer: "Nao consegui capturar a resposta. Tente gravar novamente e fale em ingles.",
-      result: "Resultado da entrevista",
+      result: "Resultado da analise oral",
       saved: "Resultado salvo.",
       back: "Voltar ao painel",
       strengths: "Pontos fortes",
@@ -80,10 +80,10 @@ function copyFor(lang: Language) {
   }
 
   return {
-    eyebrow: "Guided oral interview",
+    eyebrow: "Guided oral analysis",
     title: "Voice English Assessment",
-    subtitle: "A structured English interview using browser speech capture and GPT evaluation.",
-    start: "Start interview",
+    subtitle: "A structured oral English analysis using browser speech capture and GPT evaluation.",
+    start: "Start analysis",
     starting: "Preparing...",
     record: "Record answer",
     stop: "Stop and send",
@@ -93,11 +93,11 @@ function copyFor(lang: Language) {
     speakAgain: "Replay question",
     realtime: "Try Realtime 2",
     written: "Written test",
-    transcript: "Interview transcript",
+    transcript: "Oral analysis transcript",
     emptyTranscript: "Questions and answers appear here.",
     unsupported: "Your browser does not support speech recognition. Use Chrome or Edge for this mode.",
     noAnswer: "I could not capture an answer. Try recording again and speak in English.",
-    result: "Interview result",
+    result: "Oral analysis result",
     saved: "Result saved.",
     back: "Back to dashboard",
     strengths: "Strengths",
@@ -172,7 +172,7 @@ export default function VoiceEnglishTestPage() {
       const response = await fetch("/api/hub/test/voice/session", { method: "POST" });
       const body = await response.json();
       if (!response.ok) {
-        throw new Error(body?.error || "Failed to start voice interview");
+        throw new Error(body?.error || "Failed to start voice analysis");
       }
 
       setTestId(body.testId);
@@ -183,7 +183,7 @@ export default function VoiceEnglishTestPage() {
       setTimeout(() => speak(body.examinerText), 250);
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Failed to start voice interview");
+      setError(err instanceof Error ? err.message : "Failed to start voice analysis");
     }
   }
 
@@ -312,14 +312,14 @@ export default function VoiceEnglishTestPage() {
       });
       const body = await response.json();
       if (!response.ok) {
-        throw new Error(body?.error || "Failed to finish interview");
+        throw new Error(body?.error || "Failed to finish voice analysis");
       }
       setResult(body.result);
       setStatus("complete");
       window.speechSynthesis?.cancel();
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Failed to finish interview");
+      setError(err instanceof Error ? err.message : "Failed to finish voice analysis");
     }
   }
 
@@ -359,7 +359,7 @@ export default function VoiceEnglishTestPage() {
         {currentQuestion ? (
           <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1">
-              Examiner
+              Teacher
             </p>
             <p className="text-sm text-gray-800">{currentQuestion}</p>
           </div>
@@ -531,7 +531,7 @@ export default function VoiceEnglishTestPage() {
                 style={{ borderColor: item.role === "student" ? BRAND_COLORS.TANGERINA : BRAND_COLORS.VERDE }}
               >
                 <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-1">
-                  {item.role === "student" ? "Student" : "Examiner"}
+                  {item.role === "student" ? "Student" : "Teacher"}
                   {typeof item.confidence === "number" ? ` · ${(item.confidence * 100).toFixed(0)}%` : ""}
                 </p>
                 <p className="text-sm text-gray-700">{item.text}</p>

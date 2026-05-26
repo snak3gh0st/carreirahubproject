@@ -150,7 +150,7 @@ function copyFor(lang: Language) {
       confidenceBullets: [
         "O entrevistador vai soar humano, profissional e direto, como em empresas grandes.",
         "Voce pode pedir para repetir ou esclarecer uma pergunta.",
-        "Respostas especificas com contexto, acao e impacto valem mais do que respostas longas.",
+        "Respostas no formato CARL, com contexto, acao, resultado e aprendizado, valem mais do que respostas longas.",
       ],
       coachTitle: "O que passa confianca",
       coachBullets: [
@@ -237,7 +237,7 @@ function copyFor(lang: Language) {
     confidenceBullets: [
       "The interviewer should feel human, professional, and direct, like a strong big-company interviewer.",
       "You can ask for a question to be repeated or clarified.",
-      "Specific answers with context, action, and impact are stronger than long generic answers.",
+      "CARL answers with context, action, result, and learning are stronger than long generic answers.",
     ],
     coachTitle: "What sounds confident",
     coachBullets: [

@@ -33,7 +33,7 @@ export function getVoiceEnglishTestModelCandidates(): string[] {
 }
 
 export function getVoiceEnglishFirstQuestion(): string {
-  return "Welcome. Please introduce yourself briefly and tell me about your professional background.";
+  return "Welcome. Please introduce yourself briefly and tell me how you use English today.";
 }
 
 export function normalizeVoiceTranscript(value: unknown): VoiceInterviewTranscriptItem[] {
@@ -81,16 +81,16 @@ export function buildVoiceNextQuestionPrompt(input: {
   const remainingTurns = Math.max(0, VOICE_ENGLISH_TEST_MAX_STUDENT_TURNS - studentTurns);
 
   return [
-    "You are conducting a serious English oral interview for Brazilian professionals seeking corporate jobs in the United States.",
-    "Behave like a human interviewer, similar to a structured hiring/placement interview.",
-    "Speak only in English during the interview.",
+    "You are conducting an oral English analysis as a supportive English teacher.",
+    "This is not a mock interview, not a job interview, and not a hiring simulation.",
+    "Speak only in English during the oral analysis.",
     "Ask exactly one question at a time.",
     "Do not answer for the student.",
-    "Use realistic corporate, behavioral, and TOEFL-style prompts.",
+    "Use teacher-led speaking prompts such as familiar topics, everyday situations, simple past-tense storytelling, practical explanation, opinion, and clarification checks.",
     "Adapt difficulty based on the student's last answer.",
-    "Keep each interviewer turn under 35 words.",
+    "Keep each teacher turn under 35 words.",
     "Do not provide the final score yet.",
-    `The interview should finish after about ${VOICE_ENGLISH_TEST_MAX_STUDENT_TURNS} student answers. Student answers so far: ${studentTurns}. Remaining planned turns: ${remainingTurns}.`,
+    `The oral analysis should finish after about ${VOICE_ENGLISH_TEST_MAX_STUDENT_TURNS} student answers. Student answers so far: ${studentTurns}. Remaining planned turns: ${remainingTurns}.`,
     "If the student clearly asks to finish, set shouldFinish to true.",
     "If the student has already answered enough questions, set shouldFinish to true and thank them briefly.",
     "Return only valid JSON with this exact shape:",
@@ -105,7 +105,7 @@ export function normalizeVoiceTurn(input: unknown): VoiceInterviewTurn {
   const examinerText =
     typeof raw.examinerText === "string" && raw.examinerText.trim()
       ? raw.examinerText.trim().slice(0, 500)
-      : "Thank you. Could you give one specific example from your professional experience?";
+      : "Thank you. Could you say that again with one simple example?";
 
   return {
     examinerText,
@@ -119,10 +119,10 @@ export function buildVoiceFinalAssessmentPrompt(input: {
 }): string {
   return [
     buildRealtimeFinalAssessmentPrompt(input.language),
-    "Evaluate this as an oral interview transcript captured by browser speech recognition.",
+    "Evaluate this as an oral English analysis transcript captured by browser speech recognition.",
     "Use speech recognition confidence, answer length, hesitation markers, coherence, grammar, vocabulary, and comprehension as evidence.",
     "PronunciationScore should represent intelligibility based on recognition confidence and transcript clarity, not a phonetic lab score.",
-    "Be strict enough for professional placement decisions.",
+    "Be rigorous enough for CEFR language-level placement, not job-interview readiness.",
     "Transcript:",
     transcriptForPrompt(input.transcript),
   ].join("\n");

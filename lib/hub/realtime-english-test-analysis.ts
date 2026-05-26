@@ -132,28 +132,28 @@ export function buildRealtimeEnglishDeliveryAnalysis(input: {
       wpm === 0
         ? "O ritmo estimado nao pode ser calculado com seguranca nesta sessao."
         : wpm < 80
-          ? "O ritmo pareceu mais travado ou cauteloso. A fala pede mais continuidade para soar mais natural em contexto corporativo."
-          : wpm <= 155
-            ? "O ritmo ficou em uma faixa boa para entrevistas: claro, controlado e relativamente facil de acompanhar."
+          ? "O ritmo pareceu mais travado ou cauteloso. A fala pede mais continuidade para soar mais natural em uma conversa em ingles."
+        : wpm <= 155
+            ? "O ritmo ficou em uma faixa boa para uma avaliacao oral: claro, controlado e relativamente facil de acompanhar."
             : wpm <= 185
               ? "O ritmo esta funcional, mas em alguns momentos pode ter ficado rapido demais. Vale desacelerar levemente nas partes mais importantes."
-              : "O ritmo estimado ficou acelerado para entrevista. Reduzir a velocidade deve melhorar clareza, presenca e compreensao.";
+              : "O ritmo estimado ficou acelerado para uma conversa guiada. Reduzir a velocidade deve melhorar clareza, presenca e compreensao.";
 
     const toneAndPresence =
       overallBand === "high" && fluencyBand !== "low"
-        ? "A combinacao de fluencia, compreensao e consistencia sugere boa presenca para uma entrevista profissional em ingles."
+        ? "A combinacao de fluencia, compreensao e consistencia sugere boa presenca para uma conversa em ingles."
         : overallBand === "mid"
-          ? "A presenca geral ja sustenta conversa profissional, mas ainda alterna entre momentos convincentes e trechos menos firmes."
-          : "A presenca ainda parece instavel para um contexto seletivo mais exigente. Falta mais controle de resposta, clareza e seguranca em ingles.";
+          ? "A presenca geral ja sustenta uma conversa guiada em ingles, mas ainda alterna entre momentos convincentes e trechos menos firmes."
+          : "A presenca ainda parece instavel para uma conversa em ingles mais longa. Falta mais controle de resposta, clareza e seguranca.";
 
     const examinerRead =
       result.score >= 85
-        ? `Leitura final: candidato com ingles convincente para entrevista corporativa em nivel ${result.cefrLevel}, com sinais de prontidao real para processos mais seletivos.`
+        ? `Leitura final: comunicacao oral em ingles forte para o nivel ${result.cefrLevel}, com boa fluencia e clareza em conversa guiada.`
         : result.score >= 70
-          ? `Leitura final: candidato competitivo para entrevistas em ingles no nivel ${result.cefrLevel}, mas ainda com pontos de ajuste para soar mais senior e natural.`
+          ? `Leitura final: comunicacao oral funcional no nivel ${result.cefrLevel}, com boa base para conversa em ingles e pontos claros de refinamento.`
           : result.score >= 55
-            ? `Leitura final: base funcional em ingles no nivel ${result.cefrLevel}, porem ainda nao consistente o suficiente para entrevistas mais exigentes sem treino focado.`
-            : `Leitura final: o nivel atual ${result.cefrLevel} ainda exige mais preparacao antes de uma entrevista corporativa em ingles com maior pressao.`;
+            ? `Leitura final: base oral em ingles no nivel ${result.cefrLevel}, porem ainda irregular para manter conversa com seguranca sem treino focado.`
+            : `Leitura final: o nivel oral atual ${result.cefrLevel} ainda exige mais pratica guiada antes de conversas em ingles com maior autonomia.`;
 
     return {
       fillerWordAssessment,
@@ -176,28 +176,28 @@ export function buildRealtimeEnglishDeliveryAnalysis(input: {
     wpm === 0
       ? "Estimated pace could not be measured reliably in this session."
       : wpm < 80
-        ? "The pace reads as cautious or hesitant. The answer flow needs more continuity to sound natural in a corporate interview."
+        ? "The pace reads as cautious or hesitant. The answer flow needs more continuity to sound natural in an English conversation."
         : wpm <= 155
-          ? "The pace stayed in a strong interview range: clear, controlled, and fairly easy to follow."
+          ? "The pace stayed in a strong oral assessment range: clear, controlled, and fairly easy to follow."
           : wpm <= 185
             ? "The pace is workable, but some moments may have sounded slightly rushed. Slowing down on key points would help."
-            : "The estimated pace is fast for an interview setting. Slowing down should improve clarity, presence, and comprehension.";
+            : "The estimated pace is fast for a guided conversation. Slowing down should improve clarity, presence, and comprehension.";
 
   const toneAndPresence =
     overallBand === "high" && fluencyBand !== "low"
-      ? "The combination of fluency, comprehension, and consistency suggests strong presence for a professional English interview."
+      ? "The combination of fluency, comprehension, and consistency suggests strong presence in an English conversation."
       : overallBand === "mid"
-        ? "Overall presence can sustain a professional conversation, but it still moves between convincing moments and less controlled stretches."
-        : "Presence still reads as unstable for a selective interview. The student needs more control, clarity, and confidence in spoken English.";
+        ? "Overall presence can sustain a guided English conversation, but it still moves between confident moments and less controlled stretches."
+        : "Presence still reads as unstable for a longer English conversation. The student needs more control, clarity, and confidence in spoken English.";
 
   const examinerRead =
     result.score >= 85
-      ? `Final read: the candidate sounds credible for a corporate English interview at ${result.cefrLevel} level and shows real readiness for more selective processes.`
+      ? `Final read: the student shows strong oral English communication at ${result.cefrLevel} level with clear fluency in guided conversation.`
       : result.score >= 70
-        ? `Final read: the candidate is competitive for English interviews at ${result.cefrLevel} level, but still needs refinement to sound more senior and natural.`
+        ? `Final read: the student has functional oral English at ${result.cefrLevel} level, with a solid base for conversation and clear areas to refine.`
         : result.score >= 55
-          ? `Final read: the candidate has workable English at ${result.cefrLevel} level, but not yet enough consistency for demanding interviews without focused practice.`
-          : `Final read: the current ${result.cefrLevel} level still needs more preparation before a higher-pressure corporate English interview.`;
+          ? `Final read: the student has a workable oral English base at ${result.cefrLevel} level, but needs focused practice for more consistent conversation.`
+          : `Final read: the current ${result.cefrLevel} oral level still needs more guided practice before independent English conversations feel stable.`;
 
   return {
     fillerWordAssessment,

@@ -86,6 +86,10 @@ test("buildAiMockInterviewSession configures a Realtime 2 mock interviewer", () 
   assert.match(session.instructions, /candidate's name, the interview duration, the areas you will cover/i);
   assert.match(session.instructions, /Sound like a real interviewer from a top U\.S\. company/i);
   assert.match(session.instructions, /Humanize the experience/i);
+  assert.match(session.instructions, /CARL-first/i);
+  assert.match(session.instructions, /context, action, result, and learning/i);
+  assert.match(session.instructions, /STAR/i);
+  assert.doesNotMatch(session.instructions, /behavioral STAR question/i);
 });
 
 test("getAiMockInterviewModelCandidates normalizes GPT Realtime 2 aliases", () => {
@@ -200,6 +204,6 @@ test("buildAiMockInterviewOpeningPrompt includes name, duration, areas, and CV g
   const prompt = buildAiMockInterviewOpeningPrompt({ context });
   assert.match(prompt, /Marina Costa/);
   assert.match(prompt, /10 to 12 minutes/);
-  assert.match(prompt, /resume walkthrough, behavioral evidence, role-specific scenarios/i);
+  assert.match(prompt, /resume walkthrough, CARL behavioral evidence, role-specific scenarios/i);
   assert.match(prompt, /Marina_Costa\.pdf/);
 });

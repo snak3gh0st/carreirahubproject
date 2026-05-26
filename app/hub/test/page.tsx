@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { t, Language } from "@/lib/i18n/hub";
 import { BRAND_COLORS } from "@/lib/constants/brand";
+import { getRealtimeEnglishTestBriefCopy } from "@/lib/hub/realtime-english-test-brief";
 
 interface Question {
   id: string;
@@ -147,6 +148,7 @@ export default function HubTestPage() {
 
     const oralUnlocked = oralAccess?.unlocked === true;
     const writtenResult = oralAccess?.writtenTest;
+    const oralBrief = getRealtimeEnglishTestBriefCopy(lang);
 
     return (
       <div className="max-w-2xl mx-auto text-center py-12">
@@ -168,6 +170,21 @@ export default function HubTestPage() {
           >
             {lang === "pt-BR" ? "Fazer teste escrito" : "Take Written Test"}
           </button>
+          <div className="rounded-xl border border-orange-100 bg-orange-50/70 px-5 py-4 text-left">
+            <p className="text-sm font-extrabold text-orange-900">{oralBrief.title}</p>
+            <p className="mt-1 text-sm leading-5 text-orange-900/80">{oralBrief.summary}</p>
+            <div className="mt-3 space-y-2">
+              {oralBrief.bullets.map((item) => (
+                <div key={item} className="flex items-start gap-2 text-sm leading-5 text-orange-950">
+                  <span
+                    className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: BRAND_COLORS.TANGERINA }}
+                  />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
           {oralUnlocked ? (
             <button
               onClick={() => router.push("/hub/test/realtime")}
@@ -183,8 +200,8 @@ export default function HubTestPage() {
               <p className="mt-1 text-sm text-gray-500">
                 {oralAccess?.message ||
                   (lang === "pt-BR"
-                    ? "Complete o teste escrito antes de iniciar a entrevista oral."
-                    : "Complete the written test before starting the oral interview.")}
+                    ? "Complete o teste escrito antes de iniciar a analise oral."
+                    : "Complete the written test before starting the oral analysis.")}
               </p>
             </div>
           )}

@@ -10,8 +10,8 @@ import {
   normalizeVoiceTurn,
 } from "../../lib/hub/voice-english-test";
 
-test("voice interview starts with a professional English question", () => {
-  assert.match(getVoiceEnglishFirstQuestion(), /professional background/i);
+test("voice oral analysis starts with a teacher-style English question", () => {
+  assert.match(getVoiceEnglishFirstQuestion(), /how you use English/i);
 });
 
 test("normalizeVoiceTranscript keeps clean student and examiner turns", () => {
@@ -29,7 +29,7 @@ test("normalizeVoiceTranscript keeps clean student and examiner turns", () => {
   assert.equal(countStudentTurns(transcript), 1);
 });
 
-test("buildVoiceNextQuestionPrompt requests a single JSON interviewer turn", () => {
+test("buildVoiceNextQuestionPrompt requests a single JSON teacher turn", () => {
   const prompt = buildVoiceNextQuestionPrompt({
     language: "pt-BR",
     transcript: [
@@ -41,6 +41,9 @@ test("buildVoiceNextQuestionPrompt requests a single JSON interviewer turn", () 
   assert.match(prompt, /Ask exactly one question/i);
   assert.match(prompt, /Return only valid JSON/i);
   assert.match(prompt, /speech recognition confidence: 0\.80/i);
+  assert.match(prompt, /not a mock interview/i);
+  assert.match(prompt, /not a hiring simulation/i);
+  assert.doesNotMatch(prompt, /corporate|STAR|CARL/i);
 });
 
 test("normalizeVoiceTurn provides a safe fallback", () => {
@@ -51,7 +54,7 @@ test("normalizeVoiceTurn provides a safe fallback", () => {
   assert.equal(normalizeVoiceTurn(null).shouldFinish, false);
 });
 
-test("buildVoiceFinalAssessmentPrompt includes the oral interview caveat", () => {
+test("buildVoiceFinalAssessmentPrompt includes the oral analysis caveat", () => {
   const prompt = buildVoiceFinalAssessmentPrompt({
     language: "en",
     transcript: [{ role: "student", text: "My answer", at: "now", confidence: 0.7 }],
@@ -59,5 +62,6 @@ test("buildVoiceFinalAssessmentPrompt includes the oral interview caveat", () =>
 
   assert.match(prompt, /browser speech recognition/i);
   assert.match(prompt, /PronunciationScore/i);
-  assert.match(prompt, /strict enough/i);
+  assert.match(prompt, /oral English analysis/i);
+  assert.doesNotMatch(prompt, /professional placement/i);
 });

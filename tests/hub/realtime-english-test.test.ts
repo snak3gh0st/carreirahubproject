@@ -27,6 +27,7 @@ import {
   buildRealtimeEnglishConversationMetrics,
   buildRealtimeEnglishDeliveryAnalysis,
 } from "../../lib/hub/realtime-english-test-analysis";
+import { getRealtimeEnglishTestBriefCopy } from "../../lib/hub/realtime-english-test-brief";
 import {
   buildRealtimeEnglishResetUpdateData,
   canResetRealtimeEnglishTestStatus,
@@ -50,23 +51,47 @@ test("buildRealtimeEnglishTestSession uses GPT Realtime 2 with audio-first defau
   assert.match(session.instructions, /CEFR/i);
   assert.match(session.instructions, /Carreira USA/i);
   assert.match(session.instructions, /AI teacher/i);
-  assert.match(session.instructions, /corporate/i);
-  assert.match(session.instructions, /TOEFL-style/i);
+  assert.match(session.instructions, /English teacher/i);
+  assert.match(session.instructions, /not a mock interview/i);
   assert.match(session.instructions, /adaptive test plan/i);
-  assert.match(session.instructions, /role-play/i);
+  assert.match(session.instructions, /not a hiring simulation/i);
+  assert.match(session.instructions, /Do not require CARL\/STAR/i);
+  assert.doesNotMatch(session.instructions, /realistic corporate English oral interview/i);
+  assert.doesNotMatch(session.instructions, /behavioral CARL\/STAR question/i);
   assert.match(session.instructions, /targeted follow-up/i);
-  assert.match(session.instructions, /increase complexity/i);
+  assert.match(session.instructions, /increase language complexity/i);
   assert.match(session.instructions, /8 to 10 minutes/i);
   assert.match(session.instructions, /five short sections/i);
   assert.match(session.instructions, /operations must reset|new test/i);
   assert.match(session.instructions, /student cannot manually finish the assessment/i);
-  assert.match(session.instructions, /polished human interviewer/i);
+  assert.match(session.instructions, /warm English teacher/i);
   assert.match(session.instructions, /Do not sound robotic/i);
   assert.match(session.instructions, /Allow brief thinking pauses/i);
   assert.match(session.instructions, /repetition or clarification|repeat or clarification/i);
   assert.match(session.instructions, /Ignore brief noises/i);
   assert.match(session.instructions, /Portuguese/i);
   assert.match(session.instructions, /Do not begin with only a generic name question/i);
+});
+
+test("getRealtimeEnglishTestBriefCopy separates oral English analysis from mock interview", () => {
+  const pt = getRealtimeEnglishTestBriefCopy("pt-BR");
+  const en = getRealtimeEnglishTestBriefCopy("en");
+
+  assert.match(pt.summary, /teacher de ingles/i);
+  assert.match(pt.summary, /nao e uma mock interview/i);
+  assert.doesNotMatch(pt.bullets.join(" "), /CARL|STAR|historias profissionais/i);
+  assert.match(pt.bullets.join(" "), /pronuncia/i);
+  assert.match(pt.bullets.join(" "), /gramatica/i);
+  assert.match(pt.resultBelowNote, /resultado/i);
+  assert.match(pt.resultBelowNote, /abaixo/i);
+
+  assert.match(en.summary, /English teacher/i);
+  assert.match(en.summary, /not a mock interview/i);
+  assert.doesNotMatch(en.bullets.join(" "), /CARL|STAR|career stories/i);
+  assert.match(en.bullets.join(" "), /pronunciation/i);
+  assert.match(en.bullets.join(" "), /grammar/i);
+  assert.match(en.resultBelowNote, /result/i);
+  assert.match(en.resultBelowNote, /below/i);
 });
 
 test("isMeaningfulRealtimeStudentTranscript filters noise and short fragments", () => {
@@ -147,7 +172,7 @@ test("normalizeRealtimeEnglishTranscript preserves per-stage evaluation metadata
       acceptedEvidence: true,
       stageId: "behavioral",
       issueType: "valid",
-      evaluationReason: "Substantive STAR-style answer.",
+      evaluationReason: "Substantive past-tense answer.",
     },
     {
       role: "student",
@@ -155,7 +180,7 @@ test("normalizeRealtimeEnglishTranscript preserves per-stage evaluation metadata
       acceptedEvidence: false,
       stageId: "workplace",
       issueType: "joking",
-      evaluationReason: "Joking answer did not address the workplace role-play.",
+      evaluationReason: "Joking answer did not address the functional English prompt.",
     },
   ]);
 
@@ -167,7 +192,7 @@ test("normalizeRealtimeEnglishTranscript preserves per-stage evaluation metadata
       acceptedEvidence: true,
       stageId: "behavioral",
       issueType: "valid",
-      evaluationReason: "Substantive STAR-style answer.",
+      evaluationReason: "Substantive past-tense answer.",
     },
     {
       role: "student",
@@ -176,7 +201,7 @@ test("normalizeRealtimeEnglishTranscript preserves per-stage evaluation metadata
       acceptedEvidence: false,
       stageId: "workplace",
       issueType: "joking",
-      evaluationReason: "Joking answer did not address the workplace role-play.",
+      evaluationReason: "Joking answer did not address the functional English prompt.",
     },
   ]);
 });
@@ -200,7 +225,7 @@ test("normalizeRealtimeEnglishTurnEvaluation enforces the current stage decision
   assert.deepEqual(accepted, {
     acceptedEvidence: true,
     stageId: "workplace",
-    stageTitle: "Workplace role-play",
+    stageTitle: "Functional communication",
     issueType: "valid",
     reason: "This should still be normalized as valid because acceptedEvidence is true.",
     examinerDirective: "Move forward.",
@@ -210,8 +235,8 @@ test("normalizeRealtimeEnglishTurnEvaluation enforces the current stage decision
     {
       acceptedEvidence: false,
       issueType: "joking",
-      reason: "The student joked instead of answering the role-play.",
-      examinerDirective: "Do not advance. Re-ask the role-play.",
+      reason: "The student joked instead of answering the functional English prompt.",
+      examinerDirective: "Do not advance. Re-ask the functional English prompt.",
     },
     {
       studentAnswer: "haha next",
@@ -451,7 +476,7 @@ test("buildRealtimeEnglishConversationMetrics counts pace and fillers from stude
   assert.equal(metrics.topFillerWords.some((item) => item.startsWith("um")), true);
 });
 
-test("buildRealtimeEnglishDeliveryAnalysis produces interviewer-style read", () => {
+test("buildRealtimeEnglishDeliveryAnalysis produces teacher-style read", () => {
   const delivery = buildRealtimeEnglishDeliveryAnalysis({
     language: "en",
     result: {
@@ -476,5 +501,5 @@ test("buildRealtimeEnglishDeliveryAnalysis produces interviewer-style read", () 
   assert.match(delivery.fillerWordAssessment, /filler/i);
   assert.match(delivery.paceAssessment, /pace/i);
   assert.match(delivery.toneAndPresence, /presence/i);
-  assert.match(delivery.examinerRead, /competitive|readiness|credible|selective/i);
+  assert.match(delivery.examinerRead, /assessment|communication|conversation|speaking/i);
 });
