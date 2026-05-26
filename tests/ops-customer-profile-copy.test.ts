@@ -25,3 +25,16 @@ test("customer profile has command-center UI and customer portal labels", () => 
   assert.match(source, /Publicação no portal do cliente/);
   assert.match(source, /MetricTile/);
 });
+
+test("ops portal preview reuses the real hub client home view", () => {
+  const preview = fs.readFileSync("app/ops/students/[enrollmentId]/portal-preview/page.tsx", "utf8");
+  const hubPage = fs.readFileSync("app/hub/page.tsx", "utf8");
+  const sharedView = fs.readFileSync("components/hub/HubHomeView.tsx", "utf8");
+
+  assert.match(preview, /HubHomeView/);
+  assert.match(preview, /readOnly/);
+  assert.match(hubPage, /HubHomeView/);
+  assert.match(sharedView, /JobSearchQuickAdd/);
+  assert.doesNotMatch(preview, /prisma\.invoice\.findMany/);
+  assert.doesNotMatch(preview, /opsDocuments/);
+});
