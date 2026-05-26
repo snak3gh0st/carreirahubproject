@@ -42,9 +42,12 @@ export function displayOpsBiActivityStatus(status: string) {
   const labels: Record<string, string> = {
     APPLICATION: "Aplicação",
     INTERVIEW: "Entrevista",
+    TASK: "Task",
     OFFER: "Oferta",
     JOB_PLACED: "Recolocação",
+    PENDENTE: "Pendente",
     EM_PROCESSO: "Em processo",
+    CONCLUIDO: "Concluído",
     PASSOU: "Passou",
     NAO_PASSOU: "Não passou",
     NO_SHOW: "No show",

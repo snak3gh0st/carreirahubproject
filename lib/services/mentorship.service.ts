@@ -4,6 +4,7 @@ import {
   sendDigisacLifecycleMessageSafely,
 } from "@/lib/ops/digisac-lifecycle";
 import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
+import { provisionHubAccessForEnrollment } from "@/lib/ops/hub-access-provisioning";
 import { getSessionItemKey } from "@/lib/ops/phase-checklists";
 import { calculateMentorshipRenewalDate } from "@/lib/ops/renewal";
 
@@ -37,6 +38,8 @@ export interface LogSessionInput {
   enrollmentId: string;
   sessionType: string;
   conductorId: string;
+  performedByUserId?: string | null;
+  performedByStaffId?: string | null;
   sessionDate: Date;
   status?: string;
   rescheduleCount?: number;
@@ -164,6 +167,12 @@ export class MentorshipService {
       },
     });
 
+    await provisionHubAccessForEnrollment({
+      enrollmentId: result.enrollment.id,
+    }).catch((error) => {
+      console.warn("[MentorshipService] Could not provision Hub access:", error);
+    });
+
     return result;
   }
 
@@ -176,7 +185,17 @@ export class MentorshipService {
    * enrollment is missing or not ACTIVE.
    */
   async logSession(data: LogSessionInput) {
-    const { enrollmentId, sessionType, conductorId, sessionDate, notes, status, rescheduleCount } = data;
+    const {
+      enrollmentId,
+      sessionType,
+      conductorId,
+      performedByUserId,
+      performedByStaffId,
+      sessionDate,
+      notes,
+      status,
+      rescheduleCount,
+    } = data;
 
     // Guard: enrollment must exist and be ACTIVE (read-only, outside transaction)
     const enrollment = await prisma.mentorshipEnrollment.findFirstOrThrow({
@@ -193,6 +212,8 @@ export class MentorshipService {
           enrollmentId,
           sessionType,
           conductorId,
+          performedByUserId: performedByUserId ?? null,
+          performedByStaffId: performedByStaffId ?? null,
           sessionDate,
           status: status ?? "REALIZADO",
           rescheduleCount: rescheduleCount ?? 0,

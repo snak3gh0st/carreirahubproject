@@ -954,6 +954,25 @@ export class EmailService {
     );
   }
 
+  async sendHubAccessInvite(
+    customer: { id: string; email: string; name: string; preferredLanguage?: string | null },
+    setupUrl: string
+  ): Promise<void> {
+    const isPt = customer.preferredLanguage === "pt-BR";
+    const subject = isPt
+      ? "Seu portal Carreira U.S.A. esta pronto"
+      : "Your Carreira U.S.A. portal is ready";
+    const html = this.generateHubAccessInviteEmail(customer, setupUrl);
+
+    await this.sendEmailWithTracking(
+      customer.email,
+      subject,
+      html,
+      NotificationType.HUB_WELCOME,
+      { customerId: customer.id }
+    );
+  }
+
   async sendHubInvoiceAvailable(
     customer: { id: string; email: string; name: string },
     invoice: { id: string; invoiceNumber: string | null; amount: any }
@@ -1988,6 +2007,41 @@ export class EmailService {
       ctaLabel: 'Access your portal',
       ctaUrl: portalUrl,
       footerNote: 'Do not reply to this email',
+    });
+  }
+
+  private generateHubAccessInviteEmail(
+    customer: { name: string; email: string; preferredLanguage?: string | null },
+    setupUrl: string
+  ): string {
+    const isPt = customer.preferredLanguage === "pt-BR";
+    const bodyHtml = isPt
+      ? `
+      <p>Olá ${esc(customer.name)},</p>
+      <p>Sua matrícula foi criada e o seu portal do cliente já está pronto.</p>
+      <p>Use o botão abaixo para criar sua senha de acesso e entrar no Hub da Carreira U.S.A.</p>
+      ${calloutBox('<strong>Este link expira em 72 horas.</strong> Por segurança, não compartilhe este link com ninguém.', 'warn')}
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:8px; padding:16px; margin:16px 0;">
+        <div style="font-size:15px;"><strong>E-mail de acesso:</strong> ${esc(customer.email)}</div>
+      </div>
+    `
+      : `
+      <p>Dear ${esc(customer.name)},</p>
+      <p>Your enrollment has been created and your client portal is ready.</p>
+      <p>Use the button below to set your password and access your Carreira U.S.A. Hub.</p>
+      ${calloutBox('<strong>This link expires in 72 hours.</strong> For your security, do not share this link with anyone.', 'warn')}
+      <div style="background:${BRAND_COLORS.creme}; border:1px solid ${BRAND_COLORS.cafeLeite}; border-radius:8px; padding:16px; margin:16px 0;">
+        <div style="font-size:15px;"><strong>Login email:</strong> ${esc(customer.email)}</div>
+      </div>
+    `;
+
+    return renderBaseLayout({
+      title: isPt ? "Portal do cliente" : "Client portal",
+      preheader: isPt ? "Crie sua senha e acesse seu Hub" : "Set your password and access your Hub",
+      bodyHtml,
+      ctaLabel: isPt ? "Criar senha e acessar portal" : "Set password and access portal",
+      ctaUrl: setupUrl,
+      footerNote: isPt ? "Não responda este email" : "Do not reply to this email",
     });
   }
 

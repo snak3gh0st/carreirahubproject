@@ -1,72 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { z } from "zod";
 
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isMissingOpsNativeTable, OPS_NATIVE_MIGRATION_ERROR } from "@/lib/ops/native-schema";
+import { getApiErrorMessage, parseOpsProfilePatchInput } from "@/lib/ops/ops-profile-schema";
 import {
   calculateMentorshipRenewalDate,
   shouldRecalculateRenewalDateOnProfilePatch,
 } from "@/lib/ops/renewal";
 import { isOperationalAccessRole } from "@/lib/roles";
-import { OPS_SENIORITY_LEVELS } from "@/lib/ops/visibility";
 
 export const dynamic = "force-dynamic";
-
-const nullableString = z
-  .union([z.string(), z.null()])
-  .optional()
-  .transform((value) => {
-    if (value === undefined || value === null) return null;
-    const trimmed = value.trim();
-    return trimmed.length ? trimmed : null;
-  });
-
-const nullableDate = z
-  .union([z.string(), z.null()])
-  .optional()
-  .transform((value) => {
-    if (!value) return null;
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-  });
-
-const profileSchema = z.object({
-  optStatus: nullableString,
-  seniority: z.enum(OPS_SENIORITY_LEVELS).nullable().optional(),
-  coachCohort: nullableString,
-  classAttendancePercent: z
-    .union([z.number(), z.string(), z.null()])
-    .optional()
-    .transform((value) => {
-      if (value === undefined || value === null || value === "") return null;
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) return null;
-      return Math.max(0, Math.min(100, Math.round(parsed)));
-    }),
-  boardUrl: nullableString,
-  notionUrl: nullableString,
-  linkedinUrl: nullableString,
-  canvaUrl: nullableString,
-  studentMaterialUrl: nullableString,
-  interviewRecordingFolderUrl: nullableString,
-  contractPdfKey: nullableString,
-  renewalDate: nullableDate,
-  renewalState: nullableString,
-  renewalAdjustmentReason: nullableString,
-  pauseExtensionDays: z
-    .union([z.number(), z.string(), z.null()])
-    .optional()
-    .transform((value) => {
-      if (value === undefined || value === null || value === "") return 0;
-      const parsed = Number(value);
-      if (!Number.isFinite(parsed)) return 0;
-      return Math.max(0, Math.round(parsed));
-    }),
-  lastOperationalContactAt: nullableDate,
-  notes: nullableString,
-});
 
 export async function PATCH(
   req: NextRequest,
@@ -98,9 +43,16 @@ export async function PATCH(
     return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
   }
 
-  const parsed = profileSchema.safeParse(await req.json().catch(() => ({})));
+  const parsed = parseOpsProfilePatchInput(await req.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+    const fieldErrors = parsed.error.flatten().fieldErrors;
+    return NextResponse.json(
+      {
+        error: getApiErrorMessage(fieldErrors, "Dados invalidos no perfil operacional"),
+        fieldErrors,
+      },
+      { status: 400 }
+    );
   }
 
   const shouldRecalculateRenewalDate = shouldRecalculateRenewalDateOnProfilePatch({

@@ -257,6 +257,7 @@ const translations = {
     "navigation.inicio": "Home",
     "navigation.financeiro": "Financial",
     "navigation.programa": "My Program",
+    "navigation.registros": "Job Search",
     "navigation.documentos": "Documents",
     "navigation.conta": "Account",
 
@@ -604,6 +605,7 @@ const translations = {
     "navigation.inicio": "Início",
     "navigation.financeiro": "Financeiro",
     "navigation.programa": "Meu Programa",
+    "navigation.registros": "Busca",
     "navigation.documentos": "Documentos",
     "navigation.conta": "Conta",
 

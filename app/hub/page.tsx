@@ -2,8 +2,18 @@ import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import {
+  CheckCircle2,
+  ClipboardList,
+  CreditCard,
+  FileText,
+  GraduationCap,
+  Target,
+} from "lucide-react";
 import { t, Language } from "@/lib/i18n/hub";
 import { InvoiceStatus, FormAssignmentStatus } from "@prisma/client";
+import { summarizeHubJobSearchActivities } from "@/lib/hub/job-search-records";
+import { JobSearchQuickAdd } from "./registros/JobSearchRecordModal";
 
 function getPayload(token: string) {
   try {
@@ -51,7 +61,13 @@ export default async function HubHomePage() {
     }),
     prisma.mentorshipEnrollment.findFirst({
       where: { customerId, status: "ACTIVE" },
-      select: { currentPhase: { select: { label: true } } },
+      select: {
+        currentPhase: { select: { label: true } },
+        opsActivities: {
+          where: { type: { in: ["APPLICATION", "INTERVIEW", "TASK", "OFFER"] } },
+          select: { type: true, status: true },
+        },
+      },
     }),
     prisma.deal.findFirst({
       where: { customerId },
@@ -105,6 +121,7 @@ export default async function HubHomePage() {
     realtimeTest && (!placementTest || realtimeTest.createdAt > placementTest.createdAt)
       ? realtimeTest
       : placementTest;
+  const jobSearchSummary = summarizeHubJobSearchActivities(enrollment?.opsActivities ?? []);
 
   return (
     <div className="space-y-4">
@@ -112,7 +129,7 @@ export default async function HubHomePage() {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6 flex items-start sm:items-center justify-between gap-4">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-            {t(lang, "inicio.hello")}, {firstName} 👋
+            {t(lang, "inicio.hello")}, {firstName}
           </h1>
           {programName && (
             <p className="text-sm text-gray-500 mt-1 truncate">
@@ -172,6 +189,12 @@ export default async function HubHomePage() {
         </div>
       )}
 
+      <JobSearchQuickAdd
+        lang={lang}
+        summary={jobSearchSummary}
+        enrollmentAvailable={Boolean(enrollment)}
+      />
+
       {/* KPI grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -218,7 +241,11 @@ export default async function HubHomePage() {
             {t(lang, "inicio.pendingForms")}
           </p>
           <p className={`text-xl sm:text-2xl font-extrabold ${pendingForms > 0 ? "text-brand-tangerina" : "text-green-600"}`}>
-            {pendingForms > 0 ? pendingForms : "✓"}
+            {pendingForms > 0 ? (
+              pendingForms
+            ) : (
+              <CheckCircle2 className="h-7 w-7" aria-label={t(lang, "inicio.allDone")} />
+            )}
           </p>
           <p className="text-[11px] text-gray-400 mt-1">
             {pendingForms > 0 ? t(lang, "inicio.pending") : t(lang, "inicio.allDone")}
@@ -232,7 +259,7 @@ export default async function HubHomePage() {
           href="/hub/financeiro"
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 text-center hover:border-gray-200 hover:shadow-md transition-all"
         >
-          <div className="text-2xl mb-2">💰</div>
+          <CreditCard className="mx-auto mb-2 h-6 w-6 text-brand-verde" />
           <p className="text-sm font-semibold text-gray-900">{t(lang, "navigation.financeiro")}</p>
           <p className="text-[11px] text-gray-400 mt-1">{t(lang, "inicio.financeirotSubtitle")}</p>
         </Link>
@@ -241,7 +268,7 @@ export default async function HubHomePage() {
           href="/hub/programa"
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 text-center hover:border-gray-200 hover:shadow-md transition-all"
         >
-          <div className="text-2xl mb-2">🎓</div>
+          <GraduationCap className="mx-auto mb-2 h-6 w-6 text-brand-verde" />
           <p className="text-sm font-semibold text-gray-900">{t(lang, "navigation.programa")}</p>
           <p className="text-[11px] text-gray-400 mt-1">{t(lang, "inicio.programaSubtitle")}</p>
         </Link>
@@ -250,7 +277,7 @@ export default async function HubHomePage() {
           href="/hub/documentos"
           className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 text-center hover:border-gray-200 hover:shadow-md transition-all"
         >
-          <div className="text-2xl mb-2">📄</div>
+          <FileText className="mx-auto mb-2 h-6 w-6 text-brand-verde" />
           <p className="text-sm font-semibold text-gray-900">{t(lang, "navigation.documentos")}</p>
           <p className="text-[11px] text-gray-400 mt-1">{t(lang, "inicio.documentosSubtitle")}</p>
         </Link>
@@ -260,7 +287,7 @@ export default async function HubHomePage() {
             href="/hub/programa"
             className="bg-gradient-to-br from-orange-50 to-white rounded-2xl border-2 border-brand-tangerina shadow-sm p-4 sm:p-5 text-center hover:opacity-90 transition-opacity"
           >
-            <div className="text-2xl mb-2">📋</div>
+            <ClipboardList className="mx-auto mb-2 h-6 w-6 text-brand-tangerina" />
             <p className="text-sm font-semibold text-brand-tangerina">
               {pendingForms} {t(lang, "inicio.pendingForms")}
             </p>
@@ -271,7 +298,7 @@ export default async function HubHomePage() {
             href="/hub/test"
             className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 text-center hover:border-gray-200 hover:shadow-md transition-all"
           >
-            <div className="text-2xl mb-2">🎯</div>
+            <Target className="mx-auto mb-2 h-6 w-6 text-brand-verde" />
             <p className="text-sm font-semibold text-gray-900">{t(lang, "dashboard.englishTest")}</p>
             <p className="text-[11px] text-gray-400 mt-1">{t(lang, "inicio.testSubtitle")}</p>
           </Link>

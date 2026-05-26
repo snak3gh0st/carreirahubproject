@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { labelKey: "navigation.inicio" as const, href: "/hub", exact: true },
   { labelKey: "navigation.financeiro" as const, href: "/hub/financeiro", exact: false },
   { labelKey: "navigation.programa" as const, href: "/hub/programa", exact: false },
+  { labelKey: "navigation.registros" as const, href: "/hub/registros", exact: false },
   { labelKey: "navigation.documentos" as const, href: "/hub/documentos", exact: false },
 ];
 

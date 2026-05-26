@@ -40,6 +40,7 @@ export type OpsDocumentStatus = (typeof OPS_DOCUMENT_STATUSES)[number];
 export const OPS_ACTIVITY_TYPES = [
   "APPLICATION",
   "INTERVIEW",
+  "TASK",
   "OFFER",
   "JOB_PLACED",
   "VACANCY_REVIEW",
@@ -50,7 +51,9 @@ export const OPS_ACTIVITY_TYPES = [
 export type OpsActivityType = (typeof OPS_ACTIVITY_TYPES)[number];
 
 export const OPS_ACTIVITY_STATUSES = [
+  "PENDENTE",
   "EM_PROCESSO",
+  "CONCLUIDO",
   "PASSOU",
   "NAO_PASSOU",
   "NO_SHOW",
