@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { PipelineBoard } from "./PipelineBoard";
 import { isOperationalAccessRole } from "@/lib/roles";
 
-export const metadata = { title: "Alunos por Area | Ops Hub" };
+export const metadata = { title: "Clientes por Area | Ops Hub" };
 
 export default async function PipelinePage() {
   const session = await getServerSession(authOptions);
@@ -19,9 +19,9 @@ export default async function PipelinePage() {
   return (
     <div className="p-6 md:p-8 xl:flex xl:h-[100dvh] xl:flex-col xl:overflow-hidden">
       <div className="mb-6 shrink-0">
-        <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">Alunos por Area</h1>
+        <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">Clientes por Area</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Lista operacional por fase, responsavel, risco e progresso do aluno.
+          Lista operacional por fase, responsavel, risco e progresso do cliente.
         </p>
       </div>
       <div className="xl:min-h-0 xl:flex-1">

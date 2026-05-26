@@ -5,6 +5,7 @@ import test from "node:test";
 const files = [
   "app/ops/students/[enrollmentId]/StudentProfileClient.tsx",
   "app/ops/students/[enrollmentId]/OpsStudentAiPanel.tsx",
+  "app/ops/students/[enrollmentId]/OpsStudentDigisacPanel.tsx",
   "app/ops/students/[enrollmentId]/OperationalHubSection.tsx",
   "app/ops/students/[enrollmentId]/FormsSection.tsx",
   "app/ops/students/[enrollmentId]/portal-preview/page.tsx",
@@ -15,6 +16,18 @@ test("operational customer profile visible copy uses cliente instead of aluno", 
     const source = fs.readFileSync(file, "utf8");
     assert.doesNotMatch(source, />[^<]*(aluno|Aluno)[^<]*</, `${file} still renders aluno copy`);
   }
+});
+
+test("ops exposes Digisac conversations in sidebar and customer profile", () => {
+  const sidebar = fs.readFileSync("components/ops/ops-sidebar.tsx", "utf8");
+  const roleConfig = fs.readFileSync("lib/sidebar/role-config.ts", "utf8");
+  const profile = fs.readFileSync("app/ops/students/[enrollmentId]/StudentProfileClient.tsx", "utf8");
+
+  assert.match(sidebar, /\/ops\/digisac/);
+  assert.match(roleConfig, /\/ops\/digisac/);
+  assert.match(profile, /OpsStudentDigisacPanel/);
+  assert.ok(fs.existsSync("app/ops/digisac/page.tsx"));
+  assert.ok(fs.existsSync("components/ops/digisac/OpsDigisacInbox.tsx"));
 });
 
 test("customer profile has command-center UI and customer portal labels", () => {

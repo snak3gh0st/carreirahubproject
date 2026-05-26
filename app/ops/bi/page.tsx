@@ -129,12 +129,12 @@ export default async function OpsBiPage() {
           </h1>
         </div>
         <p className="text-sm text-gray-500">
-          Progresso, risco e gargalos de cada aluno ativo no fluxo operacional.
+          Progresso, risco e gargalos de cada cliente ativo no fluxo operacional.
         </p>
       </div>
 
       <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <OpsKpiCard label="Ativos" value={biDashboard.kpis.activeStudents} detail="alunos em programa" icon={UsersRound} tone="info" />
+        <OpsKpiCard label="Ativos" value={biDashboard.kpis.activeStudents} detail="clientes em programa" icon={UsersRound} tone="info" />
         <OpsKpiCard label="Em risco" value={biDashboard.kpis.atRiskStudents} detail="precisam de ação" icon={AlertTriangle} tone={biDashboard.kpis.atRiskStudents ? "danger" : "success"} />
         <OpsKpiCard label="Sessões mês" value={biDashboard.kpis.sessionsThisMonth} detail={`${biDashboard.kpis.sessionsLast7Days} nos últimos 7 dias`} icon={TrendingUp} tone="success" />
         <OpsKpiCard label="No-show" value={`${biDashboard.kpis.noShowRate}%`} detail={`${biDashboard.kpis.rescheduleRate}% remarcadas`} icon={Clock} tone="warning" />
@@ -148,7 +148,7 @@ export default async function OpsBiPage() {
 
       <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {[
-          { label: "Alunos ativos", value: activeCount, icon: UsersRound, color: "text-brand-verde", bg: "bg-brand-verde/10" },
+          { label: "Clientes ativos", value: activeCount, icon: UsersRound, color: "text-brand-verde", bg: "bg-brand-verde/10" },
           { label: "Em risco", value: riskRows.length, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
           { label: "Em dia", value: onTrackCount, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
           { label: "Checklist medio", value: pct(averageChecklist), icon: ClipboardList, color: "text-amber-600", bg: "bg-amber-50" },
@@ -205,7 +205,7 @@ export default async function OpsBiPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-gray-800">{phase.label}</p>
                       <p className="break-words text-xs text-gray-400">
-                        {phase.enrollments.length} aluno{phase.enrollments.length !== 1 ? "s" : ""} · {phaseRisk} em risco · checklist {pct(phaseAvg)}
+                        {phase.enrollments.length} cliente{phase.enrollments.length !== 1 ? "s" : ""} · {phaseRisk} em risco · checklist {pct(phaseAvg)}
                       </p>
                     </div>
                     <span className="text-xs font-bold text-brand-verde sm:text-right">{phase.slaDays}d SLA</span>
@@ -221,12 +221,12 @@ export default async function OpsBiPage() {
 
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
-            <h2 className="font-display text-base font-bold text-gray-900">Alunos que precisam de acao</h2>
+            <h2 className="font-display text-base font-bold text-gray-900">Clientes que precisam de acao</h2>
             <p className="text-xs text-gray-400">Ordenado por risco operacional.</p>
           </div>
           <div className="divide-y divide-gray-50">
             {riskRows.slice(0, 10).length === 0 ? (
-              <div className="p-10 text-center text-sm text-gray-400">Nenhum aluno em risco no momento.</div>
+              <div className="p-10 text-center text-sm text-gray-400">Nenhum cliente em risco no momento.</div>
             ) : (
               riskRows.slice(0, 10).map((row) => (
                 <Link
@@ -270,11 +270,11 @@ export default async function OpsBiPage() {
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
             <h2 className="font-display text-base font-bold text-gray-900">Debitos que afetam operacao</h2>
-            <p className="text-xs text-gray-400">Alunos ativos com saldo QuickBooks aberto.</p>
+            <p className="text-xs text-gray-400">Clientes ativos com saldo QuickBooks aberto.</p>
           </div>
           <div className="divide-y divide-gray-50">
             {debtRows.slice(0, 8).length === 0 ? (
-              <div className="p-10 text-center text-sm text-gray-400">Nenhum debito aberto em alunos ativos.</div>
+              <div className="p-10 text-center text-sm text-gray-400">Nenhum debito aberto em clientes ativos.</div>
             ) : (
               debtRows.slice(0, 8).map((row) => (
                 <Link key={row.enrollment.id} href={`/ops/students/${row.enrollment.id}`} className="flex flex-col gap-2 p-4 hover:bg-gray-50 sm:flex-row sm:items-center sm:gap-3">
@@ -293,7 +293,7 @@ export default async function OpsBiPage() {
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="border-b border-gray-50 px-4 py-4 sm:px-5">
             <h2 className="font-display text-base font-bold text-gray-900">Cadencia de sessoes</h2>
-            <p className="text-xs text-gray-400">Alunos sem sessao recente por faixa.</p>
+            <p className="text-xs text-gray-400">Clientes sem sessao recente por faixa.</p>
           </div>
           <div className="grid gap-3 p-4 min-[420px]:grid-cols-3 sm:p-5">
             {[

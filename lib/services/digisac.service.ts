@@ -257,7 +257,7 @@ export async function sendDigisacMessage(input: DigisacSendMessageInput) {
   const text = input.text.trim();
   const number = formatDigisacPhone(input.number, config.defaultCountryCode);
   if (!text) throw new Error("Mensagem vazia");
-  if (!number) throw new Error("Aluno sem telefone valido");
+  if (!number) throw new Error("Cliente sem telefone valido");
 
   const response = await fetch(`${config.apiBaseUrl}/messages`, {
     method: "POST",

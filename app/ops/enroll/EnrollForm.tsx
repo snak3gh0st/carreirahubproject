@@ -108,11 +108,11 @@ export default function EnrollForm() {
         setProgramType("");
         setAssignedToId("");
         setStartDate(new Date().toISOString().split("T")[0]);
-        toast.success("Aluno matriculado com sucesso.");
+        toast.success("Cliente matriculado com sucesso.");
       } else if (res.status === 409) {
-        toast.error(data.error ?? "Este aluno já possui uma matrícula ativa.");
+        toast.error(data.error ?? "Este cliente já possui uma matrícula ativa.");
       } else {
-        toast.error(data.error ?? "Erro ao matricular aluno. Tente novamente.");
+        toast.error(data.error ?? "Erro ao matricular cliente. Tente novamente.");
       }
     } finally {
       setIsSubmitting(false);
@@ -122,10 +122,10 @@ export default function EnrollForm() {
   const isFormValid = !!selectedCustomer && !!programType && !!assignedToId && !!startDate;
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-lg space-y-5">
+    <form onSubmit={handleSubmit} className="max-w-2xl space-y-5 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm sm:p-6">
       {/* Customer typeahead */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Aluno</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
 
         {selectedCustomer ? (
           <div className="flex items-center justify-between p-3 border border-gray-300 rounded-lg bg-gray-50">
@@ -171,7 +171,7 @@ export default function EnrollForm() {
             )}
             {showDropdown && customers.length === 0 && !isSearching && (
               <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg px-4 py-3 text-sm text-gray-400">
-                Nenhum aluno encontrado.
+                Nenhum cliente encontrado.
               </div>
             )}
           </div>
@@ -239,7 +239,7 @@ export default function EnrollForm() {
         disabled={!isFormValid || isSubmitting}
         className="w-full py-2.5 px-4 bg-brand-verde text-white text-sm font-semibold rounded-lg hover:bg-brand-verde/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {isSubmitting ? "Matriculando..." : "Matricular Aluno"}
+        {isSubmitting ? "Matriculando..." : "Matricular Cliente"}
       </button>
     </form>
   );

@@ -309,9 +309,9 @@ export function MyTasksClient() {
   return (
     <div>
       {/* Stats bar */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
         {[
-          { label: "Alunos na Fase", value: enrollments.length, color: "text-brand-verde" },
+          { label: "Clientes na Fase", value: enrollments.length, color: "text-brand-verde" },
           { label: "Incompletos", value: incomplete, color: "text-amber-600" },
           { label: "Precisam Atenção", value: urgent, color: "text-red-600" },
           { label: "Em Dia", value: onTrack, color: "text-emerald-600" },
@@ -326,15 +326,15 @@ export function MyTasksClient() {
       {enrollments.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">
           <CheckSquare className="h-12 w-12 text-gray-200 mx-auto mb-4" />
-          <p className="font-display font-semibold text-gray-500">Nenhum aluno na sua fase</p>
+          <p className="font-display font-semibold text-gray-500">Nenhum cliente na sua fase</p>
           <p className="text-sm text-gray-400 mt-1">O coordenador precisa atribuir fases ao seu perfil.</p>
         </div>
       ) : (
-        <div className="flex gap-5">
+        <div className="flex flex-col gap-5 xl:flex-row">
           {/* Queue */}
-          <div className="w-80 flex-shrink-0">
+          <div className="w-full flex-shrink-0 xl:w-80">
             <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">
-              Fila de Alunos · ordenado por prioridade
+              Fila de Clientes · ordenado por prioridade
             </p>
             <div className="space-y-2">
               {enrollments.map((e) => (
@@ -354,7 +354,7 @@ export function MyTasksClient() {
               <ChecklistPanel enrollment={selected} />
             ) : (
               <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">
-                <p className="text-sm text-gray-400">Selecione um aluno para ver o checklist</p>
+                <p className="text-sm text-gray-400">Selecione um cliente para ver o checklist</p>
               </div>
             )}
           </div>

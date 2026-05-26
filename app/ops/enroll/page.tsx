@@ -7,7 +7,7 @@ export default function EnrollPage() {
     <div className="p-8">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold text-brand-verde">Matricular Aluno</h1>
+          <h1 className="text-2xl font-display font-bold text-brand-verde">Matricular Cliente</h1>
           <p className="text-sm text-gray-500 mt-1">Crie uma nova matrícula no programa de mentoria.</p>
         </div>
         <Link

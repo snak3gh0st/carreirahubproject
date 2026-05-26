@@ -93,6 +93,7 @@ const HUB_FINANCEIRO_ITEMS: SidebarItem[] = [
 const HUB_OPERACIONAL_ITEMS: SidebarItem[] = [
   { href: "/ops/enroll", label: "Matricular", icon: "GraduationCap" },
   { href: "/ops/pipeline", label: "Pipeline de Fases", icon: "Kanban" },
+  { href: "/ops/digisac", label: "Conversas Digisac", icon: "MessageSquareText" },
   { href: "/ops/daily", label: "Daily Action", icon: "ListChecks" },
   { href: "/dashboard/forms", label: "Formulários", icon: "ClipboardList" },
 ];

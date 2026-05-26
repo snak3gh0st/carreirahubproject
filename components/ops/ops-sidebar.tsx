@@ -10,14 +10,18 @@ import {
   CalendarDays,
   BarChart3,
   ListChecks,
+  MessageSquareText,
+  Sparkles,
   UsersRound,
 } from "lucide-react";
 import { isOperationalManagerRole } from "@/lib/roles";
+import { useOpsDigisacUnread } from "@/hooks/ops/useOpsDigisacUnread";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
+  badge?: number;
 }
 
 interface OpsSidebarProps {
@@ -28,16 +32,17 @@ interface OpsSidebarProps {
 
 export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }: OpsSidebarProps) {
   const pathname = usePathname();
+  const { unreadCount } = useOpsDigisacUnread();
 
   const navItems: NavItem[] = [
     { href: "/ops", label: "Hoje", icon: CalendarDays },
-    { href: "/ops/pipeline", label: "Alunos", icon: ListChecks },
+    { href: "/ops/pipeline", label: "Clientes", icon: ListChecks },
+    { href: "/ops/digisac", label: "Conversas", icon: MessageSquareText, badge: unreadCount > 0 ? unreadCount : undefined },
     { href: "/ops/enroll", label: "Matrículas", icon: GraduationCap },
+    { href: "/ops/ai", label: "AI", icon: Sparkles },
     { href: "/ops/bi", label: "BI", icon: BarChart3 },
     ...(isOperationalManagerRole(userRole)
-      ? [
-          { href: "/ops/team", label: "Gestão", icon: UsersRound },
-        ]
+      ? [{ href: "/ops/team", label: "Gestão", icon: UsersRound }]
       : []),
   ];
 
@@ -70,7 +75,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
         </button>
       </header>
 
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col bg-brand-verde md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-brand-verde md:flex">
         {/* Logo */}
         <div className="px-6 pt-8 pb-6">
           <Link href="/ops" className="flex items-center gap-3">
@@ -87,7 +92,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 space-y-1 px-4">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -95,16 +100,21 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-display transition-all duration-200 group ${
+                className={`group flex min-h-11 items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-brand-tangerina/50 ${
                   active
-                    ? "bg-brand-tangerina text-white font-semibold shadow-lg"
-                    : "text-white font-normal hover:bg-white/10"
+                    ? "bg-brand-tangerina text-white shadow-sm"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <Icon className={`h-5 w-5 transition-colors ${
                   active ? "text-white" : "text-white/70 group-hover:text-white"
                 }`} />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.badge !== undefined && (
+                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -112,7 +122,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
 
         {/* User section */}
         <div className="px-4 pb-4">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-white/5">
+          <div className="flex items-center gap-3 rounded-lg bg-white/5 px-3 py-3">
             <div className="w-8 h-8 rounded-full bg-brand-tangerina/20 flex items-center justify-center text-brand-tangerina text-xs font-bold">
               {userName.charAt(0).toUpperCase()}
             </div>
@@ -122,7 +132,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
             </div>
             <button
               onClick={() => signOut({ callbackUrl: "/ops/login" })}
-              className="p-2 text-white/50 hover:text-brand-tangerina hover:bg-white/10 rounded-lg transition-colors"
+              className="min-h-10 min-w-10 rounded-lg p-2 text-white/50 transition-colors hover:bg-white/10 hover:text-brand-tangerina focus:outline-none focus:ring-2 focus:ring-brand-tangerina/50"
               title="Logout"
               aria-label="Logout"
             >
@@ -156,7 +166,14 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
                   : "text-gray-500 hover:bg-gray-50 hover:text-brand-verde"
               }`}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <span className="relative">
+                <Icon className="h-5 w-5 flex-shrink-0" />
+                {item.badge !== undefined && (
+                  <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-[8px] font-bold text-white">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </span>
               <span className="max-w-full truncate">{item.label}</span>
             </Link>
           );

@@ -103,7 +103,7 @@ export async function POST(
   });
   if (!enrollment) return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
   if (!enrollment.customer.phone) {
-    return NextResponse.json({ error: "Aluno sem telefone cadastrado" }, { status: 400 });
+    return NextResponse.json({ error: "Cliente sem telefone cadastrado" }, { status: 400 });
   }
 
   try {

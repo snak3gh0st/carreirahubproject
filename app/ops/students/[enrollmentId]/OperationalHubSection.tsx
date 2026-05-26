@@ -109,6 +109,7 @@ const DOCUMENT_STATUSES = [
 const ACTIVITY_TYPES = [
   ["APPLICATION", "Aplicação"],
   ["INTERVIEW", "Entrevista"],
+  ["TASK", "Task"],
   ["OFFER", "Oferta"],
   ["JOB_PLACED", "Recolocação"],
   ["VACANCY_REVIEW", "Análise de vaga"],
@@ -123,7 +124,9 @@ const VISIBILITIES = [
 ] as const;
 
 const ACTIVITY_STATUSES = [
+  ["PENDENTE", "Pendente"],
   ["EM_PROCESSO", "Em processo"],
+  ["CONCLUIDO", "Concluído"],
   ["PASSOU", "Passou"],
   ["NAO_PASSOU", "Não passou"],
   ["NO_SHOW", "No show"],
@@ -140,6 +143,27 @@ const SENIORITY_LEVELS = [
   ["SENIOR", "Senior"],
   ["DIRECTOR", "Director"],
 ] as const;
+
+function getApiErrorMessage(payload: unknown, fallback: string) {
+  const error = payload && typeof payload === "object" && "error" in payload
+    ? (payload as { error?: unknown }).error
+    : payload;
+
+  if (typeof error === "string" && error.trim()) return error;
+  if (Array.isArray(error)) return error.filter(Boolean).join("; ") || fallback;
+  if (error && typeof error === "object") {
+    const messages = Object.entries(error)
+      .flatMap(([field, value]) => {
+        if (Array.isArray(value)) return value.map((message) => `${field}: ${message}`);
+        if (typeof value === "string") return [`${field}: ${value}`];
+        return [];
+      })
+      .filter(Boolean);
+    if (messages.length) return messages.join("; ");
+  }
+
+  return fallback;
+}
 
 function dateInput(value: string | null | undefined) {
   if (!value) return "";
@@ -256,7 +280,10 @@ export function OperationalHubSection({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileState),
       });
-      if (!res.ok) throw new Error((await res.json()).error || "Erro ao salvar perfil operacional");
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(getApiErrorMessage(payload, "Erro ao salvar perfil operacional"));
+      }
       return res.json();
     },
     onSuccess: () => {

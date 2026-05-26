@@ -269,7 +269,7 @@ export default async function OpsCustomerDetailPage({
           className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-brand-verde transition-colors"
         >
           <ChevronLeft className="h-4 w-4" />
-          Voltar para alunos
+          Voltar para clientes
         </Link>
       </div>
 
@@ -514,7 +514,7 @@ export default async function OpsCustomerDetailPage({
                 href={`/ops/students/${latestEnrollment.id}`}
                 className="inline-flex items-center gap-2 rounded-xl bg-brand-verde px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-verde/90 transition-colors"
               >
-                Abrir aluno no ops
+                Abrir cliente no ops
                 <ArrowUpRight className="h-4 w-4" />
               </Link>
             )}

@@ -13,6 +13,10 @@ test("HEAD_OPERACIONAL sees the full operational hub sidebar", () => {
 
   assert.deepEqual(headSections, operationalSections);
   assert.deepEqual(SIDEBAR_BY_ROLE["HEAD_OPERACIONAL" as keyof typeof SIDEBAR_BY_ROLE], operationalSections);
+  assert.ok(
+    operationalSections.flatMap((section) => section.items).some((item) => item.href === "/ops/digisac"),
+    "operational sidebar should expose Digisac conversations",
+  );
 });
 
 test("HEAD_OPERACIONAL can use every operational AI tool", () => {

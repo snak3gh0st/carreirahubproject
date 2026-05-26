@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FormsSection } from "./FormsSection";
 import { OperationalHubSection } from "./OperationalHubSection";
+import { OpsStudentDigisacPanel } from "./OpsStudentDigisacPanel";
 import { OpsStudentAiPanel } from "./OpsStudentAiPanel";
 import { SessionSection } from "./SessionSection";
 import {
@@ -601,12 +602,20 @@ export function StudentProfileClient({
         activities={enrollment.opsActivities}
       />
 
-      <OpsStudentAiPanel
-        enrollmentId={enrollmentId}
-        customerName={enrollment.customer.name}
-        currentPhase={enrollment.currentPhase?.label}
-        ownerName={enrollment.assignedTo.name}
-      />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+        <OpsStudentDigisacPanel
+          enrollmentId={enrollmentId}
+          customerName={enrollment.customer.name}
+          customerPhone={enrollment.customer.phone}
+        />
+
+        <OpsStudentAiPanel
+          enrollmentId={enrollmentId}
+          customerName={enrollment.customer.name}
+          currentPhase={enrollment.currentPhase?.label}
+          ownerName={enrollment.assignedTo.name}
+        />
+      </div>
 
       {/* Phase timeline */}
       <div className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-6">

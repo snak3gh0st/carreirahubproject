@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { isDigisacStorageMissing } from "@/lib/ops/digisac-store";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
 import { isOperationalManagerRole } from "@/lib/roles";
 
@@ -71,6 +72,26 @@ export default async function OpsHomePage() {
     prisma.mentorshipSession.count({ where: { sessionDate: { gte: weekStart } } }),
   ]);
 
+  let digisacThreads: Array<{
+    messages: Array<{ direction: string; createdAt: Date; externalCreatedAt: Date | null }>;
+  }> = [];
+  try {
+    digisacThreads = await prisma.opsDigisacThread.findMany({
+      where: { lastMessageAt: { not: null } },
+      orderBy: [{ lastMessageAt: "desc" }, { updatedAt: "desc" }],
+      take: 100,
+      select: {
+        messages: {
+          orderBy: [{ externalCreatedAt: "desc" }, { createdAt: "desc" }],
+          take: 1,
+          select: { direction: true, createdAt: true, externalCreatedAt: true },
+        },
+      },
+    });
+  } catch (error) {
+    if (!isDigisacStorageMissing(error)) throw error;
+  }
+
   const rows = activeEnrollments.map((enrollment) => {
     const phase = enrollment.currentPhase;
     const phaseAgeDays = daysBetween(enrollment.transitions[0]?.createdAt ?? enrollment.startDate) ?? 0;
@@ -116,8 +137,9 @@ export default async function OpsHomePage() {
 
   const overdueCount = rows.filter((row) => row.overdueSla).length;
   const noSessionCount = rows.filter((row) => row.noRecentSession).length;
+  const digisacNeedsReply = digisacThreads.filter((thread) => thread.messages[0]?.direction === "INBOUND").length;
   return (
-    <div className="p-6 md:p-8">
+    <div className="mx-auto max-w-[1500px] p-6 md:p-8">
       <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-3">
@@ -133,7 +155,7 @@ export default async function OpsHomePage() {
         <div className="flex flex-wrap gap-2">
           <Link href="/ops/pipeline" className="inline-flex items-center gap-2 rounded-lg bg-brand-verde px-4 py-2 text-sm font-semibold text-white">
             <ListChecks className="h-4 w-4" />
-            Abrir alunos
+            Abrir clientes
           </Link>
           <Link href="/ops/enroll" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-brand-verde hover:text-brand-verde">
             <GraduationCap className="h-4 w-4" />
@@ -142,13 +164,14 @@ export default async function OpsHomePage() {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         {[
           { label: "Na operação", value: rows.length, icon: UsersRound, color: "text-brand-verde", bg: "bg-brand-verde/10" },
           { label: "SLA vencido", value: overdueCount, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
           { label: "Sem sessão", value: noSessionCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Digisac", value: digisacNeedsReply, icon: MessageSquareText, color: "text-blue-700", bg: "bg-blue-50" },
           { label: "Sessões semana", value: sessionsThisWeek, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Formulários pend.", value: pendingForms, icon: MessageSquareText, color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Formulários pend.", value: pendingForms, icon: ClipboardList, color: "text-violet-700", bg: "bg-violet-50" },
         ].map((item) => {
           const Icon = item.icon;
           return (
@@ -168,15 +191,15 @@ export default async function OpsHomePage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
         <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
           <div className="border-b border-gray-50 px-5 py-4">
-            <h2 className="font-display text-base font-bold text-gray-900">Fila de atenção</h2>
-            <p className="text-xs text-gray-400">Alunos ordenados por risco, checklist e cadência.</p>
+            <h2 className="text-base font-semibold text-gray-900">Fila de atenção</h2>
+            <p className="text-xs text-gray-400">Clientes ordenados por risco, checklist e cadência.</p>
           </div>
 
           {attentionRows.length === 0 ? (
             <div className="p-12 text-center">
               <CheckCircle2 className="mx-auto mb-3 h-9 w-9 text-emerald-500" />
-              <p className="font-display font-semibold text-gray-700">Tudo em dia na sua operação.</p>
-              <p className="mt-1 text-sm text-gray-400">Nenhum aluno exige ação imediata.</p>
+              <p className="font-semibold text-gray-700">Tudo em dia na sua operação.</p>
+              <p className="mt-1 text-sm text-gray-400">Nenhum cliente exige ação imediata.</p>
             </div>
           ) : (
             <div className="divide-y divide-gray-50">
@@ -237,6 +260,7 @@ export default async function OpsHomePage() {
             <div className="mt-4 space-y-2">
               {[
                 { href: "/ops/bi", label: "Ver gargalos no BI", icon: BarChart3 },
+                { href: "/ops/digisac", label: "Abrir conversas Digisac", icon: MessageSquareText },
                 { href: "/ops/handbook", label: "Guia operacional", icon: BookOpen },
                 { href: "/dashboard/forms", label: "Gerenciar formulários", icon: ClipboardList },
               ].map((item) => {
@@ -273,7 +297,7 @@ export default async function OpsHomePage() {
               <h2 className="font-display text-base font-bold text-amber-800">Formulários</h2>
             </div>
             <p className="text-3xl font-display font-bold text-amber-700">{pendingForms}</p>
-            <p className="mt-1 text-xs text-amber-700/70">Pendentes na operação e no hub do aluno.</p>
+            <p className="mt-1 text-xs text-amber-700/70">Pendentes na operação e no hub do cliente.</p>
           </div>
         </aside>
       </div>

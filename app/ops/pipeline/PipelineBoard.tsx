@@ -351,7 +351,7 @@ function InternalCommentsCard({ enrollment }: { enrollment: EnrollmentCard }) {
           <h3 className="text-sm font-display font-semibold text-gray-900">Comentarios internos</h3>
         </div>
         <p className="mt-1 text-xs text-gray-400">
-          Handoff do time para quem assumir este aluno depois.
+          Handoff do time para quem assumir este cliente depois.
         </p>
       </div>
 
@@ -393,7 +393,7 @@ function InternalCommentsCard({ enrollment }: { enrollment: EnrollmentCard }) {
         <textarea
           value={body}
           onChange={(event) => setBody(event.target.value.slice(0, 2000))}
-          placeholder="Ex: aluno pediu reagendamento; cobrar formulario antes da proxima sessao..."
+          placeholder="Ex: cliente pediu reagendamento; cobrar formulario antes da proxima sessao..."
           rows={3}
           className="min-h-[72px] w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10"
           disabled={mutation.isPending}
@@ -543,7 +543,7 @@ function DigisacWhatsappCard({ enrollment }: { enrollment: EnrollmentCard }) {
         <textarea
           value={text}
           onChange={(event) => setText(event.target.value.slice(0, 2000))}
-          placeholder={hasPhone ? "Mensagem para o aluno via Digisac..." : "Cadastre um telefone para enviar"}
+          placeholder={hasPhone ? "Mensagem para o cliente via Digisac..." : "Cadastre um telefone para enviar"}
           rows={3}
           className="min-h-[72px] w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 outline-none focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10"
           disabled={mutation.isPending || !enabled || !hasPhone}
@@ -579,9 +579,9 @@ function StudentAiCard({
   const { messages, setMessages, sendMessage, status, error } = useChat({ transport } as any);
   const isStreaming = status === "streaming" || status === "submitted";
   const summaryPrompt =
-    "Sumarize o caso operacional deste aluno em no maximo 7 linhas curtas. Use texto puro, sem Markdown, sem negrito, sem emoji, sem tabela, sem separadores e sem pipes. Comece cada linha com um rotulo simples: Fase atual, Risco, Ultima sessao, Aplicacoes/entrevistas, Material/CV, Pendencias, Proxima acao. Nao inclua leitura estrategica, visao CEO, nomes de tools, IDs internos ou erros tecnicos.";
+    "Sumarize o caso operacional deste cliente em no maximo 7 linhas curtas. Use texto puro, sem Markdown, sem negrito, sem emoji, sem tabela, sem separadores e sem pipes. Comece cada linha com um rotulo simples: Fase atual, Risco, Ultima sessao, Aplicacoes/entrevistas, Material/CV, Pendencias, Proxima acao. Nao inclua leitura estrategica, visao CEO, nomes de tools, IDs internos ou erros tecnicos.";
   const opsContext = [
-    `Aluno: ${enrollment.customer.name}`,
+    `Cliente: ${enrollment.customer.name}`,
     `Enrollment ID: ${enrollment.id}`,
     `Customer ID: ${enrollment.customer.id}`,
     `Fase atual: ${phase.label} (${phase.key})`,
@@ -631,7 +631,7 @@ function StudentAiCard({
       <div className="border-b border-gray-50 px-4 py-3">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-4 w-4 text-brand-verde" />
-          <h3 className="text-sm font-display font-semibold text-gray-900">Resumo AI do aluno</h3>
+          <h3 className="text-sm font-display font-semibold text-gray-900">Resumo AI do cliente</h3>
         </div>
         <p className="mt-1 text-xs text-gray-400">
           Gera um resumo curto sob demanda para economizar tokens.
@@ -667,7 +667,7 @@ function StudentAiCard({
         {isStreaming && (
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Lendo dados do aluno...
+            Lendo dados do cliente...
           </div>
         )}
         {error && <p className="text-xs text-red-500">Erro no chat. Verifique se o AI Copilot esta habilitado.</p>}
@@ -681,7 +681,7 @@ function StudentAiCard({
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-40"
         >
           {isStreaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bot className="h-3.5 w-3.5" />}
-          Sumarizar caso do aluno
+          Sumarizar caso do cliente
         </button>
       </div>
     </div>
@@ -709,13 +709,13 @@ function StudentDetail({
 
   function advance() {
     if (!nextPhase) {
-      toast.error("Este aluno ja esta na ultima fase.");
+      toast.error("Este cliente ja esta na ultima fase.");
       return;
     }
     advanceMutation.mutate(
       { enrollmentId: enrollment.id, toPhaseId: nextPhase.id },
       {
-        onSuccess: () => toast.success(`Aluno movido para ${nextPhase.label}`),
+        onSuccess: () => toast.success(`Cliente movido para ${nextPhase.label}`),
         onError: (err) => toast.error(err.message ?? "Erro ao avancar fase"),
       }
     );
@@ -852,7 +852,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
   const totals = useMemo(() => {
     const all = phases?.flatMap((phase) => phase.enrollments.map((enrollment) => ({ phase, enrollment }))) ?? [];
     return {
-      students: all.length,
+      clients: all.length,
       mine: all.filter(({ enrollment }) => enrollment.assignedTo.id === currentUserId).length,
       risk: all.filter(({ phase, enrollment }) => Boolean(getRiskLabel(phase, enrollment))).length,
       debt: all.filter(({ enrollment }) => getPaymentAlert(enrollment).level === "red").length,
@@ -877,7 +877,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
       <div className="min-w-0 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
         <div className="mb-4 grid gap-3 md:grid-cols-4">
           {[
-            { key: "all" as const, label: "Todos", value: totals.students },
+            { key: "all" as const, label: "Todos", value: totals.clients },
             { key: "mine" as const, label: "Meus", value: totals.mine },
             { key: "risk" as const, label: "Risco", value: totals.risk },
             { key: "debt" as const, label: "Financeiro", value: totals.debt },
@@ -904,7 +904,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar aluno, email ou responsavel..."
+              placeholder="Buscar cliente, email ou responsavel..."
               className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:border-brand-verde focus:bg-white"
             />
           </div>
@@ -917,7 +917,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
         <div className="space-y-5">
           {filtered.length === 0 ? (
             <div className="rounded-xl border border-gray-100 bg-white p-12 text-center">
-              <p className="text-sm text-gray-400">Nenhum aluno encontrado para este filtro.</p>
+              <p className="text-sm text-gray-400">Nenhum cliente encontrado para este filtro.</p>
             </div>
           ) : (
             filtered.map((phase) => (
@@ -928,7 +928,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
                     <p className="text-xs text-gray-400">SLA: {phase.slaDays} dias</p>
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-brand-verde shadow-sm">
-                    {phase.enrollments.length} aluno{phase.enrollments.length !== 1 ? "s" : ""}
+                    {phase.enrollments.length} cliente{phase.enrollments.length !== 1 ? "s" : ""}
                   </span>
                 </div>
                 <div className="space-y-2">
@@ -959,7 +959,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
         ) : (
           <div className="rounded-xl border border-gray-100 bg-white p-8 text-center shadow-sm">
             <Clock className="mx-auto mb-3 h-8 w-8 text-gray-300" />
-            <p className="text-sm text-gray-400">Selecione um aluno para abrir o painel lateral.</p>
+            <p className="text-sm text-gray-400">Selecione um cliente para abrir o painel lateral.</p>
           </div>
         )}
       </div>
@@ -969,13 +969,13 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
           <button
             type="button"
             className="absolute inset-0 h-full w-full cursor-default"
-            aria-label="Fechar detalhe do aluno"
+            aria-label="Fechar detalhe do cliente"
             onClick={() => setSelectedId(null)}
           />
           <div className="absolute inset-x-0 bottom-0 max-h-[86dvh] overflow-hidden rounded-t-3xl bg-gray-50 shadow-2xl">
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Detalhe do aluno</p>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Detalhe do cliente</p>
                 <p className="truncate text-sm font-display font-bold text-gray-900">
                   {selected.enrollment.customer.name}
                 </p>

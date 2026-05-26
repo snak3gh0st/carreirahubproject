@@ -87,17 +87,17 @@ export function PhaseDistribution() {
           </div>
         ) : (
           <div className="px-6 py-8 text-center">
-            <p className="text-sm text-gray-400">Nenhum aluno ativo nas fases.</p>
+            <p className="text-sm text-gray-400">Nenhum cliente ativo nas fases.</p>
           </div>
         )}
       </div>
 
       {/* Section B — No-session students */}
       <h2 className="text-sm font-display font-semibold text-brand-verde mt-8 mb-4">
-        Alunos sem Sessão Recente
+        Clientes sem Sessão Recente
       </h2>
       {noSessionStudents.length === 0 ? (
-        <p className="text-sm text-gray-400">Todos os alunos tiveram sessão recente.</p>
+        <p className="text-sm text-gray-400">Todos os clientes tiveram sessão recente.</p>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
           {noSessionStudents.map((student) => (
@@ -137,10 +137,10 @@ export function PhaseDistribution() {
 
       {/* Section C — Debtors */}
       <h2 className="text-sm font-display font-semibold text-brand-verde mt-8 mb-4">
-        Alunos com Débito QB
+        Clientes com Débito QB
       </h2>
       {debtors.length === 0 ? (
-        <p className="text-sm text-gray-400">Nenhum aluno com débito em aberto.</p>
+        <p className="text-sm text-gray-400">Nenhum cliente com débito em aberto.</p>
       ) : (
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden divide-y divide-gray-100">
           {debtors.map((debtor) => (

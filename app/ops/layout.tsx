@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { OpsSidebar } from "@/components/ops/ops-sidebar";
 import { OpsQueryProvider } from "./OpsQueryProvider";
+import { OpsDigisacWidget } from "@/components/ops/digisac/OpsDigisacWidget";
 import { isOperationalAccessRole } from "@/lib/roles";
 
 export default async function OpsLayout({
@@ -27,11 +28,14 @@ export default async function OpsLayout({
   }
 
   return (
-    <div data-portal="ops" className="min-h-screen bg-gray-50">
-      <OpsSidebar userName={userName} userEmail={userEmail} userRole={userRole} />
-      <main id="main-content" className="min-h-screen pb-24 pt-16 md:pb-0 md:pl-60 md:pt-0">
-        <OpsQueryProvider>{children}</OpsQueryProvider>
-      </main>
-    </div>
+    <OpsQueryProvider>
+      <div data-portal="ops" className="min-h-screen bg-gray-50">
+        <OpsSidebar userName={userName} userEmail={userEmail} userRole={userRole} />
+        <main id="main-content" className="min-h-screen pb-24 pt-16 md:pb-0 md:pl-64 md:pt-0">
+          {children}
+        </main>
+        <OpsDigisacWidget />
+      </div>
+    </OpsQueryProvider>
   );
 }

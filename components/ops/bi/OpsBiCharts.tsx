@@ -102,7 +102,7 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
         </div>
       </Panel>
 
-      <Panel title="Alunos por fase" subtitle="Volume ativo e quantidade em risco por área/fase.">
+      <Panel title="Clientes por fase" subtitle="Volume ativo e quantidade em risco por área/fase.">
         <div className="h-80 w-full overflow-x-auto">
           <div className="h-full min-w-[520px] sm:min-w-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -152,7 +152,7 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
         </div>
       </Panel>
 
-      <Panel title="Carga por responsável" subtitle="Alunos ativos e sessões recentes por pessoa.">
+      <Panel title="Carga por responsável" subtitle="Clientes ativos e sessões recentes por pessoa.">
         <div className="space-y-3">
           {data.workload.slice(0, 10).map((row) => {
             const maxStudents = Math.max(...data.workload.map((item) => item.students), 1);
@@ -161,7 +161,7 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
               <div key={row.owner}>
                 <div className="mb-1 flex items-center justify-between gap-3">
                   <p className="min-w-0 break-words text-sm font-semibold text-gray-800">{row.owner}</p>
-                  <p className="flex-shrink-0 text-xs text-gray-400">{row.students} alunos · {row.sessions} sessões</p>
+                  <p className="flex-shrink-0 text-xs text-gray-400">{row.students} clientes · {row.sessions} sessões</p>
                 </div>
                 <div className="h-2 rounded-full bg-gray-100">
                   <div className="h-full rounded-full bg-brand-verde" style={{ width: `${width}%` }} />
@@ -191,7 +191,7 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
         </div>
       </Panel>
 
-      <Panel title="Entregáveis por responsável" subtitle="Materiais criados, finalizados e publicados ao aluno.">
+      <Panel title="Entregáveis por responsável" subtitle="Materiais criados, finalizados e publicados ao cliente.">
         <div className="space-y-3">
           {data.deliverablesByOwner.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-400">Nenhum entregável registrado no período.</div>
@@ -237,10 +237,10 @@ export function OpsBiCharts({ data }: { data: OpsBiDashboard }) {
         </div>
       </Panel>
 
-      <Panel title="Risco operacional" subtitle="Alunos que mais precisam de ação agora.">
+      <Panel title="Risco operacional" subtitle="Clientes que mais precisam de ação agora.">
         <div className="divide-y divide-gray-50">
           {data.riskRows.length === 0 ? (
-            <div className="py-8 text-center text-sm text-gray-400">Nenhum aluno em risco no momento.</div>
+            <div className="py-8 text-center text-sm text-gray-400">Nenhum cliente em risco no momento.</div>
           ) : (
             data.riskRows.slice(0, 8).map((row) => (
               <a
