@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: CarreiraUSA AI — Internal Suite
-status: complete
-stopped_at: all milestones complete — migrating to SSH self-hosted (2026-05-08)
-last_updated: "2026-05-08T00:00:00.000Z"
-last_activity: "2026-05-08 - Removed phases 12/20/21 (deferred); system migrating to ssh carreirausa"
+milestone: v1.0
+milestone_name: milestone
+status: completed
+stopped_at: context exhaustion at 76% (2026-05-27)
+last_updated: "2026-05-27T00:23:48.929Z"
+last_activity: 2026-05-08 - Removed phases 12/20/21; migrating to ssh carreirausa
 progress:
-  total_phases: 17
-  completed_phases: 17
-  total_plans: 57
-  completed_plans: 57
+  total_phases: 9
+  completed_phases: 9
+  total_plans: 30
+  completed_plans: 30
   percent: 100
 ---
 
@@ -187,7 +187,7 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-05-08
-Stopped at: roadmap cleanup complete
+Last session: 2026-05-27T00:23:48.923Z
+Stopped at: context exhaustion at 76% (2026-05-27)
 Resume file: None
 Next action: Continue SSH self-hosted migration (ssh carreirausa)

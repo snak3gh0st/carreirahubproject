@@ -308,20 +308,29 @@ export function MyTasksClient() {
 
   return (
     <div>
-      {/* Stats bar */}
-      <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-4">
-        {[
-          { label: "Clientes na Fase", value: enrollments.length, color: "text-brand-verde" },
-          { label: "Incompletos", value: incomplete, color: "text-amber-600" },
-          { label: "Precisam Atenção", value: urgent, color: "text-red-600" },
-          { label: "Em Dia", value: onTrack, color: "text-emerald-600" },
-        ].map((s) => (
-          <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-            <p className={`text-2xl font-display font-bold ${s.color}`}>{s.value}</p>
-            <p className="text-xs text-gray-400 mt-1">{s.label}</p>
-          </div>
-        ))}
-      </div>
+      {/* Inline stats — no card grid */}
+      <p className="mb-6 text-[13px] text-gray-600">
+        <span className="font-semibold text-gray-900 tabular-nums">{enrollments.length}</span>{" "}
+        cliente{enrollments.length !== 1 ? "s" : ""} na sua fase
+        {urgent > 0 && (
+          <>
+            , <span className="font-semibold text-brand-tangerina tabular-nums">{urgent}</span> precisa
+            {urgent === 1 ? "" : "m"} de atenção
+          </>
+        )}
+        {incomplete > 0 && (
+          <>
+            , <span className="font-medium text-gray-500 tabular-nums">{incomplete}</span> incompleto
+            {incomplete !== 1 ? "s" : ""}
+          </>
+        )}
+        {onTrack > 0 && (
+          <>
+            , <span className="font-medium text-emerald-700 tabular-nums">{onTrack}</span> em dia
+          </>
+        )}
+        .
+      </p>
 
       {enrollments.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-16 text-center shadow-sm">

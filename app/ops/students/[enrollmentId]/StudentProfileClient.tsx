@@ -464,43 +464,46 @@ export function StudentProfileClient({
             )}
           </div>
 
-          <aside className="border-t border-gray-100 bg-gray-50/70 p-4 sm:p-5 lg:border-l lg:border-t-0">
-            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">Ações rápidas</p>
-            <div className="mt-3 grid gap-2">
+          <aside className="border-t border-gray-100 px-5 py-6 sm:px-6 md:py-7 lg:border-l lg:border-t-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+              Ações rápidas
+            </p>
+            <div className="mt-3 flex flex-col gap-1.5">
               <Link
                 href={`/ops/students/${enrollmentId}/portal-preview`}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-brand-verde/20 bg-brand-verde px-3 py-2 text-center text-xs font-semibold text-white transition-opacity hover:opacity-90"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-brand-verde px-3 text-[12.5px] font-medium text-white transition hover:bg-brand-verde/90"
               >
-                <Eye className="h-3.5 w-3.5" />
+                <Eye className="h-3.5 w-3.5" strokeWidth={1.75} />
                 Ver portal do cliente
               </Link>
               <button
                 type="button"
                 onClick={resendHubAccess}
                 disabled={accessAction.loading}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-gray-200 bg-white px-3 text-[12.5px] font-medium text-gray-700 transition hover:border-brand-verde hover:text-brand-verde disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Send className="h-3.5 w-3.5" />
+                <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
                 {accessAction.loading ? "Enviando..." : "Reenviar acesso"}
               </button>
             </div>
 
             {(accessAction.message || accessAction.error) && (
-              <div
-                className={`mt-3 rounded-xl border px-3 py-2 text-xs font-semibold ${
-                  accessAction.error
-                    ? "border-red-100 bg-red-50 text-red-700"
-                    : "border-emerald-100 bg-emerald-50 text-emerald-700"
+              <p
+                className={`mt-3 text-[12px] font-medium ${
+                  accessAction.error ? "text-red-600" : "text-emerald-700"
                 }`}
               >
                 {accessAction.error ?? accessAction.message}
-              </div>
+              </p>
             )}
 
-            <div className="mt-4 space-y-2 rounded-xl border border-gray-100 bg-white p-3">
+            <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+              Resumo
+            </p>
+            <div className="mt-3">
               <InfoLine label="Início" value={format(new Date(enrollment.startDate), "dd/MM/yyyy")} />
               <InfoLine label="Contrato" value={formatDate(signedContract?.signedAt)} />
-              <InfoLine label="Tasks Hub" value={`${pendingHubTasks} pend. · ${completedHubTasks} feitas`} />
+              <InfoLine label="Tasks Hub" value={`${pendingHubTasks} pend · ${completedHubTasks} feitas`} />
               <InfoLine label="Materiais finais" value={finalDocuments.length} />
               <InfoLine label="Aplicações" value={applications.length} />
               <InfoLine label="Inglês" value={placementTest ? `${placementTest.displayLevel} (${Math.round(placementTest.percentage)}%)` : "—"} />
