@@ -15,6 +15,7 @@ type DigisacSendMessageInput = {
   text: string;
   serviceId?: string | null;
   dontOpenTicket?: boolean;
+  userId?: string | null;
 };
 
 type DigisacWebhookMessage = {
@@ -259,6 +260,7 @@ export async function sendDigisacMessage(input: DigisacSendMessageInput) {
   if (!text) throw new Error("Mensagem vazia");
   if (!number) throw new Error("Cliente sem telefone valido");
 
+  const agentUserId = (input.userId ?? process.env.DIGISAC_AGENT_USER_ID?.trim()) || null;
   const response = await fetch(`${config.apiBaseUrl}/messages`, {
     method: "POST",
     headers: {
@@ -269,7 +271,8 @@ export async function sendDigisacMessage(input: DigisacSendMessageInput) {
       text,
       number,
       serviceId: input.serviceId || config.serviceId,
-      origin: "bot",
+      origin: agentUserId ? "user" : "bot",
+      ...(agentUserId ? { userId: agentUserId } : {}),
       dontOpenTicket: Boolean(input.dontOpenTicket),
     }),
   });

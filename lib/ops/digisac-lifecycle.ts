@@ -10,6 +10,7 @@ import {
 export const DIGISAC_LIFECYCLE_DEFAULT_START_AT = "2026-05-25T00:00:00.000Z";
 export const DIGISAC_LIFECYCLE_SUCCESS_ACTION = "LIFECYCLE_MESSAGE_SENT";
 export const DIGISAC_LIFECYCLE_FAILED_ACTION = "LIFECYCLE_MESSAGE_FAILED";
+export const DIGISAC_LIFECYCLE_SIGNATURE = "Suporte Carreira USA";
 
 export type DigisacLifecycleEvent =
   | "program_welcome"
@@ -164,10 +165,15 @@ export function buildDigisacLifecycleDedupeKey(event: DigisacLifecycleEvent, id:
   return `digisac:lifecycle:${event}:${id}`;
 }
 
+function appendSignature(body: string): string {
+  return `${body}\n\n— ${DIGISAC_LIFECYCLE_SIGNATURE}`;
+}
+
 export function buildDigisacLifecycleMessage(input: DigisacLifecycleMessageInput): string {
   const name = firstName(input.customerName);
   const title = clean(input.title ?? undefined);
 
+  const body = (() => {
   switch (input.event) {
     case "program_welcome":
       return [
@@ -234,6 +240,9 @@ export function buildDigisacLifecycleMessage(input: DigisacLifecycleMessageInput
       ].join("\n\n");
     }
   }
+  })();
+
+  return appendSignature(body);
 }
 
 function wrapRawPayload(input: {
