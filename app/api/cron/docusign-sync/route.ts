@@ -15,21 +15,18 @@ export const dynamic = "force-dynamic";
  * Schedule: every 15 minutes via Swarm host cron.
  *
  * Strategy:
- * - Default fromDate: 7 days ago (covers any webhook miss within a week)
- * - Limited pages so a single cron run finishes quickly
- * - Uses docusignContractSyncService.syncAllContracts to walk our contracts
- *   and pull each envelope's current status from DocuSign API
+ * - Only walks contracts in non-final status (SENT_FOR_SIGNATURE, VIEWED, etc.)
+ *   via syncOpenContracts — fast, only touches the envelopes that can change.
+ * - The heavier email-based reconciliation (scans every completed envelope to
+ *   backfill historical customers) is skipped here; trigger it manually via
+ *   POST /api/docusign/sync/contracts when needed.
  */
 export const GET = withCronTelemetry("docusign-sync", async () => {
-  const fromDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const startedAt = Date.now();
 
   try {
-    const result = await docusignContractSyncService.syncAllContracts({
-      fromDate,
-      maxPages: 5,
-      pageSize: 100,
-    });
+    // syncOpenContracts is the realtime path: only contracts in non-terminal status
+    const result = await docusignContractSyncService.syncOpenContracts();
 
     const durationMs = Date.now() - startedAt;
 
@@ -40,9 +37,11 @@ export const GET = withCronTelemetry("docusign-sync", async () => {
           action: "CONTRACT_SYNC_CRON",
           status: "SUCCESS",
           payload: {
-            fromDate: fromDate.toISOString(),
             durationMs,
-            ...result,
+            total: result.total,
+            synced: result.synced,
+            changed: result.changed,
+            errors: result.errors,
           },
         },
       })
