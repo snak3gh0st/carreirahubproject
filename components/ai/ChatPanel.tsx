@@ -3,7 +3,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
 import { useSession } from 'next-auth/react';
 import { usePathname, useParams } from 'next/navigation';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
 import { Suggestions } from './Suggestions';
@@ -26,6 +26,10 @@ export function ChatPanel({
   const { data: session } = useSession();
   const pathname = usePathname() ?? '/dashboard';
   const params = useParams() as Record<string, any>;
+  const sendInFlightRef = useRef(false);
+  const skipConversationLoadRef = useRef<string | null>(null);
+  const [isSendPending, setIsSendPending] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // AI SDK v6: api endpoint must be passed via DefaultChatTransport, not as a top-level prop.
   // body is passed per-sendMessage so conversationId/pathname stay current.
@@ -33,12 +37,16 @@ export function ChatPanel({
     () => new DefaultChatTransport({ api: '/api/dashboard/ai/chat' }),
     []
   );
-  const { messages, sendMessage, status, setMessages } = useChat({ transport } as any);
+  const { messages, sendMessage, status, setMessages, error } = useChat({ transport } as any);
 
   // Load existing conversation messages when conversationId changes
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
+      return;
+    }
+    if (skipConversationLoadRef.current === conversationId) {
+      skipConversationLoadRef.current = null;
       return;
     }
     fetch(`/api/dashboard/ai/conversations/${conversationId}?hub=${hub}`)
@@ -63,6 +71,8 @@ export function ChatPanel({
   const firstName = session?.user?.name?.split(' ')[0] ?? 'time';
   const role = (session?.user as any)?.role ?? 'ADMIN';
   const isStreaming = status === 'streaming' || status === 'submitted';
+  const isBusy = isStreaming || isSendPending;
+  const visibleError = submitError ?? error?.message;
   const helperText = hub === 'operational'
     ? 'Pergunte sobre fases, SLAs, checklists, sessões, formulários, débitos e próximos follow-ups.'
     : 'Pergunte sobre alunos, leads, faturas, contratos.';
@@ -89,32 +99,54 @@ export function ChatPanel({
       throw new Error('Conversa criada sem id');
     }
 
+    skipConversationLoadRef.current = newConversationId;
     onNewConversationId?.(newConversationId);
     return newConversationId;
   };
 
+  const runSendExclusive = async (action: () => Promise<void>) => {
+    if (sendInFlightRef.current || isStreaming) return;
+    sendInFlightRef.current = true;
+    setIsSendPending(true);
+    setSubmitError(null);
+    try {
+      await action();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Falha ao enviar mensagem';
+      setSubmitError(message);
+      console.error('[AI Chat] submit failed', err);
+    } finally {
+      sendInFlightRef.current = false;
+      setIsSendPending(false);
+    }
+  };
+
   const handleSend = async (text: string) => {
-    const resolvedConversationId = await ensureConversationId(text);
-    (sendMessage as any)({ text }, { body: { ...extraBody, conversationId: resolvedConversationId } });
+    await runSendExclusive(async () => {
+      const resolvedConversationId = await ensureConversationId(text);
+      await (sendMessage as any)({ text }, { body: { ...extraBody, conversationId: resolvedConversationId } });
+    });
   };
 
   const personasEnabled = process.env.NEXT_PUBLIC_AI_PERSONAS_ENABLED === "true";
   const personas: PersonaDefinition[] = personasEnabled ? getPersonasForHub(hub) : [];
 
   const handleRunPersona = async (persona: PersonaDefinition, refresh = false) => {
-    const prompt = persona.defaultPrompt;
-    const resolvedConversationId = await ensureConversationId(prompt);
-    (sendMessage as any)(
-      { text: prompt },
-      {
-        body: {
-          ...extraBody,
-          conversationId: resolvedConversationId,
-          personaSlug: persona.slug,
-          refresh,
-        },
-      }
-    );
+    await runSendExclusive(async () => {
+      const prompt = persona.defaultPrompt;
+      const resolvedConversationId = await ensureConversationId(prompt);
+      await (sendMessage as any)(
+        { text: prompt },
+        {
+          body: {
+            ...extraBody,
+            conversationId: resolvedConversationId,
+            personaSlug: persona.slug,
+            refresh,
+          },
+        }
+      );
+    });
   };
 
   const handleDeleteMessage = async (messageId: string) => {
@@ -151,7 +183,7 @@ export function ChatPanel({
                     key={p.slug}
                     persona={p}
                     onRun={() => void handleRunPersona(p)}
-                    disabled={isStreaming}
+                    disabled={isBusy}
                   />
                 ))}
               </div>
@@ -159,12 +191,13 @@ export function ChatPanel({
             <Suggestions
               items={getSuggestionsForRole(role, hub)}
               onPick={(q) => void handleSend(q)}
+              disabled={isBusy}
             />
           </div>
         ) : (
           <MessageList
             messages={messages}
-            isStreaming={isStreaming}
+            isStreaming={isBusy}
             onDeleteMessage={handleDeleteMessage}
             onRefreshPersona={(slug) => {
               // Fall back to the global registry so refresh still works if a loaded
@@ -181,12 +214,17 @@ export function ChatPanel({
                 key={p.slug}
                 persona={p}
                 onRun={() => void handleRunPersona(p)}
-                disabled={isStreaming}
+                disabled={isBusy}
               />
             ))}
           </div>
         )}
-        <Composer onSend={handleSend} disabled={isStreaming} />
+        {visibleError && (
+          <div className="border-t border-border bg-destructive/5 px-4 py-2 text-xs text-destructive md:px-8">
+            Erro ao consultar a IA. Tente novamente em alguns instantes.
+          </div>
+        )}
+        <Composer onSend={handleSend} disabled={isBusy} />
       </div>
     </ComplianceGate>
   );

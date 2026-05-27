@@ -155,7 +155,7 @@ type ProfileData = {
       templateId: string;
       status: string;
       assignedAt: string;
-      submission: { id: string; submittedAt: string } | null;
+      submission: { id: string; submittedAt: string; answers: Record<string, unknown> | null } | null;
     }>;
   };
   placementTest: {

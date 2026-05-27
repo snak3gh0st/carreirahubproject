@@ -24,7 +24,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
 import { useAdvancePhase, usePipelineData } from "./usePipelineData";
@@ -606,6 +606,9 @@ function StudentAiCard({
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/dashboard/ai/chat" }), []);
   const { messages, setMessages, sendMessage, status, error } = useChat({ transport } as any);
   const isStreaming = status === "streaming" || status === "submitted";
+  const [isSummaryPending, setIsSummaryPending] = useState(false);
+  const summaryInFlightRef = useRef(false);
+  const isBusy = isStreaming || isSummaryPending;
   const summaryPrompt =
     "Sumarize o caso operacional deste cliente em no maximo 7 linhas curtas. Use texto puro, sem Markdown, sem negrito, sem emoji, sem tabela, sem separadores e sem pipes. Comece cada linha com um rotulo simples: Fase atual, Risco, Ultima sessao, Aplicacoes/entrevistas, Material/CV, Pendencias, Proxima acao. Nao inclua leitura estrategica, visao CEO, nomes de tools, IDs internos ou erros tecnicos.";
   const opsContext = [
@@ -633,11 +636,13 @@ function StudentAiCard({
   }
 
   async function summarizeStudent() {
-    if (isStreaming) return;
+    if (isBusy || summaryInFlightRef.current) return;
+    summaryInFlightRef.current = true;
+    setIsSummaryPending(true);
     try {
       setMessages([]);
       const resolvedConversationId = await createSummaryConversation();
-      (sendMessage as any)(
+      await (sendMessage as any)(
         { text: summaryPrompt },
         {
           body: {
@@ -651,6 +656,9 @@ function StudentAiCard({
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro ao gerar resumo");
+    } finally {
+      summaryInFlightRef.current = false;
+      setIsSummaryPending(false);
     }
   }
 
@@ -692,7 +700,7 @@ function StudentAiCard({
             );
           })
         )}
-        {isStreaming && (
+        {isBusy && (
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Lendo dados do cliente...
@@ -705,10 +713,10 @@ function StudentAiCard({
         <button
           type="button"
           onClick={() => void summarizeStudent()}
-          disabled={isStreaming}
+          disabled={isBusy}
           className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand-verde px-3 py-2 text-xs font-semibold text-white transition-opacity disabled:opacity-40"
         >
-          {isStreaming ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bot className="h-3.5 w-3.5" />}
+          {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Bot className="h-3.5 w-3.5" />}
           Sumarizar caso do cliente
         </button>
       </div>

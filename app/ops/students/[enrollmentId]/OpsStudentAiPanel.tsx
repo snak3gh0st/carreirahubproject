@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Bot, Loader2, MessageCircle, Send } from "lucide-react";
@@ -27,9 +27,12 @@ export function OpsStudentAiPanel({
 }) {
   const [text, setText] = useState("");
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isSendPending, setIsSendPending] = useState(false);
+  const sendInFlightRef = useRef(false);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/dashboard/ai/chat" }), []);
   const { messages, sendMessage, status, error } = useChat({ transport } as any);
   const isStreaming = status === "streaming" || status === "submitted";
+  const isBusy = isStreaming || isSendPending;
   const opsContext = [
     `Cliente selecionado: ${customerName}`,
     `Enrollment ID: ${enrollmentId}`,
@@ -56,21 +59,28 @@ export function OpsStudentAiPanel({
 
   async function ask(prompt: string) {
     const trimmed = prompt.trim();
-    if (!trimmed || isStreaming) return;
-    setText("");
-    const id = await ensureConversation(trimmed);
-    (sendMessage as any)(
-      { text: trimmed },
-      {
-        body: {
-          conversationId: id,
-          pathname: `/ops/students/${enrollmentId}`,
-          params: { enrollmentId },
-          hub: "operational",
-          opsContext,
-        },
-      }
-    );
+    if (!trimmed || isBusy || sendInFlightRef.current) return;
+    sendInFlightRef.current = true;
+    setIsSendPending(true);
+    try {
+      setText("");
+      const id = await ensureConversation(trimmed);
+      await (sendMessage as any)(
+        { text: trimmed },
+        {
+          body: {
+            conversationId: id,
+            pathname: `/ops/students/${enrollmentId}`,
+            params: { enrollmentId },
+            hub: "operational",
+            opsContext,
+          },
+        }
+      );
+    } finally {
+      sendInFlightRef.current = false;
+      setIsSendPending(false);
+    }
   }
 
   const suggestions = [
@@ -104,7 +114,7 @@ export function OpsStudentAiPanel({
                 key={suggestion}
                 type="button"
                 onClick={() => void ask(suggestion)}
-                disabled={isStreaming}
+                disabled={isBusy}
                 className="block w-full rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-left text-xs font-semibold text-gray-600 transition-colors hover:border-brand-verde/30 hover:bg-brand-verde/5 disabled:opacity-50"
               >
                 {suggestion}
@@ -144,7 +154,7 @@ export function OpsStudentAiPanel({
           })
         )}
 
-        {isStreaming && (
+        {isBusy && (
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Consultando dados internos do cliente...
@@ -166,17 +176,17 @@ export function OpsStudentAiPanel({
             }}
             placeholder="Pergunte algo sobre este cliente..."
             rows={2}
-            disabled={isStreaming}
+            disabled={isBusy}
             className="min-h-[44px] flex-1 resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10 disabled:opacity-60"
           />
           <button
             type="button"
             onClick={() => void ask(text)}
-            disabled={isStreaming || !text.trim()}
+            disabled={isBusy || !text.trim()}
             className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-brand-verde text-white transition-opacity disabled:opacity-40"
             aria-label="Enviar pergunta para IA"
           >
-            {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
         </div>
       </div>

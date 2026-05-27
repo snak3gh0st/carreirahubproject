@@ -3,15 +3,18 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { FileText, Loader2, Plus } from "lucide-react";
+import { Download, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { getTemplate, type FormField } from "@/lib/hub/form-templates";
+
+type FormAnswerMap = Record<string, unknown>;
 
 type FormAssignmentItem = {
   id: string;
   templateId: string;
   status: string;
   assignedAt: string;
-  submission: { id: string; submittedAt: string } | null;
+  submission: { id: string; submittedAt: string; answers: FormAnswerMap | null } | null;
 };
 
 type AvailableTemplate = {
@@ -51,6 +54,102 @@ function statusLabel(status: string) {
 
 function templateLabel(templateId: string, availableTemplates: AvailableTemplate[]) {
   return availableTemplates.find((template) => template.id === templateId)?.titlePt ?? templateId;
+}
+
+function isEmptyAnswer(value: unknown) {
+  return value === null || value === undefined || value === "";
+}
+
+function safeDecodeFilename(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function filenameFromValue(value: string) {
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    try {
+      const url = new URL(value);
+      return safeDecodeFilename(url.pathname.split("/").pop() || url.hostname);
+    } catch {
+      return value;
+    }
+  }
+
+  return safeDecodeFilename(value.split("/").pop() || value);
+}
+
+function getStorageDownloadHref(value: string) {
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  if (value.startsWith("forms/") || value.startsWith("contracts/") || value.startsWith("ops/")) {
+    return `/api/storage/local?key=${encodeURIComponent(value)}&download=1`;
+  }
+
+  return null;
+}
+
+function getSubmissionFields(templateId: string, answers: FormAnswerMap) {
+  const template = getTemplate(templateId);
+  const templateFields = template?.fields ?? [];
+  const knownIds = new Set(templateFields.map((field) => field.id));
+  const extraFields: FormField[] = Object.keys(answers)
+    .filter((key) => !knownIds.has(key))
+    .map((key) => ({
+      id: key,
+      type: "text",
+      label: key,
+      labelPt: key,
+      required: false,
+    }));
+
+  return [...templateFields, ...extraFields].filter((field) =>
+    Object.prototype.hasOwnProperty.call(answers, field.id)
+  );
+}
+
+function renderAnswerValue(field: FormField, value: unknown) {
+  if (isEmptyAnswer(value)) {
+    return <span className="italic text-gray-400">Não preenchido</span>;
+  }
+
+  if (field.type === "file") {
+    const fileValue = String(value);
+    const href = getStorageDownloadHref(fileValue);
+    if (!href) return <span className="break-all text-gray-700">{fileValue}</span>;
+
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noreferrer"
+        className="inline-flex min-h-8 max-w-full items-center gap-1.5 break-all text-xs font-semibold text-brand-verde hover:underline"
+      >
+        <Download className="h-3.5 w-3.5 flex-shrink-0" />
+        {filenameFromValue(fileValue)}
+      </a>
+    );
+  }
+
+  if (field.type === "checkbox") {
+    const checked = value === true || value === "true";
+    return <span>{checked ? "Sim" : "Não"}</span>;
+  }
+
+  if (field.options?.length) {
+    const option = field.options.find((item) => item.value === String(value));
+    if (option) return <span>{option.labelPt || option.label}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    return <span>{value.map(String).join(", ")}</span>;
+  }
+
+  return <span className="whitespace-pre-wrap break-words">{String(value)}</span>;
 }
 
 export function FormsSection({
@@ -194,6 +293,10 @@ export function FormsSection({
         <div className="divide-y divide-gray-100">
           {assignments.map((assignment) => {
             const nps = npsByTemplate.get(assignment.templateId);
+            const submissionAnswers = assignment.submission?.answers ?? null;
+            const fields = submissionAnswers
+              ? getSubmissionFields(assignment.templateId, submissionAnswers)
+              : [];
 
             return (
               <div key={assignment.id} className="py-4">
@@ -228,6 +331,38 @@ export function FormsSection({
                     {statusLabel(assignment.status)}
                   </span>
                 </div>
+                {assignment.submission && (
+                  <details className="mt-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-brand-verde">
+                      Ver respostas e arquivos enviados
+                    </summary>
+                    {fields.length === 0 ? (
+                      <p className="mt-3 text-xs text-gray-400">Nenhuma resposta registrada neste envio.</p>
+                    ) : (
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {fields.map((field) => (
+                          <div key={field.id} className="rounded-lg border border-gray-100 bg-white p-3">
+                            <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">
+                              {field.labelPt || field.label}
+                            </p>
+                            <div className="mt-1 text-xs leading-relaxed text-gray-700">
+                              {renderAnswerValue(field, submissionAnswers?.[field.id])}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <a
+                      href={`/dashboard/forms/submissions/${assignment.submission.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-brand-verde hover:underline"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Abrir tela completa do envio
+                    </a>
+                  </details>
+                )}
               </div>
             );
           })}

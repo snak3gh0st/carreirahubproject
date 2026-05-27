@@ -51,3 +51,12 @@ test("ops portal preview reuses the real hub client home view", () => {
   assert.doesNotMatch(preview, /prisma\.invoice\.findMany/);
   assert.doesNotMatch(preview, /opsDocuments/);
 });
+
+test("ops forms section exposes submitted answers and uploaded form files", () => {
+  const source = fs.readFileSync("app/ops/students/[enrollmentId]/FormsSection.tsx", "utf8");
+
+  assert.match(source, /answers/);
+  assert.match(source, /Ver respostas e arquivos enviados/);
+  assert.match(source, /api\/storage\/local/);
+  assert.match(source, /dashboard\/forms\/submissions/);
+});
