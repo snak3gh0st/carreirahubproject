@@ -19,7 +19,7 @@ export default async function OpsDigisacPage({
   if (!isOperationalAccessRole(role)) redirect("/ops");
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5 px-4 pb-12 pt-8 md:px-8 md:pt-10">
+    <div className="mx-auto max-w-[1500px] space-y-4 px-4 pb-12 pt-8 md:px-8 md:pt-10">
       <header>
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
           Atendimento
@@ -28,7 +28,7 @@ export default async function OpsDigisacPage({
           Conversas
         </h1>
         <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-gray-600">
-          Caixa de entrada do Digisac. Responda direto daqui ou abra a ficha do aluno quando precisar de contexto.
+          Caixa de entrada do Digisac. Responda direto daqui ou abra a ficha do aluno quando precisar.
         </p>
       </header>
 

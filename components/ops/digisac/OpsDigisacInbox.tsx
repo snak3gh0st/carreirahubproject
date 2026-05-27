@@ -283,8 +283,8 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
         .
       </p>
 
-      <div className="overflow-hidden rounded-xl border border-gray-200/60 bg-white">
-        <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+      <div className="flex h-[700px] flex-col overflow-hidden rounded-xl border border-gray-200/60 bg-white">
+        <div className="flex shrink-0 flex-col gap-3 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" strokeWidth={1.75} />
             <input
@@ -323,7 +323,7 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
           </div>
         </div>
 
-        <div className="grid h-[calc(100dvh-15rem)] min-h-[480px] lg:grid-cols-[340px_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr] lg:grid-cols-[340px_minmax(0,1fr)] lg:grid-rows-none">
           <aside className="flex min-h-0 flex-col border-b border-gray-100 lg:border-b-0 lg:border-r">
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {listQuery.isLoading ? (
