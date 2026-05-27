@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { randomUUID } from 'crypto';
 import { streamText, stepCountIs, tool, convertToModelMessages } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { allowedToolsForRole, filterToolsByWhitelist } from '@/lib/ai/tools';
 import { checkRateLimit } from '@/lib/ai/rate-limit';
 import { buildSystemPrompt } from '@/lib/ai/prompts/system.pt-br';
@@ -12,6 +11,7 @@ import { prisma } from '@/lib/db';
 import { logAiEvent } from '@/lib/ai/logger';
 import { truncateJson } from '@/lib/ai/dto';
 import { resolveAiGatewayProfile } from '@/lib/ai/gateway';
+import { createOpenAIProvider } from '@/lib/ai/openai-provider';
 import type { AiToolDefinition } from '@/lib/ai/tools/_base';
 import type { ToolContext } from '@/lib/ai/types';
 import { AiMessageRole } from '@prisma/client';
@@ -322,6 +322,7 @@ export async function POST(req: NextRequest) {
     task: persona ? "persona_analysis" : "dashboard_copilot",
   });
   const modelId = gatewayProfile.model;
+  const openai = createOpenAIProvider();
   const model = openai(modelId);
 
   logAiEvent({ kind: 'request', userId: user.id, conversationId: conversation.id, model: modelId });
