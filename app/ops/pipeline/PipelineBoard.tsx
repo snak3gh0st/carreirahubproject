@@ -224,86 +224,114 @@ function StudentRow({
   const renewalInDays = renewalDate ? differenceInDays(renewalDate, new Date()) : null;
   const slaPercent = phase.slaDays > 0 ? Math.min(Math.round((phaseAgeDays / phase.slaDays) * 100), 100) : 0;
 
+  const slaOverdue = phaseAgeDays > phase.slaDays;
+  const hasRisk = Boolean(risk);
+  const hasDebt = paymentAlert.level === "red";
+  const showRenewal = renewalInDays !== null && renewalInDays <= 30;
+
   return (
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-xl border bg-white p-4 text-left transition-all ${
-        selected
-          ? "border-brand-verde shadow-md"
-          : "border-gray-100 hover:border-brand-verde/40 hover:shadow-sm"
+      aria-current={selected ? "true" : undefined}
+      className={`group relative flex w-full items-center gap-3 px-4 py-3 text-left transition focus:outline-none focus-visible:bg-gray-50 md:gap-4 md:px-5 md:py-3.5 ${
+        selected ? "bg-[#F5F7F5]" : "hover:bg-gray-50"
       }`}
     >
-      <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-brand-creme text-xs font-bold text-brand-verde">
-          {initials(enrollment.customer.name)}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-gray-900">{enrollment.customer.name}</p>
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gray-600">
-              {enrollment.programType}
-            </span>
-            {risk && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
-                <AlertTriangle className="h-3 w-3" />
-                {risk}
-              </span>
-            )}
-            {paymentAlert.level === "red" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700">
-                <WalletCards className="h-3 w-3" />
-                {paymentAlert.label}
-              </span>
-            )}
-            {paymentAlert.level === "green" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                <CheckCircle2 className="h-3 w-3" />
-                Pago
-              </span>
-            )}
-            {renewalInDays !== null && renewalInDays <= 30 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                <Clock className="h-3 w-3" />
-                Renovar {renewalInDays < 0 ? "vencido" : `${renewalInDays}d`}
-              </span>
-            )}
-          </div>
-          <div className="mt-2 grid gap-2 text-xs text-gray-500 sm:grid-cols-3">
-            <span className="truncate">Responsavel: {enrollment.assignedTo.name ?? "Sem nome"}</span>
-            <span>{enrollment._count.sessions} sessao{enrollment._count.sessions !== 1 ? "es" : ""}</span>
-            <span>
-              Ultima sessao: {daysSinceLastSession === null ? "sem registro" : `${daysSinceLastSession}d atras`}
-            </span>
-            {enrollment.opsProfile?.coachCohort && (
-              <span className="truncate">Turma: {enrollment.opsProfile.coachCohort}</span>
-            )}
-            <span>{enrollment.opsActivities.length} atividade{enrollment.opsActivities.length !== 1 ? "s" : ""} recentes</span>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <div>
-              <div className="mb-1 flex justify-between text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                <span>SLA operacional</span>
-                <span>{phaseAgeDays}/{phase.slaDays}d</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-                <div className={`h-full ${phaseAgeDays > phase.slaDays ? "bg-red-500" : "bg-brand-verde"}`} style={{ width: `${slaPercent}%` }} />
-              </div>
-              <p className="mt-1 truncate text-[10px] text-gray-400">{operationalStart.source}</p>
-            </div>
-            <div>
-              <div className="mb-1 flex justify-between text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-                <span>Checklist</span>
-                <span>{progress.total ? `${progress.completed}/${progress.total}` : "sem checklist"}</span>
-              </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-                <div className="h-full bg-brand-tangerina" style={{ width: `${progress.percent}%` }} />
-              </div>
-            </div>
-          </div>
-        </div>
-        <ArrowRight className={`mt-1 h-4 w-4 flex-shrink-0 ${selected ? "text-brand-verde" : "text-gray-300"}`} />
+      {selected && (
+        <span aria-hidden className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-brand-verde" />
+      )}
+      <div
+        aria-hidden
+        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold tracking-wide ${
+          hasRisk || hasDebt
+            ? "bg-orange-50 text-brand-tangerina ring-1 ring-orange-100"
+            : "bg-gray-100 text-gray-700"
+        }`}
+      >
+        {initials(enrollment.customer.name)}
       </div>
+
+      <div className="min-w-0 flex-1">
+        {/* Line 1: name + program + risk inline */}
+        <div className="flex items-baseline gap-2">
+          <p className="truncate text-[14px] font-semibold text-gray-900">
+            {enrollment.customer.name}
+          </p>
+          <span className="text-[11px] font-medium uppercase tracking-wide text-gray-400">
+            {enrollment.programType}
+          </span>
+        </div>
+
+        {/* Line 2: meta + signal badges */}
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-gray-500">
+          <span className="tabular-nums">
+            {enrollment._count.sessions} sessão
+            {enrollment._count.sessions !== 1 ? "ões" : ""}
+          </span>
+          <span className="tabular-nums">
+            {daysSinceLastSession === null ? "sem sessão" : `${daysSinceLastSession}d sem sessão`}
+          </span>
+          <span className="hidden truncate sm:inline">
+            {enrollment.assignedTo.name ?? "Sem responsável"}
+          </span>
+          {hasRisk && (
+            <span className="inline-flex items-center gap-1 font-semibold text-brand-tangerina">
+              <AlertTriangle className="h-3 w-3" strokeWidth={2} />
+              {risk}
+            </span>
+          )}
+          {hasDebt && (
+            <span className="inline-flex items-center gap-1 font-semibold text-red-600">
+              <WalletCards className="h-3 w-3" strokeWidth={2} />
+              {paymentAlert.label}
+            </span>
+          )}
+          {showRenewal && (
+            <span className="inline-flex items-center gap-1 font-medium text-amber-700">
+              <Clock className="h-3 w-3" strokeWidth={2} />
+              Renovar {renewalInDays < 0 ? "vencido" : `em ${renewalInDays}d`}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Right cluster: SLA + checklist as tiny inline bars */}
+      <div className="hidden flex-shrink-0 items-center gap-4 md:flex">
+        <div className="w-[100px]">
+          <div className="mb-1 flex items-baseline justify-between text-[10px] text-gray-400">
+            <span className="font-medium uppercase tracking-wide">SLA</span>
+            <span className="tabular-nums">{phaseAgeDays}/{phase.slaDays}d</span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-gray-100">
+            <div
+              className={`h-full transition-all ${slaOverdue ? "bg-brand-tangerina" : "bg-brand-verde"}`}
+              style={{ width: `${slaPercent}%` }}
+            />
+          </div>
+        </div>
+        {progress.total > 0 && (
+          <div className="w-[80px]">
+            <div className="mb-1 flex items-baseline justify-between text-[10px] text-gray-400">
+              <span className="font-medium uppercase tracking-wide">Checklist</span>
+              <span className="tabular-nums">{progress.percent}%</span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full bg-brand-verde/60"
+                style={{ width: `${progress.percent}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <ArrowRight
+        className={`h-4 w-4 flex-shrink-0 transition ${
+          selected ? "text-brand-verde" : "text-gray-300 group-hover:translate-x-0.5 group-hover:text-brand-verde"
+        }`}
+        strokeWidth={1.75}
+      />
     </button>
   );
 }
@@ -872,76 +900,97 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
     );
   }
 
+  const filterOptions: Array<{ key: FilterMode; label: string; value: number }> = [
+    { key: "all", label: "Todos", value: totals.clients },
+    { key: "mine", label: "Meus", value: totals.mine },
+    { key: "risk", label: "Em risco", value: totals.risk },
+    { key: "debt", label: "Inadimplentes", value: totals.debt },
+  ];
+
   return (
     <div className="grid min-h-0 grid-cols-1 gap-6 xl:h-full xl:grid-cols-[minmax(0,1fr)_390px]">
       <div className="min-w-0 xl:min-h-0 xl:overflow-y-auto xl:pr-2">
-        <div className="mb-4 grid gap-3 md:grid-cols-4">
-          {[
-            { key: "all" as const, label: "Todos", value: totals.clients },
-            { key: "mine" as const, label: "Meus", value: totals.mine },
-            { key: "risk" as const, label: "Risco", value: totals.risk },
-            { key: "debt" as const, label: "Financeiro", value: totals.debt },
-          ].map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setFilter(item.key)}
-              className={`rounded-xl border p-4 text-left transition-all ${
-                filter === item.key
-                  ? "border-brand-verde bg-brand-verde text-white"
-                  : "border-gray-100 bg-white text-gray-700 hover:border-brand-verde/40"
-              }`}
-            >
-              <p className="text-2xl font-display font-bold">{item.value}</p>
-              <p className={`text-xs ${filter === item.key ? "text-white/75" : "text-gray-400"}`}>{item.label}</p>
-            </button>
-          ))}
-        </div>
-
-        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-gray-100 bg-white p-3 sm:flex-row sm:items-center">
+        {/* Toolbar: search + segmented filter */}
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" strokeWidth={1.75} />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar cliente, email ou responsavel..."
-              className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:border-brand-verde focus:bg-white"
+              placeholder="Buscar cliente, email ou responsável"
+              className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-[14px] text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10"
             />
           </div>
-          <div className="inline-flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500">
-            <ListFilter className="h-4 w-4" />
-            Lista por area/fase
+          <div
+            role="tablist"
+            aria-label="Filtro"
+            className="inline-flex items-center rounded-lg border border-gray-200 bg-white p-0.5"
+          >
+            {filterOptions.map((item) => (
+              <button
+                key={item.key}
+                role="tab"
+                aria-selected={filter === item.key}
+                type="button"
+                onClick={() => setFilter(item.key)}
+                className={`relative inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-verde/40 ${
+                  filter === item.key
+                    ? "bg-brand-verde text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <span>{item.label}</span>
+                <span
+                  className={`tabular-nums text-[11px] font-semibold ${
+                    filter === item.key ? "text-white/75" : "text-gray-400"
+                  }`}
+                >
+                  {item.value}
+                </span>
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="space-y-5">
+        {/* Phase sections */}
+        <div className="space-y-7">
           {filtered.length === 0 ? (
-            <div className="rounded-xl border border-gray-100 bg-white p-12 text-center">
-              <p className="text-sm text-gray-400">Nenhum cliente encontrado para este filtro.</p>
+            <div className="rounded-xl border border-gray-200/60 bg-white px-8 py-16 text-center">
+              <p className="text-[14px] text-gray-500">Nenhum cliente para este filtro.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setFilter("all");
+                }}
+                className="mt-3 text-[13px] font-medium text-brand-verde underline-offset-2 hover:underline"
+              >
+                Limpar filtros
+              </button>
             </div>
           ) : (
             filtered.map((phase) => (
-              <section key={phase.id} className="rounded-xl border border-gray-100 bg-gray-50/70 p-3">
-                <div className="mb-3 flex items-center justify-between px-1">
-                  <div>
-                    <h2 className="font-display text-sm font-bold text-gray-900">{phase.label}</h2>
-                    <p className="text-xs text-gray-400">SLA: {phase.slaDays} dias</p>
+              <section key={phase.id}>
+                <header className="mb-2 flex items-baseline justify-between gap-3 px-1">
+                  <div className="flex items-baseline gap-3">
+                    <h2 className="text-[14px] font-semibold text-gray-900">{phase.label}</h2>
+                    <span className="text-[12px] text-gray-400 tabular-nums">
+                      {phase.enrollments.length} · SLA {phase.slaDays}d
+                    </span>
                   </div>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-brand-verde shadow-sm">
-                    {phase.enrollments.length} cliente{phase.enrollments.length !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {phase.enrollments.map((enrollment) => (
-                    <StudentRow
-                      key={enrollment.id}
-                      phase={phase}
-                      enrollment={enrollment}
-                      selected={selected?.enrollment.id === enrollment.id}
-                      onSelect={() => setSelectedId(enrollment.id)}
-                    />
+                </header>
+                <ul className="overflow-hidden rounded-xl border border-gray-200/60 bg-white">
+                  {phase.enrollments.map((enrollment, idx) => (
+                    <li key={enrollment.id} className={idx === 0 ? "" : "border-t border-gray-100"}>
+                      <StudentRow
+                        phase={phase}
+                        enrollment={enrollment}
+                        selected={selected?.enrollment.id === enrollment.id}
+                        onSelect={() => setSelectedId(enrollment.id)}
+                      />
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
             ))
           )}

@@ -63,7 +63,7 @@ export function OpsDigisacWidget() {
       {open && (
         <div
           ref={panelRef}
-          className="fixed bottom-20 right-4 z-50 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl md:bottom-24 md:right-6"
+          className="fixed bottom-[9.5rem] right-4 z-50 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl md:bottom-24 md:right-6"
         >
           <div className="flex items-center justify-between bg-brand-verde px-4 py-3">
             <div className="flex items-center gap-2">
@@ -157,7 +157,7 @@ export function OpsDigisacWidget() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="Conversas Digisac"
-        className="fixed bottom-20 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand-verde shadow-lg transition hover:bg-brand-verde/90 focus:outline-none focus:ring-2 focus:ring-brand-verde/50 md:bottom-6 md:right-6"
+        className="fixed bottom-[5.25rem] right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-brand-verde shadow-lg transition hover:bg-brand-verde/90 focus:outline-none focus:ring-2 focus:ring-brand-verde/50 md:bottom-6 md:right-6"
       >
         <MessageSquareText className="h-6 w-6 text-white" />
         {unreadCount > 0 && (

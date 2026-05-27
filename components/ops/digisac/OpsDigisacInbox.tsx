@@ -212,70 +212,72 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
   const canSend = Boolean(config?.enabled && selectedThread?.phoneNumber && messageText.trim());
   const messages = detailQuery.data?.messages ?? [];
 
-  return (
-    <div className="space-y-5">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: "Conversas", value: stats.total, detail: "threads Digisac", icon: Inbox },
-          { label: "A responder", value: stats.needsReply, detail: "última mensagem do cliente", icon: AlertCircle },
-          { label: "Com matrícula", value: stats.activeEnrollments, detail: "vinculadas ao Ops", icon: UsersRound },
-          { label: "Sem vínculo", value: stats.unmatched, detail: "precisam revisão", icon: UserRound },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.label} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">{item.label}</p>
-                  <p className="mt-1 text-2xl font-semibold tabular-nums text-gray-950">{item.value}</p>
-                  <p className="mt-1 text-xs text-gray-500">{item.detail}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-verde/10 text-brand-verde">
-                  <Icon className="h-5 w-5" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+  const filterTabs: Array<{ key: FilterMode; label: string; count?: number }> = [
+    { key: "all", label: "Todas", count: stats.total },
+    { key: "needsReply", label: "A responder", count: stats.needsReply },
+    { key: "linked", label: "Vinculadas", count: stats.activeEnrollments },
+    { key: "unmatched", label: "Sem vínculo", count: stats.unmatched },
+  ];
 
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-100 bg-gray-50/80 p-3 sm:p-4">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar por cliente, telefone, fase ou responsável..."
-                className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-800 outline-none transition focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-              {[
-                { key: "all" as const, label: "Todas" },
-                { key: "needsReply" as const, label: "A responder" },
-                { key: "linked" as const, label: "Vinculadas" },
-                { key: "unmatched" as const, label: "Sem vínculo" },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setFilter(item.key)}
-                  className={`min-h-10 rounded-lg border px-3 text-xs font-semibold transition-colors ${
-                    filter === item.key
-                      ? "border-brand-verde bg-brand-verde text-white"
-                      : "border-gray-200 bg-white text-gray-600 hover:border-brand-verde/40 hover:text-brand-verde"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+  return (
+    <div className="space-y-4">
+      {/* Inline stats — typography only, no cards */}
+      <p className="text-[13px] text-gray-600">
+        <span className="font-semibold text-gray-900 tabular-nums">{stats.total}</span> conversas no total
+        {stats.needsReply > 0 && (
+          <>
+            , <span className="font-semibold text-brand-tangerina tabular-nums">{stats.needsReply}</span> aguardando resposta
+          </>
+        )}
+        {stats.unmatched > 0 && (
+          <>
+            , <span className="font-medium text-gray-500 tabular-nums">{stats.unmatched}</span> sem vínculo com aluno
+          </>
+        )}
+        .
+      </p>
+
+      <div className="overflow-hidden rounded-xl border border-gray-200/60 bg-white">
+        <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:gap-4">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" strokeWidth={1.75} />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar por cliente, telefone, fase, responsável"
+              className="h-9 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-[13px] text-gray-800 outline-none transition placeholder:text-gray-400 focus:border-brand-verde focus:ring-2 focus:ring-brand-verde/10"
+            />
+          </div>
+          <div role="tablist" aria-label="Filtrar conversas" className="inline-flex items-center rounded-lg border border-gray-200 bg-white p-0.5">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.key}
+                role="tab"
+                aria-selected={filter === tab.key}
+                type="button"
+                onClick={() => setFilter(tab.key)}
+                className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[12px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-verde/40 ${
+                  filter === tab.key
+                    ? "bg-brand-verde text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <span>{tab.label}</span>
+                {tab.count !== undefined && (
+                  <span
+                    className={`tabular-nums text-[11px] font-semibold ${
+                      filter === tab.key ? "text-white/75" : "text-gray-400"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="grid min-h-[620px] lg:grid-cols-[380px_minmax(0,1fr)]">
+        <div className="grid min-h-[620px] lg:grid-cols-[340px_minmax(0,1fr)]">
           <aside className="border-b border-gray-100 lg:border-b-0 lg:border-r">
             <div className="max-h-[420px] overflow-y-auto lg:max-h-[680px]">
               {listQuery.isLoading ? (

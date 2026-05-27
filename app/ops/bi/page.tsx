@@ -120,18 +120,18 @@ export default async function OpsBiPage() {
   const maxPhaseCount = Math.max(...phases.map((phase) => phase.enrollments.length), 1);
 
   return (
-    <div className="min-w-0 px-4 py-5 sm:px-6 md:p-8">
-      <div className="mb-6 md:mb-8">
-        <div className="mb-1 flex items-center gap-3">
-          <BarChart3 className="h-6 w-6 flex-shrink-0 text-brand-verde sm:h-7 sm:w-7" />
-          <h1 className="text-2xl font-display font-bold tracking-tight text-brand-verde sm:text-3xl">
-            BI Operacional
-          </h1>
-        </div>
-        <p className="text-sm text-gray-500">
+    <div className="mx-auto min-w-0 max-w-[1500px] px-4 pb-12 pt-8 sm:px-6 md:px-8 md:pt-10">
+      <header className="mb-7 md:mb-9">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+          Inteligência
+        </p>
+        <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-gray-900 md:text-[32px]">
+          BI operacional
+        </h1>
+        <p className="mt-2 max-w-2xl text-[14px] leading-relaxed text-gray-600">
           Progresso, risco e gargalos de cada cliente ativo no fluxo operacional.
         </p>
-      </div>
+      </header>
 
       <div className="mb-6 grid gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <OpsKpiCard label="Ativos" value={biDashboard.kpis.activeStudents} detail="clientes em programa" icon={UsersRound} tone="info" />

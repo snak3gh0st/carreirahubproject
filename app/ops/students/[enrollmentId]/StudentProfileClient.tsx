@@ -268,6 +268,34 @@ function MetricTile({
   );
 }
 
+function ProfileStat({
+  label,
+  value,
+  detail,
+  accent,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">{label}</dt>
+      <dd
+        className={`mt-1 break-words text-[18px] font-semibold leading-tight tabular-nums ${
+          accent ? "text-brand-tangerina" : "text-gray-900"
+        }`}
+      >
+        {value}
+      </dd>
+      {detail && (
+        <p className="mt-0.5 break-words text-[12px] font-medium text-gray-500 tabular-nums">{detail}</p>
+      )}
+    </div>
+  );
+}
+
 function daysUntil(value: string | null | undefined) {
   if (!value) return null;
   return Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000);
@@ -355,80 +383,81 @@ export function StudentProfileClient({
         Voltar à lista de clientes
       </Link>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <div className="min-w-0 p-4 sm:p-5 md:p-6">
-            <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start">
-              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-verde text-lg font-display font-bold text-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-gray-200/60 bg-white">
+        <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0 px-5 py-6 sm:px-6 md:px-7 md:py-7">
+            {/* Identity */}
+            <div className="flex min-w-0 items-start gap-4">
+              <div
+                aria-hidden
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-[14px] font-bold tracking-wide text-gray-700"
+              >
                 {getInitials(enrollment.customer.name)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-gray-500">
-                    Cliente
-                  </span>
-                  <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${
-                    attentionItems.length ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
-                  }`}>
-                    {attentionItems.length ? `${attentionItems.length} alerta${attentionItems.length !== 1 ? "s" : ""}` : "Em dia"}
-                  </span>
-                </div>
-                <h1 className="break-words text-2xl font-display font-bold tracking-tight text-gray-950 sm:text-3xl">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+                  {enrollment.programType}
+                  {enrollment.opsProfile?.seniority && (
+                    <span className="text-gray-300"> · {enrollment.opsProfile.seniority.replace("_", " ").toLowerCase()}</span>
+                  )}
+                </p>
+                <h1 className="mt-1 break-words text-[26px] font-semibold leading-tight tracking-tight text-gray-900 sm:text-[30px]">
                   {enrollment.customer.name}
                 </h1>
-                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-gray-500">
                   <span className="break-all">{enrollment.customer.email}</span>
-                  {enrollment.customer.phone && <span>{enrollment.customer.phone}</span>}
-                  {enrollment.customer.state && <span>{enrollment.customer.state}</span>}
+                  {enrollment.customer.phone && <span>· {enrollment.customer.phone}</span>}
+                  {enrollment.customer.state && <span>· {enrollment.customer.state}</span>}
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-bold text-blue-700">
-                    {enrollment.programType}
-                  </span>
-                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[11px] font-bold text-gray-600">
-                    Responsável: {enrollment.assignedTo.name}
-                  </span>
-                  {enrollment.opsProfile?.seniority && (
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                      {enrollment.opsProfile.seniority.replace("_", " ")}
-                    </span>
+                <p className="mt-2 text-[13px] text-gray-500">
+                  Responsável: <span className="font-medium text-gray-700">{enrollment.assignedTo.name}</span>
+                  {attentionItems.length > 0 ? (
+                    <>
+                      {" · "}
+                      <span className="font-medium text-brand-tangerina tabular-nums">
+                        {attentionItems.length} ponto{attentionItems.length !== 1 ? "s" : ""} de atenção
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-emerald-700"> · em dia</span>
                   )}
-                </div>
+                </p>
               </div>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <MetricTile
+            {/* Metrics row — inline, no card grid */}
+            <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 sm:gap-x-8">
+              <ProfileStat
                 label="Fase"
                 value={enrollment.currentPhase?.label ?? "Sem fase"}
-                detail={`${phaseAgeDays} dia${phaseAgeDays !== 1 ? "s" : ""} na fase`}
-                tone={enrollment.currentPhase?.slaDays && phaseAgeDays > enrollment.currentPhase.slaDays ? "danger" : "neutral"}
+                detail={`${phaseAgeDays}d na fase`}
+                accent={Boolean(enrollment.currentPhase?.slaDays && phaseAgeDays > enrollment.currentPhase.slaDays)}
               />
-              <MetricTile
-                label="Próxima renovação"
+              <ProfileStat
+                label="Renovação"
                 value={formatDate(enrollment.opsProfile?.renewalDate)}
-                detail={renewalInDays === null ? "sem data" : `${renewalInDays} dia${renewalInDays !== 1 ? "s" : ""}`}
-                tone={renewalInDays !== null && renewalInDays <= 30 ? "warning" : "neutral"}
+                detail={renewalInDays === null ? "sem data" : `${renewalInDays}d`}
+                accent={renewalInDays !== null && renewalInDays <= 30}
               />
-              <MetricTile
+              <ProfileStat
                 label="Sessões"
-                value={totalSessions}
+                value={String(totalSessions)}
                 detail={latestSession ? `última ${formatDate(latestSession.sessionDate)}` : "sem registro"}
-                tone={latestSession ? "success" : "warning"}
               />
-              <MetricTile
+              <ProfileStat
                 label="Aberto QB"
                 value={formatMoney(enrollment.customer.qbBalance)}
                 detail={`${formatMoney(enrollment.customer.qbTotalPaid)} pago`}
-                tone={openBalance > 0 ? "warning" : "success"}
+                accent={openBalance > 0}
               />
-            </div>
+            </dl>
 
             {attentionItems.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3">
-                {attentionItems.map((item) => (
-                  <span key={item} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">
-                    {item}
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-[12px]">
+                <span className="font-semibold uppercase tracking-wide text-gray-400">Atenção:</span>
+                {attentionItems.map((item, idx) => (
+                  <span key={item} className="text-gray-700">
+                    {idx > 0 && <span className="text-gray-300">·</span>} {item}
                   </span>
                 ))}
               </div>

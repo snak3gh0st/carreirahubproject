@@ -3,9 +3,9 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  ArrowUpRight,
   BarChart3,
   BookOpen,
-  CalendarDays,
   CheckCircle2,
   ClipboardList,
   Clock,
@@ -13,7 +13,7 @@ import {
   ListChecks,
   MessageSquareText,
   PauseCircle,
-  UsersRound,
+  Sparkles,
 } from "lucide-react";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -138,169 +138,233 @@ export default async function OpsHomePage() {
   const overdueCount = rows.filter((row) => row.overdueSla).length;
   const noSessionCount = rows.filter((row) => row.noRecentSession).length;
   const digisacNeedsReply = digisacThreads.filter((thread) => thread.messages[0]?.direction === "INBOUND").length;
+  const attentionTotal = attentionRows.length;
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 5) return "Boa madrugada";
+    if (h < 12) return "Bom dia";
+    if (h < 18) return "Boa tarde";
+    return "Boa noite";
+  })();
+
   return (
-    <div className="mx-auto max-w-[1500px] p-6 md:p-8">
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="mb-2 flex items-center gap-3">
-            <CalendarDays className="h-7 w-7 text-brand-verde" />
-            <h1 className="text-3xl font-display font-bold text-brand-verde tracking-tight">
-              Hoje
-            </h1>
-          </div>
-          <p className="text-sm text-gray-500">
-            Olá, {userName}. A prioridade aqui é decidir quem precisa de ação agora.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/ops/pipeline" className="inline-flex items-center gap-2 rounded-lg bg-brand-verde px-4 py-2 text-sm font-semibold text-white">
-            <ListChecks className="h-4 w-4" />
-            Abrir clientes
-          </Link>
-          <Link href="/ops/enroll" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:border-brand-verde hover:text-brand-verde">
-            <GraduationCap className="h-4 w-4" />
-            Nova matrícula
-          </Link>
-        </div>
-      </div>
+    <div className="mx-auto max-w-[1400px] px-4 pb-12 pt-8 md:px-8 md:pt-10">
+      {/* Lead: greeting + the one line that matters */}
+      <header className="mb-10">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+          {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+        </p>
+        <h1 className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-gray-900 md:text-[34px]">
+          {greeting}, {userName}.
+        </h1>
+        <p className="mt-3 max-w-2xl text-[15px] leading-relaxed text-gray-600">
+          {attentionTotal === 0 ? (
+            <>Sem clientes em risco agora. Boa janela para ligar pra quem está há mais tempo sem sessão.</>
+          ) : (
+            <>
+              <span className="font-semibold text-gray-900 tabular-nums">{attentionTotal}</span>{" "}
+              {attentionTotal === 1 ? "cliente precisa" : "clientes precisam"} da sua atenção hoje
+              {overdueCount > 0 && (
+                <>
+                  , <span className="font-semibold text-brand-tangerina tabular-nums">{overdueCount}</span> com SLA vencido
+                </>
+              )}
+              {digisacNeedsReply > 0 && (
+                <>
+                  , <span className="font-semibold text-brand-tangerina tabular-nums">{digisacNeedsReply}</span> com mensagem nova no Digisac
+                </>
+              )}
+              .
+            </>
+          )}
+        </p>
+      </header>
 
-      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        {[
-          { label: "Na operação", value: rows.length, icon: UsersRound, color: "text-brand-verde", bg: "bg-brand-verde/10" },
-          { label: "SLA vencido", value: overdueCount, icon: AlertTriangle, color: "text-red-600", bg: "bg-red-50" },
-          { label: "Sem sessão", value: noSessionCount, icon: Clock, color: "text-amber-600", bg: "bg-amber-50" },
-          { label: "Digisac", value: digisacNeedsReply, icon: MessageSquareText, color: "text-blue-700", bg: "bg-blue-50" },
-          { label: "Sessões semana", value: sessionsThisWeek, icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Formulários pend.", value: pendingForms, icon: ClipboardList, color: "text-violet-700", bg: "bg-violet-50" },
-        ].map((item) => {
-          const Icon = item.icon;
-          return (
-            <div key={item.label} className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-              <div className="mb-3 flex items-center gap-3">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${item.bg}`}>
-                  <Icon className={`h-5 w-5 ${item.color}`} />
-                </div>
-                <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">{item.label}</span>
-              </div>
-              <p className={`text-3xl font-display font-bold ${item.color}`}>{item.value}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-          <div className="border-b border-gray-50 px-5 py-4">
-            <h2 className="text-base font-semibold text-gray-900">Fila de atenção</h2>
-            <p className="text-xs text-gray-400">Clientes ordenados por risco, checklist e cadência.</p>
+      {/* Action: priority list on the left, narrow status rail on the right */}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <section>
+          <div className="mb-4 flex items-baseline justify-between">
+            <h2 className="text-[15px] font-semibold text-gray-900">
+              Fila de atenção
+              {attentionTotal > 0 && (
+                <span className="ml-2 text-[13px] font-medium text-gray-400 tabular-nums">
+                  {attentionTotal}
+                </span>
+              )}
+            </h2>
+            <Link
+              href="/ops/pipeline"
+              className="inline-flex items-center gap-1 text-[13px] font-medium text-gray-500 transition hover:text-brand-verde"
+            >
+              Pipeline completo
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
 
           {attentionRows.length === 0 ? (
-            <div className="p-12 text-center">
-              <CheckCircle2 className="mx-auto mb-3 h-9 w-9 text-emerald-500" />
-              <p className="font-semibold text-gray-700">Tudo em dia na sua operação.</p>
-              <p className="mt-1 text-sm text-gray-400">Nenhum cliente exige ação imediata.</p>
+            <div className="rounded-xl border border-gray-200/60 bg-white px-8 py-16 text-center">
+              <CheckCircle2 className="mx-auto mb-3 h-8 w-8 text-emerald-500" strokeWidth={1.75} />
+              <p className="text-[15px] font-semibold text-gray-800">Tudo em dia.</p>
+              <p className="mt-1.5 text-sm text-gray-500">
+                Ninguém na operação exige ação imediata agora.
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-50">
-              {attentionRows.map((row) => (
-                <Link
-                  key={row.enrollment.id}
-                  href={`/ops/students/${row.enrollment.id}`}
-                  className="flex items-start gap-4 p-4 transition-colors hover:bg-gray-50"
-                >
-                  <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-xs font-bold ${
-                    row.riskScore > 40 ? "bg-red-50 text-red-600" : "bg-brand-creme text-brand-verde"
-                  }`}>
-                    {initials(row.enrollment.customer.name)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate text-sm font-semibold text-gray-900">{row.enrollment.customer.name}</p>
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
-                        {row.phase?.label ?? "Sem fase"}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-xs text-gray-400">
-                      {row.enrollment.assignedTo.name ?? "Sem responsável"} · {row.enrollment._count.sessions} sessão{row.enrollment._count.sessions !== 1 ? "ões" : ""}
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {row.overdueSla && (
-                        <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600">
-                          SLA {row.phaseAgeDays}d
-                        </span>
-                      )}
-                      {row.noRecentSession && (
-                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700">
-                          {row.daysSinceLastSession === null ? "Sem sessão" : `${row.daysSinceLastSession}d sem sessão`}
-                        </span>
-                      )}
-                      {row.incompleteChecklist && (
-                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">
-                          Checklist {row.checklistPercent}%
-                        </span>
-                      )}
-                      {row.hasDebt && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700">
-                          Débito
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <ArrowRight className="mt-1 h-4 w-4 flex-shrink-0 text-gray-300" />
-                </Link>
-              ))}
-            </div>
+            <ul className="overflow-hidden rounded-xl border border-gray-200/60 bg-white">
+              {attentionRows.map((row, idx) => {
+                const isCritical = row.riskScore >= 40;
+                return (
+                  <li key={row.enrollment.id} className={idx === 0 ? "" : "border-t border-gray-100"}>
+                    <Link
+                      href={`/ops/students/${row.enrollment.id}`}
+                      className="group flex items-center gap-3.5 px-4 py-3.5 transition hover:bg-gray-50 md:gap-4 md:px-5"
+                    >
+                      <div
+                        aria-hidden
+                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold tracking-wide ${
+                          isCritical
+                            ? "bg-orange-50 text-brand-tangerina ring-1 ring-orange-100"
+                            : "bg-gray-100 text-gray-700"
+                        }`}
+                      >
+                        {initials(row.enrollment.customer.name)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline gap-2">
+                          <p className="truncate text-[14px] font-semibold text-gray-900">
+                            {row.enrollment.customer.name}
+                          </p>
+                          <p className="hidden text-[12px] font-medium text-gray-400 md:block">
+                            {row.phase?.label ?? "Sem fase"}
+                          </p>
+                        </div>
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-gray-500">
+                          {row.overdueSla && (
+                            <span className="font-semibold text-brand-tangerina tabular-nums">
+                              SLA +{row.phaseAgeDays - (row.phase?.slaDays ?? 0)}d
+                            </span>
+                          )}
+                          {row.noRecentSession && (
+                            <span className="tabular-nums">
+                              {row.daysSinceLastSession === null
+                                ? "sem sessão"
+                                : `${row.daysSinceLastSession}d sem sessão`}
+                            </span>
+                          )}
+                          {row.incompleteChecklist && (
+                            <span className="tabular-nums">
+                              checklist {row.checklistPercent}%
+                            </span>
+                          )}
+                          {row.hasDebt && <span>débito pendente</span>}
+                          {row.enrollment.assignedTo.name && (
+                            <span className="hidden md:inline">
+                              · {row.enrollment.assignedTo.name}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <ArrowRight
+                        className="h-4 w-4 flex-shrink-0 text-gray-300 transition group-hover:translate-x-0.5 group-hover:text-brand-verde"
+                        strokeWidth={1.75}
+                      />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </section>
 
-        <aside className="space-y-4">
-          <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm">
-            <h2 className="font-display text-base font-bold text-gray-900">Atalhos úteis</h2>
-            <div className="mt-4 space-y-2">
-              {[
-                { href: "/ops/bi", label: "Ver gargalos no BI", icon: BarChart3 },
-                { href: "/ops/digisac", label: "Abrir conversas Digisac", icon: MessageSquareText },
-                { href: "/ops/handbook", label: "Guia operacional", icon: BookOpen },
-                { href: "/dashboard/forms", label: "Gerenciar formulários", icon: ClipboardList },
-              ].map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 text-sm font-semibold text-gray-700 hover:border-brand-verde hover:text-brand-verde"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Icon className="h-4 w-4" />
-                      {item.label}
-                    </span>
-                    <ArrowRight className="h-3.5 w-3.5 text-gray-300" />
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
+        {/* Right rail: situational stats + jump-offs */}
+        <aside className="space-y-8">
+          <section>
+            <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+              Estado da operação
+            </h2>
+            <dl className="space-y-3">
+              <StatRow label="Na operação" value={rows.length} />
+              <StatRow label="SLA vencido" value={overdueCount} accent={overdueCount > 0} />
+              <StatRow label="Sem sessão recente" value={noSessionCount} accent={noSessionCount > 0} />
+              <StatRow label="Sessões na semana" value={sessionsThisWeek} subtle />
+              <StatRow label="Em pausa" value={pausedCount} subtle />
+              <StatRow label="Formulários pend." value={pendingForms} subtle />
+            </dl>
+          </section>
 
-          <div className="rounded-xl border border-orange-100 bg-orange-50 p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <PauseCircle className="h-5 w-5 text-orange-600" />
-              <h2 className="font-display text-base font-bold text-orange-800">Pausados</h2>
-            </div>
-            <p className="text-3xl font-display font-bold text-orange-700">{pausedCount}</p>
-            <p className="mt-1 text-xs text-orange-700/70">Validar retorno ou encerramento no acompanhamento.</p>
-          </div>
-
-          <div className="rounded-xl border border-amber-100 bg-amber-50 p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-amber-600" />
-              <h2 className="font-display text-base font-bold text-amber-800">Formulários</h2>
-            </div>
-            <p className="text-3xl font-display font-bold text-amber-700">{pendingForms}</p>
-            <p className="mt-1 text-xs text-amber-700/70">Pendentes na operação e no hub do cliente.</p>
-          </div>
+          <section>
+            <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+              Atalhos
+            </h2>
+            <ul className="space-y-1.5">
+              <ShortcutRow href="/ops/digisac" label="Conversas Digisac" icon={MessageSquareText} badge={digisacNeedsReply} />
+              <ShortcutRow href="/ops/ai" label="Pedir ao Assistente AI" icon={Sparkles} />
+              <ShortcutRow href="/ops/enroll" label="Nova matrícula" icon={GraduationCap} />
+              <ShortcutRow href="/ops/bi" label="Gargalos no BI" icon={BarChart3} />
+              <ShortcutRow href="/ops/pipeline" label="Pipeline completo" icon={ListChecks} />
+              <ShortcutRow href="/ops/handbook" label="Guia operacional" icon={BookOpen} />
+            </ul>
+          </section>
         </aside>
       </div>
     </div>
+  );
+}
+
+function StatRow({
+  label,
+  value,
+  accent,
+  subtle,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+  subtle?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-gray-100 pb-2.5 last:border-b-0">
+      <dt className={`text-[13px] ${subtle ? "text-gray-500" : "text-gray-700"}`}>{label}</dt>
+      <dd
+        className={`text-[18px] font-semibold tabular-nums leading-none ${
+          accent && value > 0 ? "text-brand-tangerina" : subtle ? "text-gray-500" : "text-gray-900"
+        }`}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function ShortcutRow({
+  href,
+  label,
+  icon: Icon,
+  badge,
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: number;
+}) {
+  return (
+    <li>
+      <Link
+        href={href}
+        className="group flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] font-medium text-gray-700 transition hover:bg-white hover:text-brand-verde"
+      >
+        <Icon className="h-4 w-4 flex-shrink-0 text-gray-400 transition group-hover:text-brand-verde" strokeWidth={1.75} />
+        <span className="flex-1">{label}</span>
+        {badge !== undefined && badge > 0 && (
+          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-tangerina px-1 text-[10px] font-bold text-white tabular-nums">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+        <ArrowRight
+          className="h-3.5 w-3.5 text-gray-300 opacity-0 transition group-hover:translate-x-0.5 group-hover:text-brand-verde group-hover:opacity-100"
+          strokeWidth={1.75}
+        />
+      </Link>
+    </li>
   );
 }
