@@ -107,6 +107,8 @@ export const GET = withCronTelemetry("process-queue", async (request) => {
       { status: 200 }
     );
   }
+}, {
+  alertOnBodyFailure: false,
 });
 
 export const POST = GET;

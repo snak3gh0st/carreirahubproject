@@ -7,6 +7,10 @@ interface CronResult {
   [key: string]: unknown;
 }
 
+interface CronTelemetryOptions {
+  alertOnBodyFailure?: boolean;
+}
+
 export function getCronFailureMessage(body: CronResult, status: number) {
   if (typeof body.error === "string" && body.error.trim()) {
     return body.error;
@@ -19,9 +23,19 @@ export function getCronFailureMessage(body: CronResult, status: number) {
   return `HTTP ${status}`;
 }
 
+export function didCronTelemetryFail(
+  body: CronResult,
+  status: number,
+  options: CronTelemetryOptions = {},
+) {
+  const alertOnBodyFailure = options.alertOnBodyFailure ?? true;
+  return status >= 400 || (alertOnBodyFailure && body.success === false);
+}
+
 export function withCronTelemetry(
   cronName: string,
-  handler: (request: NextRequest) => Promise<NextResponse>
+  handler: (request: NextRequest) => Promise<NextResponse>,
+  options: CronTelemetryOptions = {},
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
     // Auth
@@ -43,7 +57,7 @@ export function withCronTelemetry(
       const duration = Date.now() - start;
       const body: CronResult = await response.clone().json().catch(() => ({ success: true }));
 
-      const failed = body.success === false || response.status >= 400;
+      const failed = didCronTelemetryFail(body, response.status, options);
       if (failed) {
         status = "ERROR";
         errorMsg = getCronFailureMessage(body, response.status);
