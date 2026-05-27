@@ -323,7 +323,7 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
           </div>
         </div>
 
-        <div className="grid min-h-0 flex-1 grid-rows-[1fr] lg:grid-cols-[340px_minmax(0,1fr)] lg:grid-rows-none">
+        <div className="grid min-h-0 flex-1 grid-rows-[1fr] lg:grid-cols-[340px_minmax(0,1fr)]">
           <aside className="flex min-h-0 flex-col border-b border-gray-100 lg:border-b-0 lg:border-r">
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {listQuery.isLoading ? (
@@ -429,7 +429,7 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
               </div>
             ) : (
               <>
-                <div className="border-b border-gray-100 p-4">
+                <div className="shrink-0 border-b border-gray-100 p-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
@@ -562,7 +562,7 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
                   )}
                 </div>
 
-                <div className="border-t border-gray-100 bg-white p-3">
+                <div className="shrink-0 border-t border-gray-100 bg-white p-3">
                   <textarea
                     value={messageText}
                     onChange={(event) => setMessageText(event.target.value.slice(0, 2000))}
