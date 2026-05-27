@@ -1,5 +1,9 @@
 import { Queue, Worker, QueueEvents } from "bullmq";
 import { QUEUE_NAMES } from "@/lib/utils/queue-names";
+import {
+  buildQuickBooksFullSyncJob,
+  buildQuickBooksIncrementalReconcileJob,
+} from "@/lib/utils/quickbooks-sync-jobs";
 
 /**
  * Queue Service (BullMQ)
@@ -262,6 +266,16 @@ export async function addQuickBooksSyncJob(data: {
       },
     }
   );
+}
+
+export async function enqueueQuickBooksIncrementalReconcileJob(): Promise<void> {
+  const job = buildQuickBooksIncrementalReconcileJob();
+  await queues.quickbooksSync.add(job.name, job.data, job.options);
+}
+
+export async function enqueueQuickBooksFullSyncJob(): Promise<void> {
+  const job = buildQuickBooksFullSyncJob();
+  await queues.quickbooksSync.add(job.name, job.data, job.options);
 }
 
 /**

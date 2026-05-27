@@ -259,6 +259,10 @@ const queueHandlers: {
     const { quickbooksSyncService } = await import(
       "@/lib/services/quickbooks-sync.service"
     );
+    if (job.name === "sync-quickbooks-incremental" || job.data?.syncMode === "cdc-incremental") {
+      await quickbooksSyncService.syncIncremental();
+      return;
+    }
     await quickbooksSyncService.sync(job.data);
   },
 

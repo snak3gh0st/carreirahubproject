@@ -3,6 +3,10 @@ import {
   collectPaginatedQuickBooksRecords,
   paymentLinksToQuickBooksInvoice,
 } from "@/lib/quickbooks/sync-helpers";
+import {
+  computeQuickBooksRateLimitDelayMs,
+  sleepMs,
+} from "@/lib/utils/quickbooks-retry";
 import { CircuitBreaker, CircuitOpenError } from "@/lib/utils/circuit-breaker";
 import { integrationLogger, StructuredErrorData } from "@/lib/utils/logger";
 
@@ -40,6 +44,7 @@ export interface SendInvoiceResult {
  * Tokens são armazenados no banco de dados (SystemConfig) e carregados automaticamente
  */
 export class QuickbooksService {
+  private static readonly RATE_LIMIT_RETRY_ATTEMPTS = 3;
   private clientId: string;
   private clientSecret: string;
   private accessToken: string | null;
@@ -183,57 +188,85 @@ export class QuickbooksService {
 
         console.log(`[QuickBooks] Requesting: ${url}`);
 
-        const response = await fetch(url, {
-          ...options,
-          headers: {
-            "Authorization": `Bearer ${this.accessToken}`,
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-            ...options.headers,
-          },
-        });
+        const headers = {
+          "Authorization": `Bearer ${this.accessToken}`,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+          ...options.headers,
+        };
 
-        if (response.status === 401) {
-          const errorText = await response.text();
-          console.error(`[QuickBooks] 401 Unauthorized: ${errorText}`);
+        for (let attempt = 1; attempt <= QuickbooksService.RATE_LIMIT_RETRY_ATTEMPTS + 1; attempt++) {
+          const response = await fetch(url, {
+            ...options,
+            headers,
+          });
 
-          if (this.refreshToken && !tokenRefreshRetried) {
-            try {
-              console.log("[QuickBooks] Attempting to refresh access token...");
-              await this.refreshAccessToken();
-              return this.request(endpoint, options, canRetryWithAlternateEnvironment, true);
-            } catch (error) {
-              throw new Error(`Quickbooks access token expired. Please update QUICKBOOKS_ACCESS_TOKEN in .env. Error: ${error instanceof Error ? error.message : String(error)}`);
-            }
-          } else {
-            throw new Error(`Quickbooks access token expired or invalid. Status: 401. Response: ${errorText}`);
-          }
-        }
+          if (response.status === 401) {
+            const errorText = await response.text();
+            console.error(`[QuickBooks] 401 Unauthorized: ${errorText}`);
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          if (canRetryWithAlternateEnvironment && this.shouldRetryWithAlternateEnvironment(response.status, errorText)) {
-            const currentEnvironment = this.environment;
-            const alternateEnvironment = this.getAlternateEnvironment();
-            console.warn(
-              `[QuickBooks] ${currentEnvironment} authorization failed for ${this.companyId}. Retrying with ${alternateEnvironment} host.`
-            );
-            this.setEnvironment(alternateEnvironment);
-            try {
-              return await this.request(endpoint, options, false);
-            } catch (retryError) {
-              this.setEnvironment(currentEnvironment);
-              throw retryError;
+            if (this.refreshToken && !tokenRefreshRetried) {
+              try {
+                console.log("[QuickBooks] Attempting to refresh access token...");
+                await this.refreshAccessToken();
+                return this.request(endpoint, options, canRetryWithAlternateEnvironment, true);
+              } catch (error) {
+                throw new Error(`Quickbooks access token expired. Please update QUICKBOOKS_ACCESS_TOKEN in .env. Error: ${error instanceof Error ? error.message : String(error)}`);
+              }
+            } else {
+              throw new Error(`Quickbooks access token expired or invalid. Status: 401. Response: ${errorText}`);
             }
           }
-          console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
-          const error: any = new Error(`Quickbooks API error (${response.status}): ${response.statusText}`);
-          error.status = response.status;
-          error.responseText = errorText;
-          throw error;
+
+          if (response.status === 429) {
+            const retryAfterHeader = response.headers.get("retry-after");
+            const errorText = await response.text();
+            if (attempt <= QuickbooksService.RATE_LIMIT_RETRY_ATTEMPTS) {
+              const delayMs = computeQuickBooksRateLimitDelayMs({
+                attempt,
+                retryAfterHeader,
+              });
+              console.warn(
+                `[QuickBooks] Rate limited on ${endpoint}. Retry ${attempt}/${QuickbooksService.RATE_LIMIT_RETRY_ATTEMPTS} in ${delayMs}ms.`
+              );
+              await sleepMs(delayMs);
+              continue;
+            }
+            console.error(`[QuickBooks] API Error 429: ${errorText}`);
+            const error: any = new Error(`Quickbooks API error (429): Too Many Requests`);
+            error.status = 429;
+            error.responseText = errorText;
+            error.retryAfter = retryAfterHeader;
+            throw error;
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            if (canRetryWithAlternateEnvironment && this.shouldRetryWithAlternateEnvironment(response.status, errorText)) {
+              const currentEnvironment = this.environment;
+              const alternateEnvironment = this.getAlternateEnvironment();
+              console.warn(
+                `[QuickBooks] ${currentEnvironment} authorization failed for ${this.companyId}. Retrying with ${alternateEnvironment} host.`
+              );
+              this.setEnvironment(alternateEnvironment);
+              try {
+                return await this.request(endpoint, options, false);
+              } catch (retryError) {
+                this.setEnvironment(currentEnvironment);
+                throw retryError;
+              }
+            }
+            console.error(`[QuickBooks] API Error ${response.status}: ${errorText}`);
+            const error: any = new Error(`Quickbooks API error (${response.status}): ${response.statusText}`);
+            error.status = response.status;
+            error.responseText = errorText;
+            throw error;
+          }
+
+          return response.json();
         }
 
-        return response.json();
+        throw new Error(`QuickBooks request retry loop exhausted for ${endpoint}`);
       });
     } catch (error) {
       const durationMs = Date.now() - startTime;
@@ -321,59 +354,85 @@ export class QuickbooksService {
           headers["Request-Id"] = requestId;
         }
 
-        const response = await fetch(url, {
-          ...options,
-          headers,
-        });
+        for (let attempt = 1; attempt <= QuickbooksService.RATE_LIMIT_RETRY_ATTEMPTS + 1; attempt++) {
+          const response = await fetch(url, {
+            ...options,
+            headers,
+          });
 
-        if (response.status === 401) {
-          if (this.refreshToken && !tokenRefreshRetried) {
-            console.log("[QuickBooks Payments] Attempting to refresh access token...");
-            await this.refreshAccessToken();
-            return this.paymentsRequest(endpoint, options, requestId, canRetryWithAlternateEnvironment, true);
-          }
-          throw new Error("QuickBooks Payments access token expired.");
-        }
-
-        // 404 on GET = no payment methods on file (expected, not an error).
-        // Return a sentinel object instead of throwing so the circuit breaker records
-        // this as a SUCCESS. Callers (getCustomerCards, getCustomerBankAccounts) check
-        // for this sentinel and return []. Throwing here would cause paymentsCircuitBreaker
-        // to count every "no payment method on file" lookup as a failure, falsely opening
-        // the circuit after 5 such customers are checked.
-        //
-        // On POST/PUT/DELETE a 404 is a REAL error (customer not found in Payments,
-        // merchant not configured for saved profiles, etc.) — fall through to the
-        // standard error path so callers can see it.
-        const method = (options.method || "GET").toUpperCase();
-        if (response.status === 404 && method === "GET") {
-          return { __qb_404_not_found: true };
-        }
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          if (canRetryWithAlternateEnvironment && this.shouldRetryWithAlternateEnvironment(response.status, errorText)) {
-            const currentEnvironment = this.environment;
-            const alternateEnvironment = this.getAlternateEnvironment();
-            console.warn(
-              `[QuickBooks Payments] ${currentEnvironment} authorization failed. Retrying with ${alternateEnvironment} host.`
-            );
-            this.setEnvironment(alternateEnvironment);
-            try {
-              return await this.paymentsRequest(endpoint, options, requestId, false);
-            } catch (retryError) {
-              this.setEnvironment(currentEnvironment);
-              throw retryError;
+          if (response.status === 401) {
+            if (this.refreshToken && !tokenRefreshRetried) {
+              console.log("[QuickBooks Payments] Attempting to refresh access token...");
+              await this.refreshAccessToken();
+              return this.paymentsRequest(endpoint, options, requestId, canRetryWithAlternateEnvironment, true);
             }
+            throw new Error("QuickBooks Payments access token expired.");
           }
-          console.error(`[QuickBooks Payments] API Error ${response.status}: ${errorText}`);
-          const error: any = new Error(`QuickBooks Payments API error (${response.status}): ${response.statusText}`);
-          error.status = response.status;
-          error.responseText = errorText;
-          throw error;
+
+          // 404 on GET = no payment methods on file (expected, not an error).
+          // Return a sentinel object instead of throwing so the circuit breaker records
+          // this as a SUCCESS. Callers (getCustomerCards, getCustomerBankAccounts) check
+          // for this sentinel and return []. Throwing here would cause paymentsCircuitBreaker
+          // to count every "no payment method on file" lookup as a failure, falsely opening
+          // the circuit after 5 such customers are checked.
+          //
+          // On POST/PUT/DELETE a 404 is a REAL error (customer not found in Payments,
+          // merchant not configured for saved profiles, etc.) — fall through to the
+          // standard error path so callers can see it.
+          const method = (options.method || "GET").toUpperCase();
+          if (response.status === 404 && method === "GET") {
+            return { __qb_404_not_found: true };
+          }
+
+          if (response.status === 429) {
+            const retryAfterHeader = response.headers.get("retry-after");
+            const errorText = await response.text();
+            if (attempt <= QuickbooksService.RATE_LIMIT_RETRY_ATTEMPTS) {
+              const delayMs = computeQuickBooksRateLimitDelayMs({
+                attempt,
+                retryAfterHeader,
+              });
+              console.warn(
+                `[QuickBooks Payments] Rate limited on ${endpoint}. Retry ${attempt}/${QuickbooksService.RATE_LIMIT_RETRY_ATTEMPTS} in ${delayMs}ms.`
+              );
+              await sleepMs(delayMs);
+              continue;
+            }
+            console.error(`[QuickBooks Payments] API Error 429: ${errorText}`);
+            const error: any = new Error(`QuickBooks Payments API error (429): Too Many Requests`);
+            error.status = 429;
+            error.responseText = errorText;
+            error.retryAfter = retryAfterHeader;
+            throw error;
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            if (canRetryWithAlternateEnvironment && this.shouldRetryWithAlternateEnvironment(response.status, errorText)) {
+              const currentEnvironment = this.environment;
+              const alternateEnvironment = this.getAlternateEnvironment();
+              console.warn(
+                `[QuickBooks Payments] ${currentEnvironment} authorization failed. Retrying with ${alternateEnvironment} host.`
+              );
+              this.setEnvironment(alternateEnvironment);
+              try {
+                return await this.paymentsRequest(endpoint, options, requestId, false);
+              } catch (retryError) {
+                this.setEnvironment(currentEnvironment);
+                throw retryError;
+              }
+            }
+            console.error(`[QuickBooks Payments] API Error ${response.status}: ${errorText}`);
+            const error: any = new Error(`QuickBooks Payments API error (${response.status}): ${response.statusText}`);
+            error.status = response.status;
+            error.responseText = errorText;
+            throw error;
+          }
+
+          return response.json();
         }
 
-        return response.json();
+        throw new Error(`QuickBooks Payments request retry loop exhausted for ${endpoint}`);
       });
     } catch (error: any) {
       // Don't log 404 as error — it's expected when customer has no payment method

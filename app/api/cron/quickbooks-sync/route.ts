@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { quickbooksSyncService } from "@/lib/services/quickbooks-sync.service";
 import { telegramService } from "@/lib/services/telegram.service";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
+import {
+  enqueueQuickBooksFullSyncJob,
+  enqueueQuickBooksIncrementalReconcileJob,
+} from "@/lib/utils/queue";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,41 +21,18 @@ export const GET = withCronTelemetry("quickbooks-sync", async (request) => {
 
     if (useFull) {
       mode = "full";
-      console.log("[QuickBooks Cron] Full sync requested");
-      const result = await quickbooksSyncService.sync({
-        syncCustomers: true,
-        syncInvoices: true,
-        syncPayments: true,
-        syncItems: false,
-        syncPriceLevels: false,
-        syncPaymentTerms: false,
-        maxResults: 1000,
-        incremental: false,
-      });
-      return NextResponse.json({ success: true, mode: "full", result });
+      console.log("[QuickBooks Cron] Queueing full sync job...");
+      await enqueueQuickBooksFullSyncJob();
+      return NextResponse.json({ success: true, mode: "full", queued: true });
     }
 
-    console.log("[QuickBooks Cron] Starting CDC incremental sync...");
-    const result = await quickbooksSyncService.syncIncremental();
-
-    console.log("[QuickBooks Cron] CDC sync completed:", {
-      duration: result.duration,
-      customers: result.customers,
-      invoices: result.invoices,
-      payments: result.payments,
-    });
+    console.log("[QuickBooks Cron] Queueing CDC incremental reconciliation job...");
+    await enqueueQuickBooksIncrementalReconcileJob();
 
     return NextResponse.json({
       success: true,
       mode: "incremental",
-      result: {
-        duration: result.duration,
-        customers: result.customers,
-        invoices: result.invoices,
-        payments: result.payments,
-        startTime: result.startTime,
-        endTime: result.endTime,
-      },
+      queued: true,
     });
   } catch (error: any) {
     console.error("[QuickBooks Cron] Error:", error);
