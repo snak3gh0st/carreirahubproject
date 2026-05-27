@@ -29,7 +29,7 @@ export default async function DocumentosPage() {
   const dateLocale = lang === "pt-BR" ? "pt-BR" : "en-US";
   const customerId: string = payload.customerId;
 
-  const [contracts, invoices] = await Promise.all([
+  const [contracts, invoices, materials] = await Promise.all([
     prisma.contract.findMany({
       where: { customerId, status: ContractStatus.SIGNED },
       select: {
@@ -53,9 +53,23 @@ export default async function DocumentosPage() {
       },
       orderBy: { paidAt: "desc" },
     }),
+    prisma.opsStudentDocument.findMany({
+      where: { customerId, visibility: "STUDENT_VISIBLE" },
+      select: {
+        id: true,
+        kind: true,
+        title: true,
+        filename: true,
+        externalUrl: true,
+        mimeType: true,
+        sizeBytes: true,
+        uploadedAt: true,
+      },
+      orderBy: { uploadedAt: "desc" },
+    }),
   ]);
 
-  const hasDocuments = contracts.length > 0 || invoices.length > 0;
+  const hasDocuments = contracts.length > 0 || invoices.length > 0 || materials.length > 0;
 
   return (
     <div className="space-y-6">
@@ -72,6 +86,84 @@ export default async function DocumentosPage() {
             </svg>
           </div>
           <p className="text-sm text-gray-400">{t(lang, "documentos.noDocuments")}</p>
+        </div>
+      )}
+
+      {/* Materials from ops */}
+      {materials.length > 0 && (
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xl">📚</span>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">
+                {lang === "pt-BR" ? "Materiais de estudo" : "Study materials"}
+              </h2>
+              <p className="text-xs text-gray-400">
+                {lang === "pt-BR"
+                  ? "Documentos compartilhados pelo seu coach"
+                  : "Documents shared by your coach"}
+              </p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {materials.map((m) => {
+              const title = m.title || m.filename;
+              const isExternal = Boolean(m.externalUrl);
+              return (
+                <div
+                  key={m.id}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                >
+                  <div className="w-10 h-12 bg-brand-creme border border-amber-100 rounded-lg flex flex-col items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-brand-verde" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{title}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-wide">
+                        {m.kind}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {new Date(m.uploadedAt).toLocaleDateString(dateLocale, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                      {isExternal && (
+                        <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 bg-blue-500 rounded-full inline-block" />
+                          {lang === "pt-BR" ? "Link externo" : "External link"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <a
+                      href={`/api/hub/materials/${m.id}`}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener noreferrer" : undefined}
+                      className="bg-brand-verde text-white text-xs font-semibold px-3 py-2 rounded-xl hover:opacity-90 transition-opacity flex items-center gap-1.5"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isExternal
+                          ? "M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                          : "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                        } />
+                      </svg>
+                      {isExternal
+                        ? (lang === "pt-BR" ? "Abrir" : "Open")
+                        : (lang === "pt-BR" ? "Baixar" : "Download")}
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

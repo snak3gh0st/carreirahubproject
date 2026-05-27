@@ -9,6 +9,10 @@ import {
   calculateMentorshipRenewalDate,
   shouldRecalculateRenewalDateOnProfilePatch,
 } from "@/lib/ops/renewal";
+import {
+  buildDigisacLifecycleDedupeKey,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { isOperationalAccessRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +38,7 @@ export async function PATCH(
       opsProfile: {
         select: {
           renewalDate: true,
+          renewalState: true,
           pauseExtensionDays: true,
         },
       },
@@ -71,6 +76,7 @@ export async function PATCH(
   };
 
   try {
+    const previousState = enrollment.opsProfile?.renewalState ?? "NOT_DUE";
     const profile = await prisma.opsStudentProfile.upsert({
       where: { enrollmentId: enrollment.id },
       create: {
@@ -81,7 +87,31 @@ export async function PATCH(
       update: data,
     });
 
-    return NextResponse.json({ profile });
+    // Notify on transition to a renewal-warning state
+    const warningStates = new Set(["DUE_SOON", "DUE_NOW", "OVERDUE"]);
+    const transitionedToWarning =
+      warningStates.has(profile.renewalState) && previousState !== profile.renewalState;
+    const digisacLifecycle = transitionedToWarning
+      ? await sendDigisacLifecycleMessageSafely({
+          event: "renewal_reminder",
+          enrollmentId: enrollment.id,
+          dedupeKey: buildDigisacLifecycleDedupeKey(
+            "renewal_reminder",
+            `${enrollment.id}:${profile.renewalState}`
+          ),
+          renewalDate: profile.renewalDate ?? null,
+          daysUntilRenewal: profile.renewalDate
+            ? Math.ceil((new Date(profile.renewalDate).getTime() - Date.now()) / 86_400_000)
+            : null,
+          metadata: {
+            source: "ops.enrollments.ops-profile",
+            previousState,
+            renewalState: profile.renewalState,
+          },
+        })
+      : null;
+
+    return NextResponse.json({ profile, digisacLifecycle });
   } catch (error) {
     if (isMissingOpsNativeTable(error)) {
       return NextResponse.json(

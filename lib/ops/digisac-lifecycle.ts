@@ -16,7 +16,8 @@ export type DigisacLifecycleEvent =
   | "form_assigned"
   | "document_available"
   | "english_test_ready"
-  | "renewal_reminder";
+  | "renewal_reminder"
+  | "session_scheduled";
 
 export type DigisacLifecycleRenewalMilestone = "30" | "15" | "7";
 
@@ -28,6 +29,9 @@ export interface DigisacLifecycleMessageInput {
   programType?: string | null;
   daysUntilRenewal?: number | null;
   renewalDate?: Date | null;
+  sessionDate?: Date | null;
+  sessionType?: string | null;
+  conductorName?: string | null;
 }
 
 export interface SendDigisacLifecycleInput {
@@ -38,6 +42,9 @@ export interface SendDigisacLifecycleInput {
   metadata?: Record<string, unknown>;
   daysUntilRenewal?: number | null;
   renewalDate?: Date | null;
+  sessionDate?: Date | null;
+  sessionType?: string | null;
+  conductorName?: string | null;
 }
 
 export interface DigisacLifecycleSendResult {
@@ -206,6 +213,26 @@ export function buildDigisacLifecycleMessage(input: DigisacLifecycleMessageInput
         `Hub: ${input.hubUrl}`,
       ].join("\n\n");
     }
+    case "session_scheduled": {
+      const dateText = input.sessionDate
+        ? input.sessionDate.toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+          })
+        : "em breve";
+      const timeText = input.sessionDate
+        ? input.sessionDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })
+        : "";
+      const type = clean(input.sessionType ?? undefined);
+      const conductor = clean(input.conductorName ?? undefined);
+      return [
+        `Ola, ${name}! Voce tem uma sessao agendada${type ? ` de ${type}` : ""}.`,
+        `Data: ${dateText}${timeText ? ` as ${timeText}` : ""}${conductor ? ` com ${conductor}` : ""}.`,
+        "Voce pode acompanhar o agendamento no seu Hub.",
+        `Hub: ${input.hubUrl}`,
+      ].join("\n\n");
+    }
   }
 }
 
@@ -305,6 +332,9 @@ export async function sendDigisacLifecycleMessage(
     programType: enrollment.programType,
     daysUntilRenewal: input.daysUntilRenewal,
     renewalDate: input.renewalDate,
+    sessionDate: input.sessionDate,
+    sessionType: input.sessionType,
+    conductorName: input.conductorName,
   });
 
   try {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { t, Language } from "@/lib/i18n/hub";
 import { ContractStatus, InvoiceStatus, FormAssignmentStatus } from "@prisma/client";
 import { FORM_TEMPLATES } from "@/lib/hub/form-templates";
+import { getPhaseChecklist } from "@/lib/ops/phase-checklists";
 
 function getPayload(token: string) {
   try {
@@ -71,7 +72,13 @@ export default async function ProgramaPage() {
       select: {
         id: true,
         programType: true,
-        currentPhase: { select: { label: true } },
+        currentPhase: { select: { key: true, label: true } },
+        opsProfile: {
+          select: {
+            renewalDate: true,
+            renewalState: true,
+          },
+        },
       },
     }),
     prisma.deal.findFirst({
@@ -90,6 +97,28 @@ export default async function ProgramaPage() {
       },
     }),
   ]);
+
+  // Phase-scoped: checklist progress + sessions (depend on enrollment)
+  const [phaseChecklistProgress, mentorshipSessions] = enrollment
+    ? await Promise.all([
+        prisma.phaseChecklistProgress.findMany({
+          where: { enrollmentId: enrollment.id, phaseKey: enrollment.currentPhase?.key ?? "" },
+          select: { itemKey: true, completedAt: true },
+        }),
+        prisma.mentorshipSession.findMany({
+          where: { enrollmentId: enrollment.id },
+          orderBy: { sessionDate: "desc" },
+          take: 8,
+          select: {
+            id: true,
+            sessionType: true,
+            sessionDate: true,
+            status: true,
+            conductor: { select: { name: true } },
+          },
+        }),
+      ])
+    : [[], []];
 
   // Onboarding step logic (mirrors status route)
   const contractSigned = contracts.some((c) => c.status === ContractStatus.SIGNED);
@@ -178,6 +207,50 @@ export default async function ProgramaPage() {
   const pendingAssignments = formAssignments.filter((a) => a.status !== FormAssignmentStatus.COMPLETED);
   const completedAssignments = formAssignments.filter((a) => a.status === FormAssignmentStatus.COMPLETED);
 
+  // Phase checklist (current phase): template merged with progress
+  const checklistTemplate = enrollment?.currentPhase?.key
+    ? getPhaseChecklist(enrollment.currentPhase.key)
+    : [];
+  const checklistProgressMap = new Map(
+    (phaseChecklistProgress as Array<{ itemKey: string; completedAt: Date | null }>).map((p) => [
+      p.itemKey,
+      p.completedAt,
+    ])
+  );
+  const checklistItems = checklistTemplate.map((item) => ({
+    ...item,
+    completedAt: checklistProgressMap.get(item.key) ?? null,
+  }));
+  const checklistTotal = checklistItems.length;
+  const checklistCompleted = checklistItems.filter((i) => i.completedAt).length;
+
+  // Sessions: split into upcoming (future) and recent (past)
+  const now = new Date();
+  const sessions = mentorshipSessions as Array<{
+    id: string;
+    sessionType: string;
+    sessionDate: Date;
+    status: string;
+    conductor: { name: string };
+  }>;
+  const upcomingSessions = sessions
+    .filter((s) => new Date(s.sessionDate) >= now && s.status !== "CANCELADO")
+    .sort((a, b) => new Date(a.sessionDate).getTime() - new Date(b.sessionDate).getTime());
+  const recentSessions = sessions
+    .filter((s) => new Date(s.sessionDate) < now)
+    .slice(0, 4);
+  const nextSession = upcomingSessions[0] ?? null;
+
+  // Renewal banner: state-driven
+  const renewalDate = enrollment?.opsProfile?.renewalDate ?? null;
+  const renewalState = enrollment?.opsProfile?.renewalState ?? "NOT_DUE";
+  const renewalInDays =
+    renewalDate !== null
+      ? Math.ceil((new Date(renewalDate).getTime() - now.getTime()) / 86_400_000)
+      : null;
+  const showRenewalBanner =
+    renewalDate !== null && ["DUE_SOON", "DUE_NOW", "OVERDUE"].includes(renewalState);
+
   // Section scores — build from individual fields
   const sectionScores = placementTest
     ? {
@@ -192,6 +265,63 @@ export default async function ProgramaPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">{t(lang, "programa.title")}</h1>
+
+      {/* Renewal banner */}
+      {showRenewalBanner && renewalDate && (
+        <div
+          className={`flex items-center gap-4 rounded-2xl border p-4 sm:p-5 ${
+            renewalState === "OVERDUE"
+              ? "border-red-200 bg-red-50"
+              : renewalState === "DUE_NOW"
+                ? "border-orange-200 bg-orange-50"
+                : "border-amber-200 bg-amber-50"
+          }`}
+        >
+          <div
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ${
+              renewalState === "OVERDUE"
+                ? "bg-red-100 text-red-700"
+                : renewalState === "DUE_NOW"
+                  ? "bg-orange-100 text-orange-700"
+                  : "bg-amber-100 text-amber-700"
+            }`}
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm font-bold ${
+              renewalState === "OVERDUE" ? "text-red-900" : renewalState === "DUE_NOW" ? "text-orange-900" : "text-amber-900"
+            }`}>
+              {renewalState === "OVERDUE"
+                ? (lang === "pt-BR" ? "Renovação vencida" : "Renewal overdue")
+                : renewalState === "DUE_NOW"
+                  ? (lang === "pt-BR" ? "Hora de renovar seu programa" : "Time to renew your program")
+                  : (lang === "pt-BR" ? "Renovação próxima" : "Renewal coming up")}
+            </p>
+            <p className={`mt-0.5 text-xs ${
+              renewalState === "OVERDUE" ? "text-red-700" : renewalState === "DUE_NOW" ? "text-orange-700" : "text-amber-700"
+            }`}>
+              {lang === "pt-BR" ? "Data:" : "Date:"}{" "}
+              <span className="font-semibold">
+                {new Date(renewalDate).toLocaleDateString(dateLocale, { month: "long", day: "numeric", year: "numeric" })}
+              </span>
+              {renewalInDays !== null && (
+                <span className="ml-1">
+                  ({renewalInDays >= 0
+                    ? (lang === "pt-BR" ? `em ${renewalInDays} dia${renewalInDays !== 1 ? "s" : ""}` : `in ${renewalInDays} day${renewalInDays !== 1 ? "s" : ""}`)
+                    : (lang === "pt-BR" ? `${Math.abs(renewalInDays)}d atrás` : `${Math.abs(renewalInDays)}d ago`)})
+                </span>
+              )}
+              {". "}
+              {lang === "pt-BR"
+                ? "Seu coach vai falar com você sobre os próximos passos."
+                : "Your coach will contact you about next steps."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Program hero */}
       {programName ? (
@@ -219,6 +349,153 @@ export default async function ProgramaPage() {
       ) : (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center">
           <p className="text-sm text-gray-400">{t(lang, "programa.noProgram")}</p>
+        </div>
+      )}
+
+      {/* Phase checklist + next session — only when active */}
+      {enrollment && (checklistItems.length > 0 || nextSession || recentSessions.length > 0) && (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          {/* Phase checklist */}
+          {checklistItems.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-baseline justify-between">
+                <h2 className="text-sm font-bold text-gray-900">
+                  {lang === "pt-BR" ? "Etapas desta fase" : "Steps for this phase"}
+                </h2>
+                <p className="text-[11px] font-semibold text-gray-400 tabular-nums">
+                  {checklistCompleted}/{checklistTotal}
+                </p>
+              </div>
+              <ul className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                {checklistItems.map((item, idx) => {
+                  const isDone = !!item.completedAt;
+                  return (
+                    <li
+                      key={item.key}
+                      className={`flex items-center gap-3 px-4 py-3 ${idx < checklistItems.length - 1 ? "border-b border-gray-50" : ""}`}
+                    >
+                      <div className="shrink-0">
+                        {isDone ? (
+                          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-500">
+                            <svg className="h-3.5 w-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        ) : (
+                          <div className="h-6 w-6 rounded-full border-2 border-gray-200" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm ${isDone ? "text-gray-400 line-through" : "font-medium text-gray-900"}`}>
+                          {item.label}
+                        </p>
+                        {isDone && item.completedAt && (
+                          <p className="mt-0.5 text-[11px] text-gray-400">
+                            {new Date(item.completedAt).toLocaleDateString(dateLocale, { month: "short", day: "numeric" })}
+                          </p>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+
+          {/* Sessions */}
+          {(nextSession || recentSessions.length > 0) && (
+            <div>
+              <h2 className="mb-3 text-sm font-bold text-gray-900">
+                {lang === "pt-BR" ? "Sessões" : "Sessions"}
+              </h2>
+              <div className="space-y-3">
+                {nextSession ? (
+                  <div className="rounded-2xl border-2 border-brand-tangerina/30 bg-orange-50/40 p-4 sm:p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-brand-tangerina">
+                      {lang === "pt-BR" ? "Próxima sessão" : "Next session"}
+                    </p>
+                    <p className="mt-1 text-base font-bold text-gray-900">
+                      {new Date(nextSession.sessionDate).toLocaleDateString(dateLocale, {
+                        weekday: "long",
+                        month: "long",
+                        day: "numeric",
+                      })}
+                    </p>
+                    <p className="text-sm font-semibold text-brand-tangerina">
+                      {new Date(nextSession.sessionDate).toLocaleTimeString(dateLocale, {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="mt-2 text-xs text-gray-500">
+                      {nextSession.sessionType}
+                      {nextSession.conductor?.name && (
+                        <span className="ml-2 text-gray-400">
+                          · {lang === "pt-BR" ? "com" : "with"} {nextSession.conductor.name}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-gray-100 bg-white p-4 text-center">
+                    <p className="text-sm text-gray-400">
+                      {lang === "pt-BR"
+                        ? "Sem sessão agendada no momento."
+                        : "No session scheduled right now."}
+                    </p>
+                  </div>
+                )}
+
+                {recentSessions.length > 0 && (
+                  <div>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                      {lang === "pt-BR" ? "Histórico recente" : "Recent history"}
+                    </p>
+                    <ul className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                      {recentSessions.map((s, idx) => (
+                        <li
+                          key={s.id}
+                          className={`flex items-center gap-3 px-4 py-3 ${idx < recentSessions.length - 1 ? "border-b border-gray-50" : ""}`}
+                        >
+                          <div className="flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-lg bg-gray-50">
+                            <span className="text-[9px] font-bold uppercase text-gray-500">
+                              {new Date(s.sessionDate).toLocaleDateString(dateLocale, { month: "short" })}
+                            </span>
+                            <span className="text-sm font-extrabold leading-none text-gray-900 tabular-nums">
+                              {new Date(s.sessionDate).getDate()}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900">{s.sessionType}</p>
+                            <p className="text-[11px] text-gray-400">
+                              {s.conductor?.name ?? (lang === "pt-BR" ? "Sem condutor" : "No conductor")}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              s.status === "REALIZADO"
+                                ? "bg-green-50 text-green-700"
+                                : s.status === "NO_SHOW"
+                                  ? "bg-red-50 text-red-700"
+                                  : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {s.status === "REALIZADO"
+                              ? (lang === "pt-BR" ? "Realizada" : "Done")
+                              : s.status === "NO_SHOW"
+                                ? "No-show"
+                                : s.status === "REMARCADO"
+                                  ? (lang === "pt-BR" ? "Remarcada" : "Rescheduled")
+                                  : s.status}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

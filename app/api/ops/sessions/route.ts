@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { mentorshipService } from "@/lib/services/mentorship.service";
 import { OPS_SESSION_TYPES } from "@/lib/ops/workflow";
 import { isOperationalAccessRole } from "@/lib/roles";
 import { OPS_SESSION_STATUSES, normalizeOpsSessionStatus } from "@/lib/ops/visibility";
 import { buildOperationalActorPayload } from "@/lib/ops/staff-members";
+import {
+  buildDigisacLifecycleDedupeKey,
+  sendDigisacLifecycleMessageSafely,
+} from "@/lib/ops/digisac-lifecycle";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -51,18 +56,49 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const sessionDateObj = new Date(sessionDate);
+    const normalizedStatus = normalizeOpsSessionStatus(parsed.data.status);
     const result = await mentorshipService.logSession({
       enrollmentId,
       sessionType,
       conductorId: actor.sessionConductorId,
       performedByUserId: actor.performedByUserId,
       performedByStaffId: actor.performedByStaffId,
-      sessionDate: new Date(sessionDate),
-      status: normalizeOpsSessionStatus(parsed.data.status),
+      sessionDate: sessionDateObj,
+      status: normalizedStatus,
       rescheduleCount,
       notes,
     });
-    return NextResponse.json({ session: result }, { status: 201 });
+
+    // Notify the customer only when the session is in the FUTURE (i.e., a scheduling event).
+    // Past sessions are being LOGGED for record-keeping and don't need a notification.
+    const isFutureScheduled =
+      sessionDateObj.getTime() > Date.now() && normalizedStatus !== "CANCELADO";
+    const digisacLifecycle = isFutureScheduled
+      ? await (async () => {
+          const conductor = actor.sessionConductorId
+            ? await prisma.user.findUnique({
+                where: { id: actor.sessionConductorId },
+                select: { name: true },
+              })
+            : null;
+          return sendDigisacLifecycleMessageSafely({
+            event: "session_scheduled",
+            enrollmentId,
+            dedupeKey: buildDigisacLifecycleDedupeKey("session_scheduled", result.id),
+            sessionDate: sessionDateObj,
+            sessionType,
+            conductorName: conductor?.name ?? null,
+            metadata: {
+              source: "ops.sessions",
+              sessionId: result.id,
+              status: normalizedStatus,
+            },
+          });
+        })()
+      : null;
+
+    return NextResponse.json({ session: result, digisacLifecycle }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "Enrollment not found or not active") {
       return NextResponse.json({ error: error.message }, { status: 404 });
