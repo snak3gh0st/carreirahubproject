@@ -31,6 +31,7 @@ MAILTO=""
 0 7 * * * root /opt/carreirahub/run-cron.sh contract-renewal-reminder >> /var/log/carreirahub-cron.log 2>&1
 30 7 * * * root /opt/carreirahub/run-cron.sh mentorship-renewals >> /var/log/carreirahub-cron.log 2>&1
 0 13 * * * root /opt/carreirahub/run-cron.sh collection-calls >> /var/log/carreirahub-cron.log 2>&1
+*/15 * * * * root /opt/carreirahub/run-cron.sh docusign-sync >> /var/log/carreirahub-cron.log 2>&1
 
 # Digests
 0 8 * * * root /opt/carreirahub/run-cron.sh cfo-analysis >> /var/log/carreirahub-cron.log 2>&1
