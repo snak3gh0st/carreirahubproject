@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
+  ArrowDown,
   ExternalLink,
   Inbox,
   Loader2,
@@ -142,6 +143,26 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
   const [selectedId, setSelectedId] = useState<string | null>(initialThreadId ?? null);
   const [messageText, setMessageText] = useState("");
 
+  // Chat auto-scroll
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottomRef = useRef(true);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 48;
+    stickToBottomRef.current = atBottom;
+    if (atBottom && showJumpToLatest) setShowJumpToLatest(false);
+  }, [showJumpToLatest]);
+
   const listQuery = useQuery<DigisacListResponse>({
     queryKey: ["ops-digisac-threads"],
     queryFn: async () => {
@@ -198,6 +219,9 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
     },
     onSuccess: () => {
       setMessageText("");
+      // user just sent a message: force stick and scroll
+      stickToBottomRef.current = true;
+      setShowJumpToLatest(false);
       queryClient.invalidateQueries({ queryKey: ["ops-digisac-threads"] });
       queryClient.invalidateQueries({ queryKey: ["ops-digisac-thread", selectedThread?.id] });
       toast.success("Mensagem enviada pelo Digisac.");
@@ -211,6 +235,28 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
   const config = detailQuery.data?.config ?? listQuery.data?.config;
   const canSend = Boolean(config?.enabled && selectedThread?.phoneNumber && messageText.trim());
   const messages = detailQuery.data?.messages ?? [];
+
+  // When changing thread: reset to stick-to-bottom and snap to the latest message.
+  useEffect(() => {
+    if (!selectedThread?.id) return;
+    stickToBottomRef.current = true;
+    setShowJumpToLatest(false);
+    // wait one tick so the DOM has rendered the new thread's content
+    const raf = requestAnimationFrame(() => scrollToBottom("auto"));
+    return () => cancelAnimationFrame(raf);
+  }, [selectedThread?.id, scrollToBottom]);
+
+  // When new messages arrive: stick if user is at bottom, else surface "↓ novas" pill.
+  const lastMessageId = messages[messages.length - 1]?.id ?? null;
+  const messageCount = messages.length;
+  useEffect(() => {
+    if (!messageCount) return;
+    if (stickToBottomRef.current) {
+      const raf = requestAnimationFrame(() => scrollToBottom("smooth"));
+      return () => cancelAnimationFrame(raf);
+    }
+    setShowJumpToLatest(true);
+  }, [lastMessageId, messageCount, scrollToBottom]);
 
   const filterTabs: Array<{ key: FilterMode; label: string; count?: number }> = [
     { key: "all", label: "Todas", count: stats.total },
@@ -450,7 +496,12 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
                   </div>
                 )}
 
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-gray-50/60 p-4">
+                <div className="relative min-h-0 flex-1">
+                  <div
+                    ref={scrollRef}
+                    onScroll={handleScroll}
+                    className="h-full space-y-3 overflow-y-auto overscroll-contain scroll-smooth bg-gray-50/60 p-4"
+                  >
                   {detailQuery.isLoading ? (
                     <div className="space-y-3">
                       {Array.from({ length: 5 }).map((_, index) => (
@@ -492,6 +543,22 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
                         </div>
                       );
                     })
+                  )}
+                  </div>
+                  {showJumpToLatest && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        stickToBottomRef.current = true;
+                        setShowJumpToLatest(false);
+                        scrollToBottom("smooth");
+                      }}
+                      className="absolute bottom-3 left-1/2 inline-flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full bg-brand-verde px-3 text-[12px] font-semibold text-white shadow-lg transition hover:bg-brand-verde/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-tangerina/60"
+                      aria-label="Ir para a mensagem mais recente"
+                    >
+                      <ArrowDown className="h-3.5 w-3.5" strokeWidth={2} />
+                      Novas mensagens
+                    </button>
                   )}
                 </div>
 
