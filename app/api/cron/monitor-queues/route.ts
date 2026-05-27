@@ -156,6 +156,8 @@ export const GET = withCronTelemetry("monitor-queues", async (request) => {
       { status: 200 }
     );
   }
+}, {
+  alertOnBodyFailure: false,
 });
 
 export const POST = GET;

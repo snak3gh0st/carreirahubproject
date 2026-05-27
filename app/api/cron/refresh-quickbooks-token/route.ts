@@ -208,6 +208,8 @@ export const GET = withCronTelemetry("refresh-qb-token", async (request) => {
       { status: 200 }
     );
   }
+}, {
+  alertOnBodyFailure: false,
 });
 
 export const POST = GET;
