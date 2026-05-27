@@ -9,6 +9,7 @@ import {
   sendDigisacLifecycleMessageSafely,
 } from "@/lib/ops/digisac-lifecycle";
 import { isOperationalAccessRole } from "@/lib/roles";
+import { emailService } from "@/lib/services/email.service";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,11 @@ export async function POST(req: NextRequest) {
   const enrollment = await prisma.mentorshipEnrollment.findFirst({
     where: { customerId, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
-    select: { id: true, programType: true },
+    select: {
+      id: true,
+      programType: true,
+      customer: { select: { id: true, name: true, email: true } },
+    },
   });
 
   if (!enrollment) {
@@ -90,11 +95,20 @@ export async function POST(req: NextRequest) {
   });
 
   const template = FORM_TEMPLATES[templateId];
+  const formTitle = template.titlePt || template.title;
+  const hubEmailSent = await emailService.sendHubFormAssigned(
+    enrollment.customer,
+    formTitle
+  ).then(() => true).catch((emailError) => {
+    console.warn(`[Ops Forms Assign] Could not email ${enrollment.customer.email}:`, emailError);
+    return false;
+  });
+
   const digisacLifecycle = await sendDigisacLifecycleMessageSafely({
     event: "form_assigned",
     enrollmentId: enrollment.id,
     dedupeKey: buildDigisacLifecycleDedupeKey("form_assigned", assignment.id),
-    title: template.titlePt || template.title,
+    title: formTitle,
     metadata: {
       source: "ops.forms.assign",
       formAssignmentId: assignment.id,
@@ -102,5 +116,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json({ assignment, digisacLifecycle }, { status: 201 });
+  return NextResponse.json({ assignment, hubEmailSent, digisacLifecycle }, { status: 201 });
 }

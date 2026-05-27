@@ -47,6 +47,19 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || '
 // Brand-tinted semantic accents (only inside white pill backgrounds — never on Creme).
 const ERROR_RED = '#A8332B';
 
+export function getOpsNotificationRecipients(env: Record<string, string | undefined> = process.env): string[] {
+  const raw =
+    env.EMAIL_OPS_TEAM ||
+    env.OPS_NOTIFICATIONS_EMAIL ||
+    env.EMAIL_SUPPORT_TEAM ||
+    EMAIL_SUPPORT_TEAM;
+
+  return raw
+    .split(/[;,]/)
+    .map((email) => email.trim())
+    .filter(Boolean);
+}
+
 // ---------------------------------------------------------------------------
 // Exported interfaces (backward-compatible)
 // ---------------------------------------------------------------------------
@@ -1421,6 +1434,132 @@ export class EmailService {
         bodyHtml,
         ctaLabel: 'Ver alunos',
         ctaUrl: `${APP_URL}/ops`,
+      }),
+    });
+  }
+
+  async sendOpsFormSubmittedAlert(
+    customer: { id: string; email: string; name: string },
+    submission: {
+      formTitle: string;
+      assignmentId: string;
+      submissionId: string;
+      submittedAt: Date;
+      enrollmentId?: string | null;
+    },
+    env: Record<string, string | undefined> = process.env
+  ): Promise<boolean> {
+    const recipients = getOpsNotificationRecipients(env);
+    if (recipients.length === 0) return false;
+
+    const reviewUrl = submission.enrollmentId
+      ? `${APP_URL}/ops/students/${submission.enrollmentId}`
+      : `${APP_URL}/dashboard/forms/submissions/${submission.submissionId}`;
+
+    const bodyHtml = `
+      <p>O cliente <strong>${esc(customer.name)}</strong> respondeu um formulário no Hub.</p>
+      ${calloutBox(
+        `<p style="margin:0;"><strong>Formulário:</strong> ${esc(submission.formTitle)}</p>
+         <p style="margin:4px 0 0 0;"><strong>Cliente:</strong> ${esc(customer.name)} · ${esc(customer.email)}</p>
+         <p style="margin:4px 0 0 0;"><strong>Enviado em:</strong> ${fmtDateBR(submission.submittedAt)}</p>`,
+        'info'
+      )}
+      <p>Revise as respostas, documentos anexados e próximos passos operacionais.</p>
+    `;
+
+    return this.sendEmailSimple({
+      to: recipients,
+      subject: `Ops — Formulario respondido — ${customer.name}`,
+      html: renderBaseLayout({
+        title: 'Formulário respondido',
+        preheader: `${customer.name} respondeu ${submission.formTitle}`,
+        bodyHtml,
+        ctaLabel: 'Ver no Ops',
+        ctaUrl: reviewUrl,
+      }),
+    });
+  }
+
+  async sendOpsEnglishTestCompletedAlert(
+    customer: { id: string; email: string; name: string },
+    test: {
+      testKind: 'WRITTEN' | 'REALTIME' | 'VOICE';
+      testId: string;
+      cefrLevel: string;
+      displayLevel: string;
+      score?: number | null;
+      percentage?: number | null;
+      enrollmentId?: string | null;
+    },
+    env: Record<string, string | undefined> = process.env
+  ): Promise<boolean> {
+    const recipients = getOpsNotificationRecipients(env);
+    if (recipients.length === 0) return false;
+
+    const score = test.score ?? test.percentage ?? null;
+    const reviewUrl = test.enrollmentId
+      ? `${APP_URL}/ops/students/${test.enrollmentId}`
+      : `${APP_URL}/dashboard/tests?search=${encodeURIComponent(customer.email)}`;
+
+    const bodyHtml = `
+      <p>O cliente <strong>${esc(customer.name)}</strong> concluiu um teste de inglês.</p>
+      ${calloutBox(
+        `<p style="margin:0;"><strong>Tipo:</strong> ${esc(test.testKind)}</p>
+         <p style="margin:4px 0 0 0;"><strong>Nível:</strong> ${esc(test.cefrLevel)} — ${esc(test.displayLevel)}</p>
+         <p style="margin:4px 0 0 0;"><strong>Score:</strong> ${score === null ? 'n/a' : esc(score)}</p>
+         <p style="margin:4px 0 0 0;"><strong>Cliente:</strong> ${esc(customer.name)} · ${esc(customer.email)}</p>`,
+        'info'
+      )}
+      <p>Confira o resultado e confirme a próxima fase do aluno.</p>
+    `;
+
+    return this.sendEmailSimple({
+      to: recipients,
+      subject: `Ops — Teste de ingles respondido — ${customer.name}`,
+      html: renderBaseLayout({
+        title: 'Teste de inglês respondido',
+        preheader: `${customer.name} concluiu teste ${test.testKind} com nível ${test.cefrLevel}`,
+        bodyHtml,
+        ctaLabel: 'Ver resultado',
+        ctaUrl: reviewUrl,
+      }),
+    });
+  }
+
+  async sendHubEnglishTestPending(
+    customer: { id: string; email: string; name: string; preferredLanguage?: string | null },
+    phaseLabel = 'Teste de Inglês'
+  ): Promise<boolean> {
+    const isPtBr = customer.preferredLanguage === 'pt-BR';
+    const firstName = esc(customer.name.split(' ')[0]);
+    const testUrl = `${APP_URL}/hub/test`;
+
+    const subject = isPtBr
+      ? 'Carreira U.S.A. — seu teste de ingles esta pendente'
+      : 'Carreira U.S.A. — your English test is pending';
+    const bodyHtml = isPtBr
+      ? `
+        <p>Olá ${firstName},</p>
+        <p>Você tem uma etapa de teste de inglês aguardando no seu Hub.</p>
+        ${calloutBox(`<p style="margin:0;"><strong>Etapa:</strong> ${esc(phaseLabel)}</p>`, 'warn')}
+        <p>Acesse o portal para iniciar ou continuar o teste.</p>
+      `
+      : `
+        <p>Hi ${firstName},</p>
+        <p>You have an English test step waiting in your Hub.</p>
+        ${calloutBox(`<p style="margin:0;"><strong>Step:</strong> ${esc(phaseLabel)}</p>`, 'warn')}
+        <p>Please log in to start or continue the test.</p>
+      `;
+
+    return this.sendEmailSimple({
+      to: customer.email,
+      subject,
+      html: renderBaseLayout({
+        title: isPtBr ? 'Teste de inglês pendente' : 'Pending English test',
+        preheader: subject,
+        bodyHtml,
+        ctaLabel: isPtBr ? 'Acessar teste' : 'Open test',
+        ctaUrl: testUrl,
       }),
     });
   }

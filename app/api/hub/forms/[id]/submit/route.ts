@@ -8,6 +8,7 @@ import {
   deriveOpsProfileUpdatesFromFormAnswers,
 } from "@/lib/hub/customer-form-sync";
 import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
+import { emailService } from "@/lib/services/email.service";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,10 @@ export async function POST(
     // Load assignment and verify ownership
     const assignment = await prisma.formAssignment.findUnique({
       where: { id, customerId: auth.customerId },
-      include: { submission: true },
+      include: {
+        submission: true,
+        customer: { select: { id: true, name: true, email: true } },
+      },
     });
 
     if (!assignment) {
@@ -154,12 +158,28 @@ export async function POST(
       );
     }
 
+    let transactionResult: unknown[];
     try {
-      await prisma.$transaction(transaction);
+      transactionResult = await prisma.$transaction(transaction);
     } catch (error) {
       if (!isMissingOpsNativeTable(error)) throw error;
-      await prisma.$transaction(baseTransaction);
+      transactionResult = await prisma.$transaction(baseTransaction);
     }
+
+    const submission = transactionResult[0] as { id: string; submittedAt: Date };
+    const formTitle = template?.titlePt || template?.title || assignment.templateId;
+    await emailService.sendOpsFormSubmittedAlert(
+      assignment.customer,
+      {
+        formTitle,
+        assignmentId: assignment.id,
+        submissionId: submission.id,
+        submittedAt: submission.submittedAt,
+        enrollmentId: activeEnrollment?.id ?? null,
+      }
+    ).catch((emailError) => {
+      console.warn("[Hub Forms] Could not email ops about submitted form:", emailError);
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

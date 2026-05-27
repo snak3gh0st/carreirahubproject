@@ -9,6 +9,7 @@ import {
   sendDigisacLifecycleMessageSafely,
 } from "@/lib/ops/digisac-lifecycle";
 import { createOpsManualStudentCommunicationAlert } from "@/lib/ops/internal-alerts";
+import { emailService } from "@/lib/services/email.service";
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     });
     const hasHubAccount = new Set(existingHubUsers.map((u) => u.customerId));
 
-    const alertResults = await Promise.allSettled(
+    const communicationResults = await Promise.allSettled(
       customers.map(async (customer) => {
         let tempPassword: string | undefined;
         if (hasHubAccount.has(customer.id)) {
@@ -113,6 +114,16 @@ export async function POST(request: NextRequest) {
               : "Student already had a Hub account. Confirm timing before manual outreach.",
           },
         });
+
+        let emailSent = false;
+        try {
+          await emailService.sendHubFormAssigned(customer, formTitle, tempPassword);
+          emailSent = true;
+        } catch (emailError) {
+          console.warn(`[Dashboard Forms Assign] Could not email ${customer.email}:`, emailError);
+        }
+
+        return { emailSent };
       })
     );
 
@@ -153,9 +164,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: createdAssignments.length,
-      externalEmailsSent: 0,
-      internalAlertsCreated: alertResults.filter((result) => result.status === "fulfilled").length,
-      internalAlertFailures: alertResults.filter((result) => result.status === "rejected").length,
+      externalEmailsSent: communicationResults.filter(
+        (result) => result.status === "fulfilled" && result.value.emailSent
+      ).length,
+      internalAlertsCreated: communicationResults.filter((result) => result.status === "fulfilled").length,
+      internalAlertFailures: communicationResults.filter((result) => result.status === "rejected").length,
       digisacLifecycleSent: lifecycleResults.filter(
         (result) => result.status === "fulfilled" && result.value.sent
       ).length,

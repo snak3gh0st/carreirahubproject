@@ -1,6 +1,7 @@
 import { UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { createOpsManualStudentCommunicationAlert } from "@/lib/ops/internal-alerts";
+import { emailService } from "@/lib/services/email.service";
 
 const CEFR_RANK: Record<string, number> = {
   A1: 1,
@@ -35,11 +36,11 @@ export async function handleCompletedEnglishTestOutcome(input: {
   score?: number | null;
   percentage?: number | null;
 }) {
-  if (isEnglishTestPassingResult(input)) {
-    return { passed: true, movedToManualReview: false, alertCreated: false };
-  }
-
-  const [enrollment, failedPhase, systemUser] = await Promise.all([
+  const [customer, enrollment, failedPhase, systemUser] = await Promise.all([
+    prisma.customer.findUnique({
+      where: { id: input.customerId },
+      select: { id: true, name: true, email: true },
+    }),
     prisma.mentorshipEnrollment.findFirst({
       where: { customerId: input.customerId, status: "ACTIVE" },
       orderBy: { createdAt: "desc" },
@@ -63,6 +64,27 @@ export async function handleCompletedEnglishTestOutcome(input: {
       select: { id: true },
     }),
   ]);
+
+  if (customer) {
+    await emailService.sendOpsEnglishTestCompletedAlert(
+      customer,
+      {
+        testKind: input.testKind,
+        testId: input.testId,
+        cefrLevel: input.cefrLevel,
+        displayLevel: input.displayLevel,
+        score: input.score ?? null,
+        percentage: input.percentage ?? null,
+        enrollmentId: enrollment?.id ?? null,
+      }
+    ).catch((emailError) => {
+      console.warn("[Hub English Test] Could not email ops about completed test:", emailError);
+    });
+  }
+
+  if (isEnglishTestPassingResult(input)) {
+    return { passed: true, movedToManualReview: false, alertCreated: false };
+  }
 
   let movedToManualReview = false;
 

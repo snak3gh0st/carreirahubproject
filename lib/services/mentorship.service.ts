@@ -7,6 +7,7 @@ import { isMissingOpsNativeTable } from "@/lib/ops/native-schema";
 import { provisionHubAccessForEnrollment } from "@/lib/ops/hub-access-provisioning";
 import { getSessionItemKey } from "@/lib/ops/phase-checklists";
 import { calculateMentorshipRenewalDate } from "@/lib/ops/renewal";
+import { emailService } from "@/lib/services/email.service";
 
 /**
  * MentorshipError — business rule violations that API routes can distinguish
@@ -257,7 +258,10 @@ export class MentorshipService {
     // 1. Fetch the active enrollment including its current phase
     const enrollment = await prisma.mentorshipEnrollment.findFirstOrThrow({
       where: { id: enrollmentId, status: "ACTIVE" },
-      include: { currentPhase: true },
+      include: {
+        currentPhase: true,
+        customer: { select: { id: true, name: true, email: true, preferredLanguage: true } },
+      },
     });
 
     // 2. Fetch the target phase
@@ -312,6 +316,13 @@ export class MentorshipService {
           phaseKey: toPhase.key,
           transitionId: result.transition.id,
         },
+      });
+
+      await emailService.sendHubEnglishTestPending(
+        enrollment.customer,
+        toPhase.label
+      ).catch((emailError) => {
+        console.warn("[MentorshipService] Could not email customer about pending English test:", emailError);
       });
     }
 

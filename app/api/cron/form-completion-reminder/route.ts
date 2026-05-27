@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { subDays, differenceInDays } from 'date-fns';
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 import { createOpsManualStudentCommunicationAlert } from '@/lib/ops/internal-alerts';
+import { emailService } from '@/lib/services/email.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export const dynamic = 'force-dynamic';
  *
  * Tracks state via FormAssignment.reminderCount + FormAssignment.lastReminderAt.
  * Skips customers without a ClientUser (no Hub account).
- * Customer communication is manual-only: this cron does not send external email.
+ * Sends the customer a Hub reminder email and keeps an internal Ops alert.
  *
  * Schedule (vercel.json): 15 9 * * *  (9:15 AM UTC — avoids 9:00 AM cluster)
  * Auth: Bearer ${CRON_SECRET}
@@ -52,6 +53,7 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
     console.log(`[FormCompletionReminder] Found ${assignments.length} assignment(s) to remind`);
 
     let alertsCreated = 0;
+    let emailsSent = 0;
     let skipped = 0;
     let failed = 0;
 
@@ -69,6 +71,18 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
         const language = customer.clientUser.language || 'en';
 
         const nextReminderNumber = assignment.reminderCount + 1;
+        await emailService.sendHubFormReminder(
+          { id: customer.id, name: customer.name, email: customer.email },
+          assignment.templateId,
+          assignment.assignedAt,
+          daysPending,
+          language
+        ).then(() => {
+          emailsSent++;
+        }).catch((emailError) => {
+          console.warn(`[FormCompletionReminder] Customer reminder email failed for ${customer.email}:`, emailError);
+        });
+
         const result = await createOpsManualStudentCommunicationAlert({
           customerId: customer.id,
           customerName: customer.name,
@@ -105,7 +119,7 @@ export const POST = withCronTelemetry("form-completion-reminder", async (request
 
     return NextResponse.json({
       success: true,
-      sent: 0,
+      sent: emailsSent,
       alertsCreated,
       skipped,
       failed,
