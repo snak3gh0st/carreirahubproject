@@ -9,6 +9,7 @@ import {
   LogOut,
   CalendarDays,
   BarChart3,
+  ClipboardList,
   ListChecks,
   MessageSquareText,
   Sparkles,
@@ -58,6 +59,7 @@ export function OpsSidebar({ userName = "User", userEmail = "", userRole = "" }:
       items: [
         { href: "/ops/pipeline", label: "Pipeline", icon: ListChecks },
         { href: "/ops/enroll", label: "Matrículas", icon: GraduationCap },
+        { href: "/ops/forms", label: "Formulários", icon: ClipboardList },
         { href: "/ops/ai", label: "Assistente AI", icon: Sparkles },
       ],
     },

@@ -95,7 +95,7 @@ const HUB_OPERACIONAL_ITEMS: SidebarItem[] = [
   { href: "/ops/pipeline", label: "Pipeline de Fases", icon: "Kanban" },
   { href: "/ops/digisac", label: "Conversas Digisac", icon: "MessageSquareText" },
   { href: "/ops/daily", label: "Daily Action", icon: "ListChecks" },
-  { href: "/dashboard/forms", label: "Formulários", icon: "ClipboardList" },
+  { href: "/ops/forms", label: "Formulários", icon: "ClipboardList" },
 ];
 
 // Hub Executivo — items EXECUTIVE sees (D-05, D-06, D-08).

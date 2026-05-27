@@ -60,3 +60,25 @@ test("ops forms section exposes submitted answers and uploaded form files", () =
   assert.match(source, /api\/storage\/local/);
   assert.match(source, /dashboard\/forms\/submissions/);
 });
+
+test("ops has a first-class forms center linked from navigation and customer profile", () => {
+  const sidebar = fs.readFileSync("components/ops/ops-sidebar.tsx", "utf8");
+  const roleConfig = fs.readFileSync("lib/sidebar/role-config.ts", "utf8");
+  const profileForms = fs.readFileSync("app/ops/students/[enrollmentId]/FormsSection.tsx", "utf8");
+
+  assert.ok(fs.existsSync("app/ops/forms/page.tsx"));
+  assert.match(sidebar, /\/ops\/forms/);
+  assert.match(roleConfig, /\/ops\/forms/);
+  assert.doesNotMatch(roleConfig, /href: "\/dashboard\/forms"/);
+  assert.match(profileForms, /\/ops\/forms\?customerId=/);
+});
+
+test("ops forms center renders answers and file downloads without leaving ops", () => {
+  const source = fs.readFileSync("app/ops/forms/page.tsx", "utf8");
+
+  assert.match(source, /FORM_TEMPLATES/);
+  assert.match(source, /searchParams/);
+  assert.match(source, /api\/storage\/local/);
+  assert.match(source, /renderAnswerValue/);
+  assert.match(source, /mentorshipEnrollments/);
+});

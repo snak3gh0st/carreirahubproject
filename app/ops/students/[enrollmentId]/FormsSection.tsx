@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Download, ExternalLink, FileText, Loader2, Plus } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { getTemplate, type FormField } from "@/lib/hub/form-templates";
 
@@ -233,14 +234,23 @@ export function FormsSection({
           <FileText className="h-4 w-4" />
           Formulários
         </h2>
-        <button
-          type="button"
-          onClick={() => setShowAssignForm((value) => !value)}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-tangerina text-white text-xs font-semibold hover:opacity-90 transition-opacity"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Atribuir Formulário
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/ops/forms?customerId=${customerId}`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-50"
+          >
+            Central
+            <ExternalLink className="h-3.5 w-3.5" />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setShowAssignForm((value) => !value)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-tangerina text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Atribuir Formulário
+          </button>
+        </div>
       </div>
 
       {showAssignForm && (
