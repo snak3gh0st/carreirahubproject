@@ -323,9 +323,9 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
           </div>
         </div>
 
-        <div className="grid min-h-[620px] lg:grid-cols-[340px_minmax(0,1fr)]">
-          <aside className="border-b border-gray-100 lg:border-b-0 lg:border-r">
-            <div className="max-h-[420px] overflow-y-auto lg:max-h-[680px]">
+        <div className="grid h-[calc(100dvh-15rem)] min-h-[480px] lg:grid-cols-[340px_minmax(0,1fr)]">
+          <aside className="flex min-h-0 flex-col border-b border-gray-100 lg:border-b-0 lg:border-r">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {listQuery.isLoading ? (
                 <div className="space-y-2 p-3">
                   {Array.from({ length: 7 }).map((_, index) => (
@@ -420,9 +420,9 @@ export function OpsDigisacInbox({ initialThreadId }: { initialThreadId?: string 
             </div>
           </aside>
 
-          <section className="flex min-w-0 flex-col">
+          <section className="flex min-h-0 min-w-0 flex-col">
             {!selectedThread ? (
-              <div className="flex min-h-[520px] flex-col items-center justify-center p-8 text-center">
+              <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
                 <Inbox className="mb-3 h-10 w-10 text-gray-300" />
                 <p className="text-sm font-semibold text-gray-800">Selecione uma conversa.</p>
                 <p className="mt-1 max-w-sm text-xs text-gray-500">A inbox reúne o histórico Digisac sem obrigar o time a abrir cliente por cliente.</p>
