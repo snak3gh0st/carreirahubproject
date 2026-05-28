@@ -24,7 +24,7 @@ export interface WebhookQueueJob {
  * Enqueue QuickBooks webhook for async processing
  */
 export async function enqueueQuickBooksWebhook(data: WebhookQueueJob): Promise<void> {
-  await queues.quickbooksSync.add(
+  await queues.quickbooksWebhook.add(
     "process-webhook",
     data,
     {

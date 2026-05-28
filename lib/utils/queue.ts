@@ -110,6 +110,7 @@ function initQueues() {
     invoiceGeneration: new Queue(QUEUE_NAMES.invoiceGeneration, { connection: connectionOptions }),
     invoiceApproval: new Queue(QUEUE_NAMES.invoiceApproval, { connection: connectionOptions }),
     contractGeneration: new Queue(QUEUE_NAMES.contractGeneration, { connection: connectionOptions }),
+    quickbooksWebhook: new Queue(QUEUE_NAMES.quickbooksWebhook, { connection: connectionOptions }),
     quickbooksSync: new Queue(QUEUE_NAMES.quickbooksSync, { connection: connectionOptions }),
     bulkImport: new Queue(QUEUE_NAMES.bulkImport, { connection: connectionOptions }),
   };
@@ -128,6 +129,7 @@ function initQueueEvents() {
     invoiceGeneration: new QueueEvents(QUEUE_NAMES.invoiceGeneration, { connection: connectionOptions }),
     invoiceApproval: new QueueEvents(QUEUE_NAMES.invoiceApproval, { connection: connectionOptions }),
     contractGeneration: new QueueEvents(QUEUE_NAMES.contractGeneration, { connection: connectionOptions }),
+    quickbooksWebhook: new QueueEvents(QUEUE_NAMES.quickbooksWebhook, { connection: connectionOptions }),
     quickbooksSync: new QueueEvents(QUEUE_NAMES.quickbooksSync, { connection: connectionOptions }),
     bulkImport: new QueueEvents(QUEUE_NAMES.bulkImport, { connection: connectionOptions }),
   };

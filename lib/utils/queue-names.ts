@@ -4,6 +4,7 @@ export const QUEUE_NAMES = {
   invoiceGeneration: "invoice-generation",
   invoiceApproval: "invoice-approval",
   contractGeneration: "contract-generation",
+  quickbooksWebhook: "quickbooks-webhook",
   quickbooksSync: "quickbooks-sync",
   bulkImport: "bulk-import",
 } as const;

@@ -9,6 +9,7 @@ import {
 
 test("maps logical queue keys to the BullMQ queue names used by producers", () => {
   assert.equal(resolveBullQueueName("quickbooksSync"), "quickbooks-sync");
+  assert.equal(resolveBullQueueName("quickbooksWebhook"), "quickbooks-webhook");
   assert.equal(resolveBullQueueName("invoiceApproval"), "invoice-approval");
   assert.equal(resolveBullQueueName("whatsappMessages"), "whatsapp-messages");
 });

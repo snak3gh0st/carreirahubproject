@@ -172,6 +172,7 @@ interface QueueConfig {
  * while maximizing throughput for lightweight queues.
  */
 const QUEUE_CONFIG: QueueConfig = {
+  quickbooksWebhook: { maxJobs: 10, timeoutMs: 15000 },
   leadQualification: { maxJobs: 2, timeoutMs: 5000 },
   whatsappMessages: { maxJobs: 5, timeoutMs: 5000 },
   invoiceGeneration: { maxJobs: 2, timeoutMs: 5000 },
@@ -218,6 +219,12 @@ function getConnectionOptions() {
 const queueHandlers: {
   [key: string]: (job: any) => Promise<void>;
 } = {
+  quickbooksWebhook: async (job: any) => {
+    if (job.name === "process-webhook") {
+      await processQuickBooksWebhookJob(job.data);
+    }
+  },
+
   leadQualification: async (job: any) => {
     const { leadId } = job.data;
     const { sdrService } = await import("@/lib/services/sdr.service");
@@ -634,18 +641,7 @@ export async function processAllQueues(): Promise<{
   let totalJobsFailed = 0;
   let queuesProcessed = 0;
 
-  // Queue processing order: high-priority lightweight first, heavy last
-  const queueOrder = [
-    "quickbooksSync",
-    "whatsappMessages",
-    "invoiceApproval",
-    "leadQualification",
-    "invoiceGeneration",
-    "contractGeneration",
-    "bulkImport",
-  ].filter((queueName): queueName is QueueKey =>
-    ACTIVE_QUEUE_KEYS.includes(queueName as QueueKey)
-  );
+  const queueOrder = getQueueProcessingOrder();
 
   console.log(`[QUEUE] Starting queue processing (max ${maxDurationMs}ms)`);
 
@@ -710,4 +706,21 @@ export async function processAllQueues(): Promise<{
     totalExecutionTimeMs,
     queuesProcessed,
   };
+}
+
+export function getQueueProcessingOrder(
+  activeQueueKeys: readonly QueueKey[] = ACTIVE_QUEUE_KEYS
+): QueueKey[] {
+  const priorityOrder: QueueKey[] = [
+    "quickbooksWebhook",
+    "quickbooksSync",
+    "whatsappMessages",
+    "invoiceApproval",
+    "leadQualification",
+    "invoiceGeneration",
+    "contractGeneration",
+    "bulkImport",
+  ];
+
+  return priorityOrder.filter((queueName) => activeQueueKeys.includes(queueName));
 }
