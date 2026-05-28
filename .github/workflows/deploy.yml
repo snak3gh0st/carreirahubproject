@@ -67,7 +67,7 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -75,7 +75,7 @@ jobs:
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "
             set -euo pipefail
-            echo '$GHCR_PULL_TOKEN' | docker login '$REGISTRY' -u 'snak3gh0st' --password-stdin
+            echo '$GHCR_TOKEN' | docker login '$REGISTRY' -u '${{ github.actor }}' --password-stdin
             docker pull '$IMAGE:$short_sha'
             docker service update --with-registry-auth --image '$IMAGE:$short_sha' carreirahub_hub || docker stack deploy --with-registry-auth -c /opt/carreirahub/hub-stack.yml carreirahub
           "
