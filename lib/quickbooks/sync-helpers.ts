@@ -165,3 +165,56 @@ export function isQuickBooksInvoiceExcludedFromHub(installments: unknown): boole
 
   return quickbooks.excludedFromHub === true;
 }
+
+export type QuickBooksIncrementalInvoiceDecision = "backfill" | "update" | "skip";
+
+function normalizeDateKey(date: Date | string | null | undefined): string | null {
+  if (!date) {
+    return null;
+  }
+
+  const value = date instanceof Date ? date : new Date(date);
+  if (Number.isNaN(value.getTime())) {
+    return null;
+  }
+
+  return value.toISOString().slice(0, 10);
+}
+
+export function getQuickBooksIncrementalInvoiceDecision(options: {
+  existingInvoice:
+    | {
+        status: string;
+        amount?: number | null;
+        dueDate?: Date | string | null;
+        amountPaid?: number | null;
+        installments?: unknown;
+      }
+    | null
+    | undefined;
+  nextStatus: string;
+  nextAmount: number;
+  nextDueDate: Date;
+  nextAmountPaid: number;
+  excludeFromHub: boolean;
+}): QuickBooksIncrementalInvoiceDecision {
+  const { existingInvoice } = options;
+
+  if (!existingInvoice) {
+    return "backfill";
+  }
+
+  const statusChanged = existingInvoice.status !== options.nextStatus;
+  const amountChanged = (existingInvoice.amount ?? 0) !== options.nextAmount;
+  const amountPaidChanged = (existingInvoice.amountPaid ?? 0) !== options.nextAmountPaid;
+  const dueDateChanged =
+    normalizeDateKey(existingInvoice.dueDate) !== normalizeDateKey(options.nextDueDate);
+  const exclusionChanged =
+    isQuickBooksInvoiceExcludedFromHub(existingInvoice.installments) !== options.excludeFromHub;
+
+  if (statusChanged || amountChanged || amountPaidChanged || dueDateChanged || exclusionChanged) {
+    return "update";
+  }
+
+  return "skip";
+}

@@ -22,6 +22,7 @@ import {
   determineQuickBooksInvoiceStatus,
   findLinkedQuickBooksInvoiceId,
   chooseInvoiceSyncMatch,
+  getQuickBooksIncrementalInvoiceDecision,
   isQuickBooksInvoiceMarkedMissing,
   mergeQuickBooksInvoiceMetadata,
   resolveLocalCustomerIdForPayment,
@@ -1751,8 +1752,6 @@ export class QuickBooksSyncService {
       for (const qbInvoice of changedInvoices) {
         try {
           const existing = invoiceByQbId.get(qbInvoice.Id);
-          if (!existing) continue;
-
           const totalAmount = qbInvoice.TotalAmt || 0;
           const balance = qbInvoice.Balance ?? totalAmount;
           const dueDate = parseQuickBooksDueDate(qbInvoice.DueDate);
@@ -1764,6 +1763,39 @@ export class QuickBooksSyncService {
             emailStatus: qbInvoice.EmailStatus,
           });
           const excludeFromHub = shouldExcludeOpenQuickBooksInvoiceFromHub(dueDate, balance);
+          const amountPaid = balance === 0 ? totalAmount : totalAmount - balance;
+          const decision = getQuickBooksIncrementalInvoiceDecision({
+            existingInvoice: existing,
+            nextStatus: qbStatus,
+            nextAmount: totalAmount,
+            nextDueDate: dueDate,
+            nextAmountPaid: amountPaid,
+            excludeFromHub,
+          });
+
+          if (decision === "backfill") {
+            const backfillResult = await this.syncSingleInvoice(String(qbInvoice.Id));
+            if (backfillResult.success) {
+              invResult.synced++;
+              if (backfillResult.invoice?.quickbooks_invoice_id) {
+                invoiceByQbId.set(String(backfillResult.invoice.quickbooks_invoice_id), {
+                  id: backfillResult.invoice.id,
+                  quickbooks_invoice_id: String(backfillResult.invoice.quickbooks_invoice_id),
+                  customerId: backfillResult.invoice.customerId,
+                  status: backfillResult.invoice.status,
+                  installments: backfillResult.invoice.installments,
+                });
+              }
+            } else {
+              invResult.errors++;
+            }
+            continue;
+          }
+
+          if (!existing) {
+            invResult.errors++;
+            continue;
+          }
 
           if (excludeFromHub) {
             await prisma.invoice.update({
@@ -1784,10 +1816,8 @@ export class QuickBooksSyncService {
             continue;
           }
 
-          // Skip if status hasn't changed — most CDC entries are metadata-only updates
-          if (existing.status === qbStatus) { invSkipped++; continue; }
+          if (decision === "skip") { invSkipped++; continue; }
 
-          const amountPaid = balance === 0 ? totalAmount : totalAmount - balance;
           const paidAt = amountPaid > 0 ? new Date(qbInvoice.TxnDate || new Date()) : null;
 
           await prisma.invoice.update({
@@ -1844,8 +1874,23 @@ export class QuickBooksSyncService {
           const invoiceRef = findLinkedQuickBooksInvoiceId(qbPayment);
           if (!invoiceRef) continue;
 
-          const invoice = invoiceByQbId.get(invoiceRef);
-          if (!invoice) continue;
+          let invoice = invoiceByQbId.get(invoiceRef);
+          if (!invoice) {
+            const invoiceSync = await this.syncSingleInvoice(String(invoiceRef));
+            if (!invoiceSync.success || !invoiceSync.invoice) {
+              payResult.errors++;
+              continue;
+            }
+
+            invoice = {
+              id: invoiceSync.invoice.id,
+              quickbooks_invoice_id: String(invoiceSync.invoice.quickbooks_invoice_id),
+              customerId: invoiceSync.invoice.customerId,
+              status: invoiceSync.invoice.status,
+              installments: invoiceSync.invoice.installments,
+            };
+            invoiceByQbId.set(String(invoiceRef), invoice);
+          }
 
           const existingPayment = paymentByQbId.get(qbPayment.Id);
           const linkedInvoiceQbCustomerId = changedInvoices.find((i: any) => i.Id === invoiceRef)?.CustomerRef?.value;

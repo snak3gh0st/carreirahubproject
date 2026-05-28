@@ -6,6 +6,7 @@ import {
   collectPaginatedQuickBooksRecords,
   determineQuickBooksInvoiceStatus,
   findLinkedQuickBooksInvoiceId,
+  getQuickBooksIncrementalInvoiceDecision,
   isQuickBooksInvoiceMarkedMissing,
   mergeQuickBooksInvoiceMetadata,
   paymentLinksToQuickBooksInvoice,
@@ -147,4 +148,36 @@ test("isQuickBooksInvoiceMarkedMissing detects invoices previously flagged as ab
   assert.equal(isQuickBooksInvoiceMarkedMissing({ quickbooks: { missingInQb: true } }), true);
   assert.equal(isQuickBooksInvoiceMarkedMissing({ quickbooks: { missingInQbAt: "2026-05-04T00:00:00.000Z" } }), true);
   assert.equal(isQuickBooksInvoiceMarkedMissing({ quickbooks: { missingInQb: false } }), false);
+});
+
+test("getQuickBooksIncrementalInvoiceDecision requests a backfill when the local invoice is missing", () => {
+  const decision = getQuickBooksIncrementalInvoiceDecision({
+    existingInvoice: null,
+    nextStatus: "SENT",
+    nextAmount: 1800,
+    nextDueDate: new Date("2026-05-28T00:00:00.000Z"),
+    nextAmountPaid: 0,
+    excludeFromHub: false,
+  });
+
+  assert.equal(decision, "backfill");
+});
+
+test("getQuickBooksIncrementalInvoiceDecision updates when invoice data changes even if status stays the same", () => {
+  const decision = getQuickBooksIncrementalInvoiceDecision({
+    existingInvoice: {
+      status: "SENT",
+      amount: 1800,
+      dueDate: new Date("2026-05-28T00:00:00.000Z"),
+      amountPaid: 0,
+      installments: { quickbooks: { excludedFromHub: false } },
+    },
+    nextStatus: "SENT",
+    nextAmount: 1950,
+    nextDueDate: new Date("2026-05-31T00:00:00.000Z"),
+    nextAmountPaid: 0,
+    excludeFromHub: false,
+  });
+
+  assert.equal(decision, "update");
 });
