@@ -59,13 +59,15 @@ esac
 # and brief upstream blips without paging Telegram.
 # Budget: 5 retries × 10s delay ≈ 50s, enough to cross a healthcheck-gated
 # start-first swap (40s start_period + Traefik route update).
-# --retry-all-errors covers 4xx (404 during boot race) too; cron endpoints
-# never legitimately return 4xx for an authenticated request.
+#
+# Critical: curl treats 4xx as "transfer succeeded with bad code" and won't
+# retry without --fail (which promotes 4xx/5xx to transfer errors).
+# --fail + --retry-all-errors actually retries on 404. Verified curl 8.5.
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   --max-time "$CURL_MAX_TIME" \
-  --retry 5 --retry-delay 10 --retry-all-errors \
+  --fail --retry 5 --retry-delay 10 --retry-all-errors \
   -H "Authorization: Bearer ${SECRET}" \
-  "$ENDPOINT")
+  "$ENDPOINT" || true)
 
 if [[ "$HTTP_CODE" == "200" ]]; then
   echo "[cron] OK ${ROUTE} → ${HTTP_CODE}"
