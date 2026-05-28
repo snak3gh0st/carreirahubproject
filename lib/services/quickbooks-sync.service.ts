@@ -22,6 +22,8 @@ import {
   determineQuickBooksInvoiceStatus,
   findLinkedQuickBooksInvoiceId,
   chooseInvoiceSyncMatch,
+  extractQuickBooksCdcResponses,
+  extractQuickBooksInvoiceFromResponse,
   getQuickBooksIncrementalInvoiceDecision,
   isQuickBooksInvoiceMarkedMissing,
   mergeQuickBooksInvoiceMetadata,
@@ -355,7 +357,7 @@ export class QuickBooksSyncService {
 
       // Fetch the invoice from QuickBooks
       const qbResponse = await quickbooksService.getInvoice(qbInvoiceId);
-      const qbInvoice = qbResponse.Invoice;
+      const qbInvoice = extractQuickBooksInvoiceFromResponse(qbResponse);
 
       if (!qbInvoice) {
         return { success: false, isNew: false, error: "Invoice not found in QuickBooks" };
@@ -1660,14 +1662,20 @@ export class QuickBooksSyncService {
         `/cdc?entities=Customer,Invoice,Payment&changedSince=${sinceIso}`
       );
 
-      const responses = cdcData?.CDCResponse || [];
+      const responses = extractQuickBooksCdcResponses(cdcData);
       let changedCustomers: any[] = [];
       let changedInvoices: any[] = [];
       let deletedInvoices: any[] = [];
       let changedPayments: any[] = [];
 
       for (const resp of responses) {
-        for (const qr of resp.QueryResponse || []) {
+        const queryResponses = Array.isArray(resp?.QueryResponse)
+          ? resp.QueryResponse
+          : resp?.QueryResponse
+            ? [resp.QueryResponse]
+            : [];
+
+        for (const qr of queryResponses) {
           if (qr.Customer) {
             const all = Array.isArray(qr.Customer) ? qr.Customer : [qr.Customer];
             changedCustomers = all.filter((e: any) => e.status !== "Deleted");

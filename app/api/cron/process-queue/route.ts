@@ -64,7 +64,8 @@ export const GET = withCronTelemetry("process-queue", async (request) => {
     // Job failures are captured in IntegrationLog for monitoring
     return NextResponse.json(
       {
-        success: result.totalJobsFailed === 0,
+        success: true,
+        hadFailures: result.totalJobsFailed > 0,
         queuesProcessed: result.queuesProcessed,
         totalJobsProcessed: result.totalJobsProcessed,
         totalFailures: result.totalJobsFailed,

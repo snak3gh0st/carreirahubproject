@@ -343,10 +343,25 @@ async function processQuickBooksWebhookJob(data: any): Promise<void> {
     let action = "WEBHOOK_ENTITY_SKIPPED";
 
     const operation = String(entity?.operation || "").toLowerCase();
+    const shouldAlwaysSkip =
+      (entityName === "invoice" && operation === "emailed") ||
+      entityName === "deposit" ||
+      entityName === "purchase" ||
+      entityName === "preferences" ||
+      entityName === "vendor";
 
-    if (entityName === "invoice" && entityId) {
+    if (shouldAlwaysSkip) {
+      action = `WEBHOOK_ENTITY_SKIPPED:${entityName}.${operation}`;
+    } else if (entityName === "invoice" && entityId) {
       if (operation === "delete") {
         // Invoice deleted in QB — void locally without calling QB API (would return 400)
+        const { prisma: db } = await import("@/lib/db");
+        await db.invoice.updateMany({
+          where: { quickbooks_invoice_id: entityId },
+          data: { status: "VOID" },
+        });
+        action = "WEBHOOK_INVOICE_VOIDED";
+      } else if (operation === "void") {
         const { prisma: db } = await import("@/lib/db");
         await db.invoice.updateMany({
           where: { quickbooks_invoice_id: entityId },
@@ -378,7 +393,22 @@ async function processQuickBooksWebhookJob(data: any): Promise<void> {
     }
 
     if (result && !result.success) {
-      throw new Error(result.error || `QuickBooks webhook ${entityName || "entity"} sync failed`);
+      const errorText = String(result.error || "");
+      if (
+        entityName === "invoice" &&
+        /not found in quickbooks|object not found|code.?610/i.test(errorText)
+      ) {
+        action = `WEBHOOK_ENTITY_SKIPPED:${entityName}.${operation}.missing`;
+        result = null;
+      } else if (
+        entityName === "customer" &&
+        /customer has no email/i.test(errorText)
+      ) {
+        action = `WEBHOOK_ENTITY_SKIPPED:${entityName}.${operation}.no_email`;
+        result = null;
+      } else {
+        throw new Error(result.error || `QuickBooks webhook ${entityName || "entity"} sync failed`);
+      }
     }
 
     if (webhookEventId) {

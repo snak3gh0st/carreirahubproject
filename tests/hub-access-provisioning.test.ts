@@ -14,6 +14,7 @@ test("provisionHubAccessForEnrollment creates portal user and sends setup link",
         mentorshipEnrollment: {
           findUnique: async () => ({
             id: "enrollment_1",
+            programType: "EARLY_CAREER",
             customer: {
               id: "customer_1",
               name: "Darlan Gomes",
@@ -59,4 +60,40 @@ test("provisionHubAccessForEnrollment creates portal user and sends setup link",
     "create:darlangomes11@gmail.com:pt-BR:token_123",
     "email:darlangomes11@gmail.com:https://app.carreirausa.com/hub/set-password?token=token_123",
   ]);
+});
+
+test("provisionHubAccessForEnrollment pauses new PASS portal access", async () => {
+  const result = await provisionHubAccessForEnrollment(
+    { enrollmentId: "enrollment_2" },
+    {
+      prismaClient: {
+        mentorshipEnrollment: {
+          findUnique: async () => ({
+            id: "enrollment_2",
+            programType: "PASS",
+            customer: {
+              id: "customer_2",
+              name: "Paula Silva",
+              email: "paula@example.com",
+              preferredLanguage: "pt-BR",
+              clientUser: null,
+            },
+          }),
+        },
+        clientUser: {
+          create: async () => {
+            throw new Error("create should not be called while hub access is paused");
+          },
+          update: async () => {
+            throw new Error("update should not be called while hub access is paused");
+          },
+        },
+      } as any,
+    }
+  );
+
+  assert.deepEqual(result, {
+    success: false,
+    reason: "HUB_ACCESS_PAUSED",
+  });
 });

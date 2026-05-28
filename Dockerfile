@@ -1,15 +1,6 @@
 # syntax=docker/dockerfile:1
 
-# ─── Stage 1: install deps ───────────────────────────────────────────────────
-FROM node:22-alpine AS deps
-WORKDIR /app
-
-RUN apk add --no-cache libc6-compat openssl
-
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts
-
-# ─── Stage 2: build ──────────────────────────────────────────────────────────
+# ─── Stage 1: build ──────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
 WORKDIR /app
 
@@ -17,7 +8,7 @@ RUN apk add --no-cache libc6-compat openssl
 
 # Full deps (including devDependencies for build)
 COPY package*.json ./
-RUN npm ci --ignore-scripts
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 
 COPY . .
 
@@ -36,9 +27,11 @@ ENV NEXTAUTH_SECRET=$NEXTAUTH_SECRET
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_BUILD=true
 ENV NODE_OPTIONS=--max-old-space-size=3072
-RUN npm run build
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/app/.next/cache \
+    npm run build
 
-# ─── Stage 3: runtime ────────────────────────────────────────────────────────
+# ─── Stage 2: runtime ────────────────────────────────────────────────────────
 FROM node:22-alpine AS runner
 WORKDIR /app
 

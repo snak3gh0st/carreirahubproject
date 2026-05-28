@@ -510,6 +510,7 @@ async function getQueueSummary() {
     ["invoice_generation", queues.invoiceGeneration],
     ["invoice_approval", queues.invoiceApproval],
     ["contract_generation", queues.contractGeneration],
+    ["quickbooks_webhook", queues.quickbooksWebhook],
     ["quickbooks_sync", queues.quickbooksSync],
     ["bulk_import", queues.bulkImport],
   ] as const;

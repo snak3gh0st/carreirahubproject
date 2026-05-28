@@ -4,6 +4,51 @@ export interface PaginatedQuickBooksRecords<T> {
   nextPosition: number;
 }
 
+export function extractQuickBooksInvoiceFromResponse(response: unknown): Record<string, any> | null {
+  if (!response || typeof response !== "object") {
+    return null;
+  }
+
+  const payload = response as Record<string, any>;
+  if (payload.Invoice && typeof payload.Invoice === "object") {
+    return payload.Invoice as Record<string, any>;
+  }
+
+  if (typeof payload.Id === "string" || typeof payload.Id === "number") {
+    return payload;
+  }
+
+  return null;
+}
+
+export function extractQuickBooksQueryResponse(response: unknown): Record<string, any> {
+  if (!response || typeof response !== "object") {
+    return {};
+  }
+
+  const payload = response as Record<string, any>;
+  if (!payload.QueryResponse || typeof payload.QueryResponse !== "object") {
+    return {};
+  }
+
+  return payload.QueryResponse as Record<string, any>;
+}
+
+export function extractQuickBooksCdcResponses(response: unknown): Array<Record<string, any>> {
+  if (!response || typeof response !== "object") {
+    return [];
+  }
+
+  const payload = response as Record<string, any>;
+  if (!payload.CDCResponse) {
+    return [];
+  }
+
+  return Array.isArray(payload.CDCResponse)
+    ? (payload.CDCResponse as Array<Record<string, any>>)
+    : [payload.CDCResponse as Record<string, any>];
+}
+
 export async function collectPaginatedQuickBooksRecords<T>(
   fetchPage: (startPosition: number) => Promise<PaginatedQuickBooksRecords<T>>
 ): Promise<T[]> {

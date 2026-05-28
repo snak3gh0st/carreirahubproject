@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/db";
 import { generateTempPassword, hashPassword } from "@/lib/hub-auth";
 import { buildHubAccessResetUrl, getHubAccessResetExpiry } from "@/lib/ops/hub-access";
+import { isHubAccessPausedForProgramType } from "@/lib/ops/hub-access-policy";
 
 type HubAccessCustomer = {
   id: string;
@@ -14,6 +15,7 @@ type HubAccessCustomer = {
 
 type HubAccessEnrollment = {
   id: string;
+  programType: string;
   customer: HubAccessCustomer;
 };
 
@@ -48,6 +50,10 @@ export type HubAccessProvisioningResult =
   | {
       success: false;
       reason: "ENROLLMENT_NOT_FOUND";
+    }
+  | {
+      success: false;
+      reason: "HUB_ACCESS_PAUSED";
     };
 
 export interface HubAccessProvisioningDeps {
@@ -93,6 +99,10 @@ export async function provisionHubAccessForEnrollment(
 
   if (!enrollment) {
     return { success: false, reason: "ENROLLMENT_NOT_FOUND" };
+  }
+
+  if (isHubAccessPausedForProgramType(enrollment.programType)) {
+    return { success: false, reason: "HUB_ACCESS_PAUSED" };
   }
 
   const email = normalizeEmail(enrollment.customer.email);

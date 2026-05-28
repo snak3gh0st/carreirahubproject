@@ -20,6 +20,13 @@ export async function POST(
 
   const result = await provisionHubAccessForEnrollment({ enrollmentId: params.id });
   if (!result.success) {
+    if (result.reason === "HUB_ACCESS_PAUSED") {
+      return NextResponse.json(
+        { error: "Hub access is temporarily paused for new PASS/ADVANCED enrollments." },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
   }
 

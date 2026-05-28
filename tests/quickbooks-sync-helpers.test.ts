@@ -5,6 +5,9 @@ import {
   chooseInvoiceSyncMatch,
   collectPaginatedQuickBooksRecords,
   determineQuickBooksInvoiceStatus,
+  extractQuickBooksCdcResponses,
+  extractQuickBooksInvoiceFromResponse,
+  extractQuickBooksQueryResponse,
   findLinkedQuickBooksInvoiceId,
   getQuickBooksIncrementalInvoiceDecision,
   isQuickBooksInvoiceMarkedMissing,
@@ -36,6 +39,29 @@ test("collectPaginatedQuickBooksRecords fetches all pages until hasMore is false
 
   assert.deepEqual(calls, [1, 3]);
   assert.deepEqual(records, [{ id: "p1" }, { id: "p2" }, { id: "p3" }]);
+});
+
+test("extractQuickBooksInvoiceFromResponse accepts nested and direct payloads", () => {
+  assert.deepEqual(
+    extractQuickBooksInvoiceFromResponse({ Invoice: { Id: "123", DocNumber: "INV-123" } }),
+    { Id: "123", DocNumber: "INV-123" },
+  );
+  assert.deepEqual(
+    extractQuickBooksInvoiceFromResponse({ Id: "456", DocNumber: "INV-456" }),
+    { Id: "456", DocNumber: "INV-456" },
+  );
+  assert.equal(extractQuickBooksInvoiceFromResponse(null), null);
+});
+
+test("extractQuickBooksQueryResponse and extractQuickBooksCdcResponses normalize nullable responses", () => {
+  assert.deepEqual(extractQuickBooksQueryResponse(null), {});
+  assert.deepEqual(extractQuickBooksQueryResponse({ QueryResponse: { Invoice: [{ Id: "1" }] } }), {
+    Invoice: [{ Id: "1" }],
+  });
+  assert.deepEqual(extractQuickBooksCdcResponses(null), []);
+  assert.deepEqual(extractQuickBooksCdcResponses({ CDCResponse: { QueryResponse: [] } }), [
+    { QueryResponse: [] },
+  ]);
 });
 
 test("findLinkedQuickBooksInvoiceId scans all payment lines", () => {

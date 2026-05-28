@@ -5,6 +5,7 @@ import { generateTempPassword, hashPassword } from "@/lib/hub-auth";
 import { InvoiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { emailService } from "@/lib/services/email.service";
+import { isHubAccessPausedForCheckout } from "@/lib/ops/hub-access-policy";
 
 export const dynamic = "force-dynamic";
 
@@ -122,7 +123,12 @@ export async function POST(request: NextRequest) {
       where: { customerId: customer.id },
     });
 
-    if (!existingClientUser) {
+    const hubAccessPaused = isHubAccessPausedForCheckout({
+      programSlug: data.programSlug,
+      programName: data.programName,
+    });
+
+    if (!existingClientUser && !hubAccessPaused) {
       const tempPassword = generateTempPassword();
       const passwordHash = await hashPassword(tempPassword);
       await prisma.clientUser.create({
@@ -145,6 +151,8 @@ export async function POST(request: NextRequest) {
         loginUrl,
         locale: data.locale === "pt" ? "pt-BR" : "en",
       }).catch((err) => console.error("[PUBLIC_CHECKOUT] Welcome email failed:", err));
+    } else if (hubAccessPaused) {
+      console.log(`[PUBLIC_CHECKOUT] Hub access paused for ${data.programSlug}`);
     }
 
     // 4. Return payment URL
@@ -156,6 +164,7 @@ export async function POST(request: NextRequest) {
         paymentUrl,
         invoiceId: invoice.id,
         invoiceNumber: invoice.invoiceNumber,
+        hubAccessProvisioned: !hubAccessPaused,
       },
       { status: 201, headers: cors }
     );

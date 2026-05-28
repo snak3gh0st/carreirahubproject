@@ -6,6 +6,9 @@ set -euo pipefail
 ENV_FILE="${ENV_FILE:-/opt/carreirahub/.env}"
 LOG_FILE="${LOG_FILE:-/var/log/carreirahub-cron.log}"
 LINES_FILE="${LINES_FILE:-/tmp/cron-watch-lines}"
+STATE_FILE="${STATE_FILE:-/tmp/cron-watch-last-alert}"
+MAX_FAILURE_LINES="${MAX_FAILURE_LINES:-12}"
+MAX_PREVIEW_CHARS="${MAX_PREVIEW_CHARS:-1800}"
 
 read_env_var() {
   local key="$1"
@@ -62,18 +65,36 @@ if [[ -z "$FAILURES" ]]; then
   exit 0
 fi
 
+PREVIEW_RAW="$(printf '%s\n' "$FAILURES" | tail -n "$MAX_FAILURE_LINES")"
+FAILURE_COUNT="$(printf '%s\n' "$FAILURES" | sed '/^$/d' | wc -l | tr -d '[:space:]')"
+SIGNATURE="$(printf '%s' "$PREVIEW_RAW" | shasum -a 256 | cut -d' ' -f1)"
+
+if [[ -f "$STATE_FILE" ]] && [[ "$(cat "$STATE_FILE" 2>/dev/null || true)" == "$SIGNATURE" ]]; then
+  echo "[cron-watch] duplicate alert skipped"
+  exit 0
+fi
+
 PREVIEW="$(
-  printf '%s\n' "$FAILURES" |
-    tail -20 |
+  printf '%s\n' "$PREVIEW_RAW" |
     sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
 )"
+PREVIEW="${PREVIEW:0:$MAX_PREVIEW_CHARS}"
 
-MSG="$(printf 'CRON FAILURE - carreirausa\n\n<pre>%s</pre>\n\n%s' "$PREVIEW" "$(date -Iseconds)")"
+TMP_MSG_FILE="$(mktemp)"
+trap 'rm -f "$TMP_MSG_FILE"' EXIT
+
+{
+  printf 'CRON FAILURE - carreirausa\n\n'
+  printf 'Detected %s matching failure lines since last scan.\n\n' "$FAILURE_COUNT"
+  printf '<pre>%s</pre>\n\n' "$PREVIEW"
+  date -Iseconds
+} > "$TMP_MSG_FILE"
 
 curl -fsS -X POST "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
   --data-urlencode "chat_id=${CHAT_ID}" \
-  --data-urlencode "text=${MSG}" \
+  --data-urlencode "text@${TMP_MSG_FILE}" \
   -d "parse_mode=HTML" \
   -d "disable_web_page_preview=true" >/dev/null
 
+printf '%s' "$SIGNATURE" > "$STATE_FILE"
 echo "[cron-watch] alert sent"

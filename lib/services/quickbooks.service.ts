@@ -1897,16 +1897,17 @@ export class QuickbooksService {
     console.log(`[QuickBooks API] Requesting from position ${startPosition}, max ${maxResults} results`);
 
     const result = await this.request(`/query?query=${encodeURIComponent(query)}`);
+    const queryResponse = result?.QueryResponse || {};
 
     // Log the raw response structure
-    console.log(`[QuickBooks API] Response keys:`, Object.keys(result.QueryResponse || {}));
+    console.log(`[QuickBooks API] Response keys:`, Object.keys(queryResponse));
     console.log(`[QuickBooks API] Raw response metadata:`, JSON.stringify({
-      maxResults: result.QueryResponse?.maxResults,
-      startPosition: result.QueryResponse?.startPosition,
-      totalCount: result.QueryResponse?.totalCount,
+      maxResults: queryResponse?.maxResults,
+      startPosition: queryResponse?.startPosition,
+      totalCount: queryResponse?.totalCount,
     }));
 
-    let invoices = result.QueryResponse?.Invoice || [];
+    let invoices = queryResponse?.Invoice || [];
 
     // Se não houver invoices no array, pode ser que venha como objeto único
     if (!Array.isArray(invoices) && invoices.Id) {
