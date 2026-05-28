@@ -176,7 +176,7 @@ const QUEUE_CONFIG: QueueConfig = {
   whatsappMessages: { maxJobs: 5, timeoutMs: 5000 },
   invoiceGeneration: { maxJobs: 2, timeoutMs: 5000 },
   contractGeneration: { maxJobs: 2, timeoutMs: 5000 },
-  quickbooksSync: { maxJobs: 1, timeoutMs: 240000 },
+  quickbooksSync: { maxJobs: 1, timeoutMs: 1200000 },
   invoiceApproval: { maxJobs: 3, timeoutMs: 5000 },
   bulkImport: { maxJobs: 1, timeoutMs: 240000 },
 };
@@ -627,7 +627,7 @@ export async function processAllQueues(): Promise<{
     };
   }
 
-  const maxDurationMs = Number(process.env.QUEUE_PROCESSOR_MAX_DURATION_MS || 270000);
+  const maxDurationMs = Number(process.env.QUEUE_PROCESSOR_MAX_DURATION_MS || 1500000);
   const timer = new ExecutionTimer(maxDurationMs);
   const queueResults: Record<string, any> = {};
   let totalJobsProcessed = 0;

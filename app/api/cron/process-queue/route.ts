@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 1500;
 
 /**
  * GET /api/cron/process-queue
