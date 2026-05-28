@@ -56,9 +56,11 @@ esac
 
 # Retry on transient 5xx (default --retry behavior) — handles deploy swap
 # windows and brief upstream blips without paging Telegram.
+# Budget: 5 retries × 10s delay ≈ 50s, enough to cross a healthcheck-gated
+# start-first swap (40s start_period + Traefik route update).
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   --max-time "$CURL_MAX_TIME" \
-  --retry 3 --retry-delay 5 \
+  --retry 5 --retry-delay 10 \
   -H "Authorization: Bearer ${SECRET}" \
   "$ENDPOINT")
 
