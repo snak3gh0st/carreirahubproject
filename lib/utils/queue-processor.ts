@@ -182,6 +182,17 @@ const QUEUE_CONFIG: QueueConfig = {
   bulkImport: { maxJobs: 1, timeoutMs: 240000 },
 };
 
+export const REALTIME_QUEUE_KEYS: QueueKey[] = [
+  "quickbooksWebhook",
+  "whatsappMessages",
+  "invoiceApproval",
+  "leadQualification",
+  "invoiceGeneration",
+  "contractGeneration",
+];
+
+export const QUICKBOOKS_SYNC_QUEUE_KEYS: QueueKey[] = ["quickbooksSync"];
+
 /**
  * Helper to get Redis connection options
  * Uses the same pattern as lib/utils/queue.ts
@@ -643,7 +654,9 @@ export async function processQueue(
  * 3. Exit gracefully at 8-second mark (before Vercel timeout)
  * 4. Log overall metrics to IntegrationLog
  */
-export async function processAllQueues(): Promise<{
+export async function processAllQueues(
+  activeQueueKeys: readonly QueueKey[] = ACTIVE_QUEUE_KEYS
+): Promise<{
   queueResults: Record<string, any>;
   totalJobsProcessed: number;
   totalJobsFailed: number;
@@ -671,7 +684,7 @@ export async function processAllQueues(): Promise<{
   let totalJobsFailed = 0;
   let queuesProcessed = 0;
 
-  const queueOrder = getQueueProcessingOrder();
+  const queueOrder = getQueueProcessingOrder(activeQueueKeys);
 
   console.log(`[QUEUE] Starting queue processing (max ${maxDurationMs}ms)`);
 

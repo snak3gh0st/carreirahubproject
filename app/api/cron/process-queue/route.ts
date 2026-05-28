@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { processAllQueues } from "@/lib/utils/queue-processor";
+import { processAllQueues, REALTIME_QUEUE_KEYS } from "@/lib/utils/queue-processor";
 import { prisma } from "@/lib/db";
 import { withCronTelemetry } from "@/lib/utils/cron-with-telegram";
 
@@ -49,8 +49,9 @@ export const GET = withCronTelemetry("process-queue", async (request) => {
 
     console.log("[CRON] Starting queue processing");
 
-    // Process all queues (built-in 8-second safety limit)
-    const result = await processAllQueues();
+    // Keep the 1-minute cron focused on realtime/lightweight work.
+    // Heavy QuickBooks reconciliation is handled by /api/cron/process-quickbooks-sync.
+    const result = await processAllQueues(REALTIME_QUEUE_KEYS);
 
     const totalExecutionTimeMs = Date.now() - startTime;
 
