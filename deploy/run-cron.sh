@@ -49,13 +49,16 @@ case "$ROUTE" in
   process-quickbooks-sync)
     CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-1500}"
     ;;
-  quickbooks-sync|evaluate-alerts)
+  quickbooks-sync|docusign-sync|evaluate-alerts)
     CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-300}"
     ;;
 esac
 
+# Retry on transient 5xx (default --retry behavior) — handles deploy swap
+# windows and brief upstream blips without paging Telegram.
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   --max-time "$CURL_MAX_TIME" \
+  --retry 3 --retry-delay 5 \
   -H "Authorization: Bearer ${SECRET}" \
   "$ENDPOINT")
 
