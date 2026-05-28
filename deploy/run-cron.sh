@@ -46,6 +46,9 @@ case "$ROUTE" in
   process-queue)
     CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-1500}"
     ;;
+  process-quickbooks-sync)
+    CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-1500}"
+    ;;
   quickbooks-sync|evaluate-alerts)
     CURL_MAX_TIME="${CRON_CURL_MAX_TIME:-300}"
     ;;
