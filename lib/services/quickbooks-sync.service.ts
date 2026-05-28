@@ -1630,12 +1630,28 @@ export class QuickBooksSyncService {
 
       const sinceDate = lastSyncRow?.createdAt
         ? lastSyncRow.createdAt
-        : new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-      // Cap at 3 days for cron reliability — catches up over multiple runs
-      const maxPast = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
-      const changedSince = sinceDate < maxPast ? maxPast : sinceDate;
+      // If gap exceeds 7 days, CDC can't catch up reliably — promote to full sync
+      const gapMs = Date.now() - sinceDate.getTime();
+      const FULL_SYNC_THRESHOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
+      if (gapMs > FULL_SYNC_THRESHOLD_MS) {
+        const gapDays = (gapMs / (24 * 60 * 60 * 1000)).toFixed(1);
+        console.log(`[QB CDC Sync] Gap of ${gapDays} days exceeds 7d threshold — promoting to full sync`);
+        return this.sync({
+          syncCustomers: true,
+          syncInvoices: true,
+          syncPayments: true,
+          syncItems: false,
+          syncPriceLevels: false,
+          syncPaymentTerms: false,
+          maxResults: 1000,
+          incremental: false,
+        });
+      }
+
+      const changedSince = sinceDate;
       const sinceIso = changedSince.toISOString();
       console.log(`[QB CDC Sync] Fetching changes since ${sinceIso}`);
 
