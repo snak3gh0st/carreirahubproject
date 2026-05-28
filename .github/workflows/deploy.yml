@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 concurrency:
   group: carreirahub-production
@@ -21,8 +22,8 @@ defaults:
 
 env:
   APP_URL: https://app.carreirausa.com
-  IMAGE: registry.gitlab.com/sigma-group192807/carreirausahub
-  REGISTRY: registry.gitlab.com
+  IMAGE: ghcr.io/snak3gh0st/carreirahubproject
+  REGISTRY: ghcr.io
 
 jobs:
   deploy:
@@ -39,14 +40,13 @@ jobs:
 
       - name: Build and push image
         env:
-          REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
-          REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           short_sha="${GITHUB_SHA::8}"
 
-          echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin "$REGISTRY"
+          echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "${{ github.actor }}" --password-stdin
           docker build --pull --platform linux/amd64 -t "$IMAGE:$short_sha" -t "$IMAGE:latest" .
           docker push "$IMAGE:$short_sha"
           docker push "$IMAGE:latest"
@@ -67,8 +67,7 @@ jobs:
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
-          REGISTRY_PASSWORD: ${{ secrets.GITLAB_REGISTRY_PASSWORD }}
-          REGISTRY_USER: ${{ secrets.GITLAB_REGISTRY_USER }}
+          GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
         run: |
           set -euo pipefail
 
@@ -76,7 +75,7 @@ jobs:
 
           ssh "$DEPLOY_USER@$DEPLOY_HOST" "
             set -euo pipefail
-            echo '$REGISTRY_PASSWORD' | docker login -u '$REGISTRY_USER' --password-stdin '$REGISTRY'
+            echo '$GHCR_PULL_TOKEN' | docker login '$REGISTRY' -u 'snak3gh0st' --password-stdin
             docker pull '$IMAGE:$short_sha'
             docker service update --with-registry-auth --image '$IMAGE:$short_sha' carreirahub_hub || docker stack deploy --with-registry-auth -c /opt/carreirahub/hub-stack.yml carreirahub
           "
