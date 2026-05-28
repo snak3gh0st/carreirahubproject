@@ -335,12 +335,24 @@ async function processQuickBooksWebhookJob(data: any): Promise<void> {
     let result: { success: boolean; error?: string } | null = null;
     let action = "WEBHOOK_ENTITY_SKIPPED";
 
+    const operation = String(entity?.operation || "").toLowerCase();
+
     if (entityName === "invoice" && entityId) {
-      const { quickbooksSyncService } = await import(
-        "@/lib/services/quickbooks-sync.service"
-      );
-      result = await quickbooksSyncService.syncSingleInvoice(entityId);
-      action = "WEBHOOK_INVOICE_SYNCED";
+      if (operation === "delete") {
+        // Invoice deleted in QB — void locally without calling QB API (would return 400)
+        const { prisma: db } = await import("@/lib/db");
+        await db.invoice.updateMany({
+          where: { quickbooks_invoice_id: entityId },
+          data: { status: "VOID" },
+        });
+        action = "WEBHOOK_INVOICE_VOIDED";
+      } else {
+        const { quickbooksSyncService } = await import(
+          "@/lib/services/quickbooks-sync.service"
+        );
+        result = await quickbooksSyncService.syncSingleInvoice(entityId);
+        action = "WEBHOOK_INVOICE_SYNCED";
+      }
     } else if (entityName === "payment" && entityId) {
       const { quickbooksSyncService } = await import(
         "@/lib/services/quickbooks-sync.service"
@@ -353,6 +365,9 @@ async function processQuickBooksWebhookJob(data: any): Promise<void> {
       );
       result = await quickbooksSyncService.syncSingleCustomer(entityId);
       action = "WEBHOOK_CUSTOMER_SYNCED";
+    } else {
+      // Entity type not handled (invoice.emailed, purchase, deposit, etc.) — skip gracefully
+      action = `WEBHOOK_ENTITY_SKIPPED:${entityName}.${operation}`;
     }
 
     if (result && !result.success) {
