@@ -1,92 +1,124 @@
-# Anexo E — Field Mapping (DocuSign Template Setup)
+# Anexo E — DocuSign Template Setup
 
-**Documento de referência:** o `.docx` original que o Paulo já tem (`2026 02 25 Carreira USA - Modelo_Contrato Prestacao de Servicos-4.docx`). **Não altere o layout do contrato** — esta integração funciona posicionando campos DocuSign por cima do documento sem mexer no texto.
+## Estrutura real descoberta (todos os 9 templates v9)
 
-## Como posicionar os campos no DocuSign template
+Cada template = `Contrato de Prestação de Serviços` (doc 1) + `Anexo_X.pdf` (doc 2).  
+Roles fixas em todos: `CarreiraUSA`, `Client`, `Testemunha 1`, `Testemunha 2` (todos `order=1`).  
+Convenção de Data Label: **snake_case simples**, sem prefixo.
 
-1. Upload do `.docx` original no DocuSign como Template
-2. Adicione um recipient com role `CLIENTE` (mesmo nome usado nos outros templates atuais)
-3. Para cada linha da tabela abaixo:
-   - Vá até a localização indicada no documento (Anexo E, item correspondente)
-   - Arraste o **tipo de campo** indicado para cima do `( )` ou do espaço em branco/underline
-   - No painel direito do editor configure:
-     - **Atribuído a**: `CLIENTE`
-     - **Rótulo de dados (Data Label)**: copie exatamente o valor da coluna **Data Label**
-     - **Valor inicial**: deixe em branco (o código vai setar)
-     - **Somente leitura**: desmarcado por enquanto (você pode marcar depois quando estabilizar)
-4. Salvar template, copiar o **Template ID** e me passar — vou ligar no código
-
-## Tabela de campos — Anexo E
-
-| Onde no documento | Tipo de campo | Data Label | Fonte do dado (no envio) |
+| Template | env | docs | textTabs no Client |
 |---|---|---|---|
-| **1.1 `( )` Sessão Bússola** | Checkbox | `e_compass` | quando o serviço avulso for Sessão Bússola |
-| **1.2 `( )` Construção de Material** | Checkbox | `e_material` | quando incluir construção de material |
-| sub `( )` Com Sessão Bússola | Checkbox | `e_mat_with_compass` | material + opção Com Bússola |
-| sub `( )` Sem Sessão Bússola | Checkbox | `e_mat_without_compass` | material + opção Sem Bússola |
-| tipo `( )` Completo | Checkbox | `e_mat_full` | tipo Completo |
-| tipo `( )` Currículo | Checkbox | `e_mat_resume` | tipo Resume |
-| tipo `( )` Carta de Apresentação | Checkbox | `e_mat_cover` | tipo Cover Letter |
-| tipo `( )` Otimização de LinkedIn | Checkbox | `e_mat_linkedin` | tipo LinkedIn |
-| **1.3 `( )` Treinamento de Entrevista** | Checkbox | `e_training` | quando incluir Interview Training |
-| **1.4 `( )` Mock Interview** | Checkbox | `e_mock` | quando incluir Mock Interview |
-| qtd `( ) 1 sessão` | Checkbox | `e_mock_qty_1` | quando `mockQty === 1` |
-| qtd `( ) 2 sessões` | Checkbox | `e_mock_qty_2` | quando `mockQty === 2` |
-| qtd `( ) 3 sessões` | Checkbox | `e_mock_qty_3` | quando `mockQty === 3` |
-| qtd `( ) ___ sessões` | Checkbox | `e_mock_qty_other` | quando `mockQty > 3` |
-| qtd underline `___` | Texto | `e_mock_qty_custom` | número quando > 3 |
-| **1.5 `( )` Negociação de Salário** | Checkbox | `e_salary` | quando incluir Salary Negotiation |
-| **2.1 `US$ _______`** (numérico) | Texto | `e_value_usd` | `deal.value` (ex: `2,500.00`) |
-| **2.1 `(_______ dólares ...)`** (extenso) | Texto | `e_value_words` | gerar a partir do valor |
-| **2.2 `( )` À vista** | Checkbox | `e_pay_lump` | `payment === 'LUMP_SUM'` |
-| **2.2 `( )` Parcelado em [ ]x** | Checkbox | `e_pay_installment` | `payment === 'INSTALLMENT'` |
-| qtd parcelas `[ ]` | Texto | `e_installments` | número de parcelas |
-| **2.3 `( )` QuickBooks** | Checkbox | `e_pay_qb` | método QB |
-| **2.3 `( )` Zelle** | Checkbox | `e_pay_zelle` | método Zelle |
-| **2.3 `( )` Wire Transfer** | Checkbox | `e_pay_wire` | método Wire |
-| **2.3 `( )` Outro/Other** | Checkbox | `e_pay_other` | método Outro |
-| linha do Outro `___________` | Texto | `e_pay_other_value` | nome do método quando Outro |
-| **Linha de assinatura final** (do Cliente) | Sign Here | `sig_client` | DocuSign default |
-| **Data** ao lado da assinatura | Date Signed | `date_signed` | DocuSign default |
+| PASS_ADVANCED | `DOCUSIGN_TEMPLATE_PASS_ADVANCED` | Contrato + Anexo A | 67 |
+| PASS | `DOCUSIGN_TEMPLATE_PASS` | Contrato + Anexo B | 67 |
+| COMBO | `DOCUSIGN_TEMPLATE_COMBO` | Contrato + Anexo C | (varia) |
+| START | `DOCUSIGN_TEMPLATE_START` | Contrato + Anexo D | (varia) |
+| **AVULSO** | **`DOCUSIGN_TEMPLATE_AVULSO`** | **Contrato + Anexo E - Avulsos** | **28** |
+| UPGRADE | `DOCUSIGN_TEMPLATE_UPGRADE` | Contrato + Anexo F | (varia) |
+| NEW_PASS | `DOCUSIGN_TEMPLATE_NEW_PASS` | Contrato + Anexo G | (varia) |
+| TREINAMENTO | `DOCUSIGN_TEMPLATE_TREINAMENTO` | Contrato + Anexo H | (varia) |
+| EARLY_CAREER | `DOCUSIGN_TEMPLATE_EARLY_CAREER` | Contrato + Anexo I | (varia) |
 
-> **Observação sobre o item 1.4 (Mock Interview):** o documento original tem um `(x)` pré-marcado, que faz sentido como exemplo no Word. Quando você configurar o template no DocuSign, posicione um Checkbox normal (não marcado por padrão) e deixe o código decidir.
+## O que existe HOJE no template AVULSO (Anexo E v9)
 
-## Mapeamento sugerido: Deal type → checkboxes
+**Template ID:** `f2240a46-524d-41d1-8173-fd117b4be80f`
 
-Quando o ops criar um envelope com este Anexo E, o código define os checkboxes pelo `Deal.programType` ou um campo equivalente. Sugestão inicial (vamos validar com você):
+**Role `Client`** já tem **28 textTabs** que vêm do contrato principal (doc 1) — todos preenchidos pelo código atual:
 
-| Programa / Serviço avulso | Checkboxes a marcar |
+```
+payment_plan, contract_date_day, contract_date_month, contract_date_year,
+client_name (x2), client_cpf, client_passport, client_email (x2),
+client_address (x2), client_ssn_last4 (x2),
+installment_count, service_description, total_amount,
+invoice_number_2 ... invoice_number_12
+```
+
+**Zero checkboxTabs** no template atual. É isso que precisamos adicionar.
+
+## O que você precisa fazer no DocuSign
+
+1. Abrir o template `Carreira USA – Avulsos (Anexo E) v9` no editor
+2. **Doc 1 (Contrato)** — não mexer; os 28 textTabs já estão lá
+3. **Doc 2 (Anexo E - Avulsos)** — substituir o PDF se for usar a versão nova do Anexo E
+4. Adicionar **Checkboxes** sobre cada `( )` da Anexo E nova com os Data Labels da tabela abaixo
+5. Salvar como **v10** (ou nova versão) para preservar o v9
+
+## Checkboxes a adicionar (Data Labels)
+
+Seguindo a convenção snake_case do template existente, sem prefixo `e_`:
+
+| Onde no Anexo E | Tipo | Data Label |
+|---|---|---|
+| 1.1 `( )` Sessão Bússola | Checkbox | `compass_session` |
+| 1.2 `( )` Construção de Material | Checkbox | `material_construction` |
+| sub `( )` Com Sessão Bússola | Checkbox | `material_with_compass` |
+| sub `( )` Sem Sessão Bússola | Checkbox | `material_without_compass` |
+| tipo `( )` Completo | Checkbox | `material_full` |
+| tipo `( )` Currículo | Checkbox | `material_resume` |
+| tipo `( )` Carta de Apresentação | Checkbox | `material_cover_letter` |
+| tipo `( )` Otimização de LinkedIn | Checkbox | `material_linkedin` |
+| 1.3 `( )` Treinamento de Entrevista | Checkbox | `interview_training` |
+| 1.4 `( )` Mock Interview | Checkbox | `mock_interview` |
+| qtd `( ) 1 sessão` | Checkbox | `mock_qty_1` |
+| qtd `( ) 2 sessões` | Checkbox | `mock_qty_2` |
+| qtd `( ) 3 sessões` | Checkbox | `mock_qty_3` |
+| qtd `( ) ___ sessões` | Checkbox | `mock_qty_other` |
+| underline `___` (qtd custom) | Texto | `mock_qty_custom` |
+| 1.5 `( )` Negociação de Salário | Checkbox | `salary_negotiation` |
+
+### Sobre o item 2 (Preço/Pagamento) do Anexo E
+
+O Anexo E novo tem sua própria seção 2 (Valor Total, Condição, Método). Antes de adicionar tabs novos, **valide se os 28 textTabs existentes (`total_amount`, `payment_plan`, `installment_count`) cobrem ou se precisa adicionar específicos**:
+
+- Se a seção 2 do novo Anexo E for IDÊNTICA à do contrato principal → o `total_amount` etc. já preenchem
+- Se for INDEPENDENTE (avulsos têm valor próprio) → adicionar tabs separados:
+
+| Onde | Tipo | Data Label |
+|---|---|---|
+| 2.1 `US$ _____` (numérico) | Texto | `e_value_usd` |
+| 2.1 `(_____ dólares ...)` (extenso) | Texto | `e_value_words` |
+| 2.2 `( )` À vista | Checkbox | `e_pay_lump` |
+| 2.2 `( )` Parcelado em [ ]x | Checkbox | `e_pay_installment` |
+| 2.2 `[ ]` qtd parcelas | Texto | `e_installments` |
+| 2.3 `( )` QuickBooks | Checkbox | `e_pay_qb` |
+| 2.3 `( )` Zelle | Checkbox | `e_pay_zelle` |
+| 2.3 `( )` Wire Transfer | Checkbox | `e_pay_wire` |
+| 2.3 `( )` Outro | Checkbox | `e_pay_other` |
+| 2.3 `___` (nome do Outro) | Texto | `e_pay_other_value` |
+
+> Uso do prefixo `e_` aqui é proposital: para NÃO colidir com os labels do contrato principal que reutilizam o mesmo nome semântico (ex: `total_amount` do main = total do programa principal, `e_value_usd` = valor do Anexo E avulso).
+
+## Mapeamento sugerido: serviço avulso → checkboxes
+
+Quando enviar um envelope AVULSO, o código define os checkboxes pelo serviço selecionado:
+
+| Serviço | Checkboxes a marcar |
 |---|---|
-| Compass Session sozinho | `e_compass` |
-| Material Completo (com Bússola) | `e_material` + `e_mat_with_compass` + `e_mat_full` + `e_compass` |
-| Material Completo (sem Bússola) | `e_material` + `e_mat_without_compass` + `e_mat_full` |
-| Só Currículo | `e_material` + `e_mat_without_compass` + `e_mat_resume` |
-| Só Cover Letter | `e_material` + `e_mat_without_compass` + `e_mat_cover` |
-| Só LinkedIn | `e_material` + `e_mat_without_compass` + `e_mat_linkedin` |
-| Interview Training | `e_training` |
-| Mock Interview (N sessões) | `e_mock` + `e_mock_qty_N` (e `e_mock_qty_custom` se N>3) |
-| Salary Negotiation | `e_salary` |
+| Compass Session sozinho | `compass_session` |
+| Material Completo (com Bússola) | `material_construction` + `material_with_compass` + `material_full` + `compass_session` |
+| Material Completo (sem Bússola) | `material_construction` + `material_without_compass` + `material_full` |
+| Só Currículo | `material_construction` + `material_without_compass` + `material_resume` |
+| Só Cover Letter | `material_construction` + `material_without_compass` + `material_cover_letter` |
+| Só LinkedIn | `material_construction` + `material_without_compass` + `material_linkedin` |
+| Interview Training | `interview_training` |
+| Mock Interview (N sessões) | `mock_interview` + `mock_qty_N` (e `mock_qty_custom` se N>3) |
+| Salary Negotiation | `salary_negotiation` |
 
-Pagamento (`e_pay_*`, `e_installments`) e valor (`e_value_*`) vêm do `Invoice`/`Deal` no momento do envio.
+## Próximos passos no código
 
-## Próximos passos no código (próxima sessão)
+Depois que os checkboxes estiverem no template (você confirma com `npx tsx --env-file=.env.local scripts/inspect-docusign-template.ts --only=AVULSO --detail` — deve listar `checkboxTabs` no role Client):
 
-Quando você tiver o **Template ID** copiado do DocuSign:
-
-1. Adicionar env var (`DOCUSIGN_TEMPLATE_AVULSO_V2`) com o novo Template ID
-2. Criar helper `buildAnexoETabs(deal, invoice)` em `lib/services/docusign.service.ts`:
+1. Adicionar tipo de serviço avulso ao Deal/Invoice (campo novo, ex: `avulsoServiceType: enum`)
+2. Criar helper `buildAnexoETabs(deal)` em `lib/services/docusign.service.ts`:
    ```ts
    tabs: {
      textTabs: [
        { tabLabel: 'e_value_usd', value: formatUsd(deal.value) },
        { tabLabel: 'e_value_words', value: numberToWords(deal.value) },
-       // ...
      ],
      checkboxTabs: [
-       { tabLabel: 'e_compass', selected: 'true' },
-       { tabLabel: 'e_mat_full', selected: 'true' },
-       // ...
+       { tabLabel: 'compass_session', selected: 'true' },
+       { tabLabel: 'material_full', selected: 'true' },
      ],
    }
    ```
-3. Wire no `createEnvelopeFromTemplate` quando o template do envelope for o de Avulsos
+3. Chamar no `createEnvelopeFromTemplate` quando o template for AVULSO
