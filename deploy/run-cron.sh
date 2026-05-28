@@ -54,13 +54,16 @@ case "$ROUTE" in
     ;;
 esac
 
-# Retry on transient 5xx (default --retry behavior) — handles deploy swap
-# windows and brief upstream blips without paging Telegram.
+# Retry transient errors (5xx from Traefik mid-swap, 404 from Next.js
+# during route registration on container boot) — handles deploy windows
+# and brief upstream blips without paging Telegram.
 # Budget: 5 retries × 10s delay ≈ 50s, enough to cross a healthcheck-gated
 # start-first swap (40s start_period + Traefik route update).
+# --retry-all-errors covers 4xx (404 during boot race) too; cron endpoints
+# never legitimately return 4xx for an authenticated request.
 HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
   --max-time "$CURL_MAX_TIME" \
-  --retry 5 --retry-delay 10 \
+  --retry 5 --retry-delay 10 --retry-all-errors \
   -H "Authorization: Bearer ${SECRET}" \
   "$ENDPOINT")
 
