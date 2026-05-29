@@ -42,9 +42,8 @@ services:
         failure_action: rollback
         delay: 10s
       restart_policy:
-        condition: on-failure
+        condition: any
         delay: 15s
-        max_attempts: 3
       labels:
         - "traefik.enable=true"
         - "traefik.docker.network=network_public"
