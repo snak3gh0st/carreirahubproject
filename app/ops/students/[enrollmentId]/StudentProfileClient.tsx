@@ -372,6 +372,37 @@ export function StudentProfileClient({
     }
   }
 
+  async function sendHub() {
+    if (
+      !confirm(
+        "Enviar o Hub para este aluno do Program Pass? Dispara a mensagem no WhatsApp e o e-mail de acesso."
+      )
+    ) {
+      return;
+    }
+    setAccessAction({ loading: true, message: null, error: null });
+    try {
+      const response = await fetch(`/api/ops/enrollments/${enrollmentId}/send-hub-access`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || "Falha ao enviar o Hub.");
+      }
+      setAccessAction({
+        loading: false,
+        message: `Hub enviado para ${payload.email ?? enrollment.customer.email} (WhatsApp + e-mail).`,
+        error: null,
+      });
+    } catch (err) {
+      setAccessAction({
+        loading: false,
+        message: null,
+        error: err instanceof Error ? err.message : "Falha ao enviar o Hub.",
+      });
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl space-y-5 bg-gray-50/40 px-4 py-5 sm:px-6 md:space-y-6 md:p-8">
       {/* Back nav */}
@@ -485,6 +516,17 @@ export function StudentProfileClient({
                 <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
                 {accessAction.loading ? "Enviando..." : "Reenviar acesso"}
               </button>
+              {enrollment.programType === "PASS" && (
+                <button
+                  type="button"
+                  onClick={sendHub}
+                  disabled={accessAction.loading}
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-brand-verde px-3 text-[12.5px] font-medium text-white transition hover:bg-brand-verde/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Send className="h-3.5 w-3.5" strokeWidth={1.75} />
+                  {accessAction.loading ? "Enviando..." : "Enviar Hub ao aluno"}
+                </button>
+              )}
             </div>
 
             {(accessAction.message || accessAction.error) && (
