@@ -157,22 +157,29 @@ export class MentorshipService {
       }
     });
 
-    await sendDigisacLifecycleMessageSafely({
-      event: "program_welcome",
-      enrollmentId: result.enrollment.id,
-      dedupeKey: buildDigisacLifecycleDedupeKey("program_welcome", result.enrollment.id),
-      metadata: {
-        source: "mentorship.createEnrollment",
-        programType,
-        startDate: startDate.toISOString(),
-      },
-    });
+    // [TEST PHASE] Hub onboarding (WhatsApp welcome + access provisioning) is
+    // gated OFF by default so students are NOT contacted automatically on
+    // enrollment. It is sent MANUALLY by ops (OPERATIONAL/ADMIN) via the
+    // send-hub-access endpoint, and only for PASS programs. To re-enable the
+    // legacy auto-send, set HUB_AUTO_ONBOARDING_ENABLED=true.
+    if (process.env.HUB_AUTO_ONBOARDING_ENABLED === "true") {
+      await sendDigisacLifecycleMessageSafely({
+        event: "program_welcome",
+        enrollmentId: result.enrollment.id,
+        dedupeKey: buildDigisacLifecycleDedupeKey("program_welcome", result.enrollment.id),
+        metadata: {
+          source: "mentorship.createEnrollment",
+          programType,
+          startDate: startDate.toISOString(),
+        },
+      });
 
-    await provisionHubAccessForEnrollment({
-      enrollmentId: result.enrollment.id,
-    }).catch((error) => {
-      console.warn("[MentorshipService] Could not provision Hub access:", error);
-    });
+      await provisionHubAccessForEnrollment({
+        enrollmentId: result.enrollment.id,
+      }).catch((error) => {
+        console.warn("[MentorshipService] Could not provision Hub access:", error);
+      });
+    }
 
     return result;
   }
