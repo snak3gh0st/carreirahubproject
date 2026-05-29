@@ -73,6 +73,7 @@ export async function POST(
     enrollmentId: enrollment.id,
     dedupeKey: buildDigisacLifecycleDedupeKey("program_welcome", enrollment.id),
     metadata: { source: "ops.send-hub-access" },
+    force: true, // explicit manual ops send — bypass the global lifecycle lock
   });
 
   return NextResponse.json({

@@ -46,11 +46,13 @@ export interface SendDigisacLifecycleInput {
   sessionDate?: Date | null;
   sessionType?: string | null;
   conductorName?: string | null;
+  /** Bypass the global lifecycle lock (explicit manual ops sends only). */
+  force?: boolean;
 }
 
 export interface DigisacLifecycleSendResult {
   sent: boolean;
-  skippedReason?: "disabled" | "not_configured" | "duplicate" | "missing_enrollment" | "missing_phone" | "send_failed";
+  skippedReason?: "disabled" | "not_configured" | "duplicate" | "missing_enrollment" | "missing_phone" | "send_failed" | "locked";
   messageId?: string | null;
 }
 
@@ -402,6 +404,14 @@ export async function sendDigisacLifecycleMessage(
 export async function sendDigisacLifecycleMessageSafely(
   input: SendDigisacLifecycleInput
 ): Promise<DigisacLifecycleSendResult> {
+  // [TEST PHASE LOCK] Global kill-switch for AUTOMATIC lifecycle messages.
+  // Students who changed products were still receiving these. Locked by default;
+  // set DIGISAC_LIFECYCLE_ENABLED=true to resume automatic sends. Explicit manual
+  // ops sends (e.g. send-hub-access) pass force=true and are never locked.
+  if (!input.force && process.env.DIGISAC_LIFECYCLE_ENABLED !== "true") {
+    console.warn(`[DIGISAC_LIFECYCLE] Locked — skipping ${input.event} (set DIGISAC_LIFECYCLE_ENABLED=true to resume)`);
+    return { sent: false, skippedReason: "locked" };
+  }
   try {
     return await sendDigisacLifecycleMessage(input);
   } catch (error) {
