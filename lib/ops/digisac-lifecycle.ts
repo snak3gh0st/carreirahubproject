@@ -177,10 +177,11 @@ export function buildDigisacLifecycleMessage(input: DigisacLifecycleMessageInput
   switch (input.event) {
     case "program_welcome":
       return [
-        `Ola, ${name}! Seja bem-vindo(a) ao programa Carreira USA.`,
-        "A partir de agora vamos acompanhar sua jornada pelo Hub e pelo WhatsApp.",
-        `Acesse seu Hub por aqui: ${input.hubUrl}`,
+        `Olá ${name}, parabéns por ter tomado a decisão de entrar para o programa da Carreira USA.`,
+        "A partir de agora vamos acompanhar sua jornada pelo Hub, nossa plataforma, e pelo WhatsApp. Por isso, o time já entrará em contato com você!",
+        `Acesse seu Hub por aqui: ${input.hubUrl} e tenha acesso a todo o seu processo, dados, financeiro e outras informações importantes.`,
         "Se ainda nao tiver acesso, responda esta mensagem e nosso time ajuda.",
+        "Abraços,\nSuporte Carreira USA.",
       ].join("\n\n");
     case "form_assigned":
       return [
@@ -242,7 +243,9 @@ export function buildDigisacLifecycleMessage(input: DigisacLifecycleMessageInput
   }
   })();
 
-  return appendSignature(body);
+  // program_welcome carries its own sign-off ("Abraços, Suporte Carreira USA"),
+  // so skip the appended signature to avoid duplicating it.
+  return input.event === "program_welcome" ? body : appendSignature(body);
 }
 
 function wrapRawPayload(input: {

@@ -75,7 +75,7 @@ function normalizeLanguage(language: string | null | undefined) {
 }
 
 export async function provisionHubAccessForEnrollment(
-  input: { enrollmentId: string },
+  input: { enrollmentId: string; manualOverride?: boolean },
   deps: HubAccessProvisioningDeps = {}
 ): Promise<HubAccessProvisioningResult> {
   const prismaClient = deps.prismaClient ?? (prisma as unknown as PrismaLike);
@@ -101,7 +101,9 @@ export async function provisionHubAccessForEnrollment(
     return { success: false, reason: "ENROLLMENT_NOT_FOUND" };
   }
 
-  if (isHubAccessPausedForProgramType(enrollment.programType)) {
+  // The auto-pause blocks automatic provisioning. An explicit manual send by
+  // ops (Franeze) overrides it — that's the whole point of the manual flow.
+  if (!input.manualOverride && isHubAccessPausedForProgramType(enrollment.programType)) {
     return { success: false, reason: "HUB_ACCESS_PAUSED" };
   }
 
