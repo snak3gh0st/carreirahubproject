@@ -37,6 +37,13 @@ interface PipelineBoardProps {
 }
 
 type FilterMode = "all" | "mine" | "risk" | "debt";
+type ProductFilter = "all" | "PASS" | "ADVANCED" | "EARLY_CAREER";
+
+const PRODUCT_LABELS: Record<Exclude<ProductFilter, "all">, string> = {
+  PASS: "Programa Pass",
+  ADVANCED: "Pass Advanced",
+  EARLY_CAREER: "Early Career",
+};
 
 type OpsComment = {
   id: string;
@@ -850,6 +857,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
   const { data: phases, isLoading, isError, refetch } = usePipelineData();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [productFilter, setProductFilter] = useState<ProductFilter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
@@ -864,6 +872,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
             enrollment.customer.email.toLowerCase().includes(query) ||
             enrollment.assignedTo.name?.toLowerCase().includes(query);
           if (!matchesSearch) return false;
+          if (productFilter !== "all" && enrollment.programType !== productFilter) return false;
           if (filter === "mine") return enrollment.assignedTo.id === currentUserId;
           if (filter === "risk") return Boolean(getRiskLabel(phase, enrollment));
           if (filter === "debt") return getPaymentAlert(enrollment).level === "red";
@@ -872,7 +881,7 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
         return { ...phase, enrollments };
       })
       .filter((phase) => phase.enrollments.length > 0);
-  }, [currentUserId, filter, phases, search]);
+  }, [currentUserId, filter, productFilter, phases, search]);
 
   const selected = useMemo(() => {
     if (!phases) return null;
@@ -892,6 +901,9 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
       mine: all.filter(({ enrollment }) => enrollment.assignedTo.id === currentUserId).length,
       risk: all.filter(({ phase, enrollment }) => Boolean(getRiskLabel(phase, enrollment))).length,
       debt: all.filter(({ enrollment }) => getPaymentAlert(enrollment).level === "red").length,
+      pass: all.filter(({ enrollment }) => enrollment.programType === "PASS").length,
+      advanced: all.filter(({ enrollment }) => enrollment.programType === "ADVANCED").length,
+      earlyCareer: all.filter(({ enrollment }) => enrollment.programType === "EARLY_CAREER").length,
     };
   }, [currentUserId, phases]);
 
@@ -913,6 +925,13 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
     { key: "mine", label: "Meus", value: totals.mine },
     { key: "risk", label: "Em risco", value: totals.risk },
     { key: "debt", label: "Inadimplentes", value: totals.debt },
+  ];
+
+  const productOptions: Array<{ key: ProductFilter; label: string; value: number }> = [
+    { key: "all", label: "Todos os produtos", value: totals.clients },
+    { key: "PASS", label: PRODUCT_LABELS.PASS, value: totals.pass },
+    { key: "ADVANCED", label: PRODUCT_LABELS.ADVANCED, value: totals.advanced },
+    { key: "EARLY_CAREER", label: PRODUCT_LABELS.EARLY_CAREER, value: totals.earlyCareer },
   ];
 
   return (
@@ -958,6 +977,42 @@ export function PipelineBoard({ currentUserId, currentUserRole }: PipelineBoardP
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Product filter (second row) */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <div
+            role="tablist"
+            aria-label="Produto"
+            className="inline-flex flex-wrap items-center rounded-lg border border-gray-200 bg-white p-0.5"
+          >
+            {productOptions.map((item) => (
+              <button
+                key={item.key}
+                role="tab"
+                aria-selected={productFilter === item.key}
+                type="button"
+                onClick={() => setProductFilter(item.key)}
+                className={`relative inline-flex h-9 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-verde/40 ${
+                  productFilter === item.key
+                    ? "bg-brand-verde text-white shadow-sm"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <span>{item.label}</span>
+                <span
+                  className={`tabular-nums text-[11px] font-semibold ${
+                    productFilter === item.key ? "text-white/75" : "text-gray-400"
+                  }`}
+                >
+                  {item.value}
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] leading-snug text-gray-400">
+            Combo, Construção de Material, Avulso e Consultoria entrarão quando virarem matrículas rastreadas.
+          </p>
         </div>
 
         {/* Phase sections */}
